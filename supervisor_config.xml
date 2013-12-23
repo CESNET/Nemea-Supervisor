@@ -1,0 +1,99 @@
+<?xml version="1.0"?>
+<nemea-supervisor>
+	<modules number="5">
+
+
+		<module0>
+			<params>NULL</params>
+			<name>flowcounter</name>
+			<path>./cesnet/modules/flowcounter/flowcounter</path>
+			<trapinterfaces>
+				<interface1>
+					<id>whatever</id>
+					<type>TCP</type>
+					<direction>IN</direction>
+					<params>localhost,8001</params>
+				</interface1>
+			</trapinterfaces>
+		</module0>
+
+
+		<module1>
+			<params>NULL</params>
+			<name>flowcounter</name>
+			<path>./cesnet/modules/flowcounter/flowcounter</path>
+			<trapinterfaces>
+				<interface1>
+					<id>whatever</id>
+					<type>TCP</type>
+					<direction>IN</direction>
+					<params>localhost,8001</params>
+				</interface1>
+			</trapinterfaces>
+		</module1>
+
+
+		<module2>
+			<params>./cesnet/modules/transitfilter/net_addr_uniq.txt</params>
+			<name>transitfilter</name>
+			<path>./cesnet/modules/transitfilter/transitfilter</path>
+			<trapinterfaces>
+				<interface1>
+					<id>whatever</id>
+					<type>TCP</type>
+					<direction>OUT</direction>
+					<params>8090,1</params>
+				</interface1>
+				<interface2>
+					<id>whatever</id>
+					<type>TCP</type>
+					<direction>IN</direction>
+					<params>localhost,8000</params>
+				</interface2>
+				<interface3>
+					<id>whatever</id>
+					<type>UNIXSOCKET</type>
+					<direction>OUT</direction>
+					<params>8099,1</params>
+				</interface3>
+			</trapinterfaces>
+		</module2>
+
+
+		<module3>
+			<params>./cesnet/modules/nfreader/1.dat</params>
+			<name>nfreader</name>
+			<path>./cesnet/modules/nfreader/nfdump_reader</path>
+			<trapinterfaces>
+				<interface>
+					<id>whatever</id>
+					<type>TCP</type>
+					<direction>OUT</direction>
+					<params>8000,2</params>
+				</interface>
+			</trapinterfaces>
+		</module3>
+
+		<module3>
+			<params>NULL</params>
+			<name>traffic_repeater</name>
+			<path>./cesnet/modules/traffic_repeater/traffic_repeater</path>
+			<trapinterfaces>
+				<interface1>
+					<id>whatever</id>
+					<type>TCP</type>
+					<direction>IN</direction>
+					<params>localhost,8000</params>
+				</interface1>
+				<interface2>
+					<id>whatever</id>
+					<type>TCP</type>
+					<direction>OUT</direction>
+					<params>8001,2</params>
+				</interface2>
+			</trapinterfaces>
+		</module3>
+
+
+	</modules>
+</nemea-supervisor>
