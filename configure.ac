@@ -2,14 +2,15 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.63])
-AC_INIT([FULL-PACKAGE-NAME], [VERSION], [BUG-REPORT-ADDRESS])
+AC_INIT([nemea-supervisor], [1.0.0], [traffic-analysis@cesnet.cz])
 AC_CONFIG_SRCDIR([supervisor.c])
 AC_CONFIG_HEADERS([config.h])
-
+AM_INIT_AUTOMAKE([-Wall])
 
 # Checks for programs.
 AC_PROG_CC
 AC_PROG_MAKE_SET
+AM_PROG_CC_C_O
 
 m4_include([m4/ax_libxml2_check.m4])
 AX_LIBXML2_CHECK()
