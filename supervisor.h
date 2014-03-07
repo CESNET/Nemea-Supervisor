@@ -99,6 +99,7 @@ typedef struct module_atr {
 
 /** Structure with information about one running module */
 typedef struct running_module {
+	int 			module_enabled;
 	int 			module_num_out_ifc;
 	int 			module_num_in_ifc;
 	int *			module_counters_array;

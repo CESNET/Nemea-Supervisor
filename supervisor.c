@@ -62,7 +62,7 @@
 
 #define LOGSDIR_NAME 	"./modules_logs/" ///< Name of directory with logs
 #define TRAP_PARAM 		"-i" ///< Interface parameter for libtrap
-#define MAX_RESTARTS	3  ///< Maximum number of module restarts
+#define MAX_RESTARTS	100  ///< Maximum number of module restarts
 
 #define UNIX_PATH_FILENAME_FORMAT   "/tmp/trap-localhost-%s.sock"
 
@@ -446,13 +446,16 @@ int print_menu ()
 	printf("2. STOP CONFIGURATION\n");
 	printf("3. START MODUL\n");
 	printf("4. STOP MODUL\n");
-	printf("5. RESTART \"DEAD\" MODULES\n");
+	printf("5. SET MODULE ENABLED\n");
 	printf("6. STARTED MODULES STATUS\n");
 	printf("7. AVAILABLE MODULES\n");
 	printf("8. SHOW GRAPH\n");
 	printf("9. RUN TEMP CONF\n");
 	printf("10. QUIT\n");
-	scanf("%d",&ret_val);
+	if(!scanf("%d",&ret_val)){
+		printf("Wrong input.\n");
+		return -1;
+	}
 	return ret_val;
 }
 
@@ -470,6 +473,7 @@ void start_module (const int module_number)
 	char log_path_stderr[40];
 	int x = 0;
 
+	running_modules[running_modules_cnt].module_enabled = TRUE;
 	strcpy(running_modules[running_modules_cnt].module_name, modules[module_number].module_name);
 	strcpy(running_modules[running_modules_cnt].module_path, modules[module_number].module_path);
 	running_modules[running_modules_cnt].module_ifces = modules[module_number].module_ifces;
@@ -550,6 +554,7 @@ void restart_module (const int module_number)
 void stop_module (const int module_number)
 {
 	if(running_modules[module_number].module_status){
+		running_modules[module_number].module_enabled = FALSE;
 		kill(running_modules[module_number].module_PID,2);
 		running_modules[module_number].module_status = FALSE;
 		running_modules[module_number].module_service_ifc_isconnected = FALSE;
@@ -673,9 +678,13 @@ void api_start_module()
 	pthread_mutex_lock(&running_modules_lock);
 	int x = 0;
 	printf("Type in module number\n");
-	scanf("%d",&x);
+	if(!scanf("%d",&x)){
+		printf("Wrong input.\n");
+		return;
+	}
 	if(x>=modules_cnt || x<0){
-		printf("Wrong input, type in 0 - %d.\n", modules_cnt);
+		printf("Wrong input, type in 0 - %d.\n", modules_cnt-1);
+		pthread_mutex_unlock(&running_modules_lock);
 		return;
 	}
 	start_module(x);
@@ -693,7 +702,10 @@ void api_stop_module()
 		}
 	}
 	printf("Type in number of module to kill: (# for cancel)\n");
-	scanf("%s",&symbol);
+	if(!scanf("%s",&symbol)){
+		printf("Wrong input.\n");
+		return;
+	}
 	if (symbol != '#'){
 		stop_module(symbol - '0');
 	} else if((symbol - '0')>=running_modules_cnt || (symbol - '0')<0){
@@ -703,18 +715,34 @@ void api_stop_module()
 	pthread_mutex_unlock(&running_modules_lock);
 }
 
-void api_restart_modules()
+void api_set_module_enabled()
 {
+	int x;
 	pthread_mutex_lock(&running_modules_lock);
+	printf("Type in module number\n");
+	if(!scanf("%d",&x)){
+		printf("Wrong input.\n");
+		return;
+	}
+	if(x>=running_modules_cnt || x<0){
+		printf("Wrong input, type in 0 - %d.\n", running_modules_cnt-1);
+		pthread_mutex_unlock(&running_modules_lock);
+		return;
+	}
+	running_modules[x].module_enabled=TRUE;
+	pthread_mutex_unlock(&running_modules_lock);
+}
+
+void restart_modules()
+{
 	int x = 0;
 	for (x=0; x<running_modules_cnt; x++) {
 		if (running_modules[x].module_status == FALSE && (running_modules[x].module_restart_cnt >= MAX_RESTARTS)) {
 			printf("Module: %d%s was restarted 3 times and it is down again.\n",x, running_modules[x].module_name );
-		} else if (running_modules[x].module_status == FALSE) {
+		} else if (running_modules[x].module_status == FALSE && running_modules[x].module_enabled == TRUE) {
 			restart_module(x);
 		}
 	}
-	pthread_mutex_unlock(&running_modules_lock);
 }
 
 void api_show_running_modules_status()
@@ -802,13 +830,17 @@ void update_cpu_usage(long int * last_total_cpu_usage)
 	memset(path,0,20);
 	int rozdil_total = 0;
 
-	fscanf(proc_stat_fd,"cpu");
+	if(!fscanf(proc_stat_fd,"cpu")){
+		return;
+	}
 	for(x=0;x<10;x++){
-		fscanf(proc_stat_fd,"%d",&num);
+		if(!fscanf(proc_stat_fd,"%d",&num)){
+			continue;
+		}
 		new_total_cpu_usage += num;
 	}
 	rozdil_total = new_total_cpu_usage - *last_total_cpu_usage;
-	printf("total_cpu rozdil total cpu usage> %d\n", rozdil_total);
+	printf("total_cpu difference total cpu usage> %d\n", rozdil_total);
 	*last_total_cpu_usage = new_total_cpu_usage;
 	fclose(proc_stat_fd);
   
@@ -816,7 +848,9 @@ void update_cpu_usage(long int * last_total_cpu_usage)
 		if(running_modules[x].module_status){
 			sprintf(path,"/proc/%d/stat",running_modules[x].module_PID);
 			proc_stat_fd = fopen(path,"r");
-			fscanf(proc_stat_fd,"%*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %d %d", &utime , &stime);
+			if(!fscanf(proc_stat_fd,"%*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %d %d", &utime , &stime)){
+				continue;
+			}
 			
 			printf("Last_u%d Last_s%d, New_u%d New_s%d |>>   u%d%% s%d%%\n", running_modules[x].last_cpu_usage_user_mode,
 														running_modules[x].last_cpu_usage_kernel_mode,
@@ -881,9 +915,11 @@ void * service_thread_routine(void* arg)
 	while(service_thread_continue == 1)
 	{
 		pthread_mutex_lock(&running_modules_lock);
-		usleep(100000);
 		printf("------>\n");
+		usleep(100000);
 		update_module_status();
+		restart_modules();
+		usleep(100000);
 		update_cpu_usage(&last_total_cpu_usage); 
 		if(running_modules_cnt > num_served_modules)
 		{
@@ -957,8 +993,9 @@ void * service_thread_routine(void* arg)
 			// check_graph_values(graph_first_node);
 
 			for(x=0;x<running_modules_cnt;x++){
-				printf("NAME:  %s, PID: %d, SIFC: %d, S: %d, ISC: %d | ", running_modules[x].module_name,
+				printf("NAME:  %s, PID: %d, EN: %d, SIFC: %d, S: %d, ISC: %d | ", running_modules[x].module_name,
 					running_modules[x].module_PID,
+					running_modules[x].module_enabled,
 					running_modules[x].module_has_service_ifc,
 					running_modules[x].module_status,
 					running_modules[x].module_service_ifc_isconnected);
@@ -1027,7 +1064,10 @@ void run_temp_configuration()
 	char * ptr = buffer1;
 	printf("Paste in xml code with modules configuration.\n");
 	while(1){
-		scanf("%s",ptr);
+		if(!scanf("%s",ptr)){
+			printf("Wrong input.\n");
+			continue;
+		}
 		if(strstr(ptr,"</modules>") != NULL){
 			break;
 		}
@@ -1061,7 +1101,10 @@ void api_set_verbose_level()
 {
 	int x;
 	printf("Type in number in range 0-3 to set verbose level of modules:\n");
-	scanf("%d",&x);
+	if(!scanf("%d",&x)){
+		printf("Wrong input.\n");
+		return;
+	}
 	if(x>3 || x<0){
 		printf("Wrong input.\n");
 	} else {

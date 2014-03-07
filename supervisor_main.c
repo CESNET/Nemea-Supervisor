@@ -78,7 +78,7 @@ int main (int argc, char * argv [])
 			break;
 
 		case 5:
-			api_restart_modules();
+			api_set_module_enabled();
 			break;
 
 		case 6:

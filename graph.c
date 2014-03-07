@@ -242,7 +242,10 @@ void show_graph()
 	// int pipe1[2];
 	int pipe2[2];
 	// pipe(pipe1);
-	pipe(pipe2);
+	if(pipe(pipe2) == -1){
+		fprintf(stderr,"Pipe error.\n");
+		return;
+	}
 
 	// if((pid_cat = fork()) == 0){
 	// 	//child cat

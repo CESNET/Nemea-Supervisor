@@ -52,7 +52,7 @@ void api_start_module();
 
 void api_stop_module();
 
-void api_restart_modules();
+void api_set_module_enabled();
 
 void api_show_running_modules_status();
 
