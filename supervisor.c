@@ -327,29 +327,30 @@ char ** make_module_arguments (const int number_of_module)
 	}
 
 	x=0;
-	while (modules[number_of_module].module_ifces[x].ifc_id[0] != '#') {
+	while (modules[number_of_module].module_ifces[x].ifc_note[0] != '#') {
 		if (!strcmp(modules[number_of_module].module_ifces[x].ifc_direction,"SERVICE")) {
 			sprintf(ptr,"%s;",modules[number_of_module].module_ifces[x].ifc_params);
 			ptr += strlen(modules[number_of_module].module_ifces[x].ifc_params) + 1;
 		}
 		x++;
 	}
-
 	memset(ptr-1,0,1);
 
-	char ** params = (char **) calloc (6,sizeof(char*));
-	params[0] = (char *) calloc (50,sizeof(char)); 	// binary name for exec
-	params[1] = (char *) calloc (5,sizeof(char)); 	// libtrap param "-i"
-	params[2] = (char *) calloc (100,sizeof(char)); // atributes for "-i" param
-	// params[3] 									// input file for some modules etc.
-	// params[4] 									// verbose level
-	// params[5] = NULL								// NULL pointer for exec
-	strcpy(params[0],modules[number_of_module].module_name);
-	strcpy(params[1],TRAP_PARAM);
-	strcpy(params[2],atr);
-
-
+	char ** params = NULL;
 	if (strcmp(modules[number_of_module].module_params,"NULL") == 0) {
+
+		params = (char **) calloc (5,sizeof(char*));
+		params[0] = (char *) calloc (50,sizeof(char)); 	// binary name for exec
+		params[1] = (char *) calloc (5,sizeof(char)); 	// libtrap param "-i"
+		params[2] = (char *) calloc (100,sizeof(char)); // atributes for "-i" param
+		// params[3] 									// input file for some modules etc.
+		// params[4] 									// verbose level
+		// params[5] = NULL								// NULL pointer for exec
+		strcpy(params[0],modules[number_of_module].module_name);
+		strcpy(params[1],TRAP_PARAM);
+		strcpy(params[2],atr);
+
+
 		switch(verbose_level){
 			case 0:
 				params[3] = NULL;
@@ -368,30 +369,70 @@ char ** make_module_arguments (const int number_of_module)
 				break;
 		}
 		params[4] = NULL;
-		params[5] = NULL;
 	} else {
-		params[3] = (char *) calloc (100,sizeof(char));
-		strcpy(params[3],modules[number_of_module].module_params);
-		
+
+		int params_counter;
+		char buffer[100];
+		int num_module_params = 0;
+		int module_params_length = strlen(modules[number_of_module].module_params);
+		for(x=0; x<module_params_length; x++) {
+			if(modules[number_of_module].module_params[x] == 32){
+				num_module_params++;
+			}
+		}
+		num_module_params++;
+
+
+		params = (char **) calloc (3+1+1+num_module_params,sizeof(char*));
+		params[0] = (char *) calloc (50,sizeof(char)); 	// binary name for exec
+		params[1] = (char *) calloc (5,sizeof(char)); 	// libtrap param "-i"
+		params[2] = (char *) calloc (100,sizeof(char)); // atributes for "-i" param
+		strcpy(params[0],modules[number_of_module].module_name);
+		strcpy(params[1],TRAP_PARAM);
+		strcpy(params[2],atr);
+
 		switch(verbose_level){
 			case 0:
-				params[4] = NULL;
+				params_counter = 3;
+				params[3] = NULL;
 				break;
 			case 1:
-				params[4] = (char *) calloc (5,sizeof(char));
-				sprintf(params[4],"-v");
+				params_counter = 4;
+				params[3] = (char *) calloc (5,sizeof(char));
+				sprintf(params[3],"-v");
 				break;
 			case 2:
-				params[4] = (char *) calloc (5,sizeof(char));
-				sprintf(params[4],"-vv");
+				params_counter = 4;
+				params[3] = (char *) calloc (5,sizeof(char));
+				sprintf(params[3],"-vv");
 				break;
 			case 3:
-				params[4] = (char *) calloc (5,sizeof(char));
-				sprintf(params[4],"-vvv");
+				params_counter = 4;
+				params[3] = (char *) calloc (5,sizeof(char));
+				sprintf(params[3],"-vvv");
 				break;
 		}
 
-		params[5] = NULL;
+		y=0;
+		memset(buffer,0,100);
+		for(x=0; x<module_params_length; x++){
+			if(modules[number_of_module].module_params[x] == 32){
+				params[params_counter] = (char *) calloc (strlen(buffer),sizeof(char));
+				sprintf(params[params_counter],"%s",buffer);
+				params_counter++;
+				memset(buffer,0,100);
+				y=0;
+			} else {
+				buffer[y] = modules[number_of_module].module_params[x];
+				y++;
+			}
+		}
+		params[params_counter] = (char *) calloc (strlen(buffer),sizeof(char));
+		sprintf(params[params_counter],"%s",buffer);
+		params_counter++;
+
+
+		params[params_counter] = NULL;
 	}
 	return params;
 }
