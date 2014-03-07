@@ -80,7 +80,7 @@
 
 /** Structure with information about one interface of module */
 typedef struct interface {
-	char 	ifc_id[PARAMS_MAX]; ///< Interface ID
+	char 	ifc_note[PARAMS_MAX]; ///< Interface ID
 	char 	ifc_type[PARAMS_MAX]; ///< Interface type (TCP ~ t, UNIXSOCKET ~ u)
 	char  	ifc_params[PARAMS_MAX]; ///< Interface parameters (IN interface ~ address,port; OUT interface ~ port,number of connections)
 	char 	ifc_direction[PARAMS_MAX]; ///< Interface direction (IN, OUT)

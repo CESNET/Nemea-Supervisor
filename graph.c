@@ -64,7 +64,7 @@ graph_node_t * add_graph_node (graph_node_t * first, graph_node_t * last, void *
 
 	x=0;
 	y=0;
-	while(running_module->module_ifces[x].ifc_id[0] != '#') {
+	while(running_module->module_ifces[x].ifc_note[0] != '#') {
 		if (!strcmp(running_module->module_ifces[x].ifc_direction, "IN")) {
 			sscanf(running_module->module_ifces[x].ifc_params,"%*[^','],%d", &new_node->node_input_interfaces[y].node_interface_port);
 			new_node->node_input_interfaces[y].parent_node = new_node;
@@ -75,7 +75,7 @@ graph_node_t * add_graph_node (graph_node_t * first, graph_node_t * last, void *
  
 	x=0;
 	y=0;
-	while(running_module->module_ifces[x].ifc_id[0] != '#') {
+	while(running_module->module_ifces[x].ifc_note[0] != '#') {
 		if (!strcmp(running_module->module_ifces[x].ifc_direction, "OUT")) {
 			sscanf(running_module->module_ifces[x].ifc_params,"%[^','],%d", port, &num_clients);
 			new_node->node_output_interfaces[y].node_interface_port = atoi(port);

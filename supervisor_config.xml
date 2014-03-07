@@ -1,159 +1,158 @@
 <?xml version="1.0"?>
 <nemea-supervisor>
-	<modules number="7">
-		<module0>
+	<modules>
+
+		<module>
 			<params>NULL</params>
 			<name>flowcounter</name>
 			<path>../modules/flowcounter/flowcounter</path>
 			<trapinterfaces>
-				<interface1>
-					<id>whatever</id>
+				<interface>
+					<note>whatever</note>
 					<type>TCP</type>
 					<direction>IN</direction>
 					<params>localhost,8002</params>
-				</interface1>
-				<interface2>
-					<id>whatever</id>
+				</interface>
+				<interface>
+					<note>whatever</note>
 					<type>UNIXSOCKET</type>
 					<direction>SERVICE</direction>
-					<params>9002,1</params>
-				</interface2>
+					<params>9006,1</params>
+				</interface>
 			</trapinterfaces>
-		</module0>
+		</module>
 
 
-		<module0>
+		<module>
 			<params>NULL</params>
 			<name>flowcounter</name>
 			<path>../modules/flowcounter/flowcounter</path>
 			<trapinterfaces>
-				<interface1>
-					<id>whatever</id>
+				<interface>
+					<note>whatever</note>
 					<type>TCP</type>
 					<direction>IN</direction>
 					<params>localhost,8002</params>
-				</interface1>
-				<interface2>
-					<id>whatever</id>
-					<type>UNIXSOCKET</type>
-					<direction>SERVICE</direction>
-					<params>9003,1</params>
-				</interface2>
-			</trapinterfaces>
-		</module0>
-
-		<module0>
-			<params>NULL</params>
-			<name>flowcounter</name>
-			<path>../modules/flowcounter/flowcounter</path>
-			<trapinterfaces>
-				<interface1>
-					<id>whatever</id>
-					<type>TCP</type>
-					<direction>IN</direction>
-					<params>localhost,8001</params>
-				</interface1>
-				<interface2>
-					<id>whatever</id>
-					<type>UNIXSOCKET</type>
-					<direction>SERVICE</direction>
-					<params>9001,1</params>
-				</interface2>
-			</trapinterfaces>
-		</module0>
-
-		<module0>
-			<params>NULL</params>
-			<name>flowcounter</name>
-			<path>../modules/flowcounter/flowcounter</path>
-			<trapinterfaces>
-				<interface1>
-					<id>whatever</id>
-					<type>TCP</type>
-					<direction>IN</direction>
-					<params>localhost,8001</params>
-				</interface1>
-				<interface2>
-					<id>whatever</id>
-					<type>UNIXSOCKET</type>
-					<direction>SERVICE</direction>
-					<params>9000,1</params>
-				</interface2>
-			</trapinterfaces>
-		</module0>
-
-		<module3>
-			<params>NULL</params>
-			<name>traffic_repeater</name>
-			<path>../modules/traffic_repeater/traffic_repeater</path>
-			<trapinterfaces>
-				<interface1>
-					<id>whatever</id>
-					<type>TCP</type>
-					<direction>IN</direction>
-					<params>localhost,8000</params>
-				</interface1>
-				<interface2>
-					<id>whatever</id>
-					<type>TCP</type>
-					<direction>OUT</direction>
-					<params>8001,3</params>
-				</interface2>
-				<interface2>
-					<id>whatever</id>
-					<type>UNIXSOCKET</type>
-					<direction>SERVICE</direction>
-					<params>9004,1</params>
-				</interface2>
-			</trapinterfaces>
-		</module3>
-
-		<module3>
-			<params>NULL</params>
-			<name>traffic_repeater</name>
-			<path>../modules/traffic_repeater/traffic_repeater</path>
-			<trapinterfaces>
-				<interface1>
-					<id>whatever</id>
-					<type>TCP</type>
-					<direction>IN</direction>
-					<params>localhost,8000</params>
-				</interface1>
-				<interface2>
-					<id>whatever</id>
-					<type>TCP</type>
-					<direction>OUT</direction>
-					<params>8002,2</params>
-				</interface2>
-				<interface2>
-					<id>whatever</id>
+				</interface>
+				<interface>
+					<note>whatever</note>
 					<type>UNIXSOCKET</type>
 					<direction>SERVICE</direction>
 					<params>9005,1</params>
-				</interface2>
+				</interface>
 			</trapinterfaces>
-		</module3>
+		</module>
 
-		<module3>
+		<module>
+			<params>NULL</params>
+			<name>flowcounter</name>
+			<path>../modules/flowcounter/flowcounter</path>
+			<trapinterfaces>
+				<interface>
+					<note>whatever</note>
+					<type>TCP</type>
+					<direction>IN</direction>
+					<params>localhost,8001</params>
+				</interface>
+				<interface>
+					<note>whatever</note>
+					<type>UNIXSOCKET</type>
+					<direction>SERVICE</direction>
+					<params>9004,1</params>
+				</interface>
+			</trapinterfaces>
+		</module>
+
+		<module>
+			<params>NULL</params>
+			<name>flowcounter</name>
+			<path>../modules/flowcounter/flowcounter</path>
+			<trapinterfaces>
+				<interface>
+					<note>whatever</note>
+					<type>TCP</type>
+					<direction>IN</direction>
+					<params>localhost,8001</params>
+				</interface>
+				<interface>
+					<note>whatever</note>
+					<type>UNIXSOCKET</type>
+					<direction>SERVICE</direction>
+					<params>9003,1</params>
+				</interface>
+			</trapinterfaces>
+		</module>
+
+		<module>
+			<params>NULL</params>
+			<name>traffic_repeater</name>
+			<path>../modules/traffic_repeater/traffic_repeater</path>
+			<trapinterfaces>
+				<interface>
+					<note>whatever</note>
+					<type>TCP</type>
+					<direction>IN</direction>
+					<params>localhost,8000</params>
+				</interface>
+				<interface>
+					<note>whatever</note>
+					<type>TCP</type>
+					<direction>OUT</direction>
+					<params>8001,3</params>
+				</interface>
+				<interface>
+					<note>whatever</note>
+					<type>UNIXSOCKET</type>
+					<direction>SERVICE</direction>
+					<params>9002,1</params>
+				</interface>
+			</trapinterfaces>
+		</module>
+
+		<module>
+			<params>NULL</params>
+			<name>traffic_repeater</name>
+			<path>../modules/traffic_repeater/traffic_repeater</path>
+			<trapinterfaces>
+				<interface>
+					<note>whatever</note>
+					<type>TCP</type>
+					<direction>IN</direction>
+					<params>localhost,8000</params>
+				</interface>
+				<interface>
+					<note>whatever</note>
+					<type>TCP</type>
+					<direction>OUT</direction>
+					<params>8002,2</params>
+				</interface>
+				<interface>
+					<note>whatever</note>
+					<type>UNIXSOCKET</type>
+					<direction>SERVICE</direction>
+					<params>9001,1</params>
+				</interface>
+			</trapinterfaces>
+		</module>
+
+		<module>
 			<params>../modules/nfreader/1.dat</params>
 			<name>nfreader</name>
 			<path>../modules/nfreader/nfdump_reader</path>
 			<trapinterfaces>
 				<interface>
-					<id>whatever</id>
+					<note>whatever</note>
 					<type>TCP</type>
 					<direction>OUT</direction>
-					<params>8000,2</params>
+					<params>8000,10</params>
 				</interface>
-				<interface2>
-					<id>whatever</id>
+				<interface>
+					<note>whatever</note>
 					<type>UNIXSOCKET</type>
 					<direction>SERVICE</direction>
-					<params>9006,1</params>
-				</interface2>
+					<params>9000,1</params>
+				</interface>
 			</trapinterfaces>
-		</module3>
-
-
+		</module>
 	</modules>
 </nemea-supervisor>

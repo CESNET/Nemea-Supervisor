@@ -71,6 +71,7 @@ module_atr_t * 		modules;  ///< Information about modules from loaded xml config
 running_module_t * 	running_modules;  ///< Information about running modules
 
 int		modules_cnt;  ///< Number of modules from loaded xml config file
+int 	modules_array_size;
 int 	running_modules_cnt;  ///< Number of running modules
 
 pthread_mutex_t running_modules_lock; ///< mutex for locking counters
@@ -107,6 +108,7 @@ int load_configuration (const int choice, const char * buffer)
 	} else {
 		xml_tree = xmlParseMemory(buffer, strlen(buffer));
 	}
+
 	if (xml_tree == NULL ) {
 		fprintf(stderr,"Document not parsed successfully. \n");
 		return FALSE;
@@ -121,41 +123,21 @@ int load_configuration (const int choice, const char * buffer)
 	}
 	
 	if (xmlStrcmp(current_node->name, BAD_CAST "nemea-supervisor")) {
-		fprintf(stderr,"document of the wrong type, root node != supervisor");
+		fprintf(stderr,"document of the wrong type, root node != nemea-supervisor");
 		xmlFreeDoc(xml_tree);
 		return FALSE;
 	}
 
 	current_node = current_node->xmlChildrenNode;
-	if(choice){
-		while (current_node != NULL) {
-			if ((!xmlStrcmp(current_node->name, BAD_CAST "modules"))) {
-				key = xmlGetProp(current_node, BAD_CAST "number");
-				modules_cnt = atoi((const char *) key);
-				modules = (module_atr_t * ) calloc (modules_cnt,sizeof(module_atr_t));
-				for(y=0;y<modules_cnt;y++){
-					modules[y].module_ifces = (interface_t *)calloc(IFC_MAX, sizeof(interface_t));
-					modules[y].module_running = FALSE;
-				}
-				xmlFree(key);
-				break;
-			}
-			current_node = current_node-> next;
+	while (1) {
+		if (!xmlStrcmp(current_node->name, BAD_CAST "modules")) {
+			break;
 		}
-	} else {
-		while (current_node != NULL) {
-			if ((!xmlStrcmp(current_node->name, BAD_CAST "modules"))) {
-				key = xmlGetProp(current_node, BAD_CAST "number");
-				x = atoi((const char *) key);
-				xmlFree(key);
-				modules = (module_atr_t * ) realloc (modules, (x+modules_cnt)*sizeof(module_atr_t));
-				for(y=modules_cnt; y<(modules_cnt+x); y++){
-					modules[y].module_ifces = (interface_t *)calloc(IFC_MAX, sizeof(interface_t));
-					modules[y].module_running = FALSE;
-				}
-				break;
-			}
-			current_node = current_node-> next;
+		current_node = current_node-> next;
+		if(current_node == NULL){
+			fprintf(stderr,"Tag \"modules\" wasnt found.\n");
+			xmlFreeDoc(xml_tree);
+			return FALSE;
 		}
 	}
 
@@ -164,56 +146,61 @@ int load_configuration (const int choice, const char * buffer)
 	xmlNodePtr module_ptr = current_node->xmlChildrenNode;
 	xmlNodePtr module_atr, ifc_ptr, ifc_atr;
 	int ifc_cnt = 0;
-	int module_cnt;
-	if(choice){
-		module_cnt = 0;
-	} else {
-		module_cnt = modules_cnt;
-	}
-
 
 	while (module_ptr != NULL) {
-		if (xmlStrcmp(module_ptr->name,BAD_CAST "text"))	{
+		if (!xmlStrcmp(module_ptr->name,BAD_CAST "module"))	{
+
+			//check allocated memory, if we dont have enough -> realloc
+			if(modules_cnt == modules_array_size) {
+				printf("REALLOCING MODULES ARRAY --->\n");
+				modules_array_size += modules_array_size/2;
+				modules = (module_atr_t * ) realloc (modules, (modules_array_size)*sizeof(module_atr_t));
+				for(y=modules_cnt; y<modules_array_size; y++) {
+					modules[y].module_ifces = (interface_t *)calloc(IFC_MAX, sizeof(interface_t));
+					modules[y].module_running = FALSE;
+				}
+			}
+
 			module_atr = module_ptr->xmlChildrenNode;
 
 			while (module_atr != NULL) {
 				if ((!xmlStrcmp(module_atr->name,BAD_CAST "params"))) {
 					key = xmlNodeListGetString(xml_tree, module_atr->xmlChildrenNode, 1);
-					strcpy(modules[module_cnt].module_params, (char *) key);
+					strcpy(modules[modules_cnt].module_params, (char *) key);
 					xmlFree(key);
 				} else if ((!xmlStrcmp(module_atr->name,BAD_CAST "name"))) {
 					key = xmlNodeListGetString(xml_tree, module_atr->xmlChildrenNode, 1);
-					strcpy(modules[module_cnt].module_name, (char *) key);
+					strcpy(modules[modules_cnt].module_name, (char *) key);
 					xmlFree(key);
 				} else if ((!xmlStrcmp(module_atr->name,BAD_CAST "path"))) {
 					key = xmlNodeListGetString(xml_tree, module_atr->xmlChildrenNode, 1);
-					strcpy(modules[module_cnt].module_path, (char *) key);
+					strcpy(modules[modules_cnt].module_path, (char *) key);
 					xmlFree(key);
 				} else if ((!xmlStrcmp(module_atr->name,BAD_CAST "trapinterfaces")))	{
 					ifc_cnt=0;
 					ifc_ptr = module_atr->xmlChildrenNode;
 
 					while (ifc_ptr != NULL) {
-						if (xmlStrcmp(ifc_ptr->name,BAD_CAST "text")) {
+						if (!xmlStrcmp(ifc_ptr->name,BAD_CAST "interface")) {
 							ifc_atr = ifc_ptr->xmlChildrenNode;
 
 							while (ifc_atr != NULL) {
-								if ((!xmlStrcmp(ifc_atr->name,BAD_CAST "id"))) {
+								if ((!xmlStrcmp(ifc_atr->name,BAD_CAST "note"))) {
 									key =xmlNodeListGetString(xml_tree, ifc_atr->xmlChildrenNode, 1);
-									strcpy(modules[module_cnt].module_ifces[ifc_cnt].ifc_id , (char *) key);
+									strcpy(modules[modules_cnt].module_ifces[ifc_cnt].ifc_note , (char *) key);
 									xmlFree(key);
 								} else if ((!xmlStrcmp(ifc_atr->name,BAD_CAST "type"))) {
 									key =xmlNodeListGetString(xml_tree, ifc_atr->xmlChildrenNode, 1);
-									memset(modules[module_cnt].module_ifces[ifc_cnt].ifc_type,0,PARAMS_MAX);
-									strcpy(modules[module_cnt].module_ifces[ifc_cnt].ifc_type, (char *) key);
+									memset(modules[modules_cnt].module_ifces[ifc_cnt].ifc_type,0,PARAMS_MAX);
+									strcpy(modules[modules_cnt].module_ifces[ifc_cnt].ifc_type, (char *) key);
 									xmlFree(key);
 								} else if ((!xmlStrcmp(ifc_atr->name,BAD_CAST "direction"))) {
 									key =xmlNodeListGetString(xml_tree, ifc_atr->xmlChildrenNode, 1);
-									strcpy(modules[module_cnt].module_ifces[ifc_cnt].ifc_direction, (char *) key);
+									strcpy(modules[modules_cnt].module_ifces[ifc_cnt].ifc_direction, (char *) key);
 									xmlFree(key);
 								} else if ((!xmlStrcmp(ifc_atr->name,BAD_CAST "params"))) {
 									key =xmlNodeListGetString(xml_tree, ifc_atr->xmlChildrenNode, 1);
-									strcpy(modules[module_cnt].module_ifces[ifc_cnt].ifc_params, (char *) key);
+									strcpy(modules[modules_cnt].module_ifces[ifc_cnt].ifc_params, (char *) key);
 									xmlFree(key);
 								}
 								ifc_atr=ifc_atr->next;
@@ -224,18 +211,14 @@ int load_configuration (const int choice, const char * buffer)
 						ifc_ptr = ifc_ptr->next;
 					}
 
-					sprintf(modules[module_cnt].module_ifces[ifc_cnt].ifc_id,"%s","#");
+					sprintf(modules[modules_cnt].module_ifces[ifc_cnt].ifc_note,"%s","#");
 				}
 
 				module_atr = module_atr->next;
 			}
-			module_cnt++;
+			modules_cnt++;
 		}
 		module_ptr = module_ptr->next;
-	}
-
-	if(choice == 0){
-		modules_cnt += x;
 	}
 
 	xmlFreeDoc(xml_tree);
@@ -252,8 +235,8 @@ void print_configuration ()
 		printf("%d_%s:  PATH:%s  PARAMS:%s\n", x, modules[x].module_name, modules[x].module_path, modules[x].module_params);
 		y=0;
 
-		while (modules[x].module_ifces[y].ifc_id[0] != '#') {
-			printf("\tIFC%d\tID: %s\n",y, modules[x].module_ifces[y].ifc_id);
+		while (modules[x].module_ifces[y].ifc_note[0] != '#') {
+			printf("\tIFC%d\tID: %s\n",y, modules[x].module_ifces[y].ifc_note);
 			printf("\t\tTYPE: %s\n", modules[x].module_ifces[y].ifc_type);
 			printf("\t\tDIRECTION: %s\n", modules[x].module_ifces[y].ifc_direction);
 			printf("\t\tPARAMS: %s\n", modules[x].module_ifces[y].ifc_params);
@@ -266,10 +249,10 @@ char ** make_module_arguments (const int number_of_module)
 {
 	char atr[PARAMS_MAX];
 	memset(atr,0,PARAMS_MAX);
-	int x = 0;
+	int x = 0,y=0;
 	char * ptr = atr;
 
-	while (modules[number_of_module].module_ifces[x].ifc_id[0] != '#') {
+	while (modules[number_of_module].module_ifces[x].ifc_note[0] != '#') {
 		if (!strcmp(modules[number_of_module].module_ifces[x].ifc_direction, "IN")) {
 			if (!strcmp(modules[number_of_module].module_ifces[x].ifc_type, "TCP")) {
 				strcpy(ptr,"t");
@@ -287,7 +270,7 @@ char ** make_module_arguments (const int number_of_module)
 	}
 
 	x=0;
-	while (modules[number_of_module].module_ifces[x].ifc_id[0] != '#') {
+	while (modules[number_of_module].module_ifces[x].ifc_note[0] != '#') {
 		if (!strcmp(modules[number_of_module].module_ifces[x].ifc_direction,"OUT")) {
 			if (!strcmp(modules[number_of_module].module_ifces[x].ifc_type, "TCP")) {
 				strcpy(ptr,"t");
@@ -305,7 +288,7 @@ char ** make_module_arguments (const int number_of_module)
 	}
 
 	x=0;
-	while (modules[number_of_module].module_ifces[x].ifc_id[0] != '#') {
+	while (modules[number_of_module].module_ifces[x].ifc_note[0] != '#') {
 		if (!strcmp(modules[number_of_module].module_ifces[x].ifc_direction,"SERVICE")) {
 			if (!strcmp(modules[number_of_module].module_ifces[x].ifc_type, "TCP")) {
 				strcpy(ptr,"s");
@@ -326,7 +309,7 @@ char ** make_module_arguments (const int number_of_module)
 	ptr++;
 
 	x=0;
-	while (modules[number_of_module].module_ifces[x].ifc_id[0] != '#') {
+	while (modules[number_of_module].module_ifces[x].ifc_note[0] != '#') {
 		if (!strcmp(modules[number_of_module].module_ifces[x].ifc_direction,"IN")) {
 			sprintf(ptr,"%s;",modules[number_of_module].module_ifces[x].ifc_params);
 			ptr += strlen(modules[number_of_module].module_ifces[x].ifc_params) + 1;
@@ -335,7 +318,7 @@ char ** make_module_arguments (const int number_of_module)
 	}
 
 	x=0;
-	while (modules[number_of_module].module_ifces[x].ifc_id[0] != '#') {
+	while (modules[number_of_module].module_ifces[x].ifc_note[0] != '#') {
 		if (!strcmp(modules[number_of_module].module_ifces[x].ifc_direction,"OUT")) {
 			sprintf(ptr,"%s;",modules[number_of_module].module_ifces[x].ifc_params);
 			ptr += strlen(modules[number_of_module].module_ifces[x].ifc_params) + 1;
@@ -453,7 +436,7 @@ void start_module (const int module_number)
 	running_modules[running_modules_cnt].module_number = module_number;
 	memset(&running_modules[running_modules_cnt].module_service_sd,0,1);
 
-	while(strcmp(running_modules[running_modules_cnt].module_ifces[x].ifc_id, "#") != 0){
+	while(strcmp(running_modules[running_modules_cnt].module_ifces[x].ifc_note, "#") != 0){
 		if(strcmp(running_modules[running_modules_cnt].module_ifces[x].ifc_direction, "IN") == 0){
 			running_modules[running_modules_cnt].module_num_in_ifc++;
 		} else if (strcmp(running_modules[running_modules_cnt].module_ifces[x].ifc_direction, "OUT") == 0) {
@@ -563,7 +546,17 @@ void sigpipe_handler(int sig)
 
 int api_inicialization(const char * config_file)
 {		
+	int y;
 	printf("---LOADING CONFIGURATION---\n");
+	modules_cnt = 0;
+	//init modules structures alloc size 10
+	modules_array_size = 10;
+	modules = (module_atr_t * ) calloc (modules_array_size,sizeof(module_atr_t));
+	for(y=0;y<modules_array_size;y++) {
+		modules[y].module_ifces = (interface_t *)calloc(IFC_MAX, sizeof(interface_t));
+		modules[y].module_running = FALSE;
+	}
+
 	//load configuration
 	load_configuration (TRUE,config_file);
 	
@@ -870,7 +863,7 @@ void * service_thread_routine(void* arg)
 						graph_last_node->next_node = NULL;
 					}
 				    break;
-				} else if (strcmp(running_modules[num_served_modules].module_ifces[x].ifc_id, "#") == 0) {
+				} else if (strcmp(running_modules[num_served_modules].module_ifces[x].ifc_note, "#") == 0) {
 					running_modules[num_served_modules].module_has_service_ifc = FALSE;
 					break;
 				} else {
