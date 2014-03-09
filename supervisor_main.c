@@ -46,12 +46,9 @@
 
 int main (int argc, char * argv [])
 {
-	if (argc <= 1) {
-		printf("Usage: %s config_file\n", argv[0]);
-		return(0);
+	if(api_initialization(&argc, argv)){
+		return 0;
 	}
-
-	api_inicialization(argv[1]);
 
 	int ret_val = 0;
 	

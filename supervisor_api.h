@@ -42,7 +42,7 @@
  */
 
 /** API */
-int api_inicialization(const char * config_file);
+int api_initialization(const int * argc, char ** argv);
 
 void api_start_configuration();
 

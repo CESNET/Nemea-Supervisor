@@ -62,9 +62,13 @@
 
 #define LOGSDIR_NAME 	"./modules_logs/" ///< Name of directory with logs
 #define TRAP_PARAM 		"-i" ///< Interface parameter for libtrap
-#define MAX_RESTARTS	100  ///< Maximum number of module restarts
+#define MAX_RESTARTS	1000  ///< Maximum number of module restarts
 
 #define UNIX_PATH_FILENAME_FORMAT   "/tmp/trap-localhost-%s.sock"
+
+ #define VERBOSE(format,args...) if (verbose_flag) { \
+   printf(format,##args); \
+}
 
 /*******GLOBAL VARIABLES*******/
 module_atr_t * 		modules;  ///< Information about modules from loaded xml config file
@@ -85,6 +89,13 @@ int verbose_level;
 
 pthread_t * service_thread_id;
 
+// supervisor flags
+int 	help_flag; // -h argument
+int 	file_flag; // -f "file" arguments
+char  	config_file[100];
+int 	show_cpu_usage_flag; // --show-cpuusage
+int 	verbose_flag; // -v
+
 /**********************/
 
 union tcpip_socket_addr {
@@ -94,6 +105,8 @@ union tcpip_socket_addr {
 
 void start_service_thread();
 void stop_service_thread();
+int parse_arguments(const int * argc, char ** argv);
+void print_help();
 
 /**if choice TRUE -> parse file, else parse buffer*/
 int load_configuration (const int choice, const char * buffer)
@@ -152,7 +165,7 @@ int load_configuration (const int choice, const char * buffer)
 
 			//check allocated memory, if we dont have enough -> realloc
 			if(modules_cnt == modules_array_size) {
-				printf("REALLOCING MODULES ARRAY --->\n");
+				VERBOSE("REALLOCING MODULES ARRAY --->\n");
 				modules_array_size += modules_array_size/2;
 				modules = (module_atr_t * ) realloc (modules, (modules_array_size)*sizeof(module_atr_t));
 				for(y=modules_cnt; y<modules_array_size; y++) {
@@ -463,7 +476,7 @@ int print_menu ()
 void start_module (const int module_number)
 {
 	if(modules[module_number].module_running == TRUE){
-		printf("Module %d has been already started.\n", module_number);
+		VERBOSE("Module %d has been already started.\n", module_number);
 		return;
 	} else {
 		modules[module_number].module_running = TRUE;
@@ -520,6 +533,7 @@ void start_module (const int module_number)
 
 void restart_module (const int module_number)
 {
+	VERBOSE("Restarting module %d%s\n", module_number, running_modules[module_number].module_name);
 	char log_path_stdout[40];
 	char log_path_stderr[40];
 	sprintf(log_path_stdout,"%s%s%d_stdout",LOGSDIR_NAME, running_modules[module_number].module_name, module_number);
@@ -586,14 +600,28 @@ void update_module_status ()
 void sigpipe_handler(int sig)
 {
 	if(sig == SIGPIPE){
-		printf("SIGPIPE catched..\n");
+		VERBOSE("SIGPIPE catched..\n");
 	}
 }
 
-int api_inicialization(const char * config_file)
-{		
+int api_initialization(const int * argc, char ** argv)
+{	
+	show_cpu_usage_flag = FALSE;
+	verbose_flag = FALSE;
+	help_flag = FALSE;
+	file_flag = FALSE;
+	int ret_val = parse_arguments(argc, argv);
+	if(ret_val){
+		if(help_flag){
+			print_help();
+			return 1;
+		}
+	} else {
+		return 1;
+	}
+
 	int y;
-	printf("---LOADING CONFIGURATION---\n");
+	VERBOSE("---LOADING CONFIGURATION---\n");
 	modules_cnt = 0;
 	//init modules structures alloc size 10
 	modules_array_size = 10;
@@ -619,7 +647,7 @@ int api_inicialization(const char * config_file)
 	service_thread_continue = TRUE;
 	configuration_running = FALSE;
 
-	printf("-- Starting service thread --\n");
+	VERBOSE("-- Starting service thread --\n");
 	start_service_thread();
 
 
@@ -631,13 +659,13 @@ int api_inicialization(const char * config_file)
    	sigemptyset(&sa.sa_mask);
 
    	if(sigaction(SIGPIPE,&sa,NULL) == -1){
-      	printf("ERROR u sigaction !!\n");
+      	printf("ERROR sigaction !!\n");
    	}
 
    	graph_first_node = NULL;
    	graph_last_node = NULL;
 
-	return 1;
+	return 0;
 }
 
 void api_start_configuration()
@@ -647,32 +675,32 @@ void api_start_configuration()
 		return;
 	}
 	pthread_mutex_lock(&running_modules_lock);
-	printf("Starting configuration...\n");
+	VERBOSE("Starting configuration...\n");
 	configuration_running = TRUE;
 	int x = 0;
 	for (x=0; x<modules_cnt; x++) {
 		start_module(x);
 	}
-	printf("Configuration is running.\n");
+	VERBOSE("Configuration is running.\n");
 	pthread_mutex_unlock(&running_modules_lock);
 }
 
 void api_stop_configuration()
 {
 	pthread_mutex_lock(&running_modules_lock);
-	printf("Stopping configuration...\n");
+	VERBOSE("Stopping configuration...\n");
 	int x = 0;
 	for (x=0; x<running_modules_cnt; x++) {
 		stop_module(x);
 	}
-	printf("Configuration stopped.\n");
+	VERBOSE("Configuration stopped.\n");
 	pthread_mutex_unlock(&running_modules_lock);
 }
 
 void api_start_module()
 {
 	if(configuration_running){
-		printf("Configuration is already running, you cannot start another module loaded from xml config_file.\n");
+		VERBOSE("Configuration is already running, you cannot start another module loaded from xml config_file.\n");
 		return;
 	}
 	pthread_mutex_lock(&running_modules_lock);
@@ -738,7 +766,7 @@ void restart_modules()
 	int x = 0;
 	for (x=0; x<running_modules_cnt; x++) {
 		if (running_modules[x].module_status == FALSE && (running_modules[x].module_restart_cnt >= MAX_RESTARTS)) {
-			printf("Module: %d%s was restarted 3 times and it is down again.\n",x, running_modules[x].module_name );
+			VERBOSE("Module: %d%s was restarted %d times and it is down again.\n",x, running_modules[x].module_name, MAX_RESTARTS);
 		} else if (running_modules[x].module_status == FALSE && running_modules[x].module_enabled == TRUE) {
 			restart_module(x);
 		}
@@ -772,10 +800,11 @@ void api_quit()
 	printf("-- Aborting service thread --\n");
 	stop_service_thread();
 	sleep(3);
+	api_stop_configuration();
 	for(x=0;x<running_modules_cnt;x++){
 		free(running_modules[x].module_counters_array);
 	}
-	for(x=0;x<modules_cnt;x++){
+	for(x=0;x<modules_array_size;x++){
 		free(modules[x].module_ifces);
 	}
 	free(modules);
@@ -841,7 +870,9 @@ void update_cpu_usage(long int * last_total_cpu_usage)
 		new_total_cpu_usage += num;
 	}
 	rozdil_total = new_total_cpu_usage - *last_total_cpu_usage;
-	printf("total_cpu difference total cpu usage> %d\n", rozdil_total);
+	if(show_cpu_usage_flag) {
+		printf("total_cpu difference total cpu usage> %d\n", rozdil_total);
+	}
 	*last_total_cpu_usage = new_total_cpu_usage;
 	fclose(proc_stat_fd);
   
@@ -852,12 +883,13 @@ void update_cpu_usage(long int * last_total_cpu_usage)
 			if(!fscanf(proc_stat_fd,"%*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %d %d", &utime , &stime)){
 				continue;
 			}
-			
-			printf("Last_u%d Last_s%d, New_u%d New_s%d |>>   u%d%% s%d%%\n", running_modules[x].last_cpu_usage_user_mode,
+			if(show_cpu_usage_flag) {
+				printf("Last_u%d Last_s%d, New_u%d New_s%d |>>   u%d%% s%d%%\n", running_modules[x].last_cpu_usage_user_mode,
 														running_modules[x].last_cpu_usage_kernel_mode,
 														utime, stime,
 														100 * (utime - running_modules[x].last_cpu_usage_user_mode)/rozdil_total, 
 														100 * (stime - running_modules[x].last_cpu_usage_kernel_mode)/rozdil_total);
+			}
 			running_modules[x].last_cpu_usage_user_mode = utime;
 			running_modules[x].last_cpu_usage_kernel_mode = stime;
 			fclose(proc_stat_fd);
@@ -874,7 +906,7 @@ int service_get_data(int sd, int running_module_number)
    while(total_receved < sizeof_recv){
       last_receved = recv(sd, running_modules[running_module_number].module_counters_array + total_receved, sizeof_recv - total_receved, 0);
       if(last_receved == 0){
-         printf("------- ! Modules service thread closed its socket, im done !\n");
+         VERBOSE("------- ! Modules service thread closed its socket, im done !\n");
          return 0;
       }
       total_receved += last_receved;
@@ -889,7 +921,7 @@ void connect_to_module_service_ifc(int module, int num_ifc)
 	union tcpip_socket_addr addr;
 
 	get_param_by_delimiter(running_modules[module].module_ifces[num_ifc].ifc_params, &dest_port, ',');
-	printf("-- connecting to module %d%s on port %s\n",module,running_modules[module].module_name, dest_port);
+	VERBOSE("-- connecting to module %d%s on port %s\n",module,running_modules[module].module_name, dest_port);
 
 	memset(&addr, 0, sizeof(addr));
 
@@ -916,7 +948,7 @@ void * service_thread_routine(void* arg)
 	while(service_thread_continue == 1)
 	{
 		pthread_mutex_lock(&running_modules_lock);
-		printf("------>\n");
+		VERBOSE("------>\n");
 		usleep(100000);
 		update_module_status();
 		restart_modules();
@@ -997,31 +1029,31 @@ void * service_thread_routine(void* arg)
 			// check_graph_values(graph_first_node);
 
 			for(x=0;x<running_modules_cnt;x++){
-				printf("NAME:  %s, PID: %d, EN: %d, SIFC: %d, S: %d, ISC: %d | ", running_modules[x].module_name,
+				VERBOSE("NAME:  %s, PID: %d, EN: %d, SIFC: %d, S: %d, ISC: %d | ", running_modules[x].module_name,
 					running_modules[x].module_PID,
 					running_modules[x].module_enabled,
 					running_modules[x].module_has_service_ifc,
 					running_modules[x].module_status,
 					running_modules[x].module_service_ifc_isconnected);
 				if(running_modules[x].module_has_service_ifc && running_modules[x].module_service_ifc_isconnected){
-					printf("CNT_RM:  ");
+					VERBOSE("CNT_RM:  ");
 					for(y=0;y<running_modules[x].module_num_in_ifc;y++){
-						printf("%d  ", running_modules[x].module_counters_array[y]);
+						VERBOSE("%d  ", running_modules[x].module_counters_array[y]);
 					}
-					printf("CNT_SM:  ");
+					VERBOSE("CNT_SM:  ");
 					for(y=0;y<running_modules[x].module_num_out_ifc;y++){
-						printf("%d  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc]);
+						VERBOSE("%d  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc]);
 					}
-					printf("CNT_SB:  ");
+					VERBOSE("CNT_SB:  ");
 					for(y=0;y<running_modules[x].module_num_out_ifc;y++){
-						printf("%d  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc + running_modules[x].module_num_out_ifc]);
+						VERBOSE("%d  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc + running_modules[x].module_num_out_ifc]);
 					}
-					printf("CNT_AF:  ");
+					VERBOSE("CNT_AF:  ");
 					for(y=0;y<running_modules[x].module_num_out_ifc;y++){
-						printf("%d  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc + 2*running_modules[x].module_num_out_ifc]);
+						VERBOSE("%d  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc + 2*running_modules[x].module_num_out_ifc]);
 					}
 				}
-				printf("\n");
+				VERBOSE("\n");
 			}
 
 			sleep(2);
@@ -1031,7 +1063,7 @@ void * service_thread_routine(void* arg)
 
 	for(x=0;x<running_modules_cnt;x++){
 		if(running_modules[x].module_has_service_ifc == TRUE && running_modules[x].module_status == TRUE) {
-			printf("-- disconnecting from module %d%s\n",x, running_modules[x].module_name);
+			VERBOSE("-- disconnecting from module %d%s\n",x, running_modules[x].module_name);
 			close(running_modules[x].module_service_sd);
 		}
 	}
@@ -1066,7 +1098,7 @@ void run_temp_configuration()
 	char * buffer1 = (char *)calloc(1000, sizeof(char));
 	char * buffer2 = (char *)calloc(1000, sizeof(char));
 	char * ptr = buffer1;
-	printf("Paste in xml code with modules configuration.\n");
+	printf("Paste in xml code with modules configuration starting with <modules> tag and ending with </modules> tag.\n");
 	while(1){
 		if(!scanf("%s",ptr)){
 			printf("Wrong input.\n");
@@ -1114,4 +1146,87 @@ void api_set_verbose_level()
 	} else {
 		verbose_level = x;
 	}
+}
+
+int parse_arguments(const int * argc, char ** argv)
+{
+	if(*argc <= 1){
+		fprintf(stderr,"Wrong format of arguments.\n %s [-h] -f config_file.xml\n", argv[0]);
+		return FALSE;
+	}
+	int x;
+	for(x=1; x<*argc; x++) {
+		if (strcmp(argv[x],"-h") == 0) {
+			help_flag = TRUE;
+		} else if (strcmp(argv[x],"-f") == 0 && *argc>x+1) {
+			if (strstr(argv[x+1],".xml") != NULL) {
+				file_flag = TRUE;
+				strcpy(config_file, argv[x+1]);
+				x++;
+			}
+		} else if (strcmp(argv[x],"--show-cpuusage") == 0) {
+			show_cpu_usage_flag = TRUE;
+		} else if (strcmp(argv[x],"-v") == 0) {
+			verbose_flag = TRUE;
+		} else {
+			fprintf(stderr,"Wrong format of arguments.\n %s [-h] -f config_file.xml\n", argv[0]);
+			return FALSE;
+		}
+	}
+
+	return TRUE;
+}
+
+void print_help()
+{
+	printf("--------------------------\n"
+		   "NEMEA Supervisor:\n"
+		   "Expected arguments to run supervisor are: ./supervisor [-h] [-v] [--show-cpuusage] -f config_file.xml\n"
+		   "Main thread is waiting for input with number of command to execute.\n"
+		   "Functions:\n"
+		   "\t- 0. SET VERBOSE LEVEL\n"
+		   "\t- 1. RUN CONFIGURATION\n"
+		   "\t- 2. STOP CONFIGURATION\n"
+		   "\t- 3. START MODUL\n"
+		   "\t- 4. STOP MODUL\n"
+		   "\t- 5. SET MODULE ENABLED\n"
+		   "\t- 6. STARTED MODULES STATUS\n"
+		   "\t- 7. AVAILABLE MODULES\n"
+		   "\t- 8. SHOW GRAPH\n"
+		   "\t- 9. RUN TEMP CONF\n"
+		   "\t- 10. QUIT\n"
+		   "--------------------\n"
+		   "0 - setter of VERBOSE level of executed modules\n"
+		   "1 - command executes every loaded module from configuration\n"
+		   "2 - command stops whole configuration\n"
+		   "3 - command starts single module from configuration, expected input is number of module (command num. 7 can show available modules)\n"
+		   "4 - command stops single running module\n"
+		   "5 - setter of \"ENABLE\" flag of selected module - this flag is important for autorestarts\n"
+		   "6 - command prints status of started modules\n"
+		   "7 - command prints loaded modules configuration\n"
+		   "8 - command generates code for dot program and shows graph of running modules using display program\n"
+		   "9 - command parses external configuration of pasted modules, expected input is same xml code as in config_file, first tag is <modules> and last tag </modules>\n"
+		   "10 - shut down command\n\n"
+		   "Example of input for command num. 9:\n"
+		   "<modules>\n"
+				"\t<module>\n"
+					"\t\t<params>NULL</params>\n"
+					"\t\t<name>flowcounter</name>\n"
+					"\t\t<path>../modules/flowcounter/flowcounter</path>\n"
+					"\t\t<trapinterfaces>\n"
+						"\t\t\t<interface>\n"
+							"\t\t\t\t<note>whatever</note>\n"
+							"\t\t\t\t<type>TCP</type>\n"
+							"\t\t\t\t<direction>IN</direction>\n"
+							"\t\t\t\t<params>localhost,8000</params>\n"
+						"\t\t\t</interface>\n"
+						"\t\t\t<interface>\n"
+							"\t\t\t\t<note>whatever</note>\n"
+							"\t\t\t\t<type>UNIXSOCKET</type>\n"
+							"\t\t\t\t<direction>SERVICE</direction>\n"
+							"\t\t\t\t<params>9022,1</params>\n"
+						"\t\t\t</interface>\n"
+					"\t\t</trapinterfaces>\n"
+				"\t</module>\n"
+			"</modules>\n");
 }

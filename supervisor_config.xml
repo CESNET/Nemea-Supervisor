@@ -11,7 +11,7 @@
 					<note>whatever</note>
 					<type>TCP</type>
 					<direction>IN</direction>
-					<params>localhost,8002</params>
+					<params>localhost,8004</params>
 				</interface>
 				<interface>
 					<note>whatever</note>
@@ -154,5 +154,62 @@
 				</interface>
 			</trapinterfaces>
 		</module>
+
+		<module>
+			<params>../modules/nfreader/1.dat</params>
+			<name>nfreader</name>
+			<path>../modules/nfreader/nfdump_reader</path>
+			<trapinterfaces>
+				<interface>
+					<note>whatever</note>
+					<type>TCP</type>
+					<direction>OUT</direction>
+					<params>8003,5</params>
+				</interface>
+				<interface>
+					<note>whatever</note>
+					<type>UNIXSOCKET</type>
+					<direction>SERVICE</direction>
+					<params>9007,1</params>
+				</interface>
+			</trapinterfaces>
+		</module>
+
+
+		<module>
+			<params>-n 2</params>
+			<name>traffic_merger</name>
+			<path>../modules/traffic_merger/traffic_merger</path>
+			<trapinterfaces>
+				<interface>
+					<note>whatever</note>
+					<type>TCP</type>
+					<direction>IN</direction>
+					<params>localhost,8003</params>
+				</interface>
+				<interface>
+					<note>whatever</note>
+					<type>TCP</type>
+					<direction>IN</direction>
+					<params>localhost,8000</params>
+				</interface>
+				<interface>
+					<note>whatever</note>
+					<type>TCP</type>
+					<direction>OUT</direction>
+					<params>8004,2</params>
+				</interface>
+				<interface>
+					<note>whatever</note>
+					<type>UNIXSOCKET</type>
+					<direction>SERVICE</direction>
+					<params>9008,1</params>
+				</interface>
+			</trapinterfaces>
+		</module>
+
+
+
+
 	</modules>
 </nemea-supervisor>
