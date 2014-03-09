@@ -417,7 +417,7 @@ char ** make_module_arguments (const int number_of_module)
 		memset(buffer,0,100);
 		for(x=0; x<module_params_length; x++){
 			if(modules[number_of_module].module_params[x] == 32){
-				params[params_counter] = (char *) calloc (strlen(buffer),sizeof(char));
+				params[params_counter] = (char *) calloc (strlen(buffer)+1,sizeof(char));
 				sprintf(params[params_counter],"%s",buffer);
 				params_counter++;
 				memset(buffer,0,100);
@@ -427,7 +427,7 @@ char ** make_module_arguments (const int number_of_module)
 				y++;
 			}
 		}
-		params[params_counter] = (char *) calloc (strlen(buffer),sizeof(char));
+		params[params_counter] = (char *) calloc (strlen(buffer)+1,sizeof(char));
 		sprintf(params[params_counter],"%s",buffer);
 		params_counter++;
 
@@ -830,9 +830,10 @@ void update_cpu_usage(long int * last_total_cpu_usage)
 	memset(path,0,20);
 	int rozdil_total = 0;
 
-	if(!fscanf(proc_stat_fd,"cpu")){
+	if(fscanf(proc_stat_fd,"cpu") != 0) {
 		return;
 	}
+
 	for(x=0;x<10;x++){
 		if(!fscanf(proc_stat_fd,"%d",&num)){
 			continue;
@@ -970,12 +971,15 @@ void * service_thread_routine(void* arg)
 					}
 
 					if(send(running_modules[x].module_service_sd,(void *) request, sizeof_intptr, 0) == -1){
-						//TODO
-						printf("Error while sending request to module %d%s.\n",x,running_modules[x].module_name);
+						VERBOSE("Error while sending request to module %d%s.\n",x,running_modules[x].module_name);
+						if (errno == ENOTCONN) {
+							running_modules[x].module_service_ifc_isconnected = FALSE;
+						}
 					}
 				}
 			}
 
+			update_module_status();
 			for(x=0;x<running_modules_cnt;x++){
 				if(running_modules[x].module_has_service_ifc == TRUE && running_modules[x].module_status == TRUE) {
 					if(running_modules[x].module_service_ifc_isconnected){
@@ -1076,12 +1080,12 @@ void run_temp_configuration()
 		ptr++;
 	}
 	sprintf(buffer2,"<?xml version=\"1.0\"?>\n<nemea-supervisor>\n%s\n</nemea-supervisor>",buffer1);
-	// sprintf(buffer2,"%s",buffer1);
 	free(buffer1);
 
 	if(load_configuration(FALSE, buffer2) == FALSE){
 		printf("Xml code was not parsed successfully.\n");
 		free(buffer2);
+		pthread_mutex_unlock(&running_modules_lock);
 		return;
 	}
 	free(buffer2);
