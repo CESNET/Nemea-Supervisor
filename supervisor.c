@@ -59,12 +59,14 @@
 #include <errno.h>
 #include <semaphore.h>
 #include <signal.h>
+#include <time.h>
 
 #define LOGSDIR_NAME 	"./modules_logs/" ///< Name of directory with logs
 #define TRAP_PARAM 		"-i" ///< Interface parameter for libtrap
 #define MAX_RESTARTS	1000  ///< Maximum number of module restarts
 
 #define UNIX_PATH_FILENAME_FORMAT   "/tmp/trap-localhost-%s.sock"
+#define DAEMON_UNIX_PATH_FILENAME_FORMAT	"/tmp/supervisor_daemon.sock"
 
  #define VERBOSE(format,args...) if (verbose_flag) { \
    printf(format,##args); \
@@ -90,11 +92,12 @@ int verbose_level;
 pthread_t * service_thread_id;
 
 // supervisor flags
-int 	help_flag; // -h argument
-int 	file_flag; // -f "file" arguments
+int 	help_flag; 			// -h argument
+int 	file_flag; 			// -f "file" arguments
 char  	config_file[100];
 int 	show_cpu_usage_flag; // --show-cpuusage
-int 	verbose_flag; // -v
+int 	verbose_flag; 		// -v
+int 	daemon_falg; 		// --daemon
 
 /**********************/
 
@@ -107,6 +110,7 @@ void start_service_thread();
 void stop_service_thread();
 int parse_arguments(const int * argc, char ** argv);
 void print_help();
+void daemon_mode();
 
 /**if choice TRUE -> parse file, else parse buffer*/
 int load_configuration (const int choice, const char * buffer)
@@ -482,6 +486,11 @@ void start_module (const int module_number)
 		modules[module_number].module_running = TRUE;
 	}
 
+	time_t rawtime;
+	struct tm * timeinfo;
+	time ( &rawtime );
+	timeinfo = localtime ( &rawtime );
+
 	char log_path_stdout[40];
 	char log_path_stderr[40];
 	int x = 0;
@@ -506,7 +515,8 @@ void start_module (const int module_number)
 	running_modules[running_modules_cnt].module_counters_array = (int *) calloc (3*running_modules[running_modules_cnt].module_num_out_ifc + running_modules[running_modules_cnt].module_num_in_ifc,sizeof(int));
 	sprintf(log_path_stdout,"%s%s%d_stdout",LOGSDIR_NAME, modules[module_number].module_name, running_modules_cnt);
 	sprintf(log_path_stderr,"%s%s%d_stderr",LOGSDIR_NAME, modules[module_number].module_name, running_modules_cnt);
-
+	
+	fflush(stdout);
 	running_modules[running_modules_cnt].module_PID = fork();
 	if (running_modules[running_modules_cnt].module_PID == 0) {
 		int fd_stdout = open(log_path_stdout, O_RDWR | O_CREAT | O_APPEND, PERM_LOGFILE);
@@ -516,9 +526,11 @@ void start_module (const int module_number)
 		close(fd_stdout);
 		close(fd_stderr);
 		char ** params = make_module_arguments(module_number);
-		printf("%s   %s   %s    %s   %s\n",params[0], params[1], params[2], params[3], params[4] );
+		printf("%s | %s   %s   %s    %s   %s\n", asctime (timeinfo), params[0], params[1], params[2], params[3], params[4] );
+		fflush(stdout);
 		execvp(modules[module_number].module_path, params);
 		printf("Error while executing module binary.\n");
+		running_modules[running_modules_cnt].module_enabled = FALSE;
 		exit(1);
 	} else if (running_modules[running_modules_cnt].module_PID == -1) {
 		running_modules[running_modules_cnt].module_status = FALSE;
@@ -532,6 +544,7 @@ void start_module (const int module_number)
 
 void restart_module (const int module_number)
 {
+
 	VERBOSE("Restarting module %d%s\n", module_number, running_modules[module_number].module_name);
 	char log_path_stdout[40];
 	char log_path_stderr[40];
@@ -542,6 +555,12 @@ void restart_module (const int module_number)
 	running_modules[module_number].last_cpu_usage_user_mode = 0;
 	running_modules[module_number].last_cpu_usage_kernel_mode = 0;
 
+	time_t rawtime;
+	struct tm * timeinfo;
+	time ( &rawtime );
+	timeinfo = localtime ( &rawtime );
+
+	fflush(stdout);
 	running_modules[module_number].module_PID = fork();
 	if (running_modules[module_number].module_PID == 0) {
 		int fd_stdout = open(log_path_stdout, O_RDWR | O_CREAT | O_APPEND, PERM_LOGFILE);
@@ -551,10 +570,11 @@ void restart_module (const int module_number)
 		close(fd_stdout);
 		close(fd_stderr);
 		char ** params = make_module_arguments(running_modules[module_number].module_number);
-		printf("%s   %s   %s    %s   %s\n",params[0], params[1], params[2], params[3], params[4] );
+		printf("%s | %s   %s   %s    %s   %s\n", asctime (timeinfo), params[0], params[1], params[2], params[3], params[4] );
 		fflush(stdout);
 		execvp(running_modules[module_number].module_path, params);
-		printf("Err execl neprobehl\n");
+		printf("Error while executing module binary.\n");
+		running_modules[module_number].module_enabled = FALSE;
 		exit(1);
 	} else if (running_modules[module_number].module_PID == -1) {
 		running_modules[module_number].module_status = FALSE;
@@ -616,10 +636,19 @@ int api_initialization(const int * argc, char ** argv)
 		if(help_flag){
 			print_help();
 			return 1;
+		} else if (file_flag == FALSE) {
+			fprintf(stderr,"Wrong format of arguments.\n %s [-h] [-v] [--show-cpuusage] -f config_file.xml\n", argv[0]);
+			return 1;
 		}
 	} else {
 		return 1;
 	}
+
+	int daemon_arg;
+	if (daemon_falg) {
+		daemon_init(&daemon_arg, NULL);
+	}
+
 
 	int y;
 	VERBOSE("---LOADING CONFIGURATION---\n");
@@ -665,6 +694,11 @@ int api_initialization(const int * argc, char ** argv)
 
    	graph_first_node = NULL;
    	graph_last_node = NULL;
+
+   	if (daemon_falg) {
+		daemon_mode(&daemon_arg);
+		return 2;
+	}
 
 	return 0;
 }
@@ -1152,7 +1186,7 @@ void api_set_verbose_level()
 int parse_arguments(const int * argc, char ** argv)
 {
 	if(*argc <= 1){
-		fprintf(stderr,"Wrong format of arguments.\n %s [-h] -f config_file.xml\n", argv[0]);
+		fprintf(stderr,"Wrong format of arguments.\n %s [-h] [-v] [--show-cpuusage] -f config_file.xml\n", argv[0]);
 		return FALSE;
 	}
 	int x;
@@ -1169,8 +1203,10 @@ int parse_arguments(const int * argc, char ** argv)
 			show_cpu_usage_flag = TRUE;
 		} else if (strcmp(argv[x],"-v") == 0) {
 			verbose_flag = TRUE;
+		} else if (strcmp(argv[x],"--daemon") == 0) {
+			daemon_falg = TRUE;
 		} else {
-			fprintf(stderr,"Wrong format of arguments.\n %s [-h] -f config_file.xml\n", argv[0]);
+			fprintf(stderr,"Wrong format of arguments.\n %s [-h] [-v] [--show-cpuusage] -f config_file.xml\n", argv[0]);
 			return FALSE;
 		}
 	}
@@ -1230,4 +1266,212 @@ void print_help()
 					"\t\t</trapinterfaces>\n"
 				"\t</module>\n"
 			"</modules>\n");
+}
+
+int daemon_init(int * d_sd, int * fd)
+{
+	// create socket
+
+	union tcpip_socket_addr addr;
+	struct addrinfo *p;
+
+	memset(&addr, 0, sizeof(addr));
+
+	addr.unix_addr.sun_family = AF_UNIX;
+	snprintf(addr.unix_addr.sun_path, sizeof(addr.unix_addr.sun_path) - 1, DAEMON_UNIX_PATH_FILENAME_FORMAT);
+	/* if socket file exists, it could be hard to create new socket and bind */
+	unlink(DAEMON_UNIX_PATH_FILENAME_FORMAT); /* error when file does not exist is not a problem */
+	*d_sd = socket(AF_UNIX, SOCK_STREAM, 0);
+	if (bind(*d_sd, (struct sockaddr *) &addr.unix_addr, sizeof(addr.unix_addr)) != -1) {
+		p = (struct addrinfo *) &addr.unix_addr;
+		chmod(DAEMON_UNIX_PATH_FILENAME_FORMAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+	} else {
+		/* error bind() failed */
+		p = NULL;
+	}
+
+	if (p == NULL) {
+		// if we got here, it means we didn't get bound
+		VERBOSE("selectserver: failed to bind");
+		return 10;
+	}
+
+	// listen
+	if (listen(*d_sd, 1) == -1) {
+		//perror("listen");
+		VERBOSE("Listen failed");
+		return 10;
+	}
+
+
+	// create daemon
+
+	pid_t process_id = 0;
+	pid_t sid = 0;
+
+	fflush(stdout);
+	process_id = fork();
+	if (process_id < 0)	{
+		printf("fork failed!\n");
+		exit(1);
+	} else if (process_id > 0)	{
+		printf("process_id of child process %d \n", process_id);
+		exit(0);
+	}
+
+	umask(0);
+	sid = setsid();
+	if(sid < 0)	{
+		// Return failure
+		exit(1);
+	}
+	// chdir("./modules_logs/");
+
+	int fd_fd = open ("supervisor_log", O_RDWR | O_CREAT | O_APPEND, PERM_LOGFILE);
+	dup2(fd_fd, 1);
+	dup2(fd_fd, 2);
+	close(fd_fd);
+
+	return 0;
+}
+
+
+int daemon_get_client (int * d_sd)
+{
+   struct sockaddr_storage remoteaddr; // client address
+   socklen_t addrlen;
+   int newclient;
+
+   	// handle new connection
+   	addrlen = sizeof remoteaddr;
+	newclient = accept(*d_sd, (struct sockaddr *)&remoteaddr, &addrlen);
+	if (newclient == -1) {
+		VERBOSE("Accepting new client failed.");
+	}
+	printf("Client has connected.\n");
+	return newclient;
+}
+
+
+void daemon_mode(int * arg)
+{
+	int daemon_sd = *arg;
+	int client_sd;
+	int supervisor_output_file;
+	int terminated = FALSE;
+
+	int ret_val;
+	int request;
+	char buffer[50];
+
+	int connected = FALSE;
+
+	while(terminated == FALSE){
+		// get client
+		client_sd = daemon_get_client(&daemon_sd);
+		if(client_sd == -1){
+			connected = FALSE;
+			continue;
+		}
+		connected = TRUE;
+
+		while(connected){
+			// serve client
+			ret_val = recv(client_sd,&request,sizeof(request),0);
+			if(ret_val == 0){
+				printf("Client has disconnected.\n");
+				connected = FALSE;
+				break;
+			} else if (ret_val == -1){
+				printf("Error while recving.\n");
+				connected = FALSE;
+				break;
+			}
+			switch(request){
+
+				// api_set_verbose_level();
+				// api_start_module();		
+				// api_stop_module();
+				// api_set_module_enabled();
+				// api_run_temp_conf();
+
+				case 0:
+					sprintf(buffer,"OK");
+					break;
+
+				case 1:
+					api_start_configuration();
+					sprintf(buffer,"OK");
+					break;
+
+				case 2:
+					api_stop_configuration();
+					sprintf(buffer,"OK");
+					break;
+
+				case 3:
+					sprintf(buffer,"OK");
+					break;
+
+				case 4:
+					sprintf(buffer,"OK");
+					break;
+
+				case 5:
+					sprintf(buffer,"OK");
+					break;
+
+				case 6:
+					api_show_running_modules_status();
+					sprintf(buffer,"OK");
+					break;
+
+				case 7:
+					api_show_available_modules();
+					sprintf(buffer,"OK");
+					break;
+
+				case 8:
+					api_show_graph();
+					sprintf(buffer,"OK");
+					break;
+
+				case 9:
+					sprintf(buffer,"OK");
+					break;
+
+				case 10:
+					api_quit();
+					sprintf(buffer,"OK");
+					connected = FALSE;
+					terminated = TRUE;
+					break;
+
+				default:
+					sprintf(buffer,"Wrong input");
+					break;
+
+			}
+
+			ret_val = send(client_sd,buffer,50,0);
+			if(ret_val == 0){
+				printf("Send returned 0\n");
+				connected = FALSE;
+				break;
+			} else if (ret_val == -1){
+				printf("Error while sending.\n");
+				if (errno == ENOTCONN) {
+					printf("errno ENOTCONN\n");
+				}
+				connected = FALSE;
+				break;
+			}
+		}
+	}
+
+	close(supervisor_output_file);
+	close(client_sd);
+	close(daemon_sd);
+	unlink(DAEMON_UNIX_PATH_FILENAME_FORMAT);
+	return;
 }
