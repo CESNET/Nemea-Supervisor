@@ -524,7 +524,6 @@ void start_module (const int module_number)
 		running_modules[running_modules_cnt].module_status = FALSE;
 		running_modules_cnt++;
 		printf("Error in fork.\n");
-		exit(1);
 	} else {
 		running_modules[running_modules_cnt].module_status = TRUE;
 		running_modules_cnt++;
@@ -553,8 +552,10 @@ void restart_module (const int module_number)
 		close(fd_stderr);
 		char ** params = make_module_arguments(running_modules[module_number].module_number);
 		printf("%s   %s   %s    %s   %s\n",params[0], params[1], params[2], params[3], params[4] );
+		fflush(stdout);
 		execvp(running_modules[module_number].module_path, params);
 		printf("Err execl neprobehl\n");
+		exit(1);
 	} else if (running_modules[module_number].module_PID == -1) {
 		running_modules[module_number].module_status = FALSE;
 		running_modules[module_number].module_restart_cnt++;
