@@ -41,7 +41,8 @@
  *
  */
 
-#define GRAPH_SOURCE_FILE "./graph_source_file"
+#define GRAPH_SOURCE_FILE 					"./graph_source_file"
+#define DEFAULT_NUM_CLIENTS_OUTPUT_IFC		10
 
 typedef struct graph_node_s graph_node_t;
 

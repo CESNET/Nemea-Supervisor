@@ -69,21 +69,20 @@
 #define PERM_LOGFILE 	(S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH) ///< Permissions of files with stdout and stderr logs of module
 #endif
 
-#define TRUE 				1 ///< Bool true
-#define FALSE 				0 ///< Bool false
-#define MAX_NUMBER_MODULES 	20 ///< Maximum number of running modules
-#define IFC_MAX				10 ///< Maximum number of interfaces in one module
-#define PARAMS_MAX			255 ///< Maximum length of params char arrays
-
+#define TRUE 								1 ///< Bool true
+#define FALSE 								0 ///< Bool false
+#define RUNNING_MODULES_ARRAY_START_SIZE 	5
+#define IFCES_ARRAY_START_SIZE				2
+#define MODULES_ARRAY_START_SIZE 			2
 
 /***********STRUCTURES***********/
 
 /** Structure with information about one interface of module */
 typedef struct interface {
-	char 	ifc_note[PARAMS_MAX]; ///< Interface ID
-	char 	ifc_type[PARAMS_MAX]; ///< Interface type (TCP ~ t, UNIXSOCKET ~ u)
-	char  	ifc_params[PARAMS_MAX]; ///< Interface parameters (IN interface ~ address,port; OUT interface ~ port,number of connections)
-	char 	ifc_direction[PARAMS_MAX]; ///< Interface direction (IN, OUT)
+	char *	ifc_note; ///< Interface ID
+	char *	ifc_type; ///< Interface type (TCP ~ t, UNIXSOCKET ~ u)
+	char * 	ifc_params; ///< Interface parameters (IN interface ~ address,port; OUT interface ~ port,number of connections)
+	char *	ifc_direction; ///< Interface direction (IN, OUT)
 } interface_t;
 
 
@@ -91,26 +90,29 @@ typedef struct interface {
 /** Structure with information about one module in configuration */
 typedef struct module_atr {
 	int 			module_running;
-	char 			module_path[PATH_MAX]; ///< Path to module from current directory
-	char 			module_name[NAME_MAX]; ///< Name of module (flowcounter...)
-	char 			module_params[PARAMS_MAX]; ///< Module parameter (Input file...)
+	char *			module_path; ///< Path to module from current directory
+	char *			module_name; ///< Name of module (flowcounter...)
+	char *			module_params; ///< Module parameter (Input file...)
+	int 			module_ifces_array_size;
+	int 			module_ifces_cnt;
 	interface_t	* 	module_ifces; ///< Array of "interface" structures with information about every interface of module
 } module_atr_t;
 
 /** Structure with information about one running module */
 typedef struct running_module {
 	int 			module_enabled;
+	int 			module_ifces_cnt;
 	int 			module_num_out_ifc;
 	int 			module_num_in_ifc;
 	int *			module_counters_array;
 	int 			module_service_ifc_isconnected; ///< if supervisor is connected to module ~ 1, else ~ 0
 	int 			module_has_service_ifc; ///< if module has service interface ~ 1, else ~ 0
 	int 			module_service_sd; ///< socket descriptor of the service connection
-	char 			module_name[NAME_MAX]; ///< Module name (flowcounter...)
+	char *			module_name; ///< Module name (flowcounter...)
 	int 			module_status; ///< Module status (TRUE ~ ok, FALSE ~ not ok)
 	int				module_restart_cnt; ///< Number of module restarts (after MAX_RESTARTS supervisor will not try to restart broken module again)
 	pid_t			module_PID; ///< Module PID
-	char 			module_path[PATH_MAX]; ///< Path to module from current directory
+	char *			module_path; ///< Path to module from current directory
 	int 			module_number; ///< Module number in configuration (needed for restart)
 	interface_t *		module_ifces; ///< Array of "interface" structures with information about every interface of module
 	int 			last_cpu_usage_kernel_mode;

@@ -48,10 +48,11 @@
 
 graph_node_t * add_graph_node (graph_node_t * first, graph_node_t * last, void * data)
 {
-	graph_node_t * node_ptr;
-	int x,y;
-	char port[20];
-	int num_clients;
+	graph_node_t * node_ptr = NULL;
+	int x = 0, y = 0;
+	char port[50];
+	memset(port,0,50);
+	int num_clients = 0;
 
 	running_module_t * running_module = (running_module_t *) data;
 	graph_node_t * new_node = (graph_node_t *) calloc (1, sizeof(graph_node_t));
@@ -62,27 +63,25 @@ graph_node_t * add_graph_node (graph_node_t * first, graph_node_t * last, void *
 	new_node->node_input_interfaces = (graph_node_input_interface_t *)calloc(running_module->module_num_in_ifc, sizeof(graph_node_input_interface_t));
 	new_node->node_output_interfaces = (graph_node_output_interface_t *)calloc(running_module->module_num_out_ifc, sizeof(graph_node_output_interface_t));
 
-	x=0;
 	y=0;
-	while(running_module->module_ifces[x].ifc_note[0] != '#') {
+	for(x=0; x<running_module->module_ifces_cnt; x++){
 		if (!strcmp(running_module->module_ifces[x].ifc_direction, "IN")) {
 			sscanf(running_module->module_ifces[x].ifc_params,"%*[^','],%d", &new_node->node_input_interfaces[y].node_interface_port);
 			new_node->node_input_interfaces[y].parent_node = new_node;
 			y++;
 		}
-		x++;
 	}
  
-	x=0;
 	y=0;
-	while(running_module->module_ifces[x].ifc_note[0] != '#') {
+	for(x=0; x<running_module->module_ifces_cnt; x++){
 		if (!strcmp(running_module->module_ifces[x].ifc_direction, "OUT")) {
-			sscanf(running_module->module_ifces[x].ifc_params,"%[^','],%d", port, &num_clients);
+			if(sscanf(running_module->module_ifces[x].ifc_params,"%[^','],%d", port, &num_clients) != 2) {
+				num_clients = DEFAULT_NUM_CLIENTS_OUTPUT_IFC;
+			}
 			new_node->node_output_interfaces[y].node_interface_port = atoi(port);
 			new_node->node_output_interfaces[y].node_children = (graph_node_input_interface_t **)calloc(num_clients, sizeof(graph_node_input_interface_t *));
 			y++;
 		}
-		x++;
 	}
 
 
@@ -117,9 +116,13 @@ graph_node_t * add_graph_node (graph_node_t * first, graph_node_t * last, void *
 
 void update_graph_values (graph_node_t * first)
 {
+	if(first == NULL) {
+		return;
+	}
+
 	int x;
 	graph_node_t * node_ptr = first;
-	running_module_t * running_module; 
+	running_module_t * running_module = NULL; 
 
 	while(node_ptr != NULL){
 		running_module = (running_module_t *) node_ptr->module_data;
@@ -138,10 +141,12 @@ void update_graph_values (graph_node_t * first)
 
 void check_graph_values (graph_node_t * first)
 {
+	if(first == NULL) {
+		return;
+	}
+
 	int x,y;
 	graph_node_t * node_ptr = first;
-
-	// printf("Graph: \tOUTPUT -> INPUT | module_name(interface_port)message_counter\n");
 
 	while(node_ptr != NULL){
 		if(node_ptr->num_node_output_interfaces == 0){
@@ -169,6 +174,10 @@ void check_graph_values (graph_node_t * first)
 
 void print_graph(graph_node_t * first)
 {
+	if(first == NULL) {
+		return;
+	}
+
 	int x,y;
 	graph_node_t * node_ptr = first;
 
@@ -192,6 +201,10 @@ void print_graph(graph_node_t * first)
 
 void generate_graph_code(graph_node_t * first)
 {
+	if(first == NULL) {
+		return;
+	}
+	
 	int x,y;
 	graph_node_t * node_ptr = first;
 	FILE * fd = fopen(GRAPH_SOURCE_FILE, "w");
@@ -298,9 +311,13 @@ void free_graph_node(graph_node_t * node)
 {
 	if(node->next_node != NULL){
 		free_graph_node(node->next_node);
-		free(node);
+		if(node != NULL) {
+			free(node);
+		}
 	} else {
-		free(node);
+		if(node != NULL) {
+			free(node);
+		}
 	}
 }
 
@@ -314,11 +331,17 @@ void destroy_graph(graph_node_t * first)
 	graph_node_t * node_ptr = first;
 
 	while(node_ptr != NULL){
-		free(node_ptr->node_input_interfaces);
-		for(x=0;x<node_ptr->num_node_output_interfaces;x++){
-			free(node_ptr->node_output_interfaces[x].node_children);
+		if(node_ptr->node_input_interfaces != NULL) {
+			free(node_ptr->node_input_interfaces);
 		}
-		free(node_ptr->node_output_interfaces);
+		for(x=0;x<node_ptr->num_node_output_interfaces;x++){
+			if(node_ptr->node_output_interfaces[x].node_children != NULL) {
+				free(node_ptr->node_output_interfaces[x].node_children);
+			}
+		}
+		if(node_ptr->node_output_interfaces != NULL) {
+			free(node_ptr->node_output_interfaces);
+		}
 		node_ptr = node_ptr->next_node;
 	}
 
