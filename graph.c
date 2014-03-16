@@ -250,58 +250,39 @@ void generate_graph_code(graph_node_t * first)
 
 void show_graph()
 {
-	// int pid_cat;
 	int pid_dot, pid_display;
-	// int pipe1[2];
 	int pipe2[2];
-	// pipe(pipe1);
 	if(pipe(pipe2) == -1){
 		fprintf(stderr,"Pipe error.\n");
 		return;
 	}
 
-	// if((pid_cat = fork()) == 0){
-	// 	//child cat
-	// 	dup2(pipe1[1],1);
-	// 	close(pipe1[0]);
-	// 	close(pipe2[0]);
-	// 	close(pipe2[1]);
-	// 	execl("/bin/cat","cat",GRAPH_SOURCE_FILE,NULL);
-	// } else if (pid_cat == -1) {
-	// 	//error cat
-	// 	printf("error u catu\n");
-	// } else {
-	// 	//parent cat
-	// }
-
 	if((pid_dot = fork()) == 0){
 		//child dot
-		// dup2(pipe1[0],0);
 		dup2(pipe2[1],1);
-		// close(pipe1[1]);
 		close(pipe2[0]);
 		execl("/usr/bin/dot","dot","-Tpng", GRAPH_SOURCE_FILE,NULL);
+		printf("error while executing dot\n");
+		exit(1);
 	} else if (pid_dot == -1) {
 		//error dot
-		printf("error u dotu\n");
-	} else {
-		//parent dot
+		printf("error while forking dot\n");
+		exit(1);
 	}
 
 	if((pid_display = fork()) == 0){
 		//child display
 		dup2(pipe2[0],0);
-		// close(pipe1[0]);
-		// close(pipe1[1]);
 		close(pipe2[1]);
 		execl("/usr/bin/display","display","-",NULL);
+		printf("error while executing display\n");
+		exit(1);
 	} else if (pid_display == -1) {
 		//error display
-		printf("error u display\n");
+		printf("error while forking display\n");
+		exit(1);
 	} else {
 		//parent display
-		// close(pipe1[0]);
-		// close(pipe1[1]);
 		close(pipe2[0]);
 		close(pipe2[1]);
 	}

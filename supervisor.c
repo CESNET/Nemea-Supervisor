@@ -1050,7 +1050,7 @@ void * service_thread_routine(void* arg)
 		update_module_status();
 		restart_modules();
 		usleep(100000);
-		update_cpu_usage(&last_total_cpu_usage); 
+		// update_cpu_usage(&last_total_cpu_usage); 
 		if(running_modules_cnt > num_served_modules)
 		{
 			running_modules[num_served_modules].module_has_service_ifc = FALSE;
