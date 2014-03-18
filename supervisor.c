@@ -622,10 +622,18 @@ void update_module_status ()
 		  // Child still alive
 		} else if (result == -1) {
 		  // Error
+			if(running_modules[x].module_service_sd != -1) {
+				close(running_modules[x].module_service_sd);
+				running_modules[x].module_service_sd = -1;
+			}
 			running_modules[x].module_status = FALSE;
 			running_modules[x].module_service_ifc_isconnected = FALSE;
 		} else {
 		  // Child exited
+			if(running_modules[x].module_service_sd != -1) {
+				close(running_modules[x].module_service_sd);
+				running_modules[x].module_service_sd = -1;
+			}
 			running_modules[x].module_status = FALSE;
 			running_modules[x].module_service_ifc_isconnected = FALSE;
 		}
