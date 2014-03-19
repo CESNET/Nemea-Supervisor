@@ -122,7 +122,7 @@ int load_configuration (const int choice, const char * buffer)
 	xmlDocPtr xml_tree = NULL;
 	xmlNodePtr current_node = NULL;
 
-	if(choice){
+	if(choice) {
 		xml_tree = xmlParseFile(buffer);
 	} else {
 		xml_tree = xmlParseMemory(buffer, strlen(buffer));
@@ -153,7 +153,7 @@ int load_configuration (const int choice, const char * buffer)
 			break;
 		}
 		current_node = current_node-> next;
-		if(current_node == NULL){
+		if(current_node == NULL) {
 			fprintf(stderr,"Tag \"modules\" wasnt found.\n");
 			xmlFreeDoc(xml_tree);
 			return FALSE;
@@ -172,8 +172,10 @@ int load_configuration (const int choice, const char * buffer)
 			//check allocated memory, if we dont have enough -> realloc
 			if(modules_cnt == modules_array_size) {
 				VERBOSE("REALLOCING MODULES ARRAY --->\n");
+				int origin_size = modules_array_size;
 				modules_array_size += modules_array_size/2;
 				modules = (module_atr_t * ) realloc (modules, (modules_array_size)*sizeof(module_atr_t));
+				memset(modules + origin_size,0,(origin_size/2)*sizeof(module_atr_t));
 				for(y=modules_cnt; y<modules_array_size; y++) {
 					modules[y].module_ifces = (interface_t *) calloc (IFCES_ARRAY_START_SIZE, sizeof(interface_t));
 					modules[y].module_running = FALSE;
@@ -223,8 +225,10 @@ int load_configuration (const int choice, const char * buffer)
 							ifc_atr = ifc_ptr->xmlChildrenNode;
 							if(ifc_cnt == modules[modules_cnt].module_ifces_array_size) {
 								VERBOSE("REALLOCING MODULE INTERFACES ARRAY --->\n");
+								int origin_size = modules[modules_cnt].module_ifces_array_size;
 								modules[modules_cnt].module_ifces_array_size += modules[modules_cnt].module_ifces_array_size/2;
 								modules[modules_cnt].module_ifces = (interface_t *) realloc (modules[modules_cnt].module_ifces, (modules[modules_cnt].module_ifces_array_size) * sizeof(interface_t));
+								memset(modules[modules_cnt].module_ifces + origin_size,0,(origin_size/2)*sizeof(interface_t));
 							}
 
 							while (ifc_atr != NULL) {
@@ -301,7 +305,7 @@ void print_configuration ()
 	for (x=0; x < modules_cnt; x++) {
 		printf("%d_%s:  PATH:%s  PARAMS:%s\n", x, modules[x].module_name, modules[x].module_path, modules[x].module_params);
 
-		for(y=0; y<modules[x].module_ifces_cnt; y++){
+		for(y=0; y<modules[x].module_ifces_cnt; y++) {
 			printf("\tIFC%d\tNOTE: %s\n",y, modules[x].module_ifces[y].ifc_note);
 			printf("\t\tTYPE: %s\n", modules[x].module_ifces[y].ifc_type);
 			printf("\t\tDIRECTION: %s\n", modules[x].module_ifces[y].ifc_direction);
@@ -318,7 +322,7 @@ char ** make_module_arguments (const int number_of_module)
 	char * ptr = atr;
 	int str_len;
 
-	for(x=0; x<modules[number_of_module].module_ifces_cnt; x++){
+	for(x=0; x<modules[number_of_module].module_ifces_cnt; x++) {
 		if (!strncmp(modules[number_of_module].module_ifces[x].ifc_direction, "IN", 2)) {
 			if (!strncmp(modules[number_of_module].module_ifces[x].ifc_type, "TCP", 3)) {
 				strncpy(ptr,"t",1);
@@ -334,7 +338,7 @@ char ** make_module_arguments (const int number_of_module)
 		}
 	}
 
-	for(x=0; x<modules[number_of_module].module_ifces_cnt; x++){
+	for(x=0; x<modules[number_of_module].module_ifces_cnt; x++) {
 		if (!strncmp(modules[number_of_module].module_ifces[x].ifc_direction,"OUT", 3)) {
 			if (!strncmp(modules[number_of_module].module_ifces[x].ifc_type, "TCP", 3)) {
 				strncpy(ptr,"t",1);
@@ -350,7 +354,7 @@ char ** make_module_arguments (const int number_of_module)
 		}
 	}
 
-	for(x=0; x<modules[number_of_module].module_ifces_cnt; x++){
+	for(x=0; x<modules[number_of_module].module_ifces_cnt; x++) {
 		if (!strncmp(modules[number_of_module].module_ifces[x].ifc_direction,"SERVICE", 7)) {
 			if (!strncmp(modules[number_of_module].module_ifces[x].ifc_type, "TCP", 3)) {
 				strncpy(ptr,"s",1);
@@ -369,21 +373,21 @@ char ** make_module_arguments (const int number_of_module)
 	strncpy(ptr,";",1);
 	ptr++;
 
-	for(x=0; x<modules[number_of_module].module_ifces_cnt; x++){
+	for(x=0; x<modules[number_of_module].module_ifces_cnt; x++) {
 		if (!strncmp(modules[number_of_module].module_ifces[x].ifc_direction,"IN", 2)) {
 			sprintf(ptr,"%s;",modules[number_of_module].module_ifces[x].ifc_params);
 			ptr += strlen(modules[number_of_module].module_ifces[x].ifc_params) + 1;
 		}
 	}
 
-	for(x=0; x<modules[number_of_module].module_ifces_cnt; x++){
+	for(x=0; x<modules[number_of_module].module_ifces_cnt; x++) {
 		if (!strncmp(modules[number_of_module].module_ifces[x].ifc_direction,"OUT", 3)) {
 			sprintf(ptr,"%s;",modules[number_of_module].module_ifces[x].ifc_params);
 			ptr += strlen(modules[number_of_module].module_ifces[x].ifc_params) + 1;
 		}
 	}
 
-	for(x=0; x<modules[number_of_module].module_ifces_cnt; x++){
+	for(x=0; x<modules[number_of_module].module_ifces_cnt; x++) {
 		if (!strncmp(modules[number_of_module].module_ifces[x].ifc_direction,"SERVICE", 7)) {
 			sprintf(ptr,"%s;",modules[number_of_module].module_ifces[x].ifc_params);
 			ptr += strlen(modules[number_of_module].module_ifces[x].ifc_params) + 1;
@@ -414,7 +418,7 @@ char ** make_module_arguments (const int number_of_module)
 		int num_module_params = 0;
 		int module_params_length = strlen(modules[number_of_module].module_params);
 		for(x=0; x<module_params_length; x++) {
-			if(modules[number_of_module].module_params[x] == 32){
+			if(modules[number_of_module].module_params[x] == 32) {
 				num_module_params++;
 			}
 		}
@@ -435,8 +439,8 @@ char ** make_module_arguments (const int number_of_module)
 
 		y=0;
 		memset(buffer,0,100);
-		for(x=0; x<module_params_length; x++){
-			if(modules[number_of_module].module_params[x] == 32){
+		for(x=0; x<module_params_length; x++) {
+			if(modules[number_of_module].module_params[x] == 32) {
 				params[params_counter] = (char *) calloc (strlen(buffer)+1,sizeof(char));
 				sprintf(params[params_counter],"%s",buffer);
 				params_counter++;
@@ -472,7 +476,7 @@ int print_menu ()
 	printf("8. SHOW GRAPH\n");
 	printf("9. RUN TEMP CONF\n");
 	printf("10. QUIT\n");
-	if(!scanf("%d",&ret_val)){
+	if(!scanf("%d",&ret_val)) {
 		printf("Wrong input.\n");
 		return -1;
 	}
@@ -482,7 +486,7 @@ int print_menu ()
 
 void start_module (const int module_number)
 {
-	if(modules[module_number].module_running == TRUE){
+	if(modules[module_number].module_running == TRUE) {
 		VERBOSE("Module %d has been already started.\n", module_number);
 		return;
 	} else {
@@ -498,10 +502,12 @@ void start_module (const int module_number)
 	char log_path_stderr[40];
 	int x = 0;
 
-	if(running_modules_cnt == running_modules_array_size){
+	if(running_modules_cnt == running_modules_array_size) {
 		VERBOSE("REALLOCING RUNNING MODULES ARRAY --->\n");
+		int origin_size = running_modules_array_size;
 		running_modules_array_size += running_modules_array_size/2;
 		running_modules = (running_module_t *) realloc (running_modules, running_modules_array_size * sizeof(running_module_t));
+		memset(running_modules + origin_size,0,(origin_size/2)*sizeof(running_module_t));
 	}
 
 	running_modules[running_modules_cnt].module_num_in_ifc = 0;
@@ -515,8 +521,8 @@ void start_module (const int module_number)
 	running_modules[running_modules_cnt].module_ifces_cnt = modules[module_number].module_ifces_cnt;
 	running_modules[running_modules_cnt].module_service_sd = -1;
 
-	for(x=0; x<running_modules[running_modules_cnt].module_ifces_cnt; x++){
-		if(strncmp(running_modules[running_modules_cnt].module_ifces[x].ifc_direction, "IN", 2) == 0){
+	for(x=0; x<running_modules[running_modules_cnt].module_ifces_cnt; x++) {
+		if(strncmp(running_modules[running_modules_cnt].module_ifces[x].ifc_direction, "IN", 2) == 0) {
 			running_modules[running_modules_cnt].module_num_in_ifc++;
 		} else if (strncmp(running_modules[running_modules_cnt].module_ifces[x].ifc_direction, "OUT", 3) == 0) {
 			running_modules[running_modules_cnt].module_num_out_ifc++;
@@ -602,7 +608,7 @@ void restart_module (const int module_number)
 
 void stop_module (const int module_number)
 {
-	if(running_modules[module_number].module_status){
+	if(running_modules[module_number].module_status) {
 		running_modules[module_number].module_enabled = FALSE;
 		kill(running_modules[module_number].module_PID,2);
 		running_modules[module_number].module_status = FALSE;
@@ -642,7 +648,7 @@ void update_module_status ()
 
 void sigpipe_handler(int sig)
 {
-	if(sig == SIGPIPE){
+	if(sig == SIGPIPE) {
 		VERBOSE("SIGPIPE catched..\n");
 	}
 }
@@ -655,8 +661,8 @@ int api_initialization(const int * argc, char ** argv)
 	help_flag = FALSE;
 	file_flag = FALSE;
 	int ret_val = parse_arguments(argc, argv);
-	if(ret_val){
-		if(help_flag){
+	if(ret_val) {
+		if(help_flag) {
 			print_help();
 			return 1;
 		} else if (file_flag == FALSE) {
@@ -713,7 +719,7 @@ int api_initialization(const int * argc, char ** argv)
    	sa.sa_flags = 0;
    	sigemptyset(&sa.sa_mask);
 
-   	if(sigaction(SIGPIPE,&sa,NULL) == -1){
+   	if(sigaction(SIGPIPE,&sa,NULL) == -1) {
       	printf("ERROR sigaction !!\n");
    	}
 
@@ -730,7 +736,7 @@ int api_initialization(const int * argc, char ** argv)
 
 void api_start_configuration()
 {
-	if(configuration_running){
+	if(configuration_running) {
 		printf("Configuration is already running, you cannot start another module from loaded xml config_file.\n");
 		return;
 	}
@@ -759,18 +765,18 @@ void api_stop_configuration()
 
 void api_start_module()
 {
-	if(configuration_running){
+	if(configuration_running) {
 		VERBOSE("Configuration is already running, you cannot start another module loaded from xml config_file.\n");
 		return;
 	}
 	pthread_mutex_lock(&running_modules_lock);
 	int x = 0;
 	printf("Type in module number\n");
-	if(!scanf("%d",&x)){
+	if(!scanf("%d",&x)) {
 		printf("Wrong input.\n");
 		return;
 	}
-	if(x>=modules_cnt || x<0){
+	if(x>=modules_cnt || x<0) {
 		printf("Wrong input, type in 0 - %d.\n", modules_cnt-1);
 		pthread_mutex_unlock(&running_modules_lock);
 		return;
@@ -790,13 +796,13 @@ void api_stop_module()
 		}
 	}
 	printf("Type in number of module to kill: (# for cancel)\n");
-	if(!scanf("%s",&symbol)){
+	if(!scanf("%s",&symbol)) {
 		printf("Wrong input.\n");
 		return;
 	}
-	if (symbol != '#'){
+	if (symbol != '#') {
 		stop_module(symbol - '0');
-	} else if((symbol - '0')>=running_modules_cnt || (symbol - '0')<0){
+	} else if((symbol - '0')>=running_modules_cnt || (symbol - '0')<0) {
 		printf("Wrong input, type in 0 - %d.\n", running_modules_cnt);
 		return;
 	}
@@ -808,11 +814,11 @@ void api_set_module_enabled()
 	int x;
 	pthread_mutex_lock(&running_modules_lock);
 	printf("Type in module number\n");
-	if(!scanf("%d",&x)){
+	if(!scanf("%d",&x)) {
 		printf("Wrong input.\n");
 		return;
 	}
-	if(x>=running_modules_cnt || x<0){
+	if(x>=running_modules_cnt || x<0) {
 		printf("Wrong input, type in 0 - %d.\n", running_modules_cnt-1);
 		pthread_mutex_unlock(&running_modules_lock);
 		return;
@@ -861,13 +867,13 @@ void api_quit()
 	stop_service_thread();
 	sleep(3);
 	api_stop_configuration();
-	for(x=0;x<running_modules_cnt;x++){
+	for(x=0;x<running_modules_cnt;x++) {
 		if(running_modules[x].module_counters_array != NULL) {
 			free(running_modules[x].module_counters_array);
 		}
 	}
-	for(x=0;x<modules_array_size;x++){
-		for(y=0; y<modules[x].module_ifces_cnt; y++){
+	for(x=0;x<modules_array_size;x++) {
+		for(y=0; y<modules[x].module_ifces_cnt; y++) {
 			if(modules[x].module_ifces[y].ifc_note != NULL) {
 				free(modules[x].module_ifces[y].ifc_note);
 			}
@@ -959,8 +965,8 @@ void update_cpu_usage(long int * last_total_cpu_usage)
 		return;
 	}
 
-	for(x=0;x<10;x++){
-		if(!fscanf(proc_stat_fd,"%d",&num)){
+	for(x=0;x<10;x++) {
+		if(!fscanf(proc_stat_fd,"%d",&num)) {
 			continue;
 		}
 		new_total_cpu_usage += num;
@@ -972,11 +978,11 @@ void update_cpu_usage(long int * last_total_cpu_usage)
 	*last_total_cpu_usage = new_total_cpu_usage;
 	fclose(proc_stat_fd);
   
-	for(x=0;x<running_modules_cnt;x++){
-		if(running_modules[x].module_status){
+	for(x=0;x<running_modules_cnt;x++) {
+		if(running_modules[x].module_status) {
 			sprintf(path,"/proc/%d/stat",running_modules[x].module_PID);
 			proc_stat_fd = fopen(path,"r");
-			if(!fscanf(proc_stat_fd,"%*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %d %d", &utime , &stime)){
+			if(!fscanf(proc_stat_fd,"%*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %d %d", &utime , &stime)) {
 				continue;
 			}
 			if(show_cpu_usage_flag) {
@@ -995,19 +1001,23 @@ void update_cpu_usage(long int * last_total_cpu_usage)
 
 int service_get_data(int sd, int running_module_number)
 {
-   int sizeof_recv = (running_modules[running_module_number].module_num_in_ifc + 3*running_modules[running_module_number].module_num_out_ifc) * sizeof(int);
-   int total_receved = 0;
-   int last_receved = 0;
+	int sizeof_recv = (running_modules[running_module_number].module_num_in_ifc + 3*running_modules[running_module_number].module_num_out_ifc) * sizeof(int);
+	int total_receved = 0;
+	int last_receved = 0;
+	char * data_pointer = (char *) running_modules[running_module_number].module_counters_array;
 
-   while(total_receved < sizeof_recv){
-      last_receved = recv(sd, running_modules[running_module_number].module_counters_array + total_receved, sizeof_recv - total_receved, 0);
-      if(last_receved == 0){
-         VERBOSE("------- ! Modules service thread closed its socket, im done !\n");
-         return 0;
-      }
-      total_receved += last_receved;
-   }
-   return 1;
+	while(total_receved < sizeof_recv) { 
+		last_receved = recv(sd, data_pointer + total_receved, sizeof_recv - total_receved, 0);
+		if(last_receved == 0) {
+			VERBOSE("! Modules service thread closed its socket, im done !\n");
+			return 0;
+		} else if (last_receved == -1) {
+			VERBOSE("! Error while recving from module %d%s !\n", running_module_number, running_modules[running_module_number].module_name);
+			return 0;
+		}
+		total_receved += last_receved;
+	}
+	return 1;
 }
 
 void connect_to_module_service_ifc(int module, int num_ifc)
@@ -1059,11 +1069,10 @@ void * service_thread_routine(void* arg)
 		restart_modules();
 		usleep(100000);
 		// update_cpu_usage(&last_total_cpu_usage); 
-		if(running_modules_cnt > num_served_modules)
-		{
+		if(running_modules_cnt > num_served_modules) {
 			running_modules[num_served_modules].module_has_service_ifc = FALSE;
-			for(x=0; x<running_modules[num_served_modules].module_ifces_cnt; x++){
-				if((strncmp(running_modules[num_served_modules].module_ifces[x].ifc_direction, "SERVICE", 7) == 0)){
+			for(x=0; x<running_modules[num_served_modules].module_ifces_cnt; x++) {
+				if((strncmp(running_modules[num_served_modules].module_ifces[x].ifc_direction, "SERVICE", 7) == 0)) {
 					running_modules[num_served_modules].module_has_service_ifc = TRUE;
 					connect_to_module_service_ifc(num_served_modules,x);
 					graph_node_t * new_node = add_graph_node (graph_first_node, graph_last_node, (void *) &running_modules[num_served_modules]);
@@ -1087,12 +1096,12 @@ void * service_thread_routine(void* arg)
 			int request[1];
 			memset(request,0, sizeof(int));
 			request[0] = 1;
-			for(x=0;x<running_modules_cnt;x++){
+			for(x=0;x<running_modules_cnt;x++) {
 				if(running_modules[x].module_has_service_ifc == TRUE && running_modules[x].module_status == TRUE) {
-					if(running_modules[x].module_service_ifc_isconnected == FALSE){
+					if(running_modules[x].module_service_ifc_isconnected == FALSE) {
 						y=0;
-						while(1){
-							if((strncmp(running_modules[x].module_ifces[y].ifc_direction, "SERVICE", 7) == 0)){
+						while(1) {
+							if((strncmp(running_modules[x].module_ifces[y].ifc_direction, "SERVICE", 7) == 0)) {
 								break;
 							} else {
 								y++;
@@ -1104,7 +1113,7 @@ void * service_thread_routine(void* arg)
 						connect_to_module_service_ifc(x,y);
 					}
 					if(running_modules[x].module_service_ifc_isconnected == TRUE) {
-						if(send(running_modules[x].module_service_sd,(void *) request, sizeof_intptr, 0) == -1){
+						if(send(running_modules[x].module_service_sd,(void *) request, sizeof_intptr, 0) == -1) {
 							VERBOSE("Error while sending request to module %d%s.\n",x,running_modules[x].module_name);
 							if (errno == ENOTCONN) {
 								running_modules[x].module_service_ifc_isconnected = FALSE;
@@ -1115,10 +1124,10 @@ void * service_thread_routine(void* arg)
 			}
 
 			update_module_status();
-			for(x=0;x<running_modules_cnt;x++){
+			for(x=0;x<running_modules_cnt;x++) {
 				if(running_modules[x].module_has_service_ifc == TRUE && running_modules[x].module_status == TRUE) {
-					if(running_modules[x].module_service_ifc_isconnected == TRUE){
-						if(!(service_get_data(running_modules[x].module_service_sd, x))){
+					if(running_modules[x].module_service_ifc_isconnected == TRUE) {
+						if(!(service_get_data(running_modules[x].module_service_sd, x))) {
 					    	//TODO
 					    	continue;
 					    }
@@ -1129,28 +1138,28 @@ void * service_thread_routine(void* arg)
 			update_graph_values(graph_first_node);
 			// check_graph_values(graph_first_node);
 
-			for(x=0;x<running_modules_cnt;x++){
+			for(x=0;x<running_modules_cnt;x++) {
 				VERBOSE("NAME:  %s, PID: %d, EN: %d, SIFC: %d, S: %d, ISC: %d | ", running_modules[x].module_name,
 					running_modules[x].module_PID,
 					running_modules[x].module_enabled,
 					running_modules[x].module_has_service_ifc,
 					running_modules[x].module_status,
 					running_modules[x].module_service_ifc_isconnected);
-				if(running_modules[x].module_has_service_ifc && running_modules[x].module_service_ifc_isconnected){
+				if(running_modules[x].module_has_service_ifc && running_modules[x].module_service_ifc_isconnected) {
 					VERBOSE("CNT_RM:  ");
-					for(y=0;y<running_modules[x].module_num_in_ifc;y++){
+					for(y=0;y<running_modules[x].module_num_in_ifc;y++) {
 						VERBOSE("%d  ", running_modules[x].module_counters_array[y]);
 					}
 					VERBOSE("CNT_SM:  ");
-					for(y=0;y<running_modules[x].module_num_out_ifc;y++){
+					for(y=0;y<running_modules[x].module_num_out_ifc;y++) {
 						VERBOSE("%d  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc]);
 					}
 					VERBOSE("CNT_SB:  ");
-					for(y=0;y<running_modules[x].module_num_out_ifc;y++){
+					for(y=0;y<running_modules[x].module_num_out_ifc;y++) {
 						VERBOSE("%d  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc + running_modules[x].module_num_out_ifc]);
 					}
 					VERBOSE("CNT_AF:  ");
-					for(y=0;y<running_modules[x].module_num_out_ifc;y++){
+					for(y=0;y<running_modules[x].module_num_out_ifc;y++) {
 						VERBOSE("%d  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc + 2*running_modules[x].module_num_out_ifc]);
 					}
 				}
@@ -1162,7 +1171,7 @@ void * service_thread_routine(void* arg)
 	}
 
 
-	for(x=0;x<running_modules_cnt;x++){
+	for(x=0;x<running_modules_cnt;x++) {
 		if(running_modules[x].module_has_service_ifc == TRUE && running_modules[x].module_status == TRUE && running_modules[x].module_service_ifc_isconnected == TRUE) {
 			VERBOSE("-- disconnecting from module %d%s\n",x, running_modules[x].module_name);
 			close(running_modules[x].module_service_sd);
@@ -1187,7 +1196,7 @@ void stop_service_thread()
 
 void api_show_graph()
 {
-	if(graph_first_node == NULL){
+	if(graph_first_node == NULL) {
 		printf("No module with service ifc running.\n");
 		return;
 	}
@@ -1204,12 +1213,12 @@ void run_temp_configuration()
 	char * buffer2 = (char *)calloc(1000, sizeof(char));
 	char * ptr = buffer1;
 	printf("Paste in xml code with modules configuration starting with <modules> tag and ending with </modules> tag.\n");
-	while(1){
-		if(!scanf("%s",ptr)){
+	while(1) {
+		if(!scanf("%s",ptr)) {
 			printf("Wrong input.\n");
 			continue;
 		}
-		if(strstr(ptr,"</modules>") != NULL){
+		if(strstr(ptr,"</modules>") != NULL) {
 			break;
 		}
 		ptr += strlen(ptr);
@@ -1219,14 +1228,14 @@ void run_temp_configuration()
 	sprintf(buffer2,"<?xml version=\"1.0\"?>\n<nemea-supervisor>\n%s\n</nemea-supervisor>",buffer1);
 	free(buffer1);
 
-	if(load_configuration(FALSE, buffer2) == FALSE){
+	if(load_configuration(FALSE, buffer2) == FALSE) {
 		printf("Xml code was not parsed successfully.\n");
 		free(buffer2);
 		pthread_mutex_unlock(&running_modules_lock);
 		return;
 	}
 	free(buffer2);
-	while(x<modules_cnt){
+	while(x<modules_cnt) {
 		start_module(x);
 		x++;
 	}
@@ -1242,11 +1251,11 @@ void api_set_verbose_level()
 {
 	int x = 0;
 	printf("Type in 0 or 1 to set verbose level of supervisor:\n");
-	if(!scanf("%d",&x)){
+	if(!scanf("%d",&x)) {
 		printf("Wrong input.\n");
 		return;
 	}
-	if(x>1 || x<0){
+	if(x>1 || x<0) {
 		printf("Wrong input.\n");
 	} else {
 		verbose_flag = x;
@@ -1255,7 +1264,7 @@ void api_set_verbose_level()
 
 int parse_arguments(const int * argc, char ** argv)
 {
-	if(*argc <= 1){
+	if(*argc <= 1) {
 		fprintf(stderr,"Wrong format of arguments.\n %s [-h] [-v] [--show-cpuusage] -f config_file.xml\n", argv[0]);
 		return FALSE;
 	}
@@ -1436,31 +1445,33 @@ void daemon_mode(int * arg)
 	int ret_val;
 	int request;
 	char buffer[50];
+	memset(buffer,0,50);
+
 
 	int connected = FALSE;
 
-	while(terminated == FALSE){
+	while(terminated == FALSE) {
 		// get client
 		client_sd = daemon_get_client(&daemon_sd);
-		if(client_sd == -1){
+		if(client_sd == -1) {
 			connected = FALSE;
 			continue;
 		}
 		connected = TRUE;
 
-		while(connected){
+		while(connected) {
 			// serve client
 			ret_val = recv(client_sd,&request,sizeof(request),0);
-			if(ret_val == 0){
+			if(ret_val == 0) {
 				printf("Client has disconnected.\n");
 				connected = FALSE;
 				break;
-			} else if (ret_val == -1){
+			} else if (ret_val == -1) {
 				printf("Error while recving.\n");
 				connected = FALSE;
 				break;
 			}
-			switch(request){
+			switch(request) {
 
 				// api_set_verbose_level();
 				// api_start_module();		
@@ -1527,11 +1538,11 @@ void daemon_mode(int * arg)
 			}
 
 			ret_val = send(client_sd,buffer,50,0);
-			if(ret_val == 0){
+			if(ret_val == 0) {
 				printf("Send returned 0\n");
 				connected = FALSE;
 				break;
-			} else if (ret_val == -1){
+			} else if (ret_val == -1) {
 				printf("Error while sending.\n");
 				if (errno == ENOTCONN) {
 					printf("errno ENOTCONN\n");

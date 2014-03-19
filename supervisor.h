@@ -71,9 +71,9 @@
 
 #define TRUE 								1 ///< Bool true
 #define FALSE 								0 ///< Bool false
-#define RUNNING_MODULES_ARRAY_START_SIZE 	5
-#define IFCES_ARRAY_START_SIZE				2
-#define MODULES_ARRAY_START_SIZE 			2
+#define RUNNING_MODULES_ARRAY_START_SIZE 	10
+#define IFCES_ARRAY_START_SIZE				5
+#define MODULES_ARRAY_START_SIZE 			10
 
 /***********STRUCTURES***********/
 
