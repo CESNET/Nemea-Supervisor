@@ -142,7 +142,13 @@ int load_configuration (const int choice, const char * buffer)
 	}
 	
 	if (xmlStrcmp(current_node->name, BAD_CAST "nemea-supervisor")) {
-		fprintf(stderr,"document of the wrong type, root node != nemea-supervisor");
+		fprintf(stderr,"document of the wrong type, root node != nemea-supervisor\n");
+		xmlFreeDoc(xml_tree);
+		return FALSE;
+	}
+
+	if(current_node->xmlChildrenNode == NULL) {
+		fprintf(stderr,"no child of nemea-supervisor tag found\n");
 		xmlFreeDoc(xml_tree);
 		return FALSE;
 	}
