@@ -1,0 +1,113 @@
+module "nemea" {
+  namespace "urn:cesnet:tmc:nemea:1.0";
+  prefix "nemea";
+  organization
+    "CESNET, z.s.p.o.";
+  contact
+    "cejkat@cesnet.cz";
+  description
+    "Module specifying configuration of Nemea supervisor.";
+  revision "2014-03-18" {
+    description
+      "Initial revision.";
+  }
+
+  typedef "trapifc-type" {
+    type "enumeration" {
+      enum "TCP" {
+        description
+          "IP/TCP for intermachine connections.";
+      }
+      enum "UNIXSOCKET" {
+        description
+          "UNIX socket for local connections.";
+      }
+      enum "SERVICE" {
+        description
+          "Service communication interface for module-supervisor communication.";
+      }
+    }
+  }
+  typedef "trapifc-direction" {
+    type "enumeration" {
+      enum "IN" {
+        description
+          "Input interface.";
+      }
+      enum "OUT" {
+        description
+          "Output interface.";
+      }
+    }
+  }
+
+  container "nemea-supervisor" {
+    container "modules" {
+      leaf "name" {
+        type "string";
+        description "Name of group of Nemea modules.";
+      }
+      list "module" {
+        key "name";
+        leaf "name" {
+          type "string";
+          description
+            "Name of module.";
+        }
+        leaf "params" {
+          type "string";
+          description
+            "Additional parameters of module (program).";
+        }
+
+        leaf "enabled" {
+          type "boolean";
+          mandatory "true";
+          description
+            "Specify whether to start module or not.";
+        }
+        leaf "running" {
+          type "boolean";
+          config "false";
+          description
+            "Specify whether the module is running.";
+        }
+        leaf "path" {
+          type "string";
+          mandatory "true";
+          description
+            "Path to module (executable file).";
+        }
+        container "trapinterfaces" {
+          list "interface" {
+            key "type direction params";
+            leaf "note" {
+              type "string";
+              description
+                "Optional note for interface";
+            }
+            leaf "type" {
+              type "trapifc-type";
+              mandatory "true";
+              description
+                "Type of libtrap communication interface.";
+            }
+            leaf "direction" {
+              type "trapifc-direction";
+              mandatory "true";
+              description
+                "Type of libtrap communication interface.";
+            }
+            leaf "params" {
+              type "string";
+              mandatory "true";
+              description
+                "Parameters of libtrap interface: hostname,port for input interface; port for output interface.";
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
