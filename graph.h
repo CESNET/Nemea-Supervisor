@@ -62,6 +62,7 @@ typedef struct graph_node_output_interface_s {
 
 struct graph_node_s {
 	void * module_data;
+	int module_number;
 	graph_node_t * next_node;
 	graph_node_input_interface_t * node_input_interfaces;
 	graph_node_output_interface_t * node_output_interfaces;

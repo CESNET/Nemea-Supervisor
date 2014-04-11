@@ -58,6 +58,7 @@ graph_node_t * add_graph_node (graph_node_t * first, graph_node_t * last, void *
 	graph_node_t * new_node = (graph_node_t *) calloc (1, sizeof(graph_node_t));
 
 	new_node->module_data = data;
+	new_node->module_number = running_module->module_number;
 	new_node->num_node_input_interfaces = running_module->module_num_in_ifc;
 	new_node->num_node_output_interfaces = running_module->module_num_out_ifc;
 	new_node->node_input_interfaces = (graph_node_input_interface_t *)calloc(running_module->module_num_in_ifc, sizeof(graph_node_input_interface_t));

@@ -60,6 +60,7 @@
 #include <semaphore.h>
 #include <signal.h>
 #include <time.h>
+#include <sys/ioctl.h>
 
 #define LOGSDIR_NAME 	"./modules_logs/" ///< Name of directory with logs
 #define TRAP_PARAM 		"-i" ///< Interface parameter for libtrap
@@ -68,9 +69,9 @@
 #define UNIX_PATH_FILENAME_FORMAT   "/tmp/trap-localhost-%s.sock"
 #define DAEMON_UNIX_PATH_FILENAME_FORMAT	"/tmp/supervisor_daemon.sock"
 
- #define VERBOSE(format,args...) if (verbose_flag) { \
-   printf(format,##args); \
-}
+#define STATISTICS 		1
+#define MODULE_EVENT 	2
+#define N_STDOUT 		3
 
 /*******GLOBAL VARIABLES*******/
 module_atr_t * 		modules;  ///< Information about modules from loaded xml config file
@@ -100,7 +101,48 @@ int 	show_cpu_usage_flag; // --show-cpuusage
 int 	verbose_flag; 		// -v
 int 	daemon_flag; 		// --daemon
 
+FILE * input_fd;
+FILE * output_fd;
+
+FILE * statistics_fd;
+FILE * module_event_fd;
+
 /**********************/
+//  #define VERBOSE(format,args...) if (verbose_flag) { \
+//    fprintf(output_fd, format,##args); \
+//    fflush(output_fd); \
+// }
+
+char verbose_msg[4096];
+
+void print_msg(int level, char *string)
+{
+	switch(level){
+	case STATISTICS:
+		fprintf(statistics_fd, "%s", string);
+		fflush(statistics_fd);
+		break;
+
+	case MODULE_EVENT:
+		fprintf(module_event_fd, "%s", string);
+		fflush(module_event_fd);
+		break;
+
+	case N_STDOUT:
+		fprintf(output_fd, "%s", string);
+		fflush(output_fd);
+		break;
+	}
+}
+
+#define VERBOSE(level, format, args...) if (1) { \
+   snprintf(verbose_msg, 4095, format, ##args); \
+   print_msg(level, verbose_msg); \
+}
+
+
+
+/**************************************/
 
 union tcpip_socket_addr {
    struct addrinfo tcpip_addr; ///< used for TCPIP socket
@@ -121,7 +163,7 @@ int load_configuration (const int choice, const char * buffer)
 	int x = 0, y = 0;
 	xmlDocPtr xml_tree = NULL;
 	xmlNodePtr current_node = NULL;
-
+	
 	if(choice) {
 		xml_tree = xmlParseFile(buffer);
 	} else {
@@ -134,7 +176,7 @@ int load_configuration (const int choice, const char * buffer)
 	}
 	
 	current_node = xmlDocGetRootElement(xml_tree);
-	
+
 	if (current_node == NULL) {
 		fprintf(stderr,"empty document\n");
 		xmlFreeDoc(xml_tree);
@@ -177,7 +219,7 @@ int load_configuration (const int choice, const char * buffer)
 
 			//check allocated memory, if we dont have enough -> realloc
 			if(modules_cnt == modules_array_size) {
-				VERBOSE("REALLOCING MODULES ARRAY --->\n");
+				VERBOSE(N_STDOUT,"REALLOCING MODULES ARRAY --->\n");
 				int origin_size = modules_array_size;
 				modules_array_size += modules_array_size/2;
 				modules = (module_atr_t * ) realloc (modules, (modules_array_size)*sizeof(module_atr_t));
@@ -230,7 +272,7 @@ int load_configuration (const int choice, const char * buffer)
 						if (!xmlStrcmp(ifc_ptr->name,BAD_CAST "interface")) {
 							ifc_atr = ifc_ptr->xmlChildrenNode;
 							if(ifc_cnt == modules[modules_cnt].module_ifces_array_size) {
-								VERBOSE("REALLOCING MODULE INTERFACES ARRAY --->\n");
+								VERBOSE(N_STDOUT,"REALLOCING MODULE INTERFACES ARRAY --->\n");
 								int origin_size = modules[modules_cnt].module_ifces_array_size;
 								modules[modules_cnt].module_ifces_array_size += modules[modules_cnt].module_ifces_array_size/2;
 								modules[modules_cnt].module_ifces = (interface_t *) realloc (modules[modules_cnt].module_ifces, (modules[modules_cnt].module_ifces_array_size) * sizeof(interface_t));
@@ -287,8 +329,6 @@ int load_configuration (const int choice, const char * buffer)
 						}
 						ifc_ptr = ifc_ptr->next;
 					}
-
-					// sprintf(modules[modules_cnt].module_ifces[ifc_cnt].ifc_note,"%s","#");
 				}
 
 				module_atr = module_atr->next;
@@ -306,16 +346,16 @@ int load_configuration (const int choice, const char * buffer)
 void print_configuration ()
 {
 	int x,y = 0;
-	printf("---PRINTING CONFIGURATION---\n");
+	VERBOSE(N_STDOUT,"---PRINTING CONFIGURATION---\n");
 
 	for (x=0; x < modules_cnt; x++) {
-		printf("%d_%s:  PATH:%s  PARAMS:%s\n", x, modules[x].module_name, modules[x].module_path, modules[x].module_params);
+		VERBOSE(N_STDOUT,"%d_%s:  PATH:%s  PARAMS:%s\n", x, modules[x].module_name, modules[x].module_path, modules[x].module_params);
 
 		for(y=0; y<modules[x].module_ifces_cnt; y++) {
-			printf("\tIFC%d\tNOTE: %s\n",y, modules[x].module_ifces[y].ifc_note);
-			printf("\t\tTYPE: %s\n", modules[x].module_ifces[y].ifc_type);
-			printf("\t\tDIRECTION: %s\n", modules[x].module_ifces[y].ifc_direction);
-			printf("\t\tPARAMS: %s\n", modules[x].module_ifces[y].ifc_params);
+			VERBOSE(N_STDOUT,"\tIFC%d\tNOTE: %s\n",y, modules[x].module_ifces[y].ifc_note);
+			VERBOSE(N_STDOUT,"\t\tTYPE: %s\n", modules[x].module_ifces[y].ifc_type);
+			VERBOSE(N_STDOUT,"\t\tDIRECTION: %s\n", modules[x].module_ifces[y].ifc_direction);
+			VERBOSE(N_STDOUT,"\t\tPARAMS: %s\n", modules[x].module_ifces[y].ifc_params);
 		}
 	}
 }
@@ -337,8 +377,8 @@ char ** make_module_arguments (const int number_of_module)
 				strncpy(ptr,"u",1);
 				ptr++;
 			} else {
-				printf("%s\n", modules[number_of_module].module_ifces[x].ifc_type);
-				printf("Wrong ifc_type in module %d.\n", number_of_module);
+				VERBOSE(N_STDOUT,"%s\n", modules[number_of_module].module_ifces[x].ifc_type);
+				VERBOSE(N_STDOUT,"Wrong ifc_type in module %d.\n", number_of_module);
 				return NULL;
 			}
 		}
@@ -353,8 +393,8 @@ char ** make_module_arguments (const int number_of_module)
 				strncpy(ptr,"u",1);
 				ptr++;
 			} else {
-				printf("%s\n", modules[number_of_module].module_ifces[x].ifc_type);
-				printf("Wrong ifc_type in module %d.\n", number_of_module);
+				VERBOSE(N_STDOUT,"%s\n", modules[number_of_module].module_ifces[x].ifc_type);
+				VERBOSE(N_STDOUT,"Wrong ifc_type in module %d.\n", number_of_module);
 				return NULL;
 			}
 		}
@@ -369,8 +409,8 @@ char ** make_module_arguments (const int number_of_module)
 				strncpy(ptr,"s",1);
 				ptr++;
 			} else {
-				printf("%s\n", modules[number_of_module].module_ifces[x].ifc_type);
-				printf("Wrong ifc_type in module %d.\n", number_of_module);
+				VERBOSE(N_STDOUT,"%s\n", modules[number_of_module].module_ifces[x].ifc_type);
+				VERBOSE(N_STDOUT,"Wrong ifc_type in module %d.\n", number_of_module);
 				return NULL;
 			}
 		}
@@ -470,20 +510,20 @@ char ** make_module_arguments (const int number_of_module)
 int print_menu ()
 {
 	int ret_val = 0;
-	printf("--------OPTIONS--------\n");
-	printf("0. SET VERBOSE LEVEL\n");
-	printf("1. RUN CONFIGURATION\n");
-	printf("2. STOP CONFIGURATION\n");
-	printf("3. START MODUL\n");
-	printf("4. STOP MODUL\n");
-	printf("5. SET MODULE ENABLED\n");
-	printf("6. STARTED MODULES STATUS\n");
-	printf("7. AVAILABLE MODULES\n");
-	printf("8. SHOW GRAPH\n");
-	printf("9. RUN TEMP CONF\n");
-	printf("10. QUIT\n");
-	if(!scanf("%d",&ret_val)) {
-		printf("Wrong input.\n");
+	VERBOSE(N_STDOUT,"--------OPTIONS--------\n");
+	VERBOSE(N_STDOUT,"0. SET VERBOSE LEVEL\n");
+	VERBOSE(N_STDOUT,"1. RUN CONFIGURATION\n");
+	VERBOSE(N_STDOUT,"2. STOP CONFIGURATION\n");
+	VERBOSE(N_STDOUT,"3. START MODUL\n");
+	VERBOSE(N_STDOUT,"4. STOP MODUL\n");
+	VERBOSE(N_STDOUT,"5. SET MODULE ENABLED\n");
+	VERBOSE(N_STDOUT,"6. STARTED MODULES STATUS\n");
+	VERBOSE(N_STDOUT,"7. AVAILABLE MODULES\n");
+	VERBOSE(N_STDOUT,"8. SHOW GRAPH\n");
+	VERBOSE(N_STDOUT,"9. RUN TEMP CONF\n");
+	VERBOSE(N_STDOUT,"10. QUIT\n");
+	if(!fscanf(input_fd,"%d",&ret_val)) {
+		VERBOSE(N_STDOUT,"Wrong input.\n");
 		return -1;
 	}
 	return ret_val;
@@ -493,9 +533,10 @@ int print_menu ()
 void start_module (const int module_number)
 {
 	if(modules[module_number].module_running == TRUE) {
-		VERBOSE("Module %d has been already started.\n", module_number);
+		VERBOSE(MODULE_EVENT,"Module %d has been already started.\n", module_number);
 		return;
 	} else {
+		VERBOSE(MODULE_EVENT,"Starting module %d_%s.\n", module_number, modules[module_number].module_name);
 		modules[module_number].module_running = TRUE;
 	}
 
@@ -504,16 +545,23 @@ void start_module (const int module_number)
 	time ( &rawtime );
 	timeinfo = localtime ( &rawtime );
 
-	char log_path_stdout[40];
-	char log_path_stderr[40];
+	char log_path_stdout[100];
+	char log_path_stderr[100];
 	int x = 0;
 
 	if(running_modules_cnt == running_modules_array_size) {
-		VERBOSE("REALLOCING RUNNING MODULES ARRAY --->\n");
+		VERBOSE(N_STDOUT,"REALLOCING RUNNING MODULES ARRAY --->\n");
 		int origin_size = running_modules_array_size;
 		running_modules_array_size += running_modules_array_size/2;
 		running_modules = (running_module_t *) realloc (running_modules, running_modules_array_size * sizeof(running_module_t));
 		memset(running_modules + origin_size,0,(origin_size/2)*sizeof(running_module_t));
+
+		//update graph nodes pointers to running module data
+		graph_node_t * node_ptr = graph_first_node;
+		while(node_ptr != NULL) {
+			node_ptr->module_data = (void *) &running_modules[node_ptr->module_number];
+			node_ptr = node_ptr->next_node;
+		}
 	}
 
 	running_modules[running_modules_cnt].module_num_in_ifc = 0;
@@ -536,12 +584,12 @@ void start_module (const int module_number)
 	}
 
 	running_modules[running_modules_cnt].module_counters_array = (int *) calloc (3*running_modules[running_modules_cnt].module_num_out_ifc + running_modules[running_modules_cnt].module_num_in_ifc,sizeof(int));
-	sprintf(log_path_stdout,"%s%s%d_stdout",LOGSDIR_NAME, modules[module_number].module_name, running_modules_cnt);
-	sprintf(log_path_stderr,"%s%s%d_stderr",LOGSDIR_NAME, modules[module_number].module_name, running_modules_cnt);
+	sprintf(log_path_stdout,"%s%d_%s_stdout",LOGSDIR_NAME, running_modules_cnt, modules[module_number].module_name);
+	sprintf(log_path_stderr,"%s%d_%s_stderr",LOGSDIR_NAME, running_modules_cnt, modules[module_number].module_name);
 	
 	fflush(stdout);
-	running_modules[running_modules_cnt].module_PID = fork();
-	if (running_modules[running_modules_cnt].module_PID == 0) {
+	running_modules[running_modules_cnt].module_pid = fork();
+	if (running_modules[running_modules_cnt].module_pid == 0) {
 		int fd_stdout = open(log_path_stdout, O_RDWR | O_CREAT | O_APPEND, PERM_LOGFILE);
 		int fd_stderr = open(log_path_stderr, O_RDWR | O_CREAT | O_APPEND, PERM_LOGFILE);
 		dup2(fd_stdout,1); //stdout
@@ -549,17 +597,17 @@ void start_module (const int module_number)
 		close(fd_stdout);
 		close(fd_stderr);
 		char ** params = make_module_arguments(module_number);
-		printf("---> %s | %s   %s   %s    %s\n", asctime (timeinfo), params[0], params[1], params[2], params[3]);
+		fprintf(stdout,"---> %s | %s   %s   %s    %s\n", asctime (timeinfo), params[0], params[1], params[2], params[3]);
 		fprintf(stderr,"---> %s | %s   %s   %s    %s\n", asctime (timeinfo), params[0], params[1], params[2], params[3]);
 		fflush(stdout);
 		execvp(modules[module_number].module_path, params);
-		printf("Error while executing module binary.\n");
+		VERBOSE(N_STDOUT,"Error while executing module binary.\n");
 		running_modules[running_modules_cnt].module_enabled = FALSE;
 		exit(1);
-	} else if (running_modules[running_modules_cnt].module_PID == -1) {
+	} else if (running_modules[running_modules_cnt].module_pid == -1) {
 		running_modules[running_modules_cnt].module_status = FALSE;
 		running_modules_cnt++;
-		printf("Error in fork.\n");
+		VERBOSE(N_STDOUT,"Error in fork.\n");
 	} else {
 		running_modules[running_modules_cnt].module_status = TRUE;
 		running_modules_cnt++;
@@ -569,11 +617,11 @@ void start_module (const int module_number)
 void restart_module (const int module_number)
 {
 
-	VERBOSE("Restarting module %d%s\n", module_number, running_modules[module_number].module_name);
-	char log_path_stdout[40];
-	char log_path_stderr[40];
-	sprintf(log_path_stdout,"%s%s%d_stdout",LOGSDIR_NAME, running_modules[module_number].module_name, module_number);
-	sprintf(log_path_stderr,"%s%s%d_stderr",LOGSDIR_NAME, running_modules[module_number].module_name, module_number);
+	VERBOSE(MODULE_EVENT,"Restarting module %d_%s\n", module_number, running_modules[module_number].module_name);
+	char log_path_stdout[100];
+	char log_path_stderr[100];
+	sprintf(log_path_stdout,"%s%d_%s_stdout",LOGSDIR_NAME, module_number, running_modules[module_number].module_name);
+	sprintf(log_path_stderr,"%s%d_%s_stderr",LOGSDIR_NAME, module_number, running_modules[module_number].module_name);
 
 	memset(running_modules[module_number].module_counters_array,0,(running_modules[module_number].module_num_in_ifc + (3*running_modules[module_number].module_num_out_ifc)) * sizeof(int));
 	running_modules[module_number].last_cpu_usage_user_mode = 0;
@@ -586,8 +634,8 @@ void restart_module (const int module_number)
 	timeinfo = localtime ( &rawtime );
 
 	fflush(stdout);
-	running_modules[module_number].module_PID = fork();
-	if (running_modules[module_number].module_PID == 0) {
+	running_modules[module_number].module_pid = fork();
+	if (running_modules[module_number].module_pid == 0) {
 		int fd_stdout = open(log_path_stdout, O_RDWR | O_CREAT | O_APPEND, PERM_LOGFILE);
 		int fd_stderr = open(log_path_stderr, O_RDWR | O_CREAT | O_APPEND, PERM_LOGFILE);
 		dup2(fd_stdout,1); //stdout
@@ -595,17 +643,17 @@ void restart_module (const int module_number)
 		close(fd_stdout);
 		close(fd_stderr);
 		char ** params = make_module_arguments(running_modules[module_number].module_number);
-		printf("---> %s | %s   %s   %s    %s\n", asctime (timeinfo), params[0], params[1], params[2], params[3]);
+		fprintf(stdout,"---> %s | %s   %s   %s    %s\n", asctime (timeinfo), params[0], params[1], params[2], params[3]);
 		fprintf(stderr,"---> %s | %s   %s   %s    %s\n", asctime (timeinfo), params[0], params[1], params[2], params[3]);
 		fflush(stdout);
 		execvp(running_modules[module_number].module_path, params);
-		printf("Error while executing module binary.\n");
+		VERBOSE(N_STDOUT,"Error while executing module binary.\n");
 		running_modules[module_number].module_enabled = FALSE;
 		exit(1);
-	} else if (running_modules[module_number].module_PID == -1) {
+	} else if (running_modules[module_number].module_pid == -1) {
 		running_modules[module_number].module_status = FALSE;
 		running_modules[module_number].module_restart_cnt++;
-		printf("Err Fork()\n");
+		VERBOSE(N_STDOUT,"Err Fork()\n");
 	} else {
 		running_modules[module_number].module_status = TRUE;
 		running_modules[module_number].module_restart_cnt++;
@@ -615,8 +663,9 @@ void restart_module (const int module_number)
 void stop_module (const int module_number)
 {
 	if(running_modules[module_number].module_status) {
+		VERBOSE(MODULE_EVENT,"Stopping module %d_%s.\n", module_number, running_modules[module_number].module_name);
 		running_modules[module_number].module_enabled = FALSE;
-		kill(running_modules[module_number].module_PID,2);
+		kill(running_modules[module_number].module_pid,2);
 		running_modules[module_number].module_status = FALSE;
 		running_modules[module_number].module_service_ifc_isconnected = FALSE;
 	}
@@ -629,7 +678,7 @@ void update_module_status ()
 	pid_t result;
 
 	for (x=0; x<running_modules_cnt; x++) {
-		result = waitpid(running_modules[x].module_PID , &status, WNOHANG);
+		result = waitpid(running_modules[x].module_pid , &status, WNOHANG);
 		if (result == 0) {
 		  // Child still alive
 		} else if (result == -1) {
@@ -655,12 +704,19 @@ void update_module_status ()
 void sigpipe_handler(int sig)
 {
 	if(sig == SIGPIPE) {
-		VERBOSE("SIGPIPE catched..\n");
+		VERBOSE(N_STDOUT,"SIGPIPE catched..\n");
 	}
 }
 
 int api_initialization(const int * argc, char ** argv)
 {	
+	printf("%d\n", (int)sizeof(running_module_t));
+	input_fd = stdin;
+	output_fd = stdout;
+
+	statistics_fd = fopen("./supervisor_log_statistics", "w");
+	module_event_fd = fopen("./supervisor_log_module_event", "w");
+
 	config_file = NULL;
 	show_cpu_usage_flag = FALSE;
 	verbose_flag = FALSE;
@@ -686,7 +742,7 @@ int api_initialization(const int * argc, char ** argv)
 
 
 	int y;
-	VERBOSE("---LOADING CONFIGURATION---\n");
+	VERBOSE(N_STDOUT,"---LOADING CONFIGURATION---\n");
 	modules_cnt = 0;
 	//init modules structures alloc size MODULES_ARRAY_START_SIZE
 	modules_array_size = MODULES_ARRAY_START_SIZE;
@@ -714,7 +770,7 @@ int api_initialization(const int * argc, char ** argv)
 	service_thread_continue = TRUE;
 	configuration_running = FALSE;
 
-	VERBOSE("-- Starting service thread --\n");
+	VERBOSE(N_STDOUT,"-- Starting service thread --\n");
 	start_service_thread();
 
 
@@ -726,7 +782,7 @@ int api_initialization(const int * argc, char ** argv)
    	sigemptyset(&sa.sa_mask);
 
    	if(sigaction(SIGPIPE,&sa,NULL) == -1) {
-      	printf("ERROR sigaction !!\n");
+      	VERBOSE(N_STDOUT,"ERROR sigaction !!\n");
    	}
 
    	graph_first_node = NULL;
@@ -743,47 +799,47 @@ int api_initialization(const int * argc, char ** argv)
 void api_start_configuration()
 {
 	if(configuration_running) {
-		printf("Configuration is already running, you cannot start another module from loaded xml config_file.\n");
+		VERBOSE(N_STDOUT,"Configuration is already running, you cannot start another module from loaded xml config_file.\n");
 		return;
 	}
 	pthread_mutex_lock(&running_modules_lock);
-	VERBOSE("Starting configuration...\n");
+	VERBOSE(MODULE_EVENT,"Starting configuration...\n");
 	configuration_running = TRUE;
 	int x = 0;
 	for (x=0; x<modules_cnt; x++) {
 		start_module(x);
 	}
-	VERBOSE("Configuration is running.\n");
+	VERBOSE(MODULE_EVENT,"Configuration is running.\n");
 	pthread_mutex_unlock(&running_modules_lock);
 }
 
 void api_stop_configuration()
 {
 	pthread_mutex_lock(&running_modules_lock);
-	VERBOSE("Stopping configuration...\n");
+	VERBOSE(MODULE_EVENT,"Stopping configuration...\n");
 	int x = 0;
 	for (x=0; x<running_modules_cnt; x++) {
 		stop_module(x);
 	}
-	VERBOSE("Configuration stopped.\n");
+	VERBOSE(MODULE_EVENT,"Configuration stopped.\n");
 	pthread_mutex_unlock(&running_modules_lock);
 }
 
 void api_start_module()
 {
 	if(configuration_running) {
-		VERBOSE("Configuration is already running, you cannot start another module loaded from xml config_file.\n");
+		VERBOSE(MODULE_EVENT,"Configuration is already running, you cannot start another module loaded from xml config_file.\n");
 		return;
 	}
 	pthread_mutex_lock(&running_modules_lock);
 	int x = 0;
-	printf("Type in module number\n");
-	if(!scanf("%d",&x)) {
-		printf("Wrong input.\n");
+	VERBOSE(N_STDOUT,"Type in module number\n");
+	if(!fscanf(input_fd,"%d",&x)) {
+		VERBOSE(N_STDOUT,"Wrong input.\n");
 		return;
 	}
 	if(x>=modules_cnt || x<0) {
-		printf("Wrong input, type in 0 - %d.\n", modules_cnt-1);
+		VERBOSE(N_STDOUT,"Wrong input, type in 0 - %d.\n", modules_cnt-1);
 		pthread_mutex_unlock(&running_modules_lock);
 		return;
 	}
@@ -798,18 +854,18 @@ void api_stop_module()
 	char symbol;
 	for (x=0;x<running_modules_cnt;x++) {
 		if (running_modules[x].module_status) {
-			printf("%d%s running (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_PID);
+			VERBOSE(N_STDOUT,"%d_%s running (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
 		}
 	}
-	printf("Type in number of module to kill: (# for cancel)\n");
-	if(!scanf("%s",&symbol)) {
-		printf("Wrong input.\n");
+	VERBOSE(N_STDOUT,"Type in number of module to kill: (# for cancel)\n");
+	if(!fscanf(input_fd,"%s",&symbol)) {
+		VERBOSE(N_STDOUT,"Wrong input.\n");
 		return;
 	}
 	if (symbol != '#') {
 		stop_module(symbol - '0');
 	} else if((symbol - '0')>=running_modules_cnt || (symbol - '0')<0) {
-		printf("Wrong input, type in 0 - %d.\n", running_modules_cnt);
+		VERBOSE(N_STDOUT,"Wrong input, type in 0 - %d.\n", running_modules_cnt);
 		return;
 	}
 	pthread_mutex_unlock(&running_modules_lock);
@@ -819,13 +875,13 @@ void api_set_module_enabled()
 {
 	int x;
 	pthread_mutex_lock(&running_modules_lock);
-	printf("Type in module number\n");
-	if(!scanf("%d",&x)) {
-		printf("Wrong input.\n");
+	VERBOSE(N_STDOUT,"Type in module number\n");
+	if(!fscanf(input_fd,"%d",&x)) {
+		VERBOSE(N_STDOUT,"Wrong input.\n");
 		return;
 	}
 	if(x>=running_modules_cnt || x<0) {
-		printf("Wrong input, type in 0 - %d.\n", running_modules_cnt-1);
+		VERBOSE(N_STDOUT,"Wrong input, type in 0 - %d.\n", running_modules_cnt-1);
 		pthread_mutex_unlock(&running_modules_lock);
 		return;
 	}
@@ -838,7 +894,7 @@ void restart_modules()
 	int x = 0;
 	for (x=0; x<running_modules_cnt; x++) {
 		if (running_modules[x].module_status == FALSE && (running_modules[x].module_restart_cnt >= MAX_RESTARTS)) {
-			VERBOSE("Module: %d%s was restarted %d times and it is down again.\n",x, running_modules[x].module_name, MAX_RESTARTS);
+			VERBOSE(MODULE_EVENT,"Module: %d_%s was restarted %d times and it is down again.\n",x, running_modules[x].module_name, MAX_RESTARTS);
 		} else if (running_modules[x].module_status == FALSE && running_modules[x].module_enabled == TRUE) {
 			restart_module(x);
 		}
@@ -849,14 +905,14 @@ void api_show_running_modules_status()
 {
 	int x = 0;
 	if (running_modules_cnt == 0) {
-		printf("No module running.\n");
+		VERBOSE(N_STDOUT,"No module running.\n");
 		return;
 	}
 	for (x=0; x<running_modules_cnt; x++) {
 		if (running_modules[x].module_status == TRUE) {
-			printf("%d_%s running (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_PID);
+			VERBOSE(N_STDOUT,"%d_%s running (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
 		} else {
-			printf("%d_%s stopped (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_PID);
+			VERBOSE(N_STDOUT,"%d_%s stopped (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
 		}
 	}
 }
@@ -869,7 +925,7 @@ void api_show_available_modules()
 void api_quit()
 {
 	int x, y;
-	printf("-- Aborting service thread --\n");
+	VERBOSE(N_STDOUT,"-- Aborting service thread --\n");
 	stop_service_thread();
 	sleep(3);
 	api_stop_configuration();
@@ -919,6 +975,9 @@ void api_quit()
 	if(config_file != NULL) {
 		free(config_file);
 	}
+
+	fclose(statistics_fd);
+	fclose(module_event_fd);
 }
 
 int api_print_menu()
@@ -979,20 +1038,20 @@ void update_cpu_usage(long int * last_total_cpu_usage)
 	}
 	rozdil_total = new_total_cpu_usage - *last_total_cpu_usage;
 	if(show_cpu_usage_flag) {
-		printf("total_cpu difference total cpu usage> %d\n", rozdil_total);
+		VERBOSE(STATISTICS,"total_cpu difference total cpu usage> %d\n", rozdil_total);
 	}
 	*last_total_cpu_usage = new_total_cpu_usage;
 	fclose(proc_stat_fd);
   
 	for(x=0;x<running_modules_cnt;x++) {
 		if(running_modules[x].module_status) {
-			sprintf(path,"/proc/%d/stat",running_modules[x].module_PID);
+			sprintf(path,"/proc/%d/stat",running_modules[x].module_pid);
 			proc_stat_fd = fopen(path,"r");
 			if(!fscanf(proc_stat_fd,"%*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %d %d", &utime , &stime)) {
 				continue;
 			}
 			if(show_cpu_usage_flag) {
-				printf("Last_u%d Last_s%d, New_u%d New_s%d |>>   u%d%% s%d%%\n", running_modules[x].last_cpu_usage_user_mode,
+				VERBOSE(STATISTICS,"Last_u%d Last_s%d, New_u%d New_s%d |>>   u%d%% s%d%%\n", running_modules[x].last_cpu_usage_user_mode,
 														running_modules[x].last_cpu_usage_kernel_mode,
 														utime, stime,
 														100 * (utime - running_modules[x].last_cpu_usage_user_mode)/rozdil_total, 
@@ -1015,10 +1074,10 @@ int service_get_data(int sd, int running_module_number)
 	while(total_receved < sizeof_recv) { 
 		last_receved = recv(sd, data_pointer + total_receved, sizeof_recv - total_receved, 0);
 		if(last_receved == 0) {
-			VERBOSE("! Modules service thread closed its socket, im done !\n");
+			VERBOSE(STATISTICS,"! Modules service thread closed its socket, im done !\n");
 			return 0;
 		} else if (last_receved == -1) {
-			VERBOSE("! Error while recving from module %d%s !\n", running_module_number, running_modules[running_module_number].module_name);
+			VERBOSE(STATISTICS,"! Error while recving from module %d_%s !\n", running_module_number, running_modules[running_module_number].module_name);
 			return 0;
 		}
 		total_receved += last_receved;
@@ -1033,7 +1092,7 @@ void connect_to_module_service_ifc(int module, int num_ifc)
 	union tcpip_socket_addr addr;
 
 	get_param_by_delimiter(running_modules[module].module_ifces[num_ifc].ifc_params, &dest_port, ',');
-	VERBOSE("-- connecting to module %d%s on port %s\n",module,running_modules[module].module_name, dest_port);
+	VERBOSE(MODULE_EVENT,"-- Connecting to module %d_%s on port %s\n",module,running_modules[module].module_name, dest_port);
 
 	memset(&addr, 0, sizeof(addr));
 
@@ -1041,13 +1100,13 @@ void connect_to_module_service_ifc(int module, int num_ifc)
 	snprintf(addr.unix_addr.sun_path, sizeof(addr.unix_addr.sun_path) - 1, UNIX_PATH_FILENAME_FORMAT, dest_port);
 	sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (sockfd == -1) {
-		VERBOSE("Error while opening socket.\n");
+		VERBOSE(MODULE_EVENT,"Error while opening socket.\n");
 		running_modules[module].module_service_ifc_isconnected = FALSE;
 		free(dest_port);
 		return;
 	}
 	if (connect(sockfd, (struct sockaddr *) &addr.unix_addr, sizeof(addr.unix_addr)) == -1) {
-		VERBOSE("Error while connecting to module %d%s on port %s\n",module,running_modules[module].module_name, dest_port);
+		VERBOSE(MODULE_EVENT,"Error while connecting to module %d_%s on port %s\n",module,running_modules[module].module_name, dest_port);
 		running_modules[module].module_service_ifc_isconnected = FALSE;
 		free(dest_port);
 		close(sockfd);
@@ -1066,15 +1125,21 @@ void * service_thread_routine(void* arg)
 	int num_served_modules = 0;
 	int x,y;
 
-	while(service_thread_continue == 1)
-	{
+	time_t rawtime;
+	struct tm * timeinfo;
+
+	while(service_thread_continue == 1)	{
 		pthread_mutex_lock(&running_modules_lock);
-		VERBOSE("------>\n");
+		time ( &rawtime );
+		timeinfo = localtime ( &rawtime );
+
+		VERBOSE(MODULE_EVENT,"------> %s", asctime(timeinfo));
+		VERBOSE(STATISTICS,"------> %s", asctime(timeinfo));
 		usleep(100000);
 		update_module_status();
 		restart_modules();
 		usleep(100000);
-		// update_cpu_usage(&last_total_cpu_usage); 
+		update_cpu_usage(&last_total_cpu_usage); 
 		if(running_modules_cnt > num_served_modules) {
 			running_modules[num_served_modules].module_has_service_ifc = FALSE;
 			for(x=0; x<running_modules[num_served_modules].module_ifces_cnt; x++) {
@@ -1120,7 +1185,7 @@ void * service_thread_routine(void* arg)
 					}
 					if(running_modules[x].module_service_ifc_isconnected == TRUE) {
 						if(send(running_modules[x].module_service_sd,(void *) request, sizeof_intptr, 0) == -1) {
-							VERBOSE("Error while sending request to module %d%s.\n",x,running_modules[x].module_name);
+							VERBOSE(STATISTICS,"Error while sending request to module %d_%s.\n",x,running_modules[x].module_name);
 							if (errno == ENOTCONN) {
 								running_modules[x].module_service_ifc_isconnected = FALSE;
 							}
@@ -1140,36 +1205,36 @@ void * service_thread_routine(void* arg)
 					}
 				}
 			}
-			pthread_mutex_unlock(&running_modules_lock);
 			update_graph_values(graph_first_node);
+			pthread_mutex_unlock(&running_modules_lock);
 			// check_graph_values(graph_first_node);
 
 			for(x=0;x<running_modules_cnt;x++) {
-				VERBOSE("NAME:  %s, PID: %d, EN: %d, SIFC: %d, S: %d, ISC: %d | ", running_modules[x].module_name,
-					running_modules[x].module_PID,
+				VERBOSE(STATISTICS,"NAME:  %s, PID: %d, EN: %d, SIFC: %d, S: %d, ISC: %d | ", running_modules[x].module_name,
+					running_modules[x].module_pid,
 					running_modules[x].module_enabled,
 					running_modules[x].module_has_service_ifc,
 					running_modules[x].module_status,
 					running_modules[x].module_service_ifc_isconnected);
 				if(running_modules[x].module_has_service_ifc && running_modules[x].module_service_ifc_isconnected) {
-					VERBOSE("CNT_RM:  ");
+					VERBOSE(STATISTICS,"CNT_RM:  ");
 					for(y=0;y<running_modules[x].module_num_in_ifc;y++) {
-						VERBOSE("%d  ", running_modules[x].module_counters_array[y]);
+						VERBOSE(STATISTICS,"%d  ", running_modules[x].module_counters_array[y]);
 					}
-					VERBOSE("CNT_SM:  ");
+					VERBOSE(STATISTICS,"CNT_SM:  ");
 					for(y=0;y<running_modules[x].module_num_out_ifc;y++) {
-						VERBOSE("%d  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc]);
+						VERBOSE(STATISTICS,"%d  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc]);
 					}
-					VERBOSE("CNT_SB:  ");
+					VERBOSE(STATISTICS,"CNT_SB:  ");
 					for(y=0;y<running_modules[x].module_num_out_ifc;y++) {
-						VERBOSE("%d  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc + running_modules[x].module_num_out_ifc]);
+						VERBOSE(STATISTICS,"%d  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc + running_modules[x].module_num_out_ifc]);
 					}
-					VERBOSE("CNT_AF:  ");
+					VERBOSE(STATISTICS,"CNT_AF:  ");
 					for(y=0;y<running_modules[x].module_num_out_ifc;y++) {
-						VERBOSE("%d  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc + 2*running_modules[x].module_num_out_ifc]);
+						VERBOSE(STATISTICS,"%d  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc + 2*running_modules[x].module_num_out_ifc]);
 					}
 				}
-				VERBOSE("\n");
+				VERBOSE(STATISTICS,"\n");
 			}
 
 			sleep(2);
@@ -1179,7 +1244,7 @@ void * service_thread_routine(void* arg)
 
 	for(x=0;x<running_modules_cnt;x++) {
 		if(running_modules[x].module_has_service_ifc == TRUE && running_modules[x].module_status == TRUE && running_modules[x].module_service_ifc_isconnected == TRUE) {
-			VERBOSE("-- disconnecting from module %d%s\n",x, running_modules[x].module_name);
+			VERBOSE(MODULE_EVENT,"-- disconnecting from module %d_%s\n",x, running_modules[x].module_name);
 			close(running_modules[x].module_service_sd);
 		}
 	}
@@ -1203,7 +1268,7 @@ void stop_service_thread()
 void api_show_graph()
 {
 	if(graph_first_node == NULL) {
-		printf("No module with service ifc running.\n");
+		VERBOSE(N_STDOUT,"No module with service ifc running.\n");
 		return;
 	}
 	generate_graph_code(graph_first_node);
@@ -1218,10 +1283,10 @@ void run_temp_configuration()
 	char * buffer1 = (char *)calloc(1000, sizeof(char));
 	char * buffer2 = (char *)calloc(1000, sizeof(char));
 	char * ptr = buffer1;
-	printf("Paste in xml code with modules configuration starting with <modules> tag and ending with </modules> tag.\n");
+	VERBOSE(N_STDOUT,"Paste in xml code with modules configuration starting with <modules> tag and ending with </modules> tag.\n");
 	while(1) {
-		if(!scanf("%s",ptr)) {
-			printf("Wrong input.\n");
+		if(!fscanf(input_fd,"%s",ptr)) {
+			VERBOSE(N_STDOUT,"Wrong input.\n");
 			continue;
 		}
 		if(strstr(ptr,"</modules>") != NULL) {
@@ -1235,7 +1300,7 @@ void run_temp_configuration()
 	free(buffer1);
 
 	if(load_configuration(FALSE, buffer2) == FALSE) {
-		printf("Xml code was not parsed successfully.\n");
+		VERBOSE(N_STDOUT,"Xml code was not parsed successfully.\n");
 		free(buffer2);
 		pthread_mutex_unlock(&running_modules_lock);
 		return;
@@ -1256,13 +1321,13 @@ void api_run_temp_conf()
 void api_set_verbose_level()
 {
 	int x = 0;
-	printf("Type in 0 or 1 to set verbose level of supervisor:\n");
-	if(!scanf("%d",&x)) {
-		printf("Wrong input.\n");
+	VERBOSE(N_STDOUT,"Type in 0 or 1 to set verbose level of supervisor:\n");
+	if(!fscanf(input_fd,"%d",&x)) {
+		VERBOSE(N_STDOUT,"Wrong input.\n");
 		return;
 	}
 	if(x>1 || x<0) {
-		printf("Wrong input.\n");
+		VERBOSE(N_STDOUT,"Wrong input.\n");
 	} else {
 		verbose_flag = x;
 	}
@@ -1304,7 +1369,7 @@ int parse_arguments(const int * argc, char ** argv)
 
 void print_help()
 {
-	printf("--------------------------\n"
+	VERBOSE(N_STDOUT,"--------------------------\n"
 		   "NEMEA Supervisor:\n"
 		   "Expected arguments to run supervisor are: ./supervisor [-h] [-v] [--show-cpuusage] -f config_file.xml\n"
 		   "Main thread is waiting for input with number of command to execute.\n"
@@ -1380,14 +1445,14 @@ int daemon_init(int * d_sd, int * fd)
 
 	if (p == NULL) {
 		// if we got here, it means we didn't get bound
-		VERBOSE("selectserver: failed to bind");
+		VERBOSE(N_STDOUT,"selectserver: failed to bind");
 		return 10;
 	}
 
 	// listen
 	if (listen(*d_sd, 1) == -1) {
 		//perror("listen");
-		VERBOSE("Listen failed");
+		VERBOSE(N_STDOUT,"Listen failed");
 		return 10;
 	}
 
@@ -1400,10 +1465,10 @@ int daemon_init(int * d_sd, int * fd)
 	fflush(stdout);
 	process_id = fork();
 	if (process_id < 0)	{
-		printf("fork failed!\n");
+		VERBOSE(N_STDOUT,"fork failed!\n");
 		exit(1);
 	} else if (process_id > 0)	{
-		printf("process_id of child process %d \n", process_id);
+		VERBOSE(N_STDOUT,"process_id of child process %d \n", process_id);
 		exit(0);
 	}
 
@@ -1434,25 +1499,30 @@ int daemon_get_client (int * d_sd)
    	addrlen = sizeof remoteaddr;
 	newclient = accept(*d_sd, (struct sockaddr *)&remoteaddr, &addrlen);
 	if (newclient == -1) {
-		VERBOSE("Accepting new client failed.");
+		VERBOSE(N_STDOUT,"Accepting new client failed.");
 	}
-	printf("Client has connected.\n");
+	VERBOSE(N_STDOUT,"Client has connected.\n");
 	return newclient;
 }
 
 
 void daemon_mode(int * arg)
 {
+	int x = 0;
 	int daemon_sd = *arg;
-	int client_sd;
-	int supervisor_output_file;
+	int client_sd = -1;
+	FILE * client_stream_input = NULL;
+	FILE * client_stream_output = NULL;
+
 	int terminated = FALSE;
 
-	int ret_val;
-	int request;
-	char buffer[50];
-	memset(buffer,0,50);
+	int ret_val = 0;
+	int request = -1;
+	char buffer[1000];
+	memset(buffer,0,1000);
 
+	fd_set read_fds;
+	struct timeval tv;
 
 	int connected = FALSE;
 
@@ -1463,103 +1533,166 @@ void daemon_mode(int * arg)
 			connected = FALSE;
 			continue;
 		}
+
+
+		client_stream_input = fdopen(client_sd, "r");
+		if(client_stream_input == NULL) {
+			VERBOSE(N_STDOUT,"Fdopen error\n");
+			close(client_sd);
+			continue;
+		}
+
+		client_stream_output = fdopen(client_sd, "w");
+		if(client_stream_output == NULL) {
+			VERBOSE(N_STDOUT,"Fdopen error\n");
+			fclose(client_stream_input);
+			close(client_sd);
+			continue;
+		}
+
+
+
+		int client_stream_input_fd = fileno(client_stream_input);
+		if(client_stream_input_fd < 0) {
+			VERBOSE(N_STDOUT,"Fdopen error\n");
+			fclose(client_stream_input);
+			fclose(client_stream_output);
+			close(client_sd);
+			continue;
+		}
+
 		connected = TRUE;
 
+		input_fd = client_stream_input;
+		output_fd = client_stream_output;
+
+		VERBOSE(N_STDOUT,"--------OPTIONS--------\n");
+		VERBOSE(N_STDOUT,"1. RUN CONFIGURATION\n");
+		VERBOSE(N_STDOUT,"2. STOP CONFIGURATION\n");
+		VERBOSE(N_STDOUT,"3. START MODUL\n");
+		VERBOSE(N_STDOUT,"4. STOP MODUL\n");
+		VERBOSE(N_STDOUT,"5. SET MODULE ENABLED\n");
+		VERBOSE(N_STDOUT,"6. STARTED MODULES STATUS\n");
+		VERBOSE(N_STDOUT,"7. AVAILABLE MODULES\n");
+		VERBOSE(N_STDOUT,"8. SHOW GRAPH\n");
+		VERBOSE(N_STDOUT,"9. RUN TEMP CONF\n");
+		VERBOSE(N_STDOUT,"10. STOP SUPERVISOR-DAEMON\n");
+		VERBOSE(N_STDOUT,"-- Type \"quit\" to exit client --\n");
+
 		while(connected) {
-			// serve client
-			ret_val = recv(client_sd,&request,sizeof(request),0);
-			if(ret_val == 0) {
-				printf("Client has disconnected.\n");
+			request = -1;
+
+			FD_ZERO(&read_fds);
+			FD_SET(client_stream_input_fd, &read_fds);
+
+			tv.tv_sec = 1;
+			tv.tv_usec = 0;
+
+			ret_val = select(client_stream_input_fd+1, &read_fds, NULL, NULL, &tv);
+			
+			if (ret_val == -1) {
+				perror("select()");
+				fclose(client_stream_input);
+				fclose(client_stream_output);
+				close(client_sd);
 				connected = FALSE;
+				input_fd = stdin;
+				output_fd = stdout;
 				break;
-			} else if (ret_val == -1) {
-				printf("Error while recving.\n");
-				connected = FALSE;
-				break;
-			}
-			switch(request) {
+			} else if (ret_val) {
 
-				// api_set_verbose_level();
-				// api_start_module();		
-				// api_stop_module();
-				// api_set_module_enabled();
-				// api_run_temp_conf();
+				if (FD_ISSET(client_stream_input_fd, &read_fds)) {
+					ioctl(client_stream_input_fd, FIONREAD, &x);
+					if (x == 0) {
+						input_fd = stdin;
+						output_fd = stdout;
+						VERBOSE(N_STDOUT, "Client has disconnected.\n");
+						connected = FALSE;
+						fclose(client_stream_input);
+						fclose(client_stream_output);
+						close(client_sd);
+						break;
+					} 
 
-				case 0:
-					sprintf(buffer,"OK");
-					break;
+					if(fscanf(input_fd,"%s",buffer) != 1) {
+						connected = FALSE;
+					}
+					sscanf(buffer,"%d", &request);
 
-				case 1:
-					api_start_configuration();
-					sprintf(buffer,"OK");
-					break;
+					switch(request){
 
-				case 2:
-					api_stop_configuration();
-					sprintf(buffer,"OK");
-					break;
+					case 1:
+						api_start_configuration();
+						break;
 
-				case 3:
-					sprintf(buffer,"OK");
-					break;
+					case 2:
+						api_stop_configuration();
+						break;
 
-				case 4:
-					sprintf(buffer,"OK");
-					break;
+					case 3:
+						api_start_module();
+						break;
 
-				case 5:
-					sprintf(buffer,"OK");
-					break;
+					case 4:
+						api_stop_module();
+						break;
 
-				case 6:
-					api_show_running_modules_status();
-					sprintf(buffer,"OK");
-					break;
+					case 5:
+						api_set_module_enabled();
+						break;
 
-				case 7:
-					api_show_available_modules();
-					sprintf(buffer,"OK");
-					break;
+					case 6:
+						api_show_running_modules_status();
+						break;
 
-				case 8:
-					api_show_graph();
-					sprintf(buffer,"OK");
-					break;
+					case 7:
+						api_show_available_modules();
+						break;
 
-				case 9:
-					sprintf(buffer,"OK");
-					break;
+					case 8:
+						api_show_graph();
+						break;
 
-				case 10:
-					api_quit();
-					sprintf(buffer,"OK");
-					connected = FALSE;
-					terminated = TRUE;
-					break;
+					case 9:
+						api_run_temp_conf();
+						break;
 
-				default:
-					sprintf(buffer,"Wrong input");
-					break;
+					case 10:
+						api_quit();
+						connected = FALSE;
+						terminated = TRUE;
+						break;
 
-			}
+					default:
+						VERBOSE(N_STDOUT, "chyba\n");
+						break;
+					}
 
-			ret_val = send(client_sd,buffer,50,0);
-			if(ret_val == 0) {
-				printf("Send returned 0\n");
-				connected = FALSE;
-				break;
-			} else if (ret_val == -1) {
-				printf("Error while sending.\n");
-				if (errno == ENOTCONN) {
-					printf("errno ENOTCONN\n");
+					VERBOSE(N_STDOUT,"--------OPTIONS--------\n");
+					VERBOSE(N_STDOUT,"1. RUN CONFIGURATION\n");
+					VERBOSE(N_STDOUT,"2. STOP CONFIGURATION\n");
+					VERBOSE(N_STDOUT,"3. START MODUL\n");
+					VERBOSE(N_STDOUT,"4. STOP MODUL\n");
+					VERBOSE(N_STDOUT,"5. SET MODULE ENABLED\n");
+					VERBOSE(N_STDOUT,"6. STARTED MODULES STATUS\n");
+					VERBOSE(N_STDOUT,"7. AVAILABLE MODULES\n");
+					VERBOSE(N_STDOUT,"8. SHOW GRAPH\n");
+					VERBOSE(N_STDOUT,"9. RUN TEMP CONF\n");
+					VERBOSE(N_STDOUT,"10. STOP SUPERVISOR-DAEMON\n");
+					VERBOSE(N_STDOUT,"-- Type \"quit\" to exit client --\n");
+
 				}
-				connected = FALSE;
-				break;
+			} else {
+
 			}
+
+			printf(".");
+			fsync(client_stream_input_fd);
+			memset(buffer,0,1000);
+			fflush(output_fd);
 		}
 	}
 
-	close(supervisor_output_file);
 	close(client_sd);
 	close(daemon_sd);
 	unlink(DAEMON_UNIX_PATH_FILENAME_FORMAT);

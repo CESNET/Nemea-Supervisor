@@ -111,7 +111,7 @@ typedef struct running_module {
 	char *			module_name; ///< Module name (flowcounter...)
 	int 			module_status; ///< Module status (TRUE ~ ok, FALSE ~ not ok)
 	int				module_restart_cnt; ///< Number of module restarts (after MAX_RESTARTS supervisor will not try to restart broken module again)
-	pid_t			module_PID; ///< Module PID
+	pid_t			module_pid; ///< Module PID
 	char *			module_path; ///< Path to module from current directory
 	int 			module_number; ///< Module number in configuration (needed for restart)
 	interface_t *		module_ifces; ///< Array of "interface" structures with information about every interface of module
