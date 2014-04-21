@@ -61,6 +61,8 @@
 #include <signal.h>
 #include <time.h>
 #include <sys/ioctl.h>
+#include <net/if.h>
+#include <ifaddrs.h>
 
 #define LOGSDIR_NAME 	"./modules_logs/" ///< Name of directory with logs
 #define TRAP_PARAM 		"-i" ///< Interface parameter for libtrap
@@ -69,29 +71,28 @@
 #define UNIX_PATH_FILENAME_FORMAT   "/tmp/trap-localhost-%s.sock"
 #define DAEMON_UNIX_PATH_FILENAME_FORMAT	"/tmp/supervisor_daemon.sock"
 
+
 #define STATISTICS 		1
 #define MODULE_EVENT 	2
 #define N_STDOUT 		3
 
 /*******GLOBAL VARIABLES*******/
-module_atr_t * 		modules;  ///< Information about modules from loaded xml config file
 running_module_t * 	running_modules;  ///< Information about running modules
 
-int		modules_cnt;  ///< Number of modules from loaded xml config file
-int 	modules_array_size;
-int 	running_modules_cnt;  ///< Number of running modules
-int 	running_modules_array_size;
+int 			running_modules_array_size;
+int 			loaded_modules_cnt;
 
 pthread_mutex_t running_modules_lock; ///< mutex for locking counters
-int service_thread_continue; ///< condition variable of main loop of the service_thread
-int configuration_running; ///< if whole configuration was executed than ~ 1, else ~ 0
+int 			service_thread_continue; ///< condition variable of main loop of the service_thread
+int 			configuration_running; ///< if whole configuration was executed than ~ 1, else ~ 0
 
-graph_node_t * graph_first_node;
-graph_node_t * graph_last_node;
+graph_node_t * 	graph_first_node;
+graph_node_t * 	graph_last_node;
 
 // int verbose_level;
 
-pthread_t * service_thread_id;
+pthread_t * 	service_thread_id;
+pthread_t * 	acceptor_thread_id;
 
 // supervisor flags
 int 	help_flag; 			// -h argument
@@ -106,6 +107,16 @@ FILE * output_fd;
 
 FILE * statistics_fd;
 FILE * module_event_fd;
+
+int 			remote_supervisor_socketd;
+int 			remote_supervisor_connected;
+char 			remote_supervisor_address[50];
+char 			supervisor_address[50];
+
+int 			selected_module;
+
+int 			start_range_reserved_ports;
+int 			next_reserved_port;
 
 /**********************/
 //  #define VERBOSE(format,args...) if (verbose_flag) { \
@@ -141,7 +152,6 @@ void print_msg(int level, char *string)
 }
 
 
-
 /**************************************/
 
 union tcpip_socket_addr {
@@ -149,11 +159,64 @@ union tcpip_socket_addr {
    struct sockaddr_un unix_addr; ///< used for path of UNIX socket
 };
 
+void * remote_supervisor_accept_routine();
 void start_service_thread();
 void stop_service_thread();
 int parse_arguments(const int * argc, char ** argv);
 void print_help();
 void daemon_mode();
+
+
+void get_local_IP ()
+{
+	struct ifaddrs *myaddrs, *ifa;
+    void *in_addr;
+
+    if(getifaddrs(&myaddrs) != 0) {
+        perror("getifaddrs");
+        exit(1);
+    }
+
+    for (ifa = myaddrs; ifa != NULL; ifa = ifa->ifa_next) {
+        if (ifa->ifa_addr == NULL){
+            continue;
+        }
+        if (!(ifa->ifa_flags & IFF_UP)) {
+            continue;
+        }
+
+        switch (ifa->ifa_addr->sa_family)
+        {
+            case AF_INET:
+            {
+                struct sockaddr_in *s4 = (struct sockaddr_in *)ifa->ifa_addr;
+                in_addr = &s4->sin_addr;
+                if(strcmp(ifa->ifa_name,"eth0") == 0){
+                	if (!inet_ntop(ifa->ifa_addr->sa_family, in_addr, supervisor_address, 50)) {
+			            printf("%s: inet_ntop failed!\n", ifa->ifa_name);
+			        } else {
+			            printf("%s: %s\n", ifa->ifa_name, supervisor_address);
+			        }
+			        freeifaddrs(myaddrs);
+			        return;
+                }
+                break;
+            }
+
+            case AF_INET6:
+            {
+                struct sockaddr_in6 *s6 = (struct sockaddr_in6 *)ifa->ifa_addr;
+                in_addr = &s6->sin6_addr;
+                break;
+            }
+
+            default:
+                continue;
+        }
+    }
+
+    freeifaddrs(myaddrs);
+}
 
 /**if choice TRUE -> parse file, else parse buffer*/
 int load_configuration (const int choice, const char * buffer)
@@ -218,17 +281,24 @@ int load_configuration (const int choice, const char * buffer)
 		if (!xmlStrcmp(module_ptr->name,BAD_CAST "module"))	{
 
 			//check allocated memory, if we dont have enough -> realloc
-			if(modules_cnt == modules_array_size) {
+			if(loaded_modules_cnt == running_modules_array_size) {
 				VERBOSE(N_STDOUT,"REALLOCING MODULES ARRAY --->\n");
-				int origin_size = modules_array_size;
-				modules_array_size += modules_array_size/2;
-				modules = (module_atr_t * ) realloc (modules, (modules_array_size)*sizeof(module_atr_t));
-				memset(modules + origin_size,0,(origin_size/2)*sizeof(module_atr_t));
-				for(y=modules_cnt; y<modules_array_size; y++) {
-					modules[y].module_ifces = (interface_t *) calloc (IFCES_ARRAY_START_SIZE, sizeof(interface_t));
-					modules[y].module_running = FALSE;
-					modules[y].module_ifces_array_size = IFCES_ARRAY_START_SIZE;
-					modules[y].module_ifces_cnt = 0;
+				int origin_size = running_modules_array_size;
+				running_modules_array_size += running_modules_array_size/2;
+				running_modules = (running_module_t * ) realloc (running_modules, (running_modules_array_size)*sizeof(running_module_t));
+				memset(running_modules + origin_size,0,(origin_size/2)*sizeof(running_module_t));
+				for(y=loaded_modules_cnt; y<running_modules_array_size; y++) {
+					running_modules[y].module_ifces = (interface_t *) calloc (IFCES_ARRAY_START_SIZE, sizeof(interface_t));
+					running_modules[y].module_running = FALSE;
+					running_modules[y].module_ifces_array_size = IFCES_ARRAY_START_SIZE;
+					running_modules[y].module_ifces_cnt = 0;
+				}
+				graph_node_t * node_ptr = graph_first_node;
+				x = 0;
+				while(node_ptr != NULL) {
+					node_ptr->module_data = (void *) &running_modules[x];
+					node_ptr = node_ptr->next_node;
+					x++;
 				}
 			}
 			module_atr = module_ptr->xmlChildrenNode;
@@ -237,31 +307,31 @@ int load_configuration (const int choice, const char * buffer)
 				if ((!xmlStrcmp(module_atr->name,BAD_CAST "params"))) {
 					key = xmlNodeListGetString(xml_tree, module_atr->xmlChildrenNode, 1);
 					if(key == NULL) {
-						modules[modules_cnt].module_params = NULL;
+						running_modules[loaded_modules_cnt].module_params = NULL;
 					} else {
 						str_len = strlen((char *) key);
-						modules[modules_cnt].module_params = (char *) calloc (str_len+1, sizeof(char));
-						strncpy(modules[modules_cnt].module_params, (char *) key, str_len+1);
+						running_modules[loaded_modules_cnt].module_params = (char *) calloc (str_len+1, sizeof(char));
+						strncpy(running_modules[loaded_modules_cnt].module_params, (char *) key, str_len+1);
 						xmlFree(key);
 					}
 				} else if ((!xmlStrcmp(module_atr->name,BAD_CAST "name"))) {
 					key = xmlNodeListGetString(xml_tree, module_atr->xmlChildrenNode, 1);
 					if(key == NULL) {
-						modules[modules_cnt].module_name = NULL;
+						running_modules[loaded_modules_cnt].module_name = NULL;
 					} else {
 						str_len = strlen((char *) key);
-						modules[modules_cnt].module_name = (char *) calloc (str_len+1, sizeof(char));
-						strncpy(modules[modules_cnt].module_name, (char *) key, str_len+1);
+						running_modules[loaded_modules_cnt].module_name = (char *) calloc (str_len+1, sizeof(char));
+						strncpy(running_modules[loaded_modules_cnt].module_name, (char *) key, str_len+1);
 						xmlFree(key);
 					}
 				} else if ((!xmlStrcmp(module_atr->name,BAD_CAST "path"))) {
 					key = xmlNodeListGetString(xml_tree, module_atr->xmlChildrenNode, 1);
 					if(key == NULL) {
-						modules[modules_cnt].module_path = NULL;
+						running_modules[loaded_modules_cnt].module_path = NULL;
 					} else {
 						str_len = strlen((char *) key);
-						modules[modules_cnt].module_path = (char *) calloc (str_len+1, sizeof(char));
-						strncpy(modules[modules_cnt].module_path, (char *) key, str_len+1);
+						running_modules[loaded_modules_cnt].module_path = (char *) calloc (str_len+1, sizeof(char));
+						strncpy(running_modules[loaded_modules_cnt].module_path, (char *) key, str_len+1);
 						xmlFree(key);
 					}
 				} else if ((!xmlStrcmp(module_atr->name,BAD_CAST "trapinterfaces")))	{
@@ -271,53 +341,53 @@ int load_configuration (const int choice, const char * buffer)
 					while (ifc_ptr != NULL) {
 						if (!xmlStrcmp(ifc_ptr->name,BAD_CAST "interface")) {
 							ifc_atr = ifc_ptr->xmlChildrenNode;
-							if(ifc_cnt == modules[modules_cnt].module_ifces_array_size) {
+							if(ifc_cnt == running_modules[loaded_modules_cnt].module_ifces_array_size) {
 								VERBOSE(N_STDOUT,"REALLOCING MODULE INTERFACES ARRAY --->\n");
-								int origin_size = modules[modules_cnt].module_ifces_array_size;
-								modules[modules_cnt].module_ifces_array_size += modules[modules_cnt].module_ifces_array_size/2;
-								modules[modules_cnt].module_ifces = (interface_t *) realloc (modules[modules_cnt].module_ifces, (modules[modules_cnt].module_ifces_array_size) * sizeof(interface_t));
-								memset(modules[modules_cnt].module_ifces + origin_size,0,(origin_size/2)*sizeof(interface_t));
+								int origin_size = running_modules[loaded_modules_cnt].module_ifces_array_size;
+								running_modules[loaded_modules_cnt].module_ifces_array_size += running_modules[loaded_modules_cnt].module_ifces_array_size/2;
+								running_modules[loaded_modules_cnt].module_ifces = (interface_t *) realloc (running_modules[loaded_modules_cnt].module_ifces, (running_modules[loaded_modules_cnt].module_ifces_array_size) * sizeof(interface_t));
+								memset(running_modules[loaded_modules_cnt].module_ifces + origin_size,0,(origin_size/2)*sizeof(interface_t));
 							}
 
 							while (ifc_atr != NULL) {
 								if ((!xmlStrcmp(ifc_atr->name,BAD_CAST "note"))) {
 									key =xmlNodeListGetString(xml_tree, ifc_atr->xmlChildrenNode, 1);
 									if(key == NULL) {
-										modules[modules_cnt].module_ifces[ifc_cnt].ifc_note = NULL;
+										running_modules[loaded_modules_cnt].module_ifces[ifc_cnt].ifc_note = NULL;
 									} else {
 										str_len = strlen((char *) key);
-										modules[modules_cnt].module_ifces[ifc_cnt].ifc_note = (char *) calloc (str_len+1, sizeof(char));
-										strncpy(modules[modules_cnt].module_ifces[ifc_cnt].ifc_note , (char *) key, str_len+1);
+										running_modules[loaded_modules_cnt].module_ifces[ifc_cnt].ifc_note = (char *) calloc (str_len+1, sizeof(char));
+										strncpy(running_modules[loaded_modules_cnt].module_ifces[ifc_cnt].ifc_note , (char *) key, str_len+1);
 										xmlFree(key);
 									}
 								} else if ((!xmlStrcmp(ifc_atr->name,BAD_CAST "type"))) {
 									key =xmlNodeListGetString(xml_tree, ifc_atr->xmlChildrenNode, 1);
 									if(key == NULL) {
-										modules[modules_cnt].module_ifces[ifc_cnt].ifc_type = NULL;
+										running_modules[loaded_modules_cnt].module_ifces[ifc_cnt].ifc_type = NULL;
 									} else {
 										str_len = strlen((char *) key);
-										modules[modules_cnt].module_ifces[ifc_cnt].ifc_type = (char *) calloc (str_len+1, sizeof(char));
-										strncpy(modules[modules_cnt].module_ifces[ifc_cnt].ifc_type, (char *) key, str_len+1);
+										running_modules[loaded_modules_cnt].module_ifces[ifc_cnt].ifc_type = (char *) calloc (str_len+1, sizeof(char));
+										strncpy(running_modules[loaded_modules_cnt].module_ifces[ifc_cnt].ifc_type, (char *) key, str_len+1);
 										xmlFree(key);
 									}
 								} else if ((!xmlStrcmp(ifc_atr->name,BAD_CAST "direction"))) {
 									key =xmlNodeListGetString(xml_tree, ifc_atr->xmlChildrenNode, 1);
 									if(key == NULL) {
-										modules[modules_cnt].module_ifces[ifc_cnt].ifc_direction= NULL;
+										running_modules[loaded_modules_cnt].module_ifces[ifc_cnt].ifc_direction= NULL;
 									} else {
 										str_len = strlen((char *) key);
-										modules[modules_cnt].module_ifces[ifc_cnt].ifc_direction = (char *) calloc (str_len+1, sizeof(char));
-										strncpy(modules[modules_cnt].module_ifces[ifc_cnt].ifc_direction, (char *) key, str_len+1);
+										running_modules[loaded_modules_cnt].module_ifces[ifc_cnt].ifc_direction = (char *) calloc (str_len+1, sizeof(char));
+										strncpy(running_modules[loaded_modules_cnt].module_ifces[ifc_cnt].ifc_direction, (char *) key, str_len+1);
 										xmlFree(key);
 									}
 								} else if ((!xmlStrcmp(ifc_atr->name,BAD_CAST "params"))) {
 									key =xmlNodeListGetString(xml_tree, ifc_atr->xmlChildrenNode, 1);
 									if(key == NULL) {
-										modules[modules_cnt].module_ifces[ifc_cnt].ifc_params = NULL;
+										running_modules[loaded_modules_cnt].module_ifces[ifc_cnt].ifc_params = NULL;
 									} else {
 										str_len = strlen((char *) key);
-										modules[modules_cnt].module_ifces[ifc_cnt].ifc_params = (char *) calloc (str_len+1, sizeof(char));
-										strncpy(modules[modules_cnt].module_ifces[ifc_cnt].ifc_params, (char *) key, str_len+1);
+										running_modules[loaded_modules_cnt].module_ifces[ifc_cnt].ifc_params = (char *) calloc (str_len+1+10, sizeof(char));
+										strncpy(running_modules[loaded_modules_cnt].module_ifces[ifc_cnt].ifc_params, (char *) key, str_len+1);
 										xmlFree(key);
 									}
 								}
@@ -325,7 +395,7 @@ int load_configuration (const int choice, const char * buffer)
 							}
 
 							ifc_cnt++;
-							modules[modules_cnt].module_ifces_cnt++;
+							running_modules[loaded_modules_cnt].module_ifces_cnt++;
 						}
 						ifc_ptr = ifc_ptr->next;
 					}
@@ -333,7 +403,14 @@ int load_configuration (const int choice, const char * buffer)
 
 				module_atr = module_atr->next;
 			}
-			modules_cnt++;
+			for(x=0; x<running_modules[loaded_modules_cnt].module_ifces_cnt; x++) {
+				if(strncmp(running_modules[loaded_modules_cnt].module_ifces[x].ifc_direction, "IN", 2) == 0) {
+					running_modules[loaded_modules_cnt].module_num_in_ifc++;
+				} else if (strncmp(running_modules[loaded_modules_cnt].module_ifces[x].ifc_direction, "OUT", 3) == 0) {
+					running_modules[loaded_modules_cnt].module_num_out_ifc++;
+				}
+			}
+			loaded_modules_cnt++;
 		}
 		module_ptr = module_ptr->next;
 	}
@@ -348,14 +425,14 @@ void print_configuration ()
 	int x,y = 0;
 	VERBOSE(N_STDOUT,"---PRINTING CONFIGURATION---\n");
 
-	for (x=0; x < modules_cnt; x++) {
-		VERBOSE(N_STDOUT,"%d_%s:  PATH:%s  PARAMS:%s\n", x, modules[x].module_name, modules[x].module_path, modules[x].module_params);
+	for (x=0; x < loaded_modules_cnt; x++) {
+		VERBOSE(N_STDOUT,"%d_%s:  PATH:%s  PARAMS:%s\n", x, running_modules[x].module_name, running_modules[x].module_path, running_modules[x].module_params);
 
-		for(y=0; y<modules[x].module_ifces_cnt; y++) {
-			VERBOSE(N_STDOUT,"\tIFC%d\tNOTE: %s\n",y, modules[x].module_ifces[y].ifc_note);
-			VERBOSE(N_STDOUT,"\t\tTYPE: %s\n", modules[x].module_ifces[y].ifc_type);
-			VERBOSE(N_STDOUT,"\t\tDIRECTION: %s\n", modules[x].module_ifces[y].ifc_direction);
-			VERBOSE(N_STDOUT,"\t\tPARAMS: %s\n", modules[x].module_ifces[y].ifc_params);
+		for(y=0; y<running_modules[x].module_ifces_cnt; y++) {
+			VERBOSE(N_STDOUT,"\tIFC%d\tNOTE: %s\n",y, running_modules[x].module_ifces[y].ifc_note);
+			VERBOSE(N_STDOUT,"\t\tTYPE: %s\n", running_modules[x].module_ifces[y].ifc_type);
+			VERBOSE(N_STDOUT,"\t\tDIRECTION: %s\n", running_modules[x].module_ifces[y].ifc_direction);
+			VERBOSE(N_STDOUT,"\t\tPARAMS: %s\n", running_modules[x].module_ifces[y].ifc_params);
 		}
 	}
 }
@@ -368,48 +445,48 @@ char ** make_module_arguments (const int number_of_module)
 	char * ptr = atr;
 	int str_len;
 
-	for(x=0; x<modules[number_of_module].module_ifces_cnt; x++) {
-		if (!strncmp(modules[number_of_module].module_ifces[x].ifc_direction, "IN", 2)) {
-			if (!strncmp(modules[number_of_module].module_ifces[x].ifc_type, "TCP", 3)) {
+	for(x=0; x<running_modules[number_of_module].module_ifces_cnt; x++) {
+		if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_direction, "IN", 2)) {
+			if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type, "TCP", 3)) {
 				strncpy(ptr,"t",1);
 				ptr++;
-			} else if (!strncmp(modules[number_of_module].module_ifces[x].ifc_type, "UNIXSOCKET", 10)) {
+			} else if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type, "UNIXSOCKET", 10)) {
 				strncpy(ptr,"u",1);
 				ptr++;
 			} else {
-				VERBOSE(N_STDOUT,"%s\n", modules[number_of_module].module_ifces[x].ifc_type);
+				VERBOSE(N_STDOUT,"%s\n", running_modules[number_of_module].module_ifces[x].ifc_type);
 				VERBOSE(N_STDOUT,"Wrong ifc_type in module %d.\n", number_of_module);
 				return NULL;
 			}
 		}
 	}
 
-	for(x=0; x<modules[number_of_module].module_ifces_cnt; x++) {
-		if (!strncmp(modules[number_of_module].module_ifces[x].ifc_direction,"OUT", 3)) {
-			if (!strncmp(modules[number_of_module].module_ifces[x].ifc_type, "TCP", 3)) {
+	for(x=0; x<running_modules[number_of_module].module_ifces_cnt; x++) {
+		if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_direction,"OUT", 3)) {
+			if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type, "TCP", 3)) {
 				strncpy(ptr,"t",1);
 				ptr++;
-			} else if (!strncmp(modules[number_of_module].module_ifces[x].ifc_type, "UNIXSOCKET", 10)) {
+			} else if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type, "UNIXSOCKET", 10)) {
 				strncpy(ptr,"u",1);
 				ptr++;
 			} else {
-				VERBOSE(N_STDOUT,"%s\n", modules[number_of_module].module_ifces[x].ifc_type);
+				VERBOSE(N_STDOUT,"%s\n", running_modules[number_of_module].module_ifces[x].ifc_type);
 				VERBOSE(N_STDOUT,"Wrong ifc_type in module %d.\n", number_of_module);
 				return NULL;
 			}
 		}
 	}
 
-	for(x=0; x<modules[number_of_module].module_ifces_cnt; x++) {
-		if (!strncmp(modules[number_of_module].module_ifces[x].ifc_direction,"SERVICE", 7)) {
-			if (!strncmp(modules[number_of_module].module_ifces[x].ifc_type, "TCP", 3)) {
+	for(x=0; x<running_modules[number_of_module].module_ifces_cnt; x++) {
+		if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_direction,"SERVICE", 7)) {
+			if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type, "TCP", 3)) {
 				strncpy(ptr,"s",1);
 				ptr++;
-			} else if (!strncmp(modules[number_of_module].module_ifces[x].ifc_type, "UNIXSOCKET", 10)) {
+			} else if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type, "UNIXSOCKET", 10)) {
 				strncpy(ptr,"s",1);
 				ptr++;
 			} else {
-				VERBOSE(N_STDOUT,"%s\n", modules[number_of_module].module_ifces[x].ifc_type);
+				VERBOSE(N_STDOUT,"%s\n", running_modules[number_of_module].module_ifces[x].ifc_type);
 				VERBOSE(N_STDOUT,"Wrong ifc_type in module %d.\n", number_of_module);
 				return NULL;
 			}
@@ -419,36 +496,36 @@ char ** make_module_arguments (const int number_of_module)
 	strncpy(ptr,";",1);
 	ptr++;
 
-	for(x=0; x<modules[number_of_module].module_ifces_cnt; x++) {
-		if (!strncmp(modules[number_of_module].module_ifces[x].ifc_direction,"IN", 2)) {
-			sprintf(ptr,"%s;",modules[number_of_module].module_ifces[x].ifc_params);
-			ptr += strlen(modules[number_of_module].module_ifces[x].ifc_params) + 1;
+	for(x=0; x<running_modules[number_of_module].module_ifces_cnt; x++) {
+		if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_direction,"IN", 2)) {
+			sprintf(ptr,"%s;",running_modules[number_of_module].module_ifces[x].ifc_params);
+			ptr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1;
 		}
 	}
 
-	for(x=0; x<modules[number_of_module].module_ifces_cnt; x++) {
-		if (!strncmp(modules[number_of_module].module_ifces[x].ifc_direction,"OUT", 3)) {
-			sprintf(ptr,"%s;",modules[number_of_module].module_ifces[x].ifc_params);
-			ptr += strlen(modules[number_of_module].module_ifces[x].ifc_params) + 1;
+	for(x=0; x<running_modules[number_of_module].module_ifces_cnt; x++) {
+		if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_direction,"OUT", 3)) {
+			sprintf(ptr,"%s;",running_modules[number_of_module].module_ifces[x].ifc_params);
+			ptr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1;
 		}
 	}
 
-	for(x=0; x<modules[number_of_module].module_ifces_cnt; x++) {
-		if (!strncmp(modules[number_of_module].module_ifces[x].ifc_direction,"SERVICE", 7)) {
-			sprintf(ptr,"%s;",modules[number_of_module].module_ifces[x].ifc_params);
-			ptr += strlen(modules[number_of_module].module_ifces[x].ifc_params) + 1;
+	for(x=0; x<running_modules[number_of_module].module_ifces_cnt; x++) {
+		if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_direction,"SERVICE", 7)) {
+			sprintf(ptr,"%s;",running_modules[number_of_module].module_ifces[x].ifc_params);
+			ptr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1;
 		}
 	}
 	memset(ptr-1,0,1);
 
 	char ** params = NULL;
-	if (modules[number_of_module].module_params == NULL) {
+	if (running_modules[number_of_module].module_params == NULL) {
 
 		params = (char **) calloc (4,sizeof(char*));
 
-		str_len = strlen(modules[number_of_module].module_name);
+		str_len = strlen(running_modules[number_of_module].module_name);
 		params[0] = (char *) calloc (str_len+1, sizeof(char)); 	// binary name for exec
-		strncpy(params[0],modules[number_of_module].module_name, str_len+1);
+		strncpy(params[0],running_modules[number_of_module].module_name, str_len+1);
 		str_len = strlen(TRAP_PARAM);
 		params[1] = (char *) calloc (str_len+1,sizeof(char)); 	// libtrap param "-i"
 		strncpy(params[1],TRAP_PARAM,str_len+1);
@@ -462,18 +539,18 @@ char ** make_module_arguments (const int number_of_module)
 		int params_counter;
 		char buffer[100];
 		int num_module_params = 0;
-		int module_params_length = strlen(modules[number_of_module].module_params);
+		int module_params_length = strlen(running_modules[number_of_module].module_params);
 		for(x=0; x<module_params_length; x++) {
-			if(modules[number_of_module].module_params[x] == 32) {
+			if(running_modules[number_of_module].module_params[x] == 32) {
 				num_module_params++;
 			}
 		}
 		num_module_params++;
 
 		params = (char **) calloc (4+num_module_params,sizeof(char*));
-		str_len = strlen(modules[number_of_module].module_name);
+		str_len = strlen(running_modules[number_of_module].module_name);
 		params[0] = (char *) calloc (str_len+1, sizeof(char)); 	// binary name for exec
-		strncpy(params[0],modules[number_of_module].module_name, str_len+1);
+		strncpy(params[0],running_modules[number_of_module].module_name, str_len+1);
 		str_len = strlen(TRAP_PARAM);
 		params[1] = (char *) calloc (str_len+1,sizeof(char)); 	// libtrap param "-i"
 		strncpy(params[1],TRAP_PARAM,str_len+1);
@@ -486,14 +563,14 @@ char ** make_module_arguments (const int number_of_module)
 		y=0;
 		memset(buffer,0,100);
 		for(x=0; x<module_params_length; x++) {
-			if(modules[number_of_module].module_params[x] == 32) {
+			if(running_modules[number_of_module].module_params[x] == 32) {
 				params[params_counter] = (char *) calloc (strlen(buffer)+1,sizeof(char));
 				sprintf(params[params_counter],"%s",buffer);
 				params_counter++;
 				memset(buffer,0,100);
 				y=0;
 			} else {
-				buffer[y] = modules[number_of_module].module_params[x];
+				buffer[y] = running_modules[number_of_module].module_params[x];
 				y++;
 			}
 		}
@@ -523,7 +600,7 @@ int print_menu ()
 	VERBOSE(N_STDOUT,"9. RUN TEMP CONF\n");
 	VERBOSE(N_STDOUT,"10. QUIT\n");
 	if(!fscanf(input_fd,"%d",&ret_val)) {
-		VERBOSE(N_STDOUT,"Wrong input.\n");
+		VERBOSE(N_STDOUT,"Wrong i<Input.\n");
 		return -1;
 	}
 	return ret_val;
@@ -532,12 +609,12 @@ int print_menu ()
 
 void start_module (const int module_number)
 {
-	if(modules[module_number].module_running == TRUE) {
+	if(running_modules[module_number].module_running == TRUE) {
 		VERBOSE(MODULE_EVENT,"Module %d has been already started.\n", module_number);
 		return;
 	} else {
-		VERBOSE(MODULE_EVENT,"Starting module %d_%s.\n", module_number, modules[module_number].module_name);
-		modules[module_number].module_running = TRUE;
+		VERBOSE(MODULE_EVENT,"Starting module %d_%s.\n", module_number, running_modules[module_number].module_name);
+		running_modules[module_number].module_running = TRUE;
 	}
 
 	time_t rawtime;
@@ -549,47 +626,45 @@ void start_module (const int module_number)
 	char log_path_stderr[100];
 	int x = 0;
 
-	if(running_modules_cnt == running_modules_array_size) {
-		VERBOSE(N_STDOUT,"REALLOCING RUNNING MODULES ARRAY --->\n");
-		int origin_size = running_modules_array_size;
-		running_modules_array_size += running_modules_array_size/2;
-		running_modules = (running_module_t *) realloc (running_modules, running_modules_array_size * sizeof(running_module_t));
-		memset(running_modules + origin_size,0,(origin_size/2)*sizeof(running_module_t));
+	// if(running_modules_cnt == running_modules_array_size) {
+	// 	VERBOSE(N_STDOUT,"REALLOCING RUNNING MODULES ARRAY --->\n");
+	// 	int origin_size = running_modules_array_size;
+	// 	running_modules_array_size += running_modules_array_size/2;
+	// 	running_modules = (running_module_t *) realloc (running_modules, running_modules_array_size * sizeof(running_module_t));
+	// 	memset(running_modules + origin_size,0,(origin_size/2)*sizeof(running_module_t));
 
-		//update graph nodes pointers to running module data
-		graph_node_t * node_ptr = graph_first_node;
-		while(node_ptr != NULL) {
-			node_ptr->module_data = (void *) &running_modules[node_ptr->module_number];
-			node_ptr = node_ptr->next_node;
-		}
-	}
+	// 	//update graph nodes pointers to running module data
+	// 	graph_node_t * node_ptr = graph_first_node;
+	// 	while(node_ptr != NULL) {
+	// 		node_ptr->module_data = (void *) &running_modules[node_ptr->module_number];
+	// 		node_ptr = node_ptr->next_node;
+	// 	}
+	// }
 
-	running_modules[running_modules_cnt].module_num_in_ifc = 0;
-	running_modules[running_modules_cnt].module_num_out_ifc = 0;
-	running_modules[running_modules_cnt].module_enabled = TRUE;
-	running_modules[running_modules_cnt].module_name = modules[module_number].module_name;
-	running_modules[running_modules_cnt].module_path = modules[module_number].module_path;
-	running_modules[running_modules_cnt].module_ifces = modules[module_number].module_ifces;
-	running_modules[running_modules_cnt].module_restart_cnt = 0;
-	running_modules[running_modules_cnt].module_number = module_number;
-	running_modules[running_modules_cnt].module_ifces_cnt = modules[module_number].module_ifces_cnt;
-	running_modules[running_modules_cnt].module_service_sd = -1;
+	// running_modules[module_number].module_has_service_ifc = FALSE;
+	// running_modules[module_number].module_served_by_service_thread = FALSE;
+	// running_modules[module_number].module_num_in_ifc = 0;
+	// running_modules[module_number].module_num_out_ifc = 0;
+	running_modules[module_number].module_enabled = TRUE;
+	running_modules[module_number].module_restart_cnt = 0;
+	running_modules[module_number].module_service_sd = -1;
+	running_modules[module_number].remote_module = FALSE;
 
-	for(x=0; x<running_modules[running_modules_cnt].module_ifces_cnt; x++) {
-		if(strncmp(running_modules[running_modules_cnt].module_ifces[x].ifc_direction, "IN", 2) == 0) {
-			running_modules[running_modules_cnt].module_num_in_ifc++;
-		} else if (strncmp(running_modules[running_modules_cnt].module_ifces[x].ifc_direction, "OUT", 3) == 0) {
-			running_modules[running_modules_cnt].module_num_out_ifc++;
-		}
-	}
+	// for(x=0; x<running_modules[module_number].module_ifces_cnt; x++) {
+	// 	if(strncmp(running_modules[module_number].module_ifces[x].ifc_direction, "IN", 2) == 0) {
+	// 		running_modules[module_number].module_num_in_ifc++;
+	// 	} else if (strncmp(running_modules[module_number].module_ifces[x].ifc_direction, "OUT", 3) == 0) {
+	// 		running_modules[module_number].module_num_out_ifc++;
+	// 	}
+	// }
 
-	running_modules[running_modules_cnt].module_counters_array = (int *) calloc (3*running_modules[running_modules_cnt].module_num_out_ifc + running_modules[running_modules_cnt].module_num_in_ifc,sizeof(int));
-	sprintf(log_path_stdout,"%s%d_%s_stdout",LOGSDIR_NAME, running_modules_cnt, modules[module_number].module_name);
-	sprintf(log_path_stderr,"%s%d_%s_stderr",LOGSDIR_NAME, running_modules_cnt, modules[module_number].module_name);
+	running_modules[module_number].module_counters_array = (int *) calloc (3*running_modules[module_number].module_num_out_ifc + running_modules[module_number].module_num_in_ifc,sizeof(int));
+	sprintf(log_path_stdout,"%s%d_%s_stdout",LOGSDIR_NAME, module_number, running_modules[module_number].module_name);
+	sprintf(log_path_stderr,"%s%d_%s_stderr",LOGSDIR_NAME, module_number, running_modules[module_number].module_name);
 	
 	fflush(stdout);
-	running_modules[running_modules_cnt].module_pid = fork();
-	if (running_modules[running_modules_cnt].module_pid == 0) {
+	running_modules[module_number].module_pid = fork();
+	if (running_modules[module_number].module_pid == 0) {
 		int fd_stdout = open(log_path_stdout, O_RDWR | O_CREAT | O_APPEND, PERM_LOGFILE);
 		int fd_stderr = open(log_path_stderr, O_RDWR | O_CREAT | O_APPEND, PERM_LOGFILE);
 		dup2(fd_stdout,1); //stdout
@@ -600,23 +675,24 @@ void start_module (const int module_number)
 		fprintf(stdout,"---> %s | %s   %s   %s    %s\n", asctime (timeinfo), params[0], params[1], params[2], params[3]);
 		fprintf(stderr,"---> %s | %s   %s   %s    %s\n", asctime (timeinfo), params[0], params[1], params[2], params[3]);
 		fflush(stdout);
-		execvp(modules[module_number].module_path, params);
+		execvp(running_modules[module_number].module_path, params);
 		VERBOSE(N_STDOUT,"Error while executing module binary.\n");
-		running_modules[running_modules_cnt].module_enabled = FALSE;
+		running_modules[module_number].module_enabled = FALSE;
 		exit(1);
-	} else if (running_modules[running_modules_cnt].module_pid == -1) {
-		running_modules[running_modules_cnt].module_status = FALSE;
-		running_modules_cnt++;
+	} else if (running_modules[module_number].module_pid == -1) {
+		running_modules[module_number].module_status = FALSE;
 		VERBOSE(N_STDOUT,"Error in fork.\n");
 	} else {
-		running_modules[running_modules_cnt].module_status = TRUE;
-		running_modules_cnt++;
+		running_modules[module_number].module_status = TRUE;
 	}
 }
 
 void restart_module (const int module_number)
 {
-
+	if(running_modules[module_number].module_running == FALSE){
+		start_module(module_number);
+		return;
+	}
 	VERBOSE(MODULE_EVENT,"Restarting module %d_%s\n", module_number, running_modules[module_number].module_name);
 	char log_path_stdout[100];
 	char log_path_stderr[100];
@@ -677,26 +753,28 @@ void update_module_status ()
 	int status;
 	pid_t result;
 
-	for (x=0; x<running_modules_cnt; x++) {
-		result = waitpid(running_modules[x].module_pid , &status, WNOHANG);
-		if (result == 0) {
-		  // Child still alive
-		} else if (result == -1) {
-		  // Error
-			if(running_modules[x].module_service_sd != -1) {
-				close(running_modules[x].module_service_sd);
-				running_modules[x].module_service_sd = -1;
+	for (x=0; x<loaded_modules_cnt; x++) {
+		if(running_modules[x].module_running){
+			result = waitpid(running_modules[x].module_pid , &status, WNOHANG);
+			if (result == 0) {
+			  // Child still alive
+			} else if (result == -1) {
+			  // Error
+				if(running_modules[x].module_service_sd != -1) {
+					close(running_modules[x].module_service_sd);
+					running_modules[x].module_service_sd = -1;
+				}
+				running_modules[x].module_status = FALSE;
+				running_modules[x].module_service_ifc_isconnected = FALSE;
+			} else {
+			  // Child exited
+				if(running_modules[x].module_service_sd != -1) {
+					close(running_modules[x].module_service_sd);
+					running_modules[x].module_service_sd = -1;
+				}
+				running_modules[x].module_status = FALSE;
+				running_modules[x].module_service_ifc_isconnected = FALSE;
 			}
-			running_modules[x].module_status = FALSE;
-			running_modules[x].module_service_ifc_isconnected = FALSE;
-		} else {
-		  // Child exited
-			if(running_modules[x].module_service_sd != -1) {
-				close(running_modules[x].module_service_sd);
-				running_modules[x].module_service_sd = -1;
-			}
-			running_modules[x].module_status = FALSE;
-			running_modules[x].module_service_ifc_isconnected = FALSE;
 		}
 	}
 }
@@ -710,7 +788,10 @@ void sigpipe_handler(int sig)
 
 int api_initialization(const int * argc, char ** argv)
 {	
-	printf("%d\n", (int)sizeof(running_module_t));
+	start_range_reserved_ports = 12000;
+	next_reserved_port = start_range_reserved_ports;
+	selected_module = -1;
+	get_local_IP();
 	input_fd = stdin;
 	output_fd = stdout;
 
@@ -743,15 +824,15 @@ int api_initialization(const int * argc, char ** argv)
 
 	int y;
 	VERBOSE(N_STDOUT,"---LOADING CONFIGURATION---\n");
-	modules_cnt = 0;
-	//init modules structures alloc size MODULES_ARRAY_START_SIZE
-	modules_array_size = MODULES_ARRAY_START_SIZE;
-	modules = (module_atr_t * ) calloc (modules_array_size,sizeof(module_atr_t));
-	for(y=0;y<modules_array_size;y++) {
-		modules[y].module_ifces = (interface_t *) calloc (IFCES_ARRAY_START_SIZE, sizeof(interface_t));
-		modules[y].module_running = FALSE;
-		modules[y].module_ifces_array_size = IFCES_ARRAY_START_SIZE;
-		modules[y].module_ifces_cnt = 0;
+	loaded_modules_cnt = 0;
+	//init running_modules structures alloc size RUNNING_MODULES_ARRAY_START_SIZE
+	running_modules_array_size = RUNNING_MODULES_ARRAY_START_SIZE;
+	running_modules = (running_module_t *) calloc (running_modules_array_size,sizeof(running_module_t));
+	for(y=0;y<running_modules_array_size;y++) {
+		running_modules[y].module_ifces = (interface_t *) calloc (IFCES_ARRAY_START_SIZE, sizeof(interface_t));
+		running_modules[y].module_running = FALSE;
+		running_modules[y].module_ifces_array_size = IFCES_ARRAY_START_SIZE;
+		running_modules[y].module_ifces_cnt = 0;
 	}
 
 	//load configuration
@@ -764,8 +845,6 @@ int api_initialization(const int * argc, char ** argv)
 	}
 
 	// verbose_level = 0;
-	running_modules_array_size = RUNNING_MODULES_ARRAY_START_SIZE;
-	running_modules = (running_module_t * ) calloc (running_modules_array_size,sizeof(running_module_t));
 	pthread_mutex_init(&running_modules_lock,NULL);
 	service_thread_continue = TRUE;
 	configuration_running = FALSE;
@@ -806,7 +885,7 @@ void api_start_configuration()
 	VERBOSE(MODULE_EVENT,"Starting configuration...\n");
 	configuration_running = TRUE;
 	int x = 0;
-	for (x=0; x<modules_cnt; x++) {
+	for (x=0; x<loaded_modules_cnt; x++) {
 		start_module(x);
 	}
 	VERBOSE(MODULE_EVENT,"Configuration is running.\n");
@@ -818,8 +897,10 @@ void api_stop_configuration()
 	pthread_mutex_lock(&running_modules_lock);
 	VERBOSE(MODULE_EVENT,"Stopping configuration...\n");
 	int x = 0;
-	for (x=0; x<running_modules_cnt; x++) {
-		stop_module(x);
+	for (x=0; x<loaded_modules_cnt; x++) {
+		if(running_modules[x].module_enabled){
+			stop_module(x);
+		}
 	}
 	VERBOSE(MODULE_EVENT,"Configuration stopped.\n");
 	pthread_mutex_unlock(&running_modules_lock);
@@ -836,10 +917,11 @@ void api_start_module()
 	VERBOSE(N_STDOUT,"Type in module number\n");
 	if(!fscanf(input_fd,"%d",&x)) {
 		VERBOSE(N_STDOUT,"Wrong input.\n");
+		pthread_mutex_unlock(&running_modules_lock);
 		return;
 	}
-	if(x>=modules_cnt || x<0) {
-		VERBOSE(N_STDOUT,"Wrong input, type in 0 - %d.\n", modules_cnt-1);
+	if(x>=loaded_modules_cnt || x<0) {
+		VERBOSE(N_STDOUT,"Wrong input, type in 0 - %d.\n", loaded_modules_cnt-1);
 		pthread_mutex_unlock(&running_modules_lock);
 		return;
 	}
@@ -851,37 +933,39 @@ void api_stop_module()
 {
 	pthread_mutex_lock(&running_modules_lock);
 	int x = 0;
-	char symbol;
-	for (x=0;x<running_modules_cnt;x++) {
+	for (x=0;x<loaded_modules_cnt;x++) {
 		if (running_modules[x].module_status) {
 			VERBOSE(N_STDOUT,"%d_%s running (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
 		}
 	}
-	VERBOSE(N_STDOUT,"Type in number of module to kill: (# for cancel)\n");
-	if(!fscanf(input_fd,"%s",&symbol)) {
+	VERBOSE(N_STDOUT,"Type in number of module to kill:\n");
+	if(!fscanf(input_fd,"%d",&x)) {
 		VERBOSE(N_STDOUT,"Wrong input.\n");
+		pthread_mutex_unlock(&running_modules_lock);
 		return;
 	}
-	if (symbol != '#') {
-		stop_module(symbol - '0');
-	} else if((symbol - '0')>=running_modules_cnt || (symbol - '0')<0) {
-		VERBOSE(N_STDOUT,"Wrong input, type in 0 - %d.\n", running_modules_cnt);
+	if(x>=loaded_modules_cnt || x<0) {
+		VERBOSE(N_STDOUT,"Wrong input, type in 0 - %d.\n", loaded_modules_cnt);
+		pthread_mutex_unlock(&running_modules_lock);
 		return;
+	} else {
+		stop_module(x);
 	}
 	pthread_mutex_unlock(&running_modules_lock);
 }
 
 void api_set_module_enabled()
 {
-	int x;
+	int x = 0;
 	pthread_mutex_lock(&running_modules_lock);
 	VERBOSE(N_STDOUT,"Type in module number\n");
 	if(!fscanf(input_fd,"%d",&x)) {
 		VERBOSE(N_STDOUT,"Wrong input.\n");
+		pthread_mutex_unlock(&running_modules_lock);
 		return;
 	}
-	if(x>=running_modules_cnt || x<0) {
-		VERBOSE(N_STDOUT,"Wrong input, type in 0 - %d.\n", running_modules_cnt-1);
+	if(x>=loaded_modules_cnt || x<0) {
+		VERBOSE(N_STDOUT,"Wrong input, type in 0 - %d.\n", loaded_modules_cnt-1);
 		pthread_mutex_unlock(&running_modules_lock);
 		return;
 	}
@@ -892,10 +976,10 @@ void api_set_module_enabled()
 void restart_modules()
 {
 	int x = 0;
-	for (x=0; x<running_modules_cnt; x++) {
+	for (x=0; x<loaded_modules_cnt; x++) {
 		if (running_modules[x].module_status == FALSE && (running_modules[x].module_restart_cnt >= MAX_RESTARTS)) {
 			VERBOSE(MODULE_EVENT,"Module: %d_%s was restarted %d times and it is down again.\n",x, running_modules[x].module_name, MAX_RESTARTS);
-		} else if (running_modules[x].module_status == FALSE && running_modules[x].module_enabled == TRUE) {
+		} else if (running_modules[x].module_status == FALSE && running_modules[x].module_enabled == TRUE && running_modules[x].remote_module == FALSE) {
 			restart_module(x);
 		}
 	}
@@ -904,13 +988,15 @@ void restart_modules()
 void api_show_running_modules_status()
 {
 	int x = 0;
-	if (running_modules_cnt == 0) {
+	if (loaded_modules_cnt == 0) {
 		VERBOSE(N_STDOUT,"No module running.\n");
 		return;
 	}
-	for (x=0; x<running_modules_cnt; x++) {
+	for (x=0; x<loaded_modules_cnt; x++) {
 		if (running_modules[x].module_status == TRUE) {
 			VERBOSE(N_STDOUT,"%d_%s running (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
+		} else if (running_modules[x].remote_module == TRUE) {
+			VERBOSE(N_STDOUT,"%d_%s remote_module (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
 		} else {
 			VERBOSE(N_STDOUT,"%d_%s stopped (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
 		}
@@ -929,41 +1015,38 @@ void api_quit()
 	stop_service_thread();
 	sleep(3);
 	api_stop_configuration();
-	for(x=0;x<running_modules_cnt;x++) {
+	for(x=0;x<loaded_modules_cnt;x++) {
 		if(running_modules[x].module_counters_array != NULL) {
 			free(running_modules[x].module_counters_array);
 		}
 	}
-	for(x=0;x<modules_array_size;x++) {
-		for(y=0; y<modules[x].module_ifces_cnt; y++) {
-			if(modules[x].module_ifces[y].ifc_note != NULL) {
-				free(modules[x].module_ifces[y].ifc_note);
+	for(x=0;x<running_modules_array_size;x++) {
+		for(y=0; y<running_modules[x].module_ifces_cnt; y++) {
+			if(running_modules[x].module_ifces[y].ifc_note != NULL) {
+				free(running_modules[x].module_ifces[y].ifc_note);
 			}
-			if(modules[x].module_ifces[y].ifc_type != NULL) {
-				free(modules[x].module_ifces[y].ifc_type);
+			if(running_modules[x].module_ifces[y].ifc_type != NULL) {
+				free(running_modules[x].module_ifces[y].ifc_type);
 			}
-			if(modules[x].module_ifces[y].ifc_direction != NULL) {
-				free(modules[x].module_ifces[y].ifc_direction);
+			if(running_modules[x].module_ifces[y].ifc_direction != NULL) {
+				free(running_modules[x].module_ifces[y].ifc_direction);
 			}
-			if(modules[x].module_ifces[y].ifc_params != NULL) {
-				free(modules[x].module_ifces[y].ifc_params);
+			if(running_modules[x].module_ifces[y].ifc_params != NULL) {
+				free(running_modules[x].module_ifces[y].ifc_params);
 			}
 		}
-		if(modules[x].module_ifces != NULL) {
-			free(modules[x].module_ifces);
+		if(running_modules[x].module_ifces != NULL) {
+			free(running_modules[x].module_ifces);
 		}	
-		if(modules[x].module_path != NULL) {
-			free(modules[x].module_path);
+		if(running_modules[x].module_path != NULL) {
+			free(running_modules[x].module_path);
 		}
-		if(modules[x].module_name != NULL) {
-			free(modules[x].module_name);
+		if(running_modules[x].module_name != NULL) {
+			free(running_modules[x].module_name);
 		}
-		if(modules[x].module_params != NULL) {
-			free(modules[x].module_params);
+		if(running_modules[x].module_params != NULL) {
+			free(running_modules[x].module_params);
 		}
-	}
-	if(modules != NULL) {
-		free(modules);
 	}
 	if(running_modules != NULL) {
 		free(running_modules);
@@ -972,10 +1055,14 @@ void api_quit()
 	if(service_thread_id != NULL) {
 		free(service_thread_id);
 	}
+	if(acceptor_thread_id != NULL) {
+		free(acceptor_thread_id);
+	}
 	if(config_file != NULL) {
 		free(config_file);
 	}
 
+	// close(remote_supervisor_socketd);
 	fclose(statistics_fd);
 	fclose(module_event_fd);
 }
@@ -1043,7 +1130,7 @@ void update_cpu_usage(long int * last_total_cpu_usage)
 	*last_total_cpu_usage = new_total_cpu_usage;
 	fclose(proc_stat_fd);
   
-	for(x=0;x<running_modules_cnt;x++) {
+	for(x=0;x<loaded_modules_cnt;x++) {
 		if(running_modules[x].module_status) {
 			sprintf(path,"/proc/%d/stat",running_modules[x].module_pid);
 			proc_stat_fd = fopen(path,"r");
@@ -1057,12 +1144,479 @@ void update_cpu_usage(long int * last_total_cpu_usage)
 														100 * (utime - running_modules[x].last_cpu_usage_user_mode)/rozdil_total, 
 														100 * (stime - running_modules[x].last_cpu_usage_kernel_mode)/rozdil_total);
 			}
+			running_modules[x].percent_cpu_usage_kernel_mode = 100 * (utime - running_modules[x].last_cpu_usage_kernel_mode)/rozdil_total;
+			running_modules[x].percent_cpu_usage_user_mode = 100 * (utime - running_modules[x].last_cpu_usage_user_mode)/rozdil_total;
 			running_modules[x].last_cpu_usage_user_mode = utime;
 			running_modules[x].last_cpu_usage_kernel_mode = stime;
 			fclose(proc_stat_fd);
 		}
 	}
 }
+
+int count_struct_size(int module_num)
+{
+	int size = 0;
+	int x;
+
+	if(running_modules[module_num].module_path != NULL){
+		size += strlen(running_modules[module_num].module_path) + 1;
+	}
+	if(running_modules[module_num].module_name != NULL){
+		size += strlen(running_modules[module_num].module_name) + 1;
+	}
+	if(running_modules[module_num].module_params != NULL){
+		size += strlen(running_modules[module_num].module_params) + 1;
+	}
+
+	for(x=0; x<running_modules[module_num].module_ifces_cnt; x++){
+		// if(running_modules[module_num].module_ifces[x].ifc_note != NULL){
+		// 	size += strlen(running_modules[module_num].module_ifces[x].ifc_note) + 1;
+		// }
+		if(running_modules[module_num].module_ifces[x].ifc_type != NULL){
+			size += strlen(running_modules[module_num].module_ifces[x].ifc_type) + 1;
+		}
+		if(running_modules[module_num].module_ifces[x].ifc_params != NULL){
+			size += strlen(running_modules[module_num].module_ifces[x].ifc_params) + 1;
+		}
+		if(running_modules[module_num].module_ifces[x].ifc_direction != NULL){
+			size += strlen(running_modules[module_num].module_ifces[x].ifc_direction) + 1;
+		}
+	}
+
+	return size;
+}
+
+// void * alloc_link_struct(int size_of_data, int module_num)
+// {
+// 	void * data = (void *)calloc(size_of_data, sizeof(char));
+// 	char * ptr = data + sizeof(running_module_t);
+// 	int x;
+
+// 	if(running_modules[module_num].module_name != NULL){
+// 		((running_module_t *)data)->module_name = ptr;
+// 		ptr += strlen(running_modules[module_num].module_name) + 1;
+// 	}
+// 	if(running_modules[module_num].module_path != NULL){
+// 		((running_module_t *)data)->module_path = ptr;
+// 		ptr += strlen(running_modules[module_num].module_path) + 1;
+// 	}
+// 	if(running_modules[module_num].module_ifces != NULL){
+// 		((running_module_t *)data)->module_ifces = (interface_t*)ptr;
+// 		ptr += running_modules[module_num].module_ifces_cnt * sizeof(interface_t);
+// 	}
+
+// 	for(x=0; x<running_modules[module_num].module_ifces_cnt; x++){
+// 		if(running_modules[module_num].module_ifces[x].ifc_note != NULL){
+// 			((running_module_t *)data)->module_ifces[x].ifc_note = ptr;
+// 			ptr += strlen(running_modules[module_num].module_ifces[x].ifc_note) + 1;
+// 		}
+// 		if(running_modules[module_num].module_ifces[x].ifc_type != NULL){
+// 			((running_module_t *)data)->module_ifces[x].ifc_type =  ptr;
+// 			ptr += strlen(running_modules[module_num].module_ifces[x].ifc_type) + 1;
+// 		}
+// 		if(running_modules[module_num].module_ifces[x].ifc_params != NULL){
+// 			((running_module_t *)data)->module_ifces[x].ifc_params =  ptr;
+// 			ptr += strlen(running_modules[module_num].module_ifces[x].ifc_params) + 1;
+// 		}
+// 		if(running_modules[module_num].module_ifces[x].ifc_direction != NULL){
+// 			((running_module_t *)data)->module_ifces[x].ifc_direction =  ptr;
+// 			ptr += strlen(running_modules[module_num].module_ifces[x].ifc_direction) + 1;
+// 		}
+// 	}
+
+// 	return data;
+// }
+
+// void copy_data_to_alloc_struct(void * data, int module_num)
+// {
+// 	int x;
+
+// 	((running_module_t *)data)->module_ifces_cnt = running_modules[module_num].module_ifces_cnt;
+// 	((running_module_t *)data)->module_num_out_ifc = running_modules[module_num].module_num_out_ifc;
+// 	((running_module_t *)data)->module_num_in_ifc = running_modules[module_num].module_num_in_ifc;
+
+
+// 	if(running_modules[module_num].module_name != NULL){
+// 		strcpy(((running_module_t *)data)->module_name, running_modules[module_num].module_name);
+// 	}
+// 	if(running_modules[module_num].module_path != NULL){
+// 		strcpy(((running_module_t *)data)->module_path, running_modules[module_num].module_path);
+// 	}
+
+// 	for(x=0; x<running_modules[module_num].module_ifces_cnt; x++){
+// 		if(running_modules[module_num].module_ifces[x].ifc_note != NULL){
+// 			strcpy(((running_module_t *)data)->module_ifces[x].ifc_note, running_modules[module_num].module_ifces[x].ifc_note);
+// 		}
+// 		if(running_modules[module_num].module_ifces[x].ifc_type != NULL){
+// 			strcpy(((running_module_t *)data)->module_ifces[x].ifc_type, running_modules[module_num].module_ifces[x].ifc_type);
+// 		}
+// 		if(running_modules[module_num].module_ifces[x].ifc_params != NULL){
+// 			strcpy(((running_module_t *)data)->module_ifces[x].ifc_params, running_modules[module_num].module_ifces[x].ifc_params);
+// 		}
+// 		if(running_modules[module_num].module_ifces[x].ifc_direction != NULL){
+// 			strcpy(((running_module_t *)data)->module_ifces[x].ifc_direction, running_modules[module_num].module_ifces[x].ifc_direction);
+// 		}
+// 	}
+// }
+
+void send_to_remote_running_module_struct (int num_module)
+{
+	int ret_val = 0;
+	int x;
+
+	ret_val = send(remote_supervisor_socketd, &running_modules[num_module], sizeof(running_module_t), 0);
+	if(ret_val == -1){
+		printf("Error while sending request to remote Supervisor\n");
+	}
+	
+	if(running_modules[num_module].module_params != NULL){
+		ret_val = send(remote_supervisor_socketd, running_modules[num_module].module_params, strlen(running_modules[num_module].module_params)+1, 0);
+		if(ret_val == -1){
+			printf("Error while sending request to remote Supervisor\n");
+		}
+	}
+	ret_val = send(remote_supervisor_socketd, running_modules[num_module].module_name, strlen(running_modules[num_module].module_name)+1, 0);
+	if(ret_val == -1){
+		printf("Error while sending request to remote Supervisor\n");
+	}
+	ret_val = send(remote_supervisor_socketd, running_modules[num_module].module_path, strlen(running_modules[num_module].module_path)+1, 0);
+	if(ret_val == -1){
+		printf("Error while sending request to remote Supervisor\n");
+	}
+
+	for(x=0; x<running_modules[num_module].module_ifces_cnt; x++){
+		ret_val = send(remote_supervisor_socketd, running_modules[num_module].module_ifces[x].ifc_type, strlen(running_modules[num_module].module_ifces[x].ifc_type)+1, 0);
+		if(ret_val == -1){
+			printf("Error while sending request to remote Supervisor\n");
+		}
+		ret_val = send(remote_supervisor_socketd, running_modules[num_module].module_ifces[x].ifc_params, strlen(running_modules[num_module].module_ifces[x].ifc_params)+1, 0);
+		if(ret_val == -1){
+			printf("Error while sending request to remote Supervisor\n");
+		}
+		ret_val = send(remote_supervisor_socketd, running_modules[num_module].module_ifces[x].ifc_direction, strlen(running_modules[num_module].module_ifces[x].ifc_direction)+1, 0);
+		if(ret_val == -1){
+			printf("Error while sending request to remote Supervisor\n");
+		}
+	}
+}
+
+void send_command_to_remote(int num_command, int num_module)
+{
+	remote_info_t command;
+	int ret_val = 0;
+
+	switch(num_command){
+		case 1:
+			command.command_num = 1;
+			command.size_of_recv = count_struct_size(num_module);
+			ret_val = send(remote_supervisor_socketd, &command, sizeof(remote_info_t), 0);
+			if(ret_val == -1){
+				printf("Error while sending request to remote Supervisor\n");
+			}
+			send_to_remote_running_module_struct(num_module);
+			break;
+	
+		case 2:
+			command.command_num = 2;
+			command.size_of_recv = count_struct_size(num_module);
+			ret_val = send(remote_supervisor_socketd, &command, sizeof(remote_info_t), 0);
+			if(ret_val == -1){
+				printf("Error while sending request to remote Supervisor\n");
+			}
+			send_to_remote_running_module_struct(num_module);
+			break;
+
+		case 3:
+			command.command_num = 3;
+			command.size_of_recv = 0;
+			ret_val = send(remote_supervisor_socketd, &command, sizeof(remote_info_t), 0);
+			if(ret_val == -1){
+				printf("Error while sending request to remote Supervisor\n");
+			}
+			break;
+
+		case 4:
+			command.command_num = 4;
+			command.size_of_recv = 0;
+			ret_val = send(remote_supervisor_socketd, &command, sizeof(remote_info_t), 0);
+			if(ret_val == -1){
+				printf("Error while sending request to remote Supervisor\n");
+			}
+			break;
+	}
+}
+
+void check_cpu_usage()
+{
+	remote_info_t command;
+	int x, y, ret_val;
+	int tosend[1];
+
+	// condition 1, if(num_periods_overload>10)
+	for(x=0;x<loaded_modules_cnt;x++) {
+		if(running_modules[x].module_status){
+			if(running_modules[x].percent_cpu_usage_kernel_mode > 50){
+				running_modules[x].num_periods_overload++;
+			} else {
+				running_modules[x].num_periods_overload = 0;
+			}
+		}
+	}
+	for(x=0;x<loaded_modules_cnt;x++) {
+		if(running_modules[x].module_status){
+			if(running_modules[x].num_periods_overload > 10){
+				selected_module = x;
+				break;
+			}
+		}
+	}
+
+	if(selected_module >= 0 && running_modules[selected_module].remote_module == FALSE && remote_supervisor_connected && running_modules[selected_module].module_status){
+		VERBOSE(N_STDOUT,"de se na to\nsup> %s, remote> %s", supervisor_address, remote_supervisor_address);
+		
+		// stop module
+		stop_module(selected_module);
+		running_modules[selected_module].remote_module = TRUE;
+
+		//change IP adrresses of remote module input ifces and input ifces of modules connected to remote module
+		graph_node_addresses_change(graph_first_node, selected_module, supervisor_address, remote_supervisor_address);
+		
+		//send to remote command to run new module and running_module struct 
+		send_command_to_remote(1, selected_module);
+
+		sleep(1);
+		//restart modules which are connected to remote_module
+		graph_node_t * node_ptr = graph_first_node;
+		running_module_t * module_data = NULL;
+		while(node_ptr != NULL) {
+			if(((running_module_t *) node_ptr->module_data)->module_number == selected_module){
+				break;
+			}
+			node_ptr = node_ptr->next_node;
+		}
+		for(x=0; x<node_ptr->num_node_output_interfaces; x++){
+			for(y=0; y<node_ptr->node_output_interfaces[x].node_children_counter; y++){
+				module_data = node_ptr->node_output_interfaces[x].node_children[y]->parent_node->module_data;
+				if(module_data->remote_module) {
+					send_command_to_remote(2, module_data->module_number);
+				} else {
+					if(module_data->module_enabled){
+						stop_module(module_data->module_number);
+						module_data->module_enabled = TRUE;
+					}
+				}
+			}
+		}
+
+		return;
+	} else {
+		// condition 2, if(CPU overload)
+	}
+
+}
+
+void check_differences()
+{
+	int x,y,cnt;
+	int str_len = 0;
+	int select = 5;
+	graph_node_t * node_ptr = graph_first_node;
+
+	// while(node_ptr != NULL){
+	// 	//if(...){
+	// 	//	select module
+	// 	//}
+	// 	node_ptr = node_ptr->next_node;
+	// }
+
+	// if(running_modules[select].module_cloned == FALSE && running_modules[select].module_status && running_modules[select].remote_module == FALSE){
+	if(FALSE){
+		running_modules[select].module_cloned = TRUE;
+		if((loaded_modules_cnt + running_modules[select].module_num_in_ifc + running_modules[select].module_num_out_ifc + 1) >= running_modules_array_size){
+			//realloc
+		}
+
+		if(running_modules[select].module_params != NULL){
+			str_len = strlen(running_modules[select].module_params);
+			running_modules[loaded_modules_cnt].module_params = (char *) calloc (str_len+1, sizeof(char));
+			strncpy(running_modules[loaded_modules_cnt].module_params, running_modules[select].module_params, str_len+1);
+		}
+
+		str_len = strlen(running_modules[select].module_path);
+		running_modules[loaded_modules_cnt].module_path = (char *) calloc (str_len+1, sizeof(char));
+		strncpy(running_modules[loaded_modules_cnt].module_path, running_modules[select].module_path, str_len+1);
+
+		str_len = strlen(running_modules[select].module_name);
+		running_modules[loaded_modules_cnt].module_name = (char *) calloc (str_len+1+5, sizeof(char));
+		sprintf(running_modules[loaded_modules_cnt].module_name,"%sClone", running_modules[select].module_name);
+
+		running_modules[loaded_modules_cnt].module_ifces = (interface_t *) calloc(running_modules[select].module_ifces_cnt, sizeof(interface_t));
+		for(x=0; x<running_modules[select].module_ifces_cnt; x++){
+			if(running_modules[select].module_ifces[x].ifc_note != NULL) {
+				str_len = strlen(running_modules[select].module_ifces[x].ifc_note);
+				running_modules[loaded_modules_cnt].module_ifces[x].ifc_note = (char *)calloc(str_len+1, sizeof(char));
+				strcpy(running_modules[loaded_modules_cnt].module_ifces[x].ifc_note, running_modules[select].module_ifces[x].ifc_note);
+			}
+			if(running_modules[select].module_ifces[x].ifc_type != NULL) {
+				str_len = strlen(running_modules[select].module_ifces[x].ifc_type);
+				running_modules[loaded_modules_cnt].module_ifces[x].ifc_type = (char *)calloc(str_len+1, sizeof(char));
+				strcpy(running_modules[loaded_modules_cnt].module_ifces[x].ifc_type, running_modules[select].module_ifces[x].ifc_type);
+			}
+			if(running_modules[select].module_ifces[x].ifc_params != NULL) {
+				str_len = strlen(running_modules[select].module_ifces[x].ifc_params);
+				running_modules[loaded_modules_cnt].module_ifces[x].ifc_params = (char *)calloc(str_len+1, sizeof(char));
+				strcpy(running_modules[loaded_modules_cnt].module_ifces[x].ifc_params, running_modules[select].module_ifces[x].ifc_params);
+			}
+			if(running_modules[select].module_ifces[x].ifc_direction != NULL) {
+				str_len = strlen(running_modules[select].module_ifces[x].ifc_direction);
+				running_modules[loaded_modules_cnt].module_ifces[x].ifc_direction = (char *)calloc(str_len+1, sizeof(char));
+				strcpy(running_modules[loaded_modules_cnt].module_ifces[x].ifc_direction, running_modules[select].module_ifces[x].ifc_direction);
+			}
+		}
+		running_modules[loaded_modules_cnt].module_ifces_cnt = running_modules[select].module_ifces_cnt;
+		running_modules[loaded_modules_cnt].module_num_in_ifc = running_modules[select].module_num_in_ifc;
+		running_modules[loaded_modules_cnt].module_num_out_ifc = running_modules[select].module_num_out_ifc;
+
+		cnt = 0;
+		for(x=0; x<running_modules[select].module_ifces_cnt; x++){
+			if(strcmp(running_modules[select].module_ifces[x].ifc_direction, "IN") == 0){
+				running_modules[loaded_modules_cnt+1+cnt].module_ifces = (interface_t *)calloc(4, sizeof(interface_t));
+
+				if(running_modules[select].module_ifces[x].ifc_note != NULL) {
+					str_len = strlen(running_modules[select].module_ifces[x].ifc_note);
+					running_modules[loaded_modules_cnt+1+cnt].module_ifces[0].ifc_note = (char *)calloc(str_len+1, sizeof(char));
+					strcpy(running_modules[loaded_modules_cnt+1+cnt].module_ifces[0].ifc_note, running_modules[select].module_ifces[x].ifc_note);
+				}
+				if(running_modules[select].module_ifces[x].ifc_type != NULL) {
+					str_len = strlen(running_modules[select].module_ifces[x].ifc_type);
+					running_modules[loaded_modules_cnt+1+cnt].module_ifces[0].ifc_type = (char *)calloc(str_len+1, sizeof(char));
+					strcpy(running_modules[loaded_modules_cnt+1+cnt].module_ifces[0].ifc_type, running_modules[select].module_ifces[x].ifc_type);
+				}
+				if(running_modules[select].module_ifces[x].ifc_params != NULL) {
+					str_len = strlen(running_modules[select].module_ifces[x].ifc_params);
+					running_modules[loaded_modules_cnt+1+cnt].module_ifces[0].ifc_params = (char *)calloc(str_len+1, sizeof(char));
+					strcpy(running_modules[loaded_modules_cnt+1+cnt].module_ifces[0].ifc_params, running_modules[select].module_ifces[x].ifc_params);
+				}
+				if(running_modules[select].module_ifces[x].ifc_direction != NULL) {
+					str_len = strlen(running_modules[select].module_ifces[x].ifc_direction);
+					running_modules[loaded_modules_cnt+1+cnt].module_ifces[0].ifc_direction = (char *)calloc(str_len+1, sizeof(char));
+					strcpy(running_modules[loaded_modules_cnt+1+cnt].module_ifces[0].ifc_direction, running_modules[select].module_ifces[x].ifc_direction);
+				}
+
+				running_modules[loaded_modules_cnt+1+cnt].module_path = (char *) calloc (10, sizeof(char));
+				sprintf(running_modules[loaded_modules_cnt+1+cnt].module_path,"Path");
+				running_modules[loaded_modules_cnt+1+cnt].module_name = (char *) calloc (10, sizeof(char));
+				sprintf(running_modules[loaded_modules_cnt+1+cnt].module_name,"Spliter");
+				
+				//first spliter output ifc
+				running_modules[loaded_modules_cnt+1+cnt].module_ifces[1].ifc_type = (char *)calloc(10, sizeof(char));
+				sprintf(running_modules[loaded_modules_cnt+1+cnt].module_ifces[1].ifc_type,"TCP");
+				running_modules[loaded_modules_cnt+1+cnt].module_ifces[1].ifc_params = (char *)calloc(10, sizeof(char));
+				sprintf(running_modules[loaded_modules_cnt+1+cnt].module_ifces[1].ifc_params,"%d,1", next_reserved_port);
+				//update selected module input ifc params to connect to spliter
+				free(running_modules[select].module_ifces[x].ifc_params);
+				running_modules[select].module_ifces[x].ifc_params = (char *)calloc(20, sizeof(char));
+				sprintf(running_modules[select].module_ifces[x].ifc_params,"localhost,%d",next_reserved_port);
+				next_reserved_port++;
+				running_modules[loaded_modules_cnt+1+cnt].module_ifces[1].ifc_direction = (char *)calloc(10, sizeof(char));
+				sprintf(running_modules[loaded_modules_cnt+1+cnt].module_ifces[1].ifc_direction,"OUT");
+
+
+				//second spliter output ifc
+				running_modules[loaded_modules_cnt+1+cnt].module_ifces[2].ifc_type = (char *)calloc(10, sizeof(char));
+				sprintf(running_modules[loaded_modules_cnt+1+cnt].module_ifces[2].ifc_type,"TCP");
+				running_modules[loaded_modules_cnt+1+cnt].module_ifces[2].ifc_params = (char *)calloc(10, sizeof(char));
+				sprintf(running_modules[loaded_modules_cnt+1+cnt].module_ifces[2].ifc_params,"%d,1", next_reserved_port);
+				//update clone module input ifc params to connect to spliter
+				free(running_modules[loaded_modules_cnt].module_ifces[x].ifc_params);
+				running_modules[loaded_modules_cnt].module_ifces[x].ifc_params = (char *)calloc(20, sizeof(char));
+				sprintf(running_modules[loaded_modules_cnt].module_ifces[x].ifc_params,"localhost,%d",next_reserved_port);
+				next_reserved_port++;
+				running_modules[loaded_modules_cnt+1+cnt].module_ifces[2].ifc_direction = (char *)calloc(10, sizeof(char));
+				sprintf(running_modules[loaded_modules_cnt+1+cnt].module_ifces[2].ifc_direction,"OUT");
+
+				running_modules[loaded_modules_cnt+1+cnt].module_ifces_cnt = 3;
+				running_modules[loaded_modules_cnt+1+cnt].module_num_in_ifc = 1;
+				running_modules[loaded_modules_cnt+1+cnt].module_num_out_ifc = 2;
+
+				cnt++;
+			}
+		}
+		update_module_input_ifces(graph_first_node, select);
+		
+		cnt = 0;
+		for(x=0; x<running_modules[select].module_ifces_cnt; x++){
+			if(strcmp(running_modules[select].module_ifces[x].ifc_direction, "OUT") == 0){
+				running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces = (interface_t *)calloc(4, sizeof(interface_t));
+
+				if(running_modules[select].module_ifces[x].ifc_note != NULL) {
+					str_len = strlen(running_modules[select].module_ifces[x].ifc_note);
+					running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces[0].ifc_note = (char *)calloc(str_len+1, sizeof(char));
+					strcpy(running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces[0].ifc_note, running_modules[select].module_ifces[x].ifc_note);
+				}
+				if(running_modules[select].module_ifces[x].ifc_type != NULL) {
+					str_len = strlen(running_modules[select].module_ifces[x].ifc_type);
+					running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces[0].ifc_type = (char *)calloc(str_len+1, sizeof(char));
+					strcpy(running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces[0].ifc_type, running_modules[select].module_ifces[x].ifc_type);
+				}
+				if(running_modules[select].module_ifces[x].ifc_params != NULL) {
+					str_len = strlen(running_modules[select].module_ifces[x].ifc_params);
+					running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces[0].ifc_params = (char *)calloc(str_len+1, sizeof(char));
+					strcpy(running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces[0].ifc_params, running_modules[select].module_ifces[x].ifc_params);
+				}
+				if(running_modules[select].module_ifces[x].ifc_direction != NULL) {
+					str_len = strlen(running_modules[select].module_ifces[x].ifc_direction);
+					running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces[0].ifc_direction = (char *)calloc(str_len+1, sizeof(char));
+					strcpy(running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces[0].ifc_direction, running_modules[select].module_ifces[x].ifc_direction);
+				}
+
+				running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_path = (char *) calloc (10, sizeof(char));
+				sprintf(running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_path,"Path");
+				running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_name = (char *) calloc (10, sizeof(char));
+				sprintf(running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_name,"Merger");
+
+
+				//first merger input ifc
+				running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces[1].ifc_type = (char *)calloc(10, sizeof(char));
+				sprintf(running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces[1].ifc_type,"TCP");
+				running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces[1].ifc_params = (char *)calloc(20, sizeof(char));
+				sprintf(running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces[1].ifc_params,"localhost,%d", next_reserved_port);
+				//update selected module output ifc params
+				free(running_modules[select].module_ifces[x].ifc_params);
+				running_modules[select].module_ifces[x].ifc_params = (char *)calloc(20, sizeof(char));
+				sprintf(running_modules[select].module_ifces[x].ifc_params,"%d,1",next_reserved_port);
+				next_reserved_port++;
+				running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces[1].ifc_direction = (char *)calloc(10, sizeof(char));
+				sprintf(running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces[1].ifc_direction,"IN");
+
+
+				//second merger input ifc
+				running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces[2].ifc_type = (char *)calloc(10, sizeof(char));
+				sprintf(running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces[2].ifc_type,"TCP");
+				running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces[2].ifc_params = (char *)calloc(20, sizeof(char));
+				sprintf(running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces[2].ifc_params,"localhost,%d", next_reserved_port);
+				//update clone module output ifc params
+				free(running_modules[loaded_modules_cnt].module_ifces[x].ifc_params);
+				running_modules[loaded_modules_cnt].module_ifces[x].ifc_params = (char *)calloc(20, sizeof(char));
+				sprintf(running_modules[loaded_modules_cnt].module_ifces[x].ifc_params,"%d,1",next_reserved_port);
+				next_reserved_port++;
+				running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces[2].ifc_direction = (char *)calloc(10, sizeof(char));
+				sprintf(running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces[2].ifc_direction,"IN");
+
+				running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces_cnt = 3;
+				running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_num_in_ifc = 2;
+				running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_num_out_ifc = 1;
+
+
+				cnt++;
+			}
+		}
+		update_module_output_ifces(graph_first_node, select);
+
+		loaded_modules_cnt = loaded_modules_cnt + 1 + running_modules[select].module_num_in_ifc + running_modules[select].module_num_out_ifc;
+	}
+}
+
 
 int service_get_data(int sd, int running_module_number)
 {
@@ -1122,13 +1676,12 @@ void * service_thread_routine(void* arg)
 {
 	long int last_total_cpu_usage = 0;
 	int sizeof_intptr = 4;
-	int num_served_modules = 0;
 	int x,y;
 
 	time_t rawtime;
 	struct tm * timeinfo;
 
-	while(service_thread_continue == 1)	{
+	while(service_thread_continue == TRUE)	{
 		pthread_mutex_lock(&running_modules_lock);
 		time ( &rawtime );
 		timeinfo = localtime ( &rawtime );
@@ -1139,35 +1692,34 @@ void * service_thread_routine(void* arg)
 		update_module_status();
 		restart_modules();
 		usleep(100000);
-		update_cpu_usage(&last_total_cpu_usage); 
-		if(running_modules_cnt > num_served_modules) {
-			running_modules[num_served_modules].module_has_service_ifc = FALSE;
-			for(x=0; x<running_modules[num_served_modules].module_ifces_cnt; x++) {
-				if((strncmp(running_modules[num_served_modules].module_ifces[x].ifc_direction, "SERVICE", 7) == 0)) {
-					running_modules[num_served_modules].module_has_service_ifc = TRUE;
-					connect_to_module_service_ifc(num_served_modules,x);
-					graph_node_t * new_node = add_graph_node (graph_first_node, graph_last_node, (void *) &running_modules[num_served_modules]);
 
-					if(graph_first_node == NULL) {
-						graph_first_node = new_node;
-						graph_last_node = new_node;
-						graph_first_node->next_node = NULL;
-					} else {
-						graph_last_node->next_node = new_node;
-						graph_last_node = new_node;
-						graph_last_node->next_node = NULL;
+		for(y=0; y<loaded_modules_cnt; y++) {
+			if(running_modules[y].module_served_by_service_thread == FALSE) {
+				running_modules[y].module_number = y;
+				for(x=0; x<running_modules[y].module_ifces_cnt; x++) {
+					if((strncmp(running_modules[y].module_ifces[x].ifc_direction, "SERVICE", 7) == 0)) {
+						running_modules[y].module_has_service_ifc = TRUE;
 					}
-				    break;
 				}
-			}
+				graph_node_t * new_node = add_graph_node (graph_first_node, graph_last_node, (void *) &running_modules[y]);
 
-			num_served_modules++;
-			pthread_mutex_unlock(&running_modules_lock);
-		} else {
+				if(graph_first_node == NULL) {
+					graph_first_node = new_node;
+					graph_last_node = new_node;
+					graph_first_node->next_node = NULL;
+				} else {
+					graph_last_node->next_node = new_node;
+					graph_last_node = new_node;
+					graph_last_node->next_node = NULL;
+				}
+				running_modules[y].module_served_by_service_thread = TRUE;
+			}
+		}
+		if(1){
 			int request[1];
 			memset(request,0, sizeof(int));
 			request[0] = 1;
-			for(x=0;x<running_modules_cnt;x++) {
+			for(x=0;x<loaded_modules_cnt;x++) {
 				if(running_modules[x].module_has_service_ifc == TRUE && running_modules[x].module_status == TRUE) {
 					if(running_modules[x].module_service_ifc_isconnected == FALSE) {
 						y=0;
@@ -1193,9 +1745,8 @@ void * service_thread_routine(void* arg)
 					}
 				}
 			}
-
 			update_module_status();
-			for(x=0;x<running_modules_cnt;x++) {
+			for(x=0;x<loaded_modules_cnt;x++) {
 				if(running_modules[x].module_has_service_ifc == TRUE && running_modules[x].module_status == TRUE) {
 					if(running_modules[x].module_service_ifc_isconnected == TRUE) {
 						if(!(service_get_data(running_modules[x].module_service_sd, x))) {
@@ -1205,36 +1756,46 @@ void * service_thread_routine(void* arg)
 					}
 				}
 			}
+			update_cpu_usage(&last_total_cpu_usage);
+			check_cpu_usage();
+
 			update_graph_values(graph_first_node);
+
+			compute_differences(graph_first_node);
+			check_differences();
+
 			pthread_mutex_unlock(&running_modules_lock);
 			// check_graph_values(graph_first_node);
+			// print_statistics(graph_first_node);
 
-			for(x=0;x<running_modules_cnt;x++) {
-				VERBOSE(STATISTICS,"NAME:  %s, PID: %d, EN: %d, SIFC: %d, S: %d, ISC: %d | ", running_modules[x].module_name,
-					running_modules[x].module_pid,
-					running_modules[x].module_enabled,
-					running_modules[x].module_has_service_ifc,
-					running_modules[x].module_status,
-					running_modules[x].module_service_ifc_isconnected);
-				if(running_modules[x].module_has_service_ifc && running_modules[x].module_service_ifc_isconnected) {
-					VERBOSE(STATISTICS,"CNT_RM:  ");
-					for(y=0;y<running_modules[x].module_num_in_ifc;y++) {
-						VERBOSE(STATISTICS,"%d  ", running_modules[x].module_counters_array[y]);
+			for(x=0;x<loaded_modules_cnt;x++) {
+				if(running_modules[x].module_running){
+					VERBOSE(STATISTICS,"NAME:  %s, PID: %d, EN: %d, SIFC: %d, S: %d, ISC: %d | ", running_modules[x].module_name,
+						running_modules[x].module_pid,
+						running_modules[x].module_enabled,
+						running_modules[x].module_has_service_ifc,
+						running_modules[x].module_status,
+						running_modules[x].module_service_ifc_isconnected);
+					if(running_modules[x].module_has_service_ifc && running_modules[x].module_service_ifc_isconnected && running_modules[x].module_status) {
+						VERBOSE(STATISTICS,"CNT_RM:  ");
+						for(y=0;y<running_modules[x].module_num_in_ifc;y++) {
+							VERBOSE(STATISTICS,"%d  ", running_modules[x].module_counters_array[y]);
+						}
+						VERBOSE(STATISTICS,"CNT_SM:  ");
+						for(y=0;y<running_modules[x].module_num_out_ifc;y++) {
+							VERBOSE(STATISTICS,"%d  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc]);
+						}
+						VERBOSE(STATISTICS,"CNT_SB:  ");
+						for(y=0;y<running_modules[x].module_num_out_ifc;y++) {
+							VERBOSE(STATISTICS,"%d  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc + running_modules[x].module_num_out_ifc]);
+						}
+						VERBOSE(STATISTICS,"CNT_AF:  ");
+						for(y=0;y<running_modules[x].module_num_out_ifc;y++) {
+							VERBOSE(STATISTICS,"%d  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc + 2*running_modules[x].module_num_out_ifc]);
+						}
 					}
-					VERBOSE(STATISTICS,"CNT_SM:  ");
-					for(y=0;y<running_modules[x].module_num_out_ifc;y++) {
-						VERBOSE(STATISTICS,"%d  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc]);
-					}
-					VERBOSE(STATISTICS,"CNT_SB:  ");
-					for(y=0;y<running_modules[x].module_num_out_ifc;y++) {
-						VERBOSE(STATISTICS,"%d  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc + running_modules[x].module_num_out_ifc]);
-					}
-					VERBOSE(STATISTICS,"CNT_AF:  ");
-					for(y=0;y<running_modules[x].module_num_out_ifc;y++) {
-						VERBOSE(STATISTICS,"%d  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc + 2*running_modules[x].module_num_out_ifc]);
-					}
+					VERBOSE(STATISTICS,"\n");
 				}
-				VERBOSE(STATISTICS,"\n");
 			}
 
 			sleep(2);
@@ -1242,7 +1803,7 @@ void * service_thread_routine(void* arg)
 	}
 
 
-	for(x=0;x<running_modules_cnt;x++) {
+	for(x=0;x<loaded_modules_cnt;x++) {
 		if(running_modules[x].module_has_service_ifc == TRUE && running_modules[x].module_status == TRUE && running_modules[x].module_service_ifc_isconnected == TRUE) {
 			VERBOSE(MODULE_EVENT,"-- disconnecting from module %d_%s\n",x, running_modules[x].module_name);
 			close(running_modules[x].module_service_sd);
@@ -1258,6 +1819,9 @@ void start_service_thread()
 {
 	service_thread_id = (pthread_t *) calloc (1,sizeof(pthread_t));
 	pthread_create(service_thread_id,NULL,service_thread_routine, NULL);
+
+	acceptor_thread_id = (pthread_t *) calloc (1,sizeof(pthread_t));
+	pthread_create(acceptor_thread_id,NULL,remote_supervisor_accept_routine, NULL);
 }
 
 void stop_service_thread()
@@ -1279,7 +1843,7 @@ void api_show_graph()
 void run_temp_configuration()
 {
 	pthread_mutex_lock(&running_modules_lock);
-	int x = modules_cnt;
+	int x = loaded_modules_cnt;
 	char * buffer1 = (char *)calloc(1000, sizeof(char));
 	char * buffer2 = (char *)calloc(1000, sizeof(char));
 	char * ptr = buffer1;
@@ -1306,7 +1870,7 @@ void run_temp_configuration()
 		return;
 	}
 	free(buffer2);
-	while(x<modules_cnt) {
+	while(x<loaded_modules_cnt) {
 		start_module(x);
 		x++;
 	}
@@ -1320,17 +1884,17 @@ void api_run_temp_conf()
 
 void api_set_verbose_level()
 {
-	int x = 0;
+	// int x = 0;
 	VERBOSE(N_STDOUT,"Type in 0 or 1 to set verbose level of supervisor:\n");
-	if(!fscanf(input_fd,"%d",&x)) {
+	if(!fscanf(input_fd,"%d",&selected_module)) {
 		VERBOSE(N_STDOUT,"Wrong input.\n");
 		return;
 	}
-	if(x>1 || x<0) {
-		VERBOSE(N_STDOUT,"Wrong input.\n");
-	} else {
-		verbose_flag = x;
-	}
+	// if(x>1 || x<0) {
+	// 	VERBOSE(N_STDOUT,"Wrong input.\n");
+	// } else {
+	// 	verbose_flag = x;
+	// }
 }
 
 int parse_arguments(const int * argc, char ** argv)
@@ -1697,4 +2261,73 @@ void daemon_mode(int * arg)
 	close(daemon_sd);
 	unlink(DAEMON_UNIX_PATH_FILENAME_FORMAT);
 	return;
+}
+
+
+void * remote_supervisor_accept_routine ()
+{
+	remote_supervisor_connected = FALSE;
+	char buffer[10];
+	int ret_val = 0;
+	struct sockaddr_in supervisor;
+	struct sockaddr_in supervisor_remote;
+	int supervisor_sd;
+	int supervisor_remote_sd;
+	int port = 11011;
+	socklen_t addrlen;
+
+	if ((supervisor_sd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == -1) {
+		VERBOSE(N_STDOUT,"Nelze vytvořit soket");
+		pthread_exit(NULL);
+	}
+ 
+	supervisor.sin_family = AF_INET;
+	supervisor.sin_port = htons(port);
+	supervisor.sin_addr.s_addr = INADDR_ANY;
+
+	if (bind(supervisor_sd, (struct sockaddr *)&supervisor, sizeof(supervisor)) == -1) {
+		VERBOSE(N_STDOUT, "Problém s pojmenováním soketu.");
+		close(supervisor_sd);
+		pthread_exit(NULL);
+	}
+
+	if (listen(supervisor_sd, 2) == -1) {
+		VERBOSE(N_STDOUT, "Problém s vytvořením fronty");
+		close(supervisor_sd);
+		pthread_exit(NULL);
+	}
+
+
+	while(service_thread_continue == TRUE) {
+		if(remote_supervisor_connected == FALSE) {
+			addrlen = sizeof(supervisor_remote);
+			VERBOSE(N_STDOUT,"Waiting for remote sup");
+			supervisor_remote_sd = accept(supervisor_sd, (struct sockaddr*)&supervisor_remote, &addrlen);
+			if (supervisor_remote_sd == -1) {
+				VERBOSE(N_STDOUT, "Problém s přijetím spojeni");
+				close(supervisor_sd);
+				pthread_exit(NULL);
+			}
+			strcpy(remote_supervisor_address, inet_ntoa((struct in_addr)supervisor_remote.sin_addr));
+			remote_supervisor_socketd = supervisor_remote_sd;
+			remote_supervisor_connected = TRUE;
+			VERBOSE(N_STDOUT, "Někdo se připojil z adresy: %s", remote_supervisor_address);
+		}
+		ret_val = recv(supervisor_remote_sd, buffer, 1, MSG_DONTWAIT);
+		if(ret_val == -1){
+			if (errno == EAGAIN) {
+				sleep(1);
+				continue;
+			}
+			VERBOSE(N_STDOUT, "Error recv remote_sup");
+		} else if (ret_val == 0) {
+			VERBOSE(N_STDOUT, "Remote_supervisor has disconnected");
+			close(supervisor_remote_sd);
+			remote_supervisor_connected = FALSE;
+		}
+	}
+
+	close(remote_supervisor_socketd);
+	close(supervisor_sd);
+	pthread_exit(NULL);
 }

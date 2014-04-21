@@ -40,34 +40,49 @@
  * if advised of the possibility of such damage.
  *
  */
+#include "supervisor.h"
 
 #define GRAPH_SOURCE_FILE 					"./graph_source_file"
 #define DEFAULT_NUM_CLIENTS_OUTPUT_IFC		10
 
+typedef struct edge_statistics_s edge_statistics_t;
 typedef struct graph_node_s graph_node_t;
+typedef struct graph_node_input_interface_s graph_node_input_interface_t;
+typedef struct graph_node_output_interface_s graph_node_output_interface_t;
 
+struct graph_node_input_interface_s {
+	interface_t * 					ifc_struct;
+	graph_node_t * 					parent_node;
+	int 							message_counter;
+	int 							node_interface_port;
+	graph_node_output_interface_t * node_interface_output_ifc;
+};
 
-typedef struct graph_node_input_interface_s {
-	graph_node_t * parent_node;
-	int message_counter;
-	int node_interface_port;
-} graph_node_input_interface_t;
-
-typedef struct graph_node_output_interface_s {
-	int message_counter;
-	int node_children_counter;
+struct graph_node_output_interface_s {
+	interface_t * 					ifc_struct;
+	graph_node_t * 					parent_node;
+	int 							message_counter;
+	int 							node_children_counter;
 	graph_node_input_interface_t ** node_children;
-	int node_interface_port;
-} graph_node_output_interface_t;
+	int 							node_interface_port;
+	edge_statistics_t *				statistics;
+};
 
 struct graph_node_s {
-	void * module_data;
-	int module_number;
-	graph_node_t * next_node;
-	graph_node_input_interface_t * node_input_interfaces;
+	void * 							module_data;
+	int 							module_number;
+	graph_node_t * 					next_node;
+	graph_node_input_interface_t * 	node_input_interfaces;
 	graph_node_output_interface_t * node_output_interfaces;
-	int num_node_input_interfaces;
-	int num_node_output_interfaces;
+	int 							num_node_input_interfaces;
+	int 							num_node_output_interfaces;
+};
+
+struct edge_statistics_s {
+	int 							last_period_counters_difference;
+	int 							num_periods;
+	int 							expected_value;
+	int 							period_differences_suma;
 };
 
 /********************************************/

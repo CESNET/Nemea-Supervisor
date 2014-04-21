@@ -85,21 +85,29 @@ typedef struct interface {
 	char *	ifc_direction; ///< Interface direction (IN, OUT)
 } interface_t;
 
-
+typedef struct remote_info_s {
+	int 	command_num;
+	int 	size_of_recv;
+} remote_info_t;
 
 /** Structure with information about one module in configuration */
-typedef struct module_atr {
-	int 			module_running;
-	char *			module_path; ///< Path to module from current directory
-	char *			module_name; ///< Name of module (flowcounter...)
-	char *			module_params; ///< Module parameter (Input file...)
-	int 			module_ifces_array_size;
-	int 			module_ifces_cnt;
-	interface_t	* 	module_ifces; ///< Array of "interface" structures with information about every interface of module
-} module_atr_t;
+// typedef struct module_atr {
+// 	int 			module_running;
+// 	char *			module_path; ///< Path to module from current directory
+// 	char *			module_name; ///< Name of module (flowcounter...)
+// 	char *			module_params; ///< Module parameter (Input file...)
+// 	int 			module_ifces_array_size;
+// 	int 			module_ifces_cnt;
+// 	interface_t	* 	module_ifces; ///< Array of "interface" structures with information about every interface of module
+// } module_atr_t;
 
 /** Structure with information about one running module */
 typedef struct running_module {
+	int 			module_cloned;
+	int 			module_served_by_service_thread;
+	int 			module_ifces_array_size;
+	int 			module_running;
+	char *			module_params; ///< Module parameter (Input file...)
 	int 			module_enabled;
 	int 			module_ifces_cnt;
 	int 			module_num_out_ifc;
@@ -113,10 +121,14 @@ typedef struct running_module {
 	int				module_restart_cnt; ///< Number of module restarts (after MAX_RESTARTS supervisor will not try to restart broken module again)
 	pid_t			module_pid; ///< Module PID
 	char *			module_path; ///< Path to module from current directory
-	int 			module_number; ///< Module number in configuration (needed for restart)
-	interface_t *		module_ifces; ///< Array of "interface" structures with information about every interface of module
+	interface_t *	module_ifces; ///< Array of "interface" structures with information about every interface of module
 	int 			last_cpu_usage_kernel_mode;
 	int 			last_cpu_usage_user_mode;
+	int 			percent_cpu_usage_kernel_mode;
+	int 			percent_cpu_usage_user_mode;
+	int 			num_periods_overload;
+	int 			remote_module;
+	int 			module_number;
 } running_module_t;
 
 
