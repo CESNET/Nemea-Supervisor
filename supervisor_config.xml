@@ -2,10 +2,9 @@
 <nemea-supervisor>
 	<modules>
 
-		<!-- Ahoj -->
-		<module>
+		<!--<module>
 			<params></params>
-			<name>flowcounter</name>
+			<name>mujmodul</name>
 			<path>../modules/flowcounter/flowcounter</path>
 			<trapinterfaces>
 				<interface>
@@ -14,16 +13,17 @@
 					<direction>IN</direction>
 					<params>localhost,8004</params>
 				</interface>
+
+
 				<interface>
 					<note></note>
-					<type>UNIXSOCKET</type>
-					<direction>SERVICE</direction>
-					<params>9006,1</params>
+					<type>SERVICE</type>
+					<direction></direction>
+					<params>serviceifctest,1</params>
 				</interface>
 			</trapinterfaces>
-		</module>
+		</module>-->
 
-		<!-- Ahoj -->
 		<module>
 			<params></params>
 			<name>flowcounter</name>
@@ -37,8 +37,28 @@
 				</interface>
 				<interface>
 					<note></note>
-					<type>UNIXSOCKET</type>
-					<direction>SERVICE</direction>
+					<type>SERVICE</type>
+					<direction></direction>
+					<params>9006,1</params>
+				</interface>
+			</trapinterfaces>
+		</module>
+
+		<module>
+			<params></params>
+			<name>flowcounter</name>
+			<path>../modules/flowcounter/flowcounter</path>
+			<trapinterfaces>
+				<interface>
+					<note></note>
+					<type>TCP</type>
+					<direction>IN</direction>
+					<params>localhost,8002</params>
+				</interface>
+				<interface>
+					<note></note>
+					<type>SERVICE</type>
+					<direction></direction>
 					<params>9005,1</params>
 				</interface>
 			</trapinterfaces>
@@ -57,8 +77,8 @@
 				</interface>
 				<interface>
 					<note></note>
-					<type>UNIXSOCKET</type>
-					<direction>SERVICE</direction>
+					<type>SERVICE</type>
+					<direction></direction>
 					<params>9004,1</params>
 				</interface>
 			</trapinterfaces>
@@ -77,8 +97,8 @@
 				</interface>
 				<interface>
 					<note></note>
-					<type>UNIXSOCKET</type>
-					<direction>SERVICE</direction>
+					<type>SERVICE</type>
+					<direction></direction>
 					<params>9003,1</params>
 				</interface>
 			</trapinterfaces>
@@ -103,8 +123,8 @@
 				</interface>
 				<interface>
 					<note></note>
-					<type>UNIXSOCKET</type>
-					<direction>SERVICE</direction>
+					<type>SERVICE</type>
+					<direction></direction>
 					<params>9002,1</params>
 				</interface>
 			</trapinterfaces>
@@ -129,15 +149,15 @@
 				</interface>
 				<interface>
 					<note></note>
-					<type>UNIXSOCKET</type>
-					<direction>SERVICE</direction>
+					<type>SERVICE</type>
+					<direction></direction>
 					<params>9001,1</params>
 				</interface>
 			</trapinterfaces>
 		</module>
 
 		<module>
-			<params>../modules/nfreader/1.dat</params>
+			<params>-vvv ../modules/nfreader/1.dat</params>
 			<name>nfreader</name>
 			<path>../modules/nfreader/nfdump_reader</path>
 			<trapinterfaces>
@@ -149,15 +169,15 @@
 				</interface>
 				<interface>
 					<note></note>
-					<type>UNIXSOCKET</type>
-					<direction>SERVICE</direction>
+					<type>SERVICE</type>
+					<direction></direction>
 					<params>9000,1</params>
 				</interface>
 			</trapinterfaces>
 		</module>
 
 		<module>
-			<params>../modules/nfreader/1.dat</params>
+			<params>../modules/nfreader/1.dat -vvv</params>
 			<name>nfreader</name>
 			<path>../modules/nfreader/nfdump_reader</path>
 			<trapinterfaces>
@@ -169,8 +189,8 @@
 				</interface>
 				<interface>
 					<note></note>
-					<type>UNIXSOCKET</type>
-					<direction>SERVICE</direction>
+					<type>SERVICE</type>
+					<direction></direction>
 					<params>9007,1</params>
 				</interface>
 			</trapinterfaces>
@@ -202,15 +222,12 @@
 				</interface>
 				<interface>
 					<note></note>
-					<type>UNIXSOCKET</type>
-					<direction>SERVICE</direction>
+					<type>SERVICE</type>
+					<direction></direction>
 					<params>9008,1</params>
 				</interface>
 			</trapinterfaces>
 		</module>
-
-
-
 
 	</modules>
 </nemea-supervisor>

@@ -404,10 +404,12 @@ int load_configuration (const int choice, const char * buffer)
 				module_atr = module_atr->next;
 			}
 			for(x=0; x<running_modules[loaded_modules_cnt].module_ifces_cnt; x++) {
-				if(strncmp(running_modules[loaded_modules_cnt].module_ifces[x].ifc_direction, "IN", 2) == 0) {
-					running_modules[loaded_modules_cnt].module_num_in_ifc++;
-				} else if (strncmp(running_modules[loaded_modules_cnt].module_ifces[x].ifc_direction, "OUT", 3) == 0) {
-					running_modules[loaded_modules_cnt].module_num_out_ifc++;
+				if(running_modules[loaded_modules_cnt].module_ifces[x].ifc_direction != NULL) {
+					if(strncmp(running_modules[loaded_modules_cnt].module_ifces[x].ifc_direction, "IN", 2) == 0) {
+						running_modules[loaded_modules_cnt].module_num_in_ifc++;
+					} else if (strncmp(running_modules[loaded_modules_cnt].module_ifces[x].ifc_direction, "OUT", 3) == 0) {
+						running_modules[loaded_modules_cnt].module_num_out_ifc++;
+					}
 				}
 			}
 			loaded_modules_cnt++;
@@ -446,50 +448,54 @@ char ** make_module_arguments (const int number_of_module)
 	int str_len;
 
 	for(x=0; x<running_modules[number_of_module].module_ifces_cnt; x++) {
-		if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_direction, "IN", 2)) {
-			if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type, "TCP", 3)) {
-				strncpy(ptr,"t",1);
-				ptr++;
-			} else if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type, "UNIXSOCKET", 10)) {
-				strncpy(ptr,"u",1);
-				ptr++;
-			} else {
-				VERBOSE(N_STDOUT,"%s\n", running_modules[number_of_module].module_ifces[x].ifc_type);
-				VERBOSE(N_STDOUT,"Wrong ifc_type in module %d.\n", number_of_module);
-				return NULL;
+		if(running_modules[number_of_module].module_ifces[x].ifc_direction != NULL) {
+			if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_direction, "IN", 2)) {
+				if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type, "TCP", 3)) {
+					strncpy(ptr,"t",1);
+					ptr++;
+				} else if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type, "UNIXSOCKET", 10)) {
+					strncpy(ptr,"u",1);
+					ptr++;
+				} else {
+					VERBOSE(N_STDOUT,"%s\n", running_modules[number_of_module].module_ifces[x].ifc_type);
+					VERBOSE(N_STDOUT,"Wrong ifc_type in module %d.\n", number_of_module);
+					return NULL;
+				}
 			}
 		}
 	}
 
 	for(x=0; x<running_modules[number_of_module].module_ifces_cnt; x++) {
-		if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_direction,"OUT", 3)) {
-			if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type, "TCP", 3)) {
-				strncpy(ptr,"t",1);
-				ptr++;
-			} else if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type, "UNIXSOCKET", 10)) {
-				strncpy(ptr,"u",1);
-				ptr++;
-			} else {
-				VERBOSE(N_STDOUT,"%s\n", running_modules[number_of_module].module_ifces[x].ifc_type);
-				VERBOSE(N_STDOUT,"Wrong ifc_type in module %d.\n", number_of_module);
-				return NULL;
+		if(running_modules[number_of_module].module_ifces[x].ifc_direction != NULL) {
+			if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_direction,"OUT", 3)) {
+				if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type, "TCP", 3)) {
+					strncpy(ptr,"t",1);
+					ptr++;
+				} else if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type, "UNIXSOCKET", 10)) {
+					strncpy(ptr,"u",1);
+					ptr++;
+				} else {
+					VERBOSE(N_STDOUT,"%s\n", running_modules[number_of_module].module_ifces[x].ifc_type);
+					VERBOSE(N_STDOUT,"Wrong ifc_type in module %d.\n", number_of_module);
+					return NULL;
+				}
 			}
 		}
 	}
 
 	for(x=0; x<running_modules[number_of_module].module_ifces_cnt; x++) {
-		if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_direction,"SERVICE", 7)) {
-			if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type, "TCP", 3)) {
-				strncpy(ptr,"s",1);
-				ptr++;
-			} else if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type, "UNIXSOCKET", 10)) {
-				strncpy(ptr,"s",1);
-				ptr++;
-			} else {
-				VERBOSE(N_STDOUT,"%s\n", running_modules[number_of_module].module_ifces[x].ifc_type);
-				VERBOSE(N_STDOUT,"Wrong ifc_type in module %d.\n", number_of_module);
-				return NULL;
-			}
+		if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type,"SERVICE", 7)) {
+			// if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type, "TCP", 3)) {
+			// 	strncpy(ptr,"s",1);
+			// 	ptr++;
+			// } else if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type, "UNIXSOCKET", 10)) {
+			strncpy(ptr,"s",1);
+			ptr++;
+			// } else {
+			// 	VERBOSE(N_STDOUT,"%s\n", running_modules[number_of_module].module_ifces[x].ifc_type);
+			// 	VERBOSE(N_STDOUT,"Wrong ifc_type in module %d.\n", number_of_module);
+			// 	return NULL;
+			// }
 		}
 	}
 
@@ -497,21 +503,25 @@ char ** make_module_arguments (const int number_of_module)
 	ptr++;
 
 	for(x=0; x<running_modules[number_of_module].module_ifces_cnt; x++) {
-		if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_direction,"IN", 2)) {
-			sprintf(ptr,"%s;",running_modules[number_of_module].module_ifces[x].ifc_params);
-			ptr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1;
+		if(running_modules[number_of_module].module_ifces[x].ifc_direction != NULL) {
+			if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_direction,"IN", 2)) {
+				sprintf(ptr,"%s;",running_modules[number_of_module].module_ifces[x].ifc_params);
+				ptr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1;
+			}
 		}
 	}
 
 	for(x=0; x<running_modules[number_of_module].module_ifces_cnt; x++) {
-		if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_direction,"OUT", 3)) {
-			sprintf(ptr,"%s;",running_modules[number_of_module].module_ifces[x].ifc_params);
-			ptr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1;
+		if(running_modules[number_of_module].module_ifces[x].ifc_direction != NULL) {
+			if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_direction,"OUT", 3)) {
+				sprintf(ptr,"%s;",running_modules[number_of_module].module_ifces[x].ifc_params);
+				ptr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1;
+			}
 		}
 	}
 
 	for(x=0; x<running_modules[number_of_module].module_ifces_cnt; x++) {
-		if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_direction,"SERVICE", 7)) {
+		if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type,"SERVICE", 7)) {
 			sprintf(ptr,"%s;",running_modules[number_of_module].module_ifces[x].ifc_params);
 			ptr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1;
 		}
@@ -587,18 +597,28 @@ char ** make_module_arguments (const int number_of_module)
 int print_menu ()
 {
 	int ret_val = 0;
+	// VERBOSE(N_STDOUT,"--------OPTIONS--------\n");
+	// VERBOSE(N_STDOUT,"0. SET VERBOSE LEVEL\n");
+	// VERBOSE(N_STDOUT,"1. RUN CONFIGURATION\n");
+	// VERBOSE(N_STDOUT,"2. STOP CONFIGURATION\n");
+	// VERBOSE(N_STDOUT,"3. START MODUL\n");
+	// VERBOSE(N_STDOUT,"4. STOP MODUL\n");
+	// VERBOSE(N_STDOUT,"5. SET MODULE ENABLED\n");
+	// VERBOSE(N_STDOUT,"6. STARTED MODULES STATUS\n");
+	// VERBOSE(N_STDOUT,"7. AVAILABLE MODULES\n");
+	// VERBOSE(N_STDOUT,"8. SHOW GRAPH\n");
+	// VERBOSE(N_STDOUT,"9. RUN TEMP CONF\n");
+	// VERBOSE(N_STDOUT,"10. QUIT\n");
 	VERBOSE(N_STDOUT,"--------OPTIONS--------\n");
-	VERBOSE(N_STDOUT,"0. SET VERBOSE LEVEL\n");
 	VERBOSE(N_STDOUT,"1. RUN CONFIGURATION\n");
 	VERBOSE(N_STDOUT,"2. STOP CONFIGURATION\n");
-	VERBOSE(N_STDOUT,"3. START MODUL\n");
+	VERBOSE(N_STDOUT,"3. SET MODULE ENABLED\n");
 	VERBOSE(N_STDOUT,"4. STOP MODUL\n");
-	VERBOSE(N_STDOUT,"5. SET MODULE ENABLED\n");
-	VERBOSE(N_STDOUT,"6. STARTED MODULES STATUS\n");
-	VERBOSE(N_STDOUT,"7. AVAILABLE MODULES\n");
-	VERBOSE(N_STDOUT,"8. SHOW GRAPH\n");
-	VERBOSE(N_STDOUT,"9. RUN TEMP CONF\n");
-	VERBOSE(N_STDOUT,"10. QUIT\n");
+	VERBOSE(N_STDOUT,"5. STARTED MODULES STATUS\n");
+	VERBOSE(N_STDOUT,"6. AVAILABLE MODULES\n");
+	VERBOSE(N_STDOUT,"7. SHOW GRAPH\n");
+	VERBOSE(N_STDOUT,"8. RUN TEMP CONF\n");
+	VERBOSE(N_STDOUT,"9. QUIT\n");
 	if(!fscanf(input_fd,"%d",&ret_val)) {
 		VERBOSE(N_STDOUT,"Wrong i<Input.\n");
 		return -1;
@@ -883,10 +903,11 @@ void api_start_configuration()
 	}
 	pthread_mutex_lock(&running_modules_lock);
 	VERBOSE(MODULE_EVENT,"Starting configuration...\n");
-	configuration_running = TRUE;
+	// configuration_running = TRUE;
 	int x = 0;
 	for (x=0; x<loaded_modules_cnt; x++) {
-		start_module(x);
+		// start_module(x);
+		running_modules[x].module_enabled = TRUE;
 	}
 	VERBOSE(MODULE_EVENT,"Configuration is running.\n");
 	pthread_mutex_unlock(&running_modules_lock);
@@ -945,7 +966,7 @@ void api_stop_module()
 		return;
 	}
 	if(x>=loaded_modules_cnt || x<0) {
-		VERBOSE(N_STDOUT,"Wrong input, type in 0 - %d.\n", loaded_modules_cnt);
+		VERBOSE(N_STDOUT,"Wrong input, type in 0 - %d.\n", loaded_modules_cnt-1);
 		pthread_mutex_unlock(&running_modules_lock);
 		return;
 	} else {
@@ -1429,8 +1450,8 @@ void check_differences()
 	// 	node_ptr = node_ptr->next_node;
 	// }
 
-	// if(running_modules[select].module_cloned == FALSE && running_modules[select].module_status && running_modules[select].remote_module == FALSE){
-	if(FALSE){
+	if(running_modules[select].module_cloned == FALSE && running_modules[select].module_status && running_modules[select].remote_module == FALSE){
+	// if(FALSE){
 		running_modules[select].module_cloned = TRUE;
 		if((loaded_modules_cnt + running_modules[select].module_num_in_ifc + running_modules[select].module_num_out_ifc + 1) >= running_modules_array_size){
 			//realloc
@@ -1697,7 +1718,7 @@ void * service_thread_routine(void* arg)
 			if(running_modules[y].module_served_by_service_thread == FALSE) {
 				running_modules[y].module_number = y;
 				for(x=0; x<running_modules[y].module_ifces_cnt; x++) {
-					if((strncmp(running_modules[y].module_ifces[x].ifc_direction, "SERVICE", 7) == 0)) {
+					if((strncmp(running_modules[y].module_ifces[x].ifc_type, "SERVICE", 7) == 0)) {
 						running_modules[y].module_has_service_ifc = TRUE;
 					}
 				}
@@ -1724,7 +1745,7 @@ void * service_thread_routine(void* arg)
 					if(running_modules[x].module_service_ifc_isconnected == FALSE) {
 						y=0;
 						while(1) {
-							if((strncmp(running_modules[x].module_ifces[y].ifc_direction, "SERVICE", 7) == 0)) {
+							if((strncmp(running_modules[x].module_ifces[y].ifc_type, "SERVICE", 7) == 0)) {
 								break;
 							} else {
 								y++;
@@ -1756,13 +1777,13 @@ void * service_thread_routine(void* arg)
 					}
 				}
 			}
-			update_cpu_usage(&last_total_cpu_usage);
-			check_cpu_usage();
+			// update_cpu_usage(&last_total_cpu_usage);
+			// check_cpu_usage();
 
 			update_graph_values(graph_first_node);
 
-			compute_differences(graph_first_node);
-			check_differences();
+			// compute_differences(graph_first_node);
+			// check_differences();
 
 			pthread_mutex_unlock(&running_modules_lock);
 			// check_graph_values(graph_first_node);
@@ -1820,8 +1841,8 @@ void start_service_thread()
 	service_thread_id = (pthread_t *) calloc (1,sizeof(pthread_t));
 	pthread_create(service_thread_id,NULL,service_thread_routine, NULL);
 
-	acceptor_thread_id = (pthread_t *) calloc (1,sizeof(pthread_t));
-	pthread_create(acceptor_thread_id,NULL,remote_supervisor_accept_routine, NULL);
+	// acceptor_thread_id = (pthread_t *) calloc (1,sizeof(pthread_t));
+	// pthread_create(acceptor_thread_id,NULL,remote_supervisor_accept_routine, NULL);
 }
 
 void stop_service_thread()
@@ -1935,36 +1956,34 @@ void print_help()
 {
 	VERBOSE(N_STDOUT,"--------------------------\n"
 		   "NEMEA Supervisor:\n"
-		   "Expected arguments to run supervisor are: ./supervisor [-h] [-v] [--show-cpuusage] -f config_file.xml\n"
+		   "Expected arguments to run supervisor are: ./supervisor [--daemon] [-h] [-v] [--show-cpuusage] -f config_file.xml\n"
 		   "Main thread is waiting for input with number of command to execute.\n"
 		   "Functions:\n"
-		   "\t- 0. SET VERBOSE LEVEL\n"
 		   "\t- 1. RUN CONFIGURATION\n"
 		   "\t- 2. STOP CONFIGURATION\n"
-		   "\t- 3. START MODUL\n"
+		   "\t- 3. SET MODULE ENABLED\n"
 		   "\t- 4. STOP MODUL\n"
-		   "\t- 5. SET MODULE ENABLED\n"
-		   "\t- 6. STARTED MODULES STATUS\n"
-		   "\t- 7. AVAILABLE MODULES\n"
-		   "\t- 8. SHOW GRAPH\n"
-		   "\t- 9. RUN TEMP CONF\n"
-		   "\t- 10. QUIT\n"
+		   "\t- 5. STARTED MODULES STATUS\n"
+		   "\t- 6. AVAILABLE MODULES\n"
+		   "\t- 7. SHOW GRAPH\n"
+		   "\t- 8. RUN TEMP CONF\n"
+		   "\t- 9. QUIT\n"
 		   "--------------------\n"
-		   "0 - setter of VERBOSE level of executed modules\n"
+		   // "0 - setter of VERBOSE level of executed modules\n"
 		   "1 - command executes every loaded module from configuration\n"
 		   "2 - command stops whole configuration\n"
-		   "3 - command starts single module from configuration, expected input is number of module (command num. 7 can show available modules)\n"
+		   // "3 - command starts single module from configuration, expected input is number of module (command num. 7 can show available modules)\n"
+		   "3 - setter of \"ENABLE\" flag of selected module - this flag is important for autorestarts\n"
 		   "4 - command stops single running module\n"
-		   "5 - setter of \"ENABLE\" flag of selected module - this flag is important for autorestarts\n"
-		   "6 - command prints status of started modules\n"
-		   "7 - command prints loaded modules configuration\n"
-		   "8 - command generates code for dot program and shows graph of running modules using display program\n"
-		   "9 - command parses external configuration of pasted modules, expected input is same xml code as in config_file, first tag is <modules> and last tag </modules>\n"
-		   "10 - shut down command\n\n"
+		   "5 - command prints status of started modules\n"
+		   "6 - command prints loaded modules configuration\n"
+		   "7 - command generates code for dot program and shows graph of running modules using display program\n"
+		   "8 - command parses external configuration of pasted modules, expected input is same xml code as in config_file, first tag is <modules> and last tag </modules>\n"
+		   "9 - shut down command\n\n"
 		   "Example of input for command num. 9:\n"
 		   "<modules>\n"
 				"\t<module>\n"
-					"\t\t<params>NULL</params>\n"
+					"\t\t<params></params>\n"
 					"\t\t<name>flowcounter</name>\n"
 					"\t\t<path>../modules/flowcounter/flowcounter</path>\n"
 					"\t\t<trapinterfaces>\n"
@@ -1976,8 +1995,8 @@ void print_help()
 						"\t\t\t</interface>\n"
 						"\t\t\t<interface>\n"
 							"\t\t\t\t<note>whatever</note>\n"
-							"\t\t\t\t<type>UNIXSOCKET</type>\n"
-							"\t\t\t\t<direction>SERVICE</direction>\n"
+							"\t\t\t\t<type>SERVICE</type>\n"
+							"\t\t\t\t<direction></direction>\n"
 							"\t\t\t\t<params>9022,1</params>\n"
 						"\t\t\t</interface>\n"
 					"\t\t</trapinterfaces>\n"
@@ -2133,14 +2152,13 @@ void daemon_mode(int * arg)
 		VERBOSE(N_STDOUT,"--------OPTIONS--------\n");
 		VERBOSE(N_STDOUT,"1. RUN CONFIGURATION\n");
 		VERBOSE(N_STDOUT,"2. STOP CONFIGURATION\n");
-		VERBOSE(N_STDOUT,"3. START MODUL\n");
+		VERBOSE(N_STDOUT,"3. SET MODULE ENABLED\n");
 		VERBOSE(N_STDOUT,"4. STOP MODUL\n");
-		VERBOSE(N_STDOUT,"5. SET MODULE ENABLED\n");
-		VERBOSE(N_STDOUT,"6. STARTED MODULES STATUS\n");
-		VERBOSE(N_STDOUT,"7. AVAILABLE MODULES\n");
-		VERBOSE(N_STDOUT,"8. SHOW GRAPH\n");
-		VERBOSE(N_STDOUT,"9. RUN TEMP CONF\n");
-		VERBOSE(N_STDOUT,"10. STOP SUPERVISOR-DAEMON\n");
+		VERBOSE(N_STDOUT,"5. STARTED MODULES STATUS\n");
+		VERBOSE(N_STDOUT,"6. AVAILABLE MODULES\n");
+		VERBOSE(N_STDOUT,"7. SHOW GRAPH\n");
+		VERBOSE(N_STDOUT,"8. RUN TEMP CONF\n");
+		VERBOSE(N_STDOUT,"9. STOP SUPERVISOR-DAEMON\n");
 		VERBOSE(N_STDOUT,"-- Type \"quit\" to exit client --\n");
 
 		while(connected) {
@@ -2193,8 +2211,12 @@ void daemon_mode(int * arg)
 						api_stop_configuration();
 						break;
 
+					// case 3:
+					// 	api_start_module();
+					// 	break;
+
 					case 3:
-						api_start_module();
+						api_set_module_enabled();
 						break;
 
 					case 4:
@@ -2202,47 +2224,42 @@ void daemon_mode(int * arg)
 						break;
 
 					case 5:
-						api_set_module_enabled();
-						break;
-
-					case 6:
 						api_show_running_modules_status();
 						break;
 
-					case 7:
+					case 6:
 						api_show_available_modules();
 						break;
 
-					case 8:
+					case 7:
 						api_show_graph();
 						break;
 
-					case 9:
+					case 8:
 						api_run_temp_conf();
 						break;
 
-					case 10:
+					case 9:
 						api_quit();
 						connected = FALSE;
 						terminated = TRUE;
 						break;
 
 					default:
-						VERBOSE(N_STDOUT, "chyba\n");
+						VERBOSE(N_STDOUT, "Error input\n");
 						break;
 					}
 
 					VERBOSE(N_STDOUT,"--------OPTIONS--------\n");
 					VERBOSE(N_STDOUT,"1. RUN CONFIGURATION\n");
 					VERBOSE(N_STDOUT,"2. STOP CONFIGURATION\n");
-					VERBOSE(N_STDOUT,"3. START MODUL\n");
+					VERBOSE(N_STDOUT,"3. SET MODULE ENABLED\n");
 					VERBOSE(N_STDOUT,"4. STOP MODUL\n");
-					VERBOSE(N_STDOUT,"5. SET MODULE ENABLED\n");
-					VERBOSE(N_STDOUT,"6. STARTED MODULES STATUS\n");
-					VERBOSE(N_STDOUT,"7. AVAILABLE MODULES\n");
-					VERBOSE(N_STDOUT,"8. SHOW GRAPH\n");
-					VERBOSE(N_STDOUT,"9. RUN TEMP CONF\n");
-					VERBOSE(N_STDOUT,"10. STOP SUPERVISOR-DAEMON\n");
+					VERBOSE(N_STDOUT,"5. STARTED MODULES STATUS\n");
+					VERBOSE(N_STDOUT,"6. AVAILABLE MODULES\n");
+					VERBOSE(N_STDOUT,"7. SHOW GRAPH\n");
+					VERBOSE(N_STDOUT,"8. RUN TEMP CONF\n");
+					VERBOSE(N_STDOUT,"9. STOP SUPERVISOR-DAEMON\n");
 					VERBOSE(N_STDOUT,"-- Type \"quit\" to exit client --\n");
 
 				}

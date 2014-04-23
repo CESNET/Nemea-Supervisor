@@ -65,26 +65,30 @@ graph_node_t * add_graph_node (graph_node_t * first, graph_node_t * last, void *
 
 	y=0;
 	for(x=0; x<running_module->module_ifces_cnt; x++){
-		if (!strcmp(running_module->module_ifces[x].ifc_direction, "IN")) {
-			sscanf(running_module->module_ifces[x].ifc_params,"%*[^','],%d", &new_node->node_input_interfaces[y].node_interface_port);
-			new_node->node_input_interfaces[y].parent_node = new_node;
-			new_node->node_input_interfaces[y].ifc_struct = &running_module->module_ifces[x];
-			y++;
+		if(running_module->module_ifces[x].ifc_direction != NULL){
+			if (!strcmp(running_module->module_ifces[x].ifc_direction, "IN")) {
+				sscanf(running_module->module_ifces[x].ifc_params,"%*[^','],%d", &new_node->node_input_interfaces[y].node_interface_port);
+				new_node->node_input_interfaces[y].parent_node = new_node;
+				new_node->node_input_interfaces[y].ifc_struct = &running_module->module_ifces[x];
+				y++;
+			}
 		}
 	}
  
 	y=0;
 	for(x=0; x<running_module->module_ifces_cnt; x++){
-		if (!strcmp(running_module->module_ifces[x].ifc_direction, "OUT")) {
-			if(sscanf(running_module->module_ifces[x].ifc_params,"%[^','],%d", port, &num_clients) != 2) {
-				num_clients = DEFAULT_NUM_CLIENTS_OUTPUT_IFC;
+		if(running_module->module_ifces[x].ifc_direction != NULL){
+			if (!strcmp(running_module->module_ifces[x].ifc_direction, "OUT")) {
+				if(sscanf(running_module->module_ifces[x].ifc_params,"%[^','],%d", port, &num_clients) != 2) {
+					num_clients = DEFAULT_NUM_CLIENTS_OUTPUT_IFC;
+				}
+				new_node->node_output_interfaces[y].node_interface_port = atoi(port);
+				new_node->node_output_interfaces[y].node_children = (graph_node_input_interface_t **)calloc(num_clients, sizeof(graph_node_input_interface_t *));
+				new_node->node_output_interfaces[y].statistics = (edge_statistics_t *)calloc(num_clients, sizeof(edge_statistics_t));
+				new_node->node_output_interfaces[y].parent_node = new_node;
+				new_node->node_output_interfaces[y].ifc_struct = &running_module->module_ifces[x];
+				y++;
 			}
-			new_node->node_output_interfaces[y].node_interface_port = atoi(port);
-			new_node->node_output_interfaces[y].node_children = (graph_node_input_interface_t **)calloc(num_clients, sizeof(graph_node_input_interface_t *));
-			new_node->node_output_interfaces[y].statistics = (edge_statistics_t *)calloc(num_clients, sizeof(edge_statistics_t));
-			new_node->node_output_interfaces[y].parent_node = new_node;
-			new_node->node_output_interfaces[y].ifc_struct = &running_module->module_ifces[x];
-			y++;
 		}
 	}
 

@@ -52,11 +52,11 @@ int main (int argc, char * argv [])
 
 	int ret_val = 0;
 	
-	while ((ret_val = api_print_menu()) != 10) {
+	while ((ret_val = api_print_menu()) != 9) {
 		switch(ret_val) {
-		case 0:
-			api_set_verbose_level();
-			break;
+		// case 0:
+		// 	api_set_verbose_level();
+		// 	break;
 
 		case 1:
 			api_start_configuration();
@@ -66,8 +66,12 @@ int main (int argc, char * argv [])
 			api_stop_configuration();
 			break;
 				
+		// case 3:
+		// 	api_start_module();		
+		// 	break;
+
 		case 3:
-			api_start_module();		
+			api_set_module_enabled();
 			break;
 
 		case 4:
@@ -75,22 +79,18 @@ int main (int argc, char * argv [])
 			break;
 
 		case 5:
-			api_set_module_enabled();
-			break;
-
-		case 6:
 			api_show_running_modules_status();
 			break;
 
-		case 7:
+		case 6:
 			api_show_available_modules();
 			break;
 
-		case 8:
+		case 7:
 			api_show_graph();
 			break;
 
-		case 9:
+		case 8:
 			api_run_temp_conf();
 			break;
 
