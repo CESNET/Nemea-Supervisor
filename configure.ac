@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.63])
-AC_INIT([nemea-supervisor], [1.0.0], [traffic-analysis@cesnet.cz])
+AC_INIT([nemea-supervisor], [1.0.0], [svepemar@fit.cvut.cz])
 AC_CONFIG_SRCDIR([supervisor.c])
 AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE([-Wall])
@@ -11,6 +11,22 @@ AM_INIT_AUTOMAKE([-Wall])
 AC_PROG_CC
 AC_PROG_MAKE_SET
 AM_PROG_CC_C_O
+
+AC_CHECK_PROG(HAVE_DOT, dot, yes)
+AC_CHECK_PROG(HAVE_DISPLAY, display, yes)
+
+if test "x$HAVE_DOT" = xyes; then
+AC_DEFINE([HAVE_DOT], 1, [Use dot(1) for graph creation])
+else
+AC_DEFINE([HAVE_DOT], 0, [Use dot(1) for graph creation])
+AC_MSG_WARN([We need graphviz...])
+fi
+if test "x$HAVE_DISPLAY" = xyes; then
+AC_DEFINE([HAVE_DOT], 1, [Use display(1) to show image.])
+else
+AC_DEFINE([HAVE_DOT], 0, [Use display(1) to show image.])
+AC_MSG_WARN([We need ImageMagick...])
+fi
 
 m4_include([m4/ax_libxml2_check.m4])
 AX_LIBXML2_CHECK()
