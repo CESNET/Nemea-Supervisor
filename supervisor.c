@@ -1650,8 +1650,8 @@ void * service_thread_routine(void* arg)
 					}
 				}
 			}
-			update_cpu_usage(&last_total_cpu_usage);
-			check_cpu_usage();
+			// update_cpu_usage(&last_total_cpu_usage);
+			// check_cpu_usage();
 
 			update_graph_values(graph_first_node);
 
