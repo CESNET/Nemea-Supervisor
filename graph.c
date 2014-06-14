@@ -43,6 +43,7 @@
 
 
 #include "graph.h"
+#include "internal.h"
 
 
 graph_node_t * add_graph_node (graph_node_t * first, graph_node_t * last, void * data)
@@ -337,6 +338,9 @@ void destroy_graph(graph_node_t * first)
 			if(node_ptr->node_output_interfaces[x].node_children != NULL) {
 				free(node_ptr->node_output_interfaces[x].node_children);
 			}
+			if(node_ptr->node_output_interfaces[x].statistics != NULL) {
+				free(node_ptr->node_output_interfaces[x].statistics);
+			}
 		}
 		if(node_ptr->node_output_interfaces != NULL) {
 			free(node_ptr->node_output_interfaces);
@@ -372,12 +376,6 @@ void graph_node_addresses_change (graph_node_t * first, int module_num, const ch
 
 	//change selected module input ifc addresses
 	for(x=0; x<node_ptr->num_node_input_interfaces; x++){
-		if(node_ptr->node_input_interfaces[x].node_interface_output_ifc == NULL){
-			printf("prvni NULL\n");
-		} else if(node_ptr->node_input_interfaces[x].node_interface_output_ifc->parent_node == NULL) {
-			printf("druhej NULL\n");
-		}
-
 		sscanf(node_ptr->node_input_interfaces[x].ifc_struct->ifc_params,"%*[^','],%d", &port);
 		memset(node_ptr->node_input_interfaces[x].ifc_struct->ifc_params, 0, strlen(node_ptr->node_input_interfaces[x].ifc_struct->ifc_params));
 		if(((running_module_t *)node_ptr->node_input_interfaces[x].node_interface_output_ifc->parent_node->module_data)->remote_module == TRUE){
@@ -438,7 +436,7 @@ void compute_differences(graph_node_t * first)
 {
 	int x, y, z, actual_difference = 0, period_difference = 0;
 	graph_node_t * node_ptr = first;
-
+	
 	while(node_ptr != NULL){
 		if(((running_module_t *)node_ptr->module_data)->module_status == TRUE){
 			for(x=0; x<node_ptr->num_node_output_interfaces; x++){
@@ -446,12 +444,28 @@ void compute_differences(graph_node_t * first)
 					// if(((running_module_t *)node_ptr->node_output_interfaces[x].node_children[y]->parent_node->module_data)->module_status == TRUE){
 						node_ptr->node_output_interfaces[x].statistics[y].num_periods++;
 						actual_difference = node_ptr->node_output_interfaces[x].message_counter - node_ptr->node_output_interfaces[x].node_children[y]->message_counter;
-						period_difference = actual_difference - node_ptr->node_output_interfaces[x].statistics[y].last_period_counters_difference;
+						if(actual_difference == -1){
+							period_difference = 0;
+						} else if (actual_difference < node_ptr->node_output_interfaces[x].statistics[y].last_period_counters_difference){
+							period_difference = 0;
+						} else {
+							period_difference = actual_difference - node_ptr->node_output_interfaces[x].statistics[y].last_period_counters_difference;	
+						}
 						node_ptr->node_output_interfaces[x].statistics[y].period_differences_suma += period_difference;
 						node_ptr->node_output_interfaces[x].statistics[y].expected_value = node_ptr->node_output_interfaces[x].statistics[y].period_differences_suma / node_ptr->node_output_interfaces[x].statistics[y].num_periods;
-						printf("Module %d> actual:%d, last:%d, perioddif:%d, suma:%d, EX:%d\n", node_ptr->module_number, actual_difference, node_ptr->node_output_interfaces[x].statistics[y].last_period_counters_difference,
-																	period_difference, node_ptr->node_output_interfaces[x].statistics[y].period_differences_suma, node_ptr->node_output_interfaces[x].statistics[y].expected_value);
-						node_ptr->node_output_interfaces[x].statistics[y].last_period_counters_difference = actual_difference;
+						// printf("---\nModule %d> actual:%d, last:%d, perioddif:%d, suma:%d, EX:%d\n", node_ptr->module_number, actual_difference, node_ptr->node_output_interfaces[x].statistics[y].last_period_counters_difference,
+						// 											period_difference, node_ptr->node_output_interfaces[x].statistics[y].period_differences_suma, node_ptr->node_output_interfaces[x].statistics[y].expected_value);
+						// printf("Module %d> perioddif:%d, suma:%d, EX:%d\n", node_ptr->module_number, period_difference, node_ptr->node_output_interfaces[x].statistics[y].period_differences_suma, node_ptr->node_output_interfaces[x].statistics[y].expected_value);
+						// if(node_ptr->module_number == 4 && node_ptr->node_output_interfaces[x].node_children[y]->parent_node->module_number == 2){
+						// 	printf("%d 	%d 	%d\n", node_ptr->node_output_interfaces[x].statistics[y].num_periods, period_difference, node_ptr->node_output_interfaces[x].statistics[y].expected_value);
+						// }
+						if(actual_difference == -1){
+							// node_ptr->node_output_interfaces[x].statistics[y].last_period_counters_difference = -1;
+						} else if (actual_difference < node_ptr->node_output_interfaces[x].statistics[y].last_period_counters_difference){
+							// node_ptr->node_output_interfaces[x].statistics[y].last_period_counters_difference = -1;
+						} else {
+							node_ptr->node_output_interfaces[x].statistics[y].last_period_counters_difference = actual_difference;
+						}
 					// }
 				}
 			}
@@ -475,6 +489,34 @@ void print_statistics(graph_node_t * first)
 				}
 			}
 		}
+		node_ptr = node_ptr->next_node;
+	}
+}
+
+void check_port_duplicates(graph_node_t * first)
+{
+	int x, y;
+	graph_node_t * node_ptr = first;
+	graph_node_t * iter_node_ptr = NULL;
+
+	while(node_ptr != NULL){
+		for(x=0; x<node_ptr->num_node_output_interfaces; x++){
+			iter_node_ptr = node_ptr;
+			y = x+1;
+			while(iter_node_ptr != NULL){
+				while(y<iter_node_ptr->num_node_output_interfaces){
+					if(node_ptr->node_output_interfaces[x].node_interface_port == iter_node_ptr->node_output_interfaces[y].node_interface_port){
+						VERBOSE(N_STDOUT,"Modules %d%s and %d%s have output interface with same port %d.\n", node_ptr->module_number, ((running_module_t *)node_ptr->module_data)->module_name,
+																											 iter_node_ptr->module_number, ((running_module_t *)iter_node_ptr->module_data)->module_name,
+																											 node_ptr->node_output_interfaces[x].node_interface_port)
+					}
+					y++;
+				}
+				y=0;
+				iter_node_ptr = iter_node_ptr->next_node;
+			}
+		}
+
 		node_ptr = node_ptr->next_node;
 	}
 }

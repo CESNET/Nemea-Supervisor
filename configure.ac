@@ -21,10 +21,11 @@ else
 AC_DEFINE([HAVE_DOT], 0, [Use dot(1) for graph creation])
 AC_MSG_WARN([We need graphviz...])
 fi
+
 if test "x$HAVE_DISPLAY" = xyes; then
-AC_DEFINE([HAVE_DOT], 1, [Use display(1) to show image.])
+AC_DEFINE([HAVE_DISPLAY], 1, [Use display(1) to show image.])
 else
-AC_DEFINE([HAVE_DOT], 0, [Use display(1) to show image.])
+AC_DEFINE([HAVE_DISPLAY], 0, [Use display(1) to show image.])
 AC_MSG_WARN([We need ImageMagick...])
 fi
 

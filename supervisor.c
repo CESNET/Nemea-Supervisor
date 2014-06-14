@@ -43,6 +43,7 @@
 
 #include "supervisor.h"
 #include "graph.h"
+#include "internal.h"
 
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -64,35 +65,28 @@
 #include <net/if.h>
 #include <ifaddrs.h>
 
-#define LOGSDIR_NAME 	"./modules_logs/" ///< Name of directory with logs
+#define LOGSDIR_NAME 	"./modules_logs/" ///< Name of directory with modules logs
 #define TRAP_PARAM 		"-i" ///< Interface parameter for libtrap
-#define MAX_RESTARTS	1000  ///< Maximum number of module restarts
+#define MAX_RESTARTS_PER_MINUTE	3  ///< Maximum number of module restarts per minute
 
-#define UNIX_PATH_FILENAME_FORMAT   "/tmp/trap-localhost-%s.sock"
-#define DAEMON_UNIX_PATH_FILENAME_FORMAT	"/tmp/supervisor_daemon.sock"
-
-
-#define STATISTICS 		1
-#define MODULE_EVENT 	2
-#define N_STDOUT 		3
+#define UNIX_PATH_FILENAME_FORMAT   "/tmp/trap-localhost-%s.sock" ///< Modules output interfaces socket, to which connects service thread.
+#define DAEMON_UNIX_PATH_FILENAME_FORMAT	"/tmp/supervisor_daemon.sock"  ///<  Daemon socket.
 
 /*******GLOBAL VARIABLES*******/
 running_module_t * 	running_modules;  ///< Information about running modules
 
-int 			running_modules_array_size;
-int 			loaded_modules_cnt;
+int 			running_modules_array_size;  ///< Current size of running_modules array.
+int 			loaded_modules_cnt; ///< Current number of loaded modules.
 
 pthread_mutex_t running_modules_lock; ///< mutex for locking counters
 int 			service_thread_continue; ///< condition variable of main loop of the service_thread
 int 			configuration_running; ///< if whole configuration was executed than ~ 1, else ~ 0
 
-graph_node_t * 	graph_first_node;
-graph_node_t * 	graph_last_node;
+graph_node_t * 	graph_first_node; ///< First node of graph nodes list.
+graph_node_t * 	graph_last_node; ///< Last node of graph nodes list.
 
-// int verbose_level;
-
-pthread_t * 	service_thread_id;
-pthread_t * 	acceptor_thread_id;
+pthread_t  	service_thread_id; ///< Service thread identificator.
+pthread_t  	acceptor_thread_id; ///< Acceptor thread identificator.
 
 // supervisor flags
 int 	help_flag; 			// -h argument
@@ -102,55 +96,14 @@ int 	show_cpu_usage_flag; // --show-cpuusage
 int 	verbose_flag; 		// -v
 int 	daemon_flag; 		// --daemon
 
-FILE * input_fd;
-FILE * output_fd;
 
-FILE * statistics_fd;
-FILE * module_event_fd;
+int 			remote_supervisor_socketd; ///< Socket descriptor of remote_supervisor. 
+int 			remote_supervisor_connected; ///< TRUE if remote_supervisor is connected.
+char 			remote_supervisor_address[50]; ///< Remote_supervisor IP address (if connected).
+char 			supervisor_address[50]; ///< Local IP address.
 
-int 			remote_supervisor_socketd;
-int 			remote_supervisor_connected;
-char 			remote_supervisor_address[50];
-char 			supervisor_address[50];
-
-int 			selected_module;
-
-int 			start_range_reserved_ports;
-int 			next_reserved_port;
-
-/**********************/
-//  #define VERBOSE(format,args...) if (verbose_flag) { \
-//    fprintf(output_fd, format,##args); \
-//    fflush(output_fd); \
-// }
-
-char verbose_msg[4096];
-
-void print_msg(int level, char *string)
-{
-	switch(level){
-	case STATISTICS:
-		fprintf(statistics_fd, "%s", string);
-		fflush(statistics_fd);
-		break;
-
-	case MODULE_EVENT:
-		fprintf(module_event_fd, "%s", string);
-		fflush(module_event_fd);
-		break;
-
-	case N_STDOUT:
-		fprintf(output_fd, "%s", string);
-		fflush(output_fd);
-		break;
-	}
-}
-
-#define VERBOSE(level, format, args...) if (1) { \
-   snprintf(verbose_msg, 4095, format, ##args); \
-   print_msg(level, verbose_msg); \
-}
-
+int 			start_range_reserved_ports; ///< Initial reserved port by supervisor.
+int 			next_reserved_port; ///< Next reserved port by supervisor.
 
 /**************************************/
 
@@ -161,7 +114,7 @@ union tcpip_socket_addr {
 
 void * remote_supervisor_accept_routine();
 void start_service_thread();
-void stop_service_thread();
+// void stop_threads();
 int parse_arguments(const int * argc, char ** argv);
 void print_help();
 void daemon_mode();
@@ -193,9 +146,9 @@ void get_local_IP ()
                 in_addr = &s4->sin_addr;
                 if(strcmp(ifa->ifa_name,"eth0") == 0){
                 	if (!inet_ntop(ifa->ifa_addr->sa_family, in_addr, supervisor_address, 50)) {
-			            printf("%s: inet_ntop failed!\n", ifa->ifa_name);
+			            // printf("%s: inet_ntop failed!\n", ifa->ifa_name);
 			        } else {
-			            printf("%s: %s\n", ifa->ifa_name, supervisor_address);
+			            // printf("%s: %s\n", ifa->ifa_name, supervisor_address);
 			        }
 			        freeifaddrs(myaddrs);
 			        return;
@@ -418,6 +371,7 @@ int load_configuration (const int choice, const char * buffer)
 	}
 
 	xmlFreeDoc(xml_tree);
+	xmlCleanupParser();
 	return TRUE;
 }
 
@@ -597,18 +551,6 @@ char ** make_module_arguments (const int number_of_module)
 int print_menu ()
 {
 	int ret_val = 0;
-	// VERBOSE(N_STDOUT,"--------OPTIONS--------\n");
-	// VERBOSE(N_STDOUT,"0. SET VERBOSE LEVEL\n");
-	// VERBOSE(N_STDOUT,"1. RUN CONFIGURATION\n");
-	// VERBOSE(N_STDOUT,"2. STOP CONFIGURATION\n");
-	// VERBOSE(N_STDOUT,"3. START MODUL\n");
-	// VERBOSE(N_STDOUT,"4. STOP MODUL\n");
-	// VERBOSE(N_STDOUT,"5. SET MODULE ENABLED\n");
-	// VERBOSE(N_STDOUT,"6. STARTED MODULES STATUS\n");
-	// VERBOSE(N_STDOUT,"7. AVAILABLE MODULES\n");
-	// VERBOSE(N_STDOUT,"8. SHOW GRAPH\n");
-	// VERBOSE(N_STDOUT,"9. RUN TEMP CONF\n");
-	// VERBOSE(N_STDOUT,"10. QUIT\n");
 	VERBOSE(N_STDOUT,"--------OPTIONS--------\n");
 	VERBOSE(N_STDOUT,"1. RUN CONFIGURATION\n");
 	VERBOSE(N_STDOUT,"2. STOP CONFIGURATION\n");
@@ -646,37 +588,10 @@ void start_module (const int module_number)
 	char log_path_stderr[100];
 	int x = 0;
 
-	// if(running_modules_cnt == running_modules_array_size) {
-	// 	VERBOSE(N_STDOUT,"REALLOCING RUNNING MODULES ARRAY --->\n");
-	// 	int origin_size = running_modules_array_size;
-	// 	running_modules_array_size += running_modules_array_size/2;
-	// 	running_modules = (running_module_t *) realloc (running_modules, running_modules_array_size * sizeof(running_module_t));
-	// 	memset(running_modules + origin_size,0,(origin_size/2)*sizeof(running_module_t));
-
-	// 	//update graph nodes pointers to running module data
-	// 	graph_node_t * node_ptr = graph_first_node;
-	// 	while(node_ptr != NULL) {
-	// 		node_ptr->module_data = (void *) &running_modules[node_ptr->module_number];
-	// 		node_ptr = node_ptr->next_node;
-	// 	}
-	// }
-
-	// running_modules[module_number].module_has_service_ifc = FALSE;
-	// running_modules[module_number].module_served_by_service_thread = FALSE;
-	// running_modules[module_number].module_num_in_ifc = 0;
-	// running_modules[module_number].module_num_out_ifc = 0;
 	running_modules[module_number].module_enabled = TRUE;
 	running_modules[module_number].module_restart_cnt = 0;
 	running_modules[module_number].module_service_sd = -1;
 	running_modules[module_number].remote_module = FALSE;
-
-	// for(x=0; x<running_modules[module_number].module_ifces_cnt; x++) {
-	// 	if(strncmp(running_modules[module_number].module_ifces[x].ifc_direction, "IN", 2) == 0) {
-	// 		running_modules[module_number].module_num_in_ifc++;
-	// 	} else if (strncmp(running_modules[module_number].module_ifces[x].ifc_direction, "OUT", 3) == 0) {
-	// 		running_modules[module_number].module_num_out_ifc++;
-	// 	}
-	// }
 
 	running_modules[module_number].module_counters_array = (int *) calloc (3*running_modules[module_number].module_num_out_ifc + running_modules[module_number].module_num_in_ifc,sizeof(int));
 	sprintf(log_path_stdout,"%s%d_%s_stdout",LOGSDIR_NAME, module_number, running_modules[module_number].module_name);
@@ -753,6 +668,9 @@ void restart_module (const int module_number)
 	} else {
 		running_modules[module_number].module_status = TRUE;
 		running_modules[module_number].module_restart_cnt++;
+		if(running_modules[module_number].module_restart_cnt == 1){
+			running_modules[module_number].module_restart_timer = 0;
+		}
 	}
 }
 
@@ -810,7 +728,6 @@ int api_initialization(const int * argc, char ** argv)
 {	
 	start_range_reserved_ports = 12000;
 	next_reserved_port = start_range_reserved_ports;
-	selected_module = -1;
 	get_local_IP();
 	input_fd = stdin;
 	output_fd = stdout;
@@ -838,7 +755,7 @@ int api_initialization(const int * argc, char ** argv)
 
 	int daemon_arg;
 	if (daemon_flag) {
-		daemon_init(&daemon_arg, NULL);
+		daemon_init(&daemon_arg);
 	}
 
 
@@ -990,7 +907,17 @@ void api_set_module_enabled()
 		pthread_mutex_unlock(&running_modules_lock);
 		return;
 	}
-	running_modules[x].module_enabled=TRUE;
+	if(running_modules[x].module_enabled){
+		VERBOSE(N_STDOUT,"Module %d%s is already enabled.\n", x, running_modules[x].module_name);
+	} else {
+		running_modules[x].module_enabled=TRUE;
+		if(running_modules[x].module_running){
+			running_modules[x].module_restart_cnt = -1;
+		} else {
+			running_modules[x].module_restart_cnt = 0;
+		}
+	}
+
 	pthread_mutex_unlock(&running_modules_lock);
 }
 
@@ -998,8 +925,15 @@ void restart_modules()
 {
 	int x = 0;
 	for (x=0; x<loaded_modules_cnt; x++) {
-		if (running_modules[x].module_status == FALSE && (running_modules[x].module_restart_cnt >= MAX_RESTARTS)) {
-			VERBOSE(MODULE_EVENT,"Module: %d_%s was restarted %d times and it is down again.\n",x, running_modules[x].module_name, MAX_RESTARTS);
+		if(++running_modules[x].module_restart_timer == 30){
+			running_modules[x].module_restart_timer = 0;
+			running_modules[x].module_restart_cnt = 0;
+		}
+		// VERBOSE(N_STDOUT,"%d,%d%s> restartcnt: %d, timer: %d\n", running_modules[x].module_pid, x, running_modules[x].module_name, running_modules[x].module_restart_cnt, running_modules[x].module_restart_timer);
+
+		if (running_modules[x].module_enabled == TRUE && running_modules[x].module_status == FALSE && (running_modules[x].module_restart_cnt == MAX_RESTARTS_PER_MINUTE)) {
+			VERBOSE(N_STDOUT,"Module: %d_%s was restarted %d times per minute and it is down again. I set it disabled.\n",x, running_modules[x].module_name, MAX_RESTARTS_PER_MINUTE);
+			running_modules[x].module_enabled = FALSE;
 		} else if (running_modules[x].module_status == FALSE && running_modules[x].module_enabled == TRUE && running_modules[x].remote_module == FALSE) {
 			restart_module(x);
 		}
@@ -1033,7 +967,8 @@ void api_quit()
 {
 	int x, y;
 	VERBOSE(N_STDOUT,"-- Aborting service thread --\n");
-	stop_service_thread();
+	// stop_threads();
+	service_thread_continue = 0;
 	sleep(3);
 	api_stop_configuration();
 	for(x=0;x<loaded_modules_cnt;x++) {
@@ -1073,12 +1008,12 @@ void api_quit()
 		free(running_modules);
 	}
 	destroy_graph(graph_first_node);
-	if(service_thread_id != NULL) {
-		free(service_thread_id);
-	}
-	if(acceptor_thread_id != NULL) {
-		free(acceptor_thread_id);
-	}
+	// if(service_thread_id != NULL) {
+	// 	free(service_thread_id);
+	// }
+	// if(acceptor_thread_id != NULL) {
+	// 	free(acceptor_thread_id);
+	// }
 	if(config_file != NULL) {
 		free(config_file);
 	}
@@ -1093,10 +1028,10 @@ int api_print_menu()
 	return print_menu();
 }
 
-void api_update_module_status()
-{
-	update_module_status();
-}
+// void api_update_module_status()
+// {
+// 	update_module_status();
+// }
 
 char * get_param_by_delimiter(const char *source, char **dest, const char delimiter)
 {
@@ -1207,79 +1142,6 @@ int count_struct_size(int module_num)
 	return size;
 }
 
-// void * alloc_link_struct(int size_of_data, int module_num)
-// {
-// 	void * data = (void *)calloc(size_of_data, sizeof(char));
-// 	char * ptr = data + sizeof(running_module_t);
-// 	int x;
-
-// 	if(running_modules[module_num].module_name != NULL){
-// 		((running_module_t *)data)->module_name = ptr;
-// 		ptr += strlen(running_modules[module_num].module_name) + 1;
-// 	}
-// 	if(running_modules[module_num].module_path != NULL){
-// 		((running_module_t *)data)->module_path = ptr;
-// 		ptr += strlen(running_modules[module_num].module_path) + 1;
-// 	}
-// 	if(running_modules[module_num].module_ifces != NULL){
-// 		((running_module_t *)data)->module_ifces = (interface_t*)ptr;
-// 		ptr += running_modules[module_num].module_ifces_cnt * sizeof(interface_t);
-// 	}
-
-// 	for(x=0; x<running_modules[module_num].module_ifces_cnt; x++){
-// 		if(running_modules[module_num].module_ifces[x].ifc_note != NULL){
-// 			((running_module_t *)data)->module_ifces[x].ifc_note = ptr;
-// 			ptr += strlen(running_modules[module_num].module_ifces[x].ifc_note) + 1;
-// 		}
-// 		if(running_modules[module_num].module_ifces[x].ifc_type != NULL){
-// 			((running_module_t *)data)->module_ifces[x].ifc_type =  ptr;
-// 			ptr += strlen(running_modules[module_num].module_ifces[x].ifc_type) + 1;
-// 		}
-// 		if(running_modules[module_num].module_ifces[x].ifc_params != NULL){
-// 			((running_module_t *)data)->module_ifces[x].ifc_params =  ptr;
-// 			ptr += strlen(running_modules[module_num].module_ifces[x].ifc_params) + 1;
-// 		}
-// 		if(running_modules[module_num].module_ifces[x].ifc_direction != NULL){
-// 			((running_module_t *)data)->module_ifces[x].ifc_direction =  ptr;
-// 			ptr += strlen(running_modules[module_num].module_ifces[x].ifc_direction) + 1;
-// 		}
-// 	}
-
-// 	return data;
-// }
-
-// void copy_data_to_alloc_struct(void * data, int module_num)
-// {
-// 	int x;
-
-// 	((running_module_t *)data)->module_ifces_cnt = running_modules[module_num].module_ifces_cnt;
-// 	((running_module_t *)data)->module_num_out_ifc = running_modules[module_num].module_num_out_ifc;
-// 	((running_module_t *)data)->module_num_in_ifc = running_modules[module_num].module_num_in_ifc;
-
-
-// 	if(running_modules[module_num].module_name != NULL){
-// 		strcpy(((running_module_t *)data)->module_name, running_modules[module_num].module_name);
-// 	}
-// 	if(running_modules[module_num].module_path != NULL){
-// 		strcpy(((running_module_t *)data)->module_path, running_modules[module_num].module_path);
-// 	}
-
-// 	for(x=0; x<running_modules[module_num].module_ifces_cnt; x++){
-// 		if(running_modules[module_num].module_ifces[x].ifc_note != NULL){
-// 			strcpy(((running_module_t *)data)->module_ifces[x].ifc_note, running_modules[module_num].module_ifces[x].ifc_note);
-// 		}
-// 		if(running_modules[module_num].module_ifces[x].ifc_type != NULL){
-// 			strcpy(((running_module_t *)data)->module_ifces[x].ifc_type, running_modules[module_num].module_ifces[x].ifc_type);
-// 		}
-// 		if(running_modules[module_num].module_ifces[x].ifc_params != NULL){
-// 			strcpy(((running_module_t *)data)->module_ifces[x].ifc_params, running_modules[module_num].module_ifces[x].ifc_params);
-// 		}
-// 		if(running_modules[module_num].module_ifces[x].ifc_direction != NULL){
-// 			strcpy(((running_module_t *)data)->module_ifces[x].ifc_direction, running_modules[module_num].module_ifces[x].ifc_direction);
-// 		}
-// 	}
-// }
-
 void send_to_remote_running_module_struct (int num_module)
 {
 	int ret_val = 0;
@@ -1314,9 +1176,11 @@ void send_to_remote_running_module_struct (int num_module)
 		if(ret_val == -1){
 			printf("Error while sending request to remote Supervisor\n");
 		}
-		ret_val = send(remote_supervisor_socketd, running_modules[num_module].module_ifces[x].ifc_direction, strlen(running_modules[num_module].module_ifces[x].ifc_direction)+1, 0);
-		if(ret_val == -1){
-			printf("Error while sending request to remote Supervisor\n");
+		if(running_modules[num_module].module_ifces[x].ifc_direction != NULL){
+			ret_val = send(remote_supervisor_socketd, running_modules[num_module].module_ifces[x].ifc_direction, strlen(running_modules[num_module].module_ifces[x].ifc_direction)+1, 0);
+			if(ret_val == -1){
+				printf("Error while sending request to remote Supervisor\n");
+			}
 		}
 	}
 }
@@ -1372,20 +1236,23 @@ void check_cpu_usage()
 	remote_info_t command;
 	int x, y, ret_val;
 	int tosend[1];
+	int selected_module = -1;
 
 	// condition 1, if(num_periods_overload>10)
 	for(x=0;x<loaded_modules_cnt;x++) {
 		if(running_modules[x].module_status){
-			if(running_modules[x].percent_cpu_usage_kernel_mode > 50){
+			if((running_modules[x].percent_cpu_usage_kernel_mode > 50) || (running_modules[x].percent_cpu_usage_user_mode > 50)){
 				running_modules[x].num_periods_overload++;
-			} else {
-				running_modules[x].num_periods_overload = 0;
+				VERBOSE(N_STDOUT,"module %d%s overload\n",x,running_modules[x].module_name);
+			} 
+			else {
+				running_modules[x].num_periods_overload--;
 			}
 		}
 	}
 	for(x=0;x<loaded_modules_cnt;x++) {
 		if(running_modules[x].module_status){
-			if(running_modules[x].num_periods_overload > 10){
+			if(running_modules[x].num_periods_overload > 3){
 				selected_module = x;
 				break;
 			}
@@ -1393,6 +1260,7 @@ void check_cpu_usage()
 	}
 
 	if(selected_module >= 0 && running_modules[selected_module].remote_module == FALSE && remote_supervisor_connected && running_modules[selected_module].module_status){
+
 		VERBOSE(N_STDOUT,"de se na to\nsup> %s, remote> %s", supervisor_address, remote_supervisor_address);
 		
 		// stop module
@@ -1440,7 +1308,7 @@ void check_differences()
 {
 	int x,y,cnt;
 	int str_len = 0;
-	int select = 5;
+	int select = -1;
 	graph_node_t * node_ptr = graph_first_node;
 
 	// while(node_ptr != NULL){
@@ -1449,9 +1317,8 @@ void check_differences()
 	// 	//}
 	// 	node_ptr = node_ptr->next_node;
 	// }
-
-	if(running_modules[select].module_cloned == FALSE && running_modules[select].module_status && running_modules[select].remote_module == FALSE){
-	// if(FALSE){
+	// if(running_modules[select].module_cloned == FALSE && running_modules[select].module_status && running_modules[select].remote_module == FALSE){
+	if(FALSE){
 		running_modules[select].module_cloned = TRUE;
 		if((loaded_modules_cnt + running_modules[select].module_num_in_ifc + running_modules[select].module_num_out_ifc + 1) >= running_modules_array_size){
 			//realloc
@@ -1497,10 +1364,10 @@ void check_differences()
 		running_modules[loaded_modules_cnt].module_ifces_cnt = running_modules[select].module_ifces_cnt;
 		running_modules[loaded_modules_cnt].module_num_in_ifc = running_modules[select].module_num_in_ifc;
 		running_modules[loaded_modules_cnt].module_num_out_ifc = running_modules[select].module_num_out_ifc;
-
+		
 		cnt = 0;
 		for(x=0; x<running_modules[select].module_ifces_cnt; x++){
-			if(strcmp(running_modules[select].module_ifces[x].ifc_direction, "IN") == 0){
+			if(running_modules[select].module_ifces[x].ifc_direction != NULL && strcmp(running_modules[select].module_ifces[x].ifc_direction, "IN") == 0){
 				running_modules[loaded_modules_cnt+1+cnt].module_ifces = (interface_t *)calloc(4, sizeof(interface_t));
 
 				if(running_modules[select].module_ifces[x].ifc_note != NULL) {
@@ -1563,11 +1430,12 @@ void check_differences()
 				cnt++;
 			}
 		}
+		
 		update_module_input_ifces(graph_first_node, select);
 		
 		cnt = 0;
 		for(x=0; x<running_modules[select].module_ifces_cnt; x++){
-			if(strcmp(running_modules[select].module_ifces[x].ifc_direction, "OUT") == 0){
+			if(running_modules[select].module_ifces[x].ifc_direction != NULL && strcmp(running_modules[select].module_ifces[x].ifc_direction, "OUT") == 0){
 				running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces = (interface_t *)calloc(4, sizeof(interface_t));
 
 				if(running_modules[select].module_ifces[x].ifc_note != NULL) {
@@ -1632,8 +1500,9 @@ void check_differences()
 				cnt++;
 			}
 		}
+		
 		update_module_output_ifces(graph_first_node, select);
-
+		
 		loaded_modules_cnt = loaded_modules_cnt + 1 + running_modules[select].module_num_in_ifc + running_modules[select].module_num_out_ifc;
 	}
 }
@@ -1734,6 +1603,10 @@ void * service_thread_routine(void* arg)
 					graph_last_node->next_node = NULL;
 				}
 				running_modules[y].module_served_by_service_thread = TRUE;
+
+				if(y==loaded_modules_cnt-1){
+					check_port_duplicates(graph_first_node);
+				}
 			}
 		}
 		if(1){
@@ -1777,8 +1650,8 @@ void * service_thread_routine(void* arg)
 					}
 				}
 			}
-			// update_cpu_usage(&last_total_cpu_usage);
-			// check_cpu_usage();
+			update_cpu_usage(&last_total_cpu_usage);
+			check_cpu_usage();
 
 			update_graph_values(graph_first_node);
 
@@ -1838,17 +1711,20 @@ void * service_thread_routine(void* arg)
 
 void start_service_thread()
 {
-	service_thread_id = (pthread_t *) calloc (1,sizeof(pthread_t));
-	pthread_create(service_thread_id,NULL,service_thread_routine, NULL);
+	// service_thread_id = (pthread_t) calloc (1,sizeof(pthread_t));
+	pthread_create(&service_thread_id,NULL,service_thread_routine, NULL);
 
 	// acceptor_thread_id = (pthread_t *) calloc (1,sizeof(pthread_t));
-	// pthread_create(acceptor_thread_id,NULL,remote_supervisor_accept_routine, NULL);
+	pthread_create(&acceptor_thread_id,NULL,remote_supervisor_accept_routine, NULL);
 }
 
-void stop_service_thread()
-{
-	service_thread_continue = 0;
-}
+// void stop_threads()
+// {
+// 	service_thread_continue = 0;
+// 	// if(remote_supervisor_connected){
+// 	// 	pthread_kill(acceptor_thread_id,2);
+// 	// }
+// }
 
 void api_show_graph()
 {
@@ -1859,7 +1735,6 @@ void api_show_graph()
 	generate_graph_code(graph_first_node);
 	show_graph();
 }
-
 
 void run_temp_configuration()
 {
@@ -1903,20 +1778,20 @@ void api_run_temp_conf()
 	run_temp_configuration();
 }
 
-void api_set_verbose_level()
-{
-	// int x = 0;
-	VERBOSE(N_STDOUT,"Type in 0 or 1 to set verbose level of supervisor:\n");
-	if(!fscanf(input_fd,"%d",&selected_module)) {
-		VERBOSE(N_STDOUT,"Wrong input.\n");
-		return;
-	}
-	// if(x>1 || x<0) {
-	// 	VERBOSE(N_STDOUT,"Wrong input.\n");
-	// } else {
-	// 	verbose_flag = x;
-	// }
-}
+// void api_set_verbose_level()
+// {
+// 	// int x = 0;
+// 	VERBOSE(N_STDOUT,"Type in 0 or 1 to set verbose level of supervisor:\n");
+// 	if(!fscanf(input_fd,"%d",&selected_module)) {
+// 		VERBOSE(N_STDOUT,"Wrong input.\n");
+// 		return;
+// 	}
+// 	// if(x>1 || x<0) {
+// 	// 	VERBOSE(N_STDOUT,"Wrong input.\n");
+// 	// } else {
+// 	// 	verbose_flag = x;
+// 	// }
+// }
 
 int parse_arguments(const int * argc, char ** argv)
 {
@@ -1980,7 +1855,7 @@ void print_help()
 		   "7 - command generates code for dot program and shows graph of running modules using display program\n"
 		   "8 - command parses external configuration of pasted modules, expected input is same xml code as in config_file, first tag is <modules> and last tag </modules>\n"
 		   "9 - shut down command\n\n"
-		   "Example of input for command num. 9:\n"
+		   "Example of input for command num. 8:\n"
 		   "<modules>\n"
 				"\t<module>\n"
 					"\t\t<params></params>\n"
@@ -2004,17 +1879,15 @@ void print_help()
 			"</modules>\n");
 }
 
-int daemon_init(int * d_sd, int * fd)
+int daemon_init(int * d_sd)
 {
 	// create socket
-
 	union tcpip_socket_addr addr;
 	struct addrinfo *p;
-
 	memset(&addr, 0, sizeof(addr));
-
 	addr.unix_addr.sun_family = AF_UNIX;
 	snprintf(addr.unix_addr.sun_path, sizeof(addr.unix_addr.sun_path) - 1, DAEMON_UNIX_PATH_FILENAME_FORMAT);
+
 	/* if socket file exists, it could be hard to create new socket and bind */
 	unlink(DAEMON_UNIX_PATH_FILENAME_FORMAT); /* error when file does not exist is not a problem */
 	*d_sd = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -2025,13 +1898,11 @@ int daemon_init(int * d_sd, int * fd)
 		/* error bind() failed */
 		p = NULL;
 	}
-
 	if (p == NULL) {
 		// if we got here, it means we didn't get bound
 		VERBOSE(N_STDOUT,"selectserver: failed to bind");
 		return 10;
 	}
-
 	// listen
 	if (listen(*d_sd, 1) == -1) {
 		//perror("listen");
@@ -2039,9 +1910,7 @@ int daemon_init(int * d_sd, int * fd)
 		return 10;
 	}
 
-
 	// create daemon
-
 	pid_t process_id = 0;
 	pid_t sid = 0;
 
@@ -2051,6 +1920,11 @@ int daemon_init(int * d_sd, int * fd)
 		VERBOSE(N_STDOUT,"fork failed!\n");
 		exit(1);
 	} else if (process_id > 0)	{
+		if(config_file != NULL){
+			free(config_file);
+		}
+		fclose(statistics_fd);
+		fclose(module_event_fd);
 		VERBOSE(N_STDOUT,"process_id of child process %d \n", process_id);
 		exit(0);
 	}
@@ -2083,6 +1957,7 @@ int daemon_get_client (int * d_sd)
 	newclient = accept(*d_sd, (struct sockaddr *)&remoteaddr, &addrlen);
 	if (newclient == -1) {
 		VERBOSE(N_STDOUT,"Accepting new client failed.");
+		return newclient;
 	}
 	VERBOSE(N_STDOUT,"Client has connected.\n");
 	return newclient;
@@ -2211,10 +2086,6 @@ void daemon_mode(int * arg)
 						api_stop_configuration();
 						break;
 
-					// case 3:
-					// 	api_start_module();
-					// 	break;
-
 					case 3:
 						api_set_module_enabled();
 						break;
@@ -2274,6 +2145,8 @@ void daemon_mode(int * arg)
 		}
 	}
 
+	fclose(client_stream_input);
+	fclose(client_stream_output);
 	close(client_sd);
 	close(daemon_sd);
 	unlink(DAEMON_UNIX_PATH_FILENAME_FORMAT);
@@ -2294,7 +2167,7 @@ void * remote_supervisor_accept_routine ()
 	socklen_t addrlen;
 
 	if ((supervisor_sd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == -1) {
-		VERBOSE(N_STDOUT,"Nelze vytvořit soket");
+		VERBOSE(N_STDOUT,"Remote thread> Cannot create a socket.\n");
 		pthread_exit(NULL);
 	}
  
@@ -2303,13 +2176,13 @@ void * remote_supervisor_accept_routine ()
 	supervisor.sin_addr.s_addr = INADDR_ANY;
 
 	if (bind(supervisor_sd, (struct sockaddr *)&supervisor, sizeof(supervisor)) == -1) {
-		VERBOSE(N_STDOUT, "Problém s pojmenováním soketu.");
+		VERBOSE(N_STDOUT, "Remote thread> Cannot bind the socket.\n");
 		close(supervisor_sd);
 		pthread_exit(NULL);
 	}
 
 	if (listen(supervisor_sd, 2) == -1) {
-		VERBOSE(N_STDOUT, "Problém s vytvořením fronty");
+		VERBOSE(N_STDOUT, "Remote thread> Error listening.\n");
 		close(supervisor_sd);
 		pthread_exit(NULL);
 	}
@@ -2318,17 +2191,16 @@ void * remote_supervisor_accept_routine ()
 	while(service_thread_continue == TRUE) {
 		if(remote_supervisor_connected == FALSE) {
 			addrlen = sizeof(supervisor_remote);
-			VERBOSE(N_STDOUT,"Waiting for remote sup");
 			supervisor_remote_sd = accept(supervisor_sd, (struct sockaddr*)&supervisor_remote, &addrlen);
 			if (supervisor_remote_sd == -1) {
-				VERBOSE(N_STDOUT, "Problém s přijetím spojeni");
+				VERBOSE(N_STDOUT, "Remote thread> Error accept.\n");
 				close(supervisor_sd);
 				pthread_exit(NULL);
 			}
 			strcpy(remote_supervisor_address, inet_ntoa((struct in_addr)supervisor_remote.sin_addr));
 			remote_supervisor_socketd = supervisor_remote_sd;
 			remote_supervisor_connected = TRUE;
-			VERBOSE(N_STDOUT, "Někdo se připojil z adresy: %s", remote_supervisor_address);
+			VERBOSE(N_STDOUT, "Remote thread> Got connection: %s", remote_supervisor_address);
 		}
 		ret_val = recv(supervisor_remote_sd, buffer, 1, MSG_DONTWAIT);
 		if(ret_val == -1){
@@ -2336,9 +2208,9 @@ void * remote_supervisor_accept_routine ()
 				sleep(1);
 				continue;
 			}
-			VERBOSE(N_STDOUT, "Error recv remote_sup");
+			VERBOSE(N_STDOUT, "Remote thread> Error recv.\n");
 		} else if (ret_val == 0) {
-			VERBOSE(N_STDOUT, "Remote_supervisor has disconnected");
+			VERBOSE(N_STDOUT, "Remote thread> Remote client has disconnected.\n");
 			close(supervisor_remote_sd);
 			remote_supervisor_connected = FALSE;
 		}
