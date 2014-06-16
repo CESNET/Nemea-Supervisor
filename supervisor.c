@@ -2,6 +2,7 @@
  * \file supervisor.c
  * \brief Supervisor implementation.
  * \author Marek Svepes <svepemar@fit.cvut.cz>
+ * \author Tomas Cejka <cejkat@cesnet.cz>
  * \date 2013
  * \date 2014
  */
@@ -57,6 +58,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <getopt.h>
 #include <pthread.h>
 #include <errno.h>
 #include <semaphore.h>
@@ -92,7 +94,8 @@ pthread_t   acceptor_thread_id; ///< Acceptor thread identificator.
 // supervisor flags
 int   help_flag;        // -h argument
 int   file_flag;        // -f "file" arguments
-char *config_file;
+char *config_file = NULL;
+char *socket_path = NULL;
 int   show_cpu_usage_flag; // --show-cpuusage
 int   verbose_flag;     // -v
 int   daemon_flag;      // --daemon
@@ -116,7 +119,7 @@ union tcpip_socket_addr {
 void * remote_supervisor_accept_routine();
 void start_service_thread();
 // void stop_threads();
-int parse_arguments(const int * argc, char ** argv);
+int parse_arguments(int *argc, char **argv);
 void print_help();
 void daemon_mode();
 
@@ -726,7 +729,7 @@ void sigpipe_handler(int sig)
    }
 }
 
-int api_initialization(const int * argc, char ** argv)
+int api_initialization(int *argc, char **argv)
 {
    start_range_reserved_ports = 12000;
    next_reserved_port = start_range_reserved_ports;
@@ -1821,37 +1824,63 @@ void api_run_temp_conf()
 //    // }
 // }
 
-int parse_arguments(const int * argc, char ** argv)
+int parse_arguments(int *argc, char **argv)
 {
-   if(*argc <= 1) {
-      fprintf(stderr,"Wrong format of arguments.\n %s [-h] [-v] [--show-cpuusage] -f config_file.xml\n", argv[0]);
-      return FALSE;
-   }
-   int x;
-   for (x=1; x<*argc; x++) {
-      if (strncmp(argv[x],"-h", 2) == 0) {
-         help_flag = TRUE;
-      } else if (strncmp(argv[x],"-f", 2) == 0 && *argc>x+1) {
-         if (strstr(argv[x+1],".xml") != NULL) {
-            file_flag = TRUE;
-            config_file = (char *) calloc (strlen(argv[x+1])+1, sizeof(char));
-            strncpy(config_file, argv[x+1], strlen(argv[x+1])+1);
-            x++;
-         } else {
-            return FALSE;
-         }
-      } else if (strncmp(argv[x],"--show-cpuusage", 15) == 0) {
-         show_cpu_usage_flag = TRUE;
-      } else if (strncmp(argv[x],"-v", 2) == 0) {
-         verbose_flag = TRUE;
-      } else if (strncmp(argv[x],"--daemon", 8) == 0) {
-         daemon_flag = TRUE;
-      } else {
-         fprintf(stderr,"Wrong format of arguments.\n %s [-h] [-v] [--show-cpuusage] -f config_file.xml\n", argv[0]);
+   char c;
+   while (1) {
+      int this_option_optind = optind ? optind : 1;
+      int option_index = 0;
+      static struct option long_options[] = {
+         {"daemon", no_argument, 0, 'd'},
+         {"config-file",  required_argument,    0, 'f'},
+         {"help", no_argument,           0,  'h' },
+         {"verbose",  no_argument,       0,  'v' },
+         {"show-cpuusage",  no_argument, 0,  'C' },
+         {"daemon-socket",  required_argument,  0, 's'},
+         {0, 0, 0, 0}
+      };
+
+      c = getopt_long(*argc, argv, "df:hvCs:", long_options, &option_index);
+      if (c == -1) {
+         break;
+      }
+
+      switch (c) {
+      case 'h':
+         printf("Usage: supervisor [-d|--daemon] -f|--config-file=path [-h|--help] [-v|--verbose] [-C|--show-cpuusage] [-s|--daemon-socket=path]\n");
          return FALSE;
+      case 's':
+         socket_path = optarg;
+         break;
+      case 'v':
+         verbose_flag = TRUE;
+         break;
+      case 'f':
+         config_file = strdup(optarg);
+         file_flag = TRUE;
+         break;
+      case 'C':
+         show_cpu_usage_flag = TRUE;
+         break;
+      case 'd':
+         daemon_flag = TRUE;
+         break;
       }
    }
 
+   if (socket_path == NULL) {
+      /* socket_path was not set by user, use default value. */
+      socket_path = DAEMON_UNIX_PATH_FILENAME_FORMAT;
+   }
+   if (config_file == NULL) {
+      printf("Missing required config file (-f|--config-file).\n");
+      return FALSE;
+   }
+   if (strstr(config_file, ".xml") == NULL) {
+      free(config_file);
+      config_file = NULL;
+      return FALSE;
+   }
    return TRUE;
 }
 
@@ -1859,7 +1888,7 @@ void print_help()
 {
    VERBOSE(N_STDOUT,"--------------------------\n"
          "NEMEA Supervisor:\n"
-         "Expected arguments to run supervisor are: ./supervisor [--daemon] [-h] [-v] [--show-cpuusage] -f config_file.xml\n"
+         "Expected arguments to run supervisor are: ./supervisor [-d|--daemon] [-f|--config-file=path] [-h|--help] [-v|--verbose] [-C|--show-cpuusage] [-s|--daemon-socket=path]\n"
          "Main thread is waiting for input with number of command to execute.\n"
          "Functions:\n"
          "\t- 1. RUN CONFIGURATION\n"

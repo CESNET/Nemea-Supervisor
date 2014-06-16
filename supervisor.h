@@ -180,7 +180,7 @@ void sigpipe_handler(int sig);
  * @param[in] argv Argv of main function.
  * @return 0 if interactive mode, 2 if daemon mode, 1 if error.
  */
-int api_initialization(const int * argc, char ** argv);
+int api_initialization(int *argc, char **argv);
 
 /** Starts every loaded module.
  */
@@ -279,7 +279,7 @@ void run_temp_configuration();
  * @param[in] argv Argv of main function.
  * @return 1 if success, 0 if error.
  */
-int parse_arguments(const int * argc, char ** argv);
+int parse_arguments(int *argc, char **argv);
 
 /** Function prints a help to supervisor after executing program with -h argument.
  */

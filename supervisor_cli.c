@@ -2,6 +2,7 @@
  * \file supervisor_cli.c
  * \brief Command line interface for supervisor
  * \author Marek Svepes <svepemar@fit.cvut.cz>
+ * \author Tomas Cejka <cejkat@cesnet.cz>
  * \date 2013
  * \date 2014
  */
@@ -52,6 +53,7 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <sys/ioctl.h>
+#include <unistd.h>
 
 #define TRUE            1 ///< Bool true
 #define FALSE           0 ///< Bool false
@@ -79,7 +81,7 @@ int connect_to_supervisor()
    return sockfd;
 }
 
-int main ()
+int main(int argc, char **argv)
 {
    int x = 0;
    int connected = FALSE;
@@ -93,6 +95,27 @@ int main ()
 
    char testbuffer[100];
    memset(testbuffer,0,100);
+   char *socket_path = NULL;
+
+   char opt;
+   while ((opt = getopt(argc, argv, "hs:")) != -1) {
+      switch (opt) {
+      case 'h':
+         printf("Usage: supervisor_cli [-h] [-s <path>]\n"
+               "\t-h\tshows this help\n\t-s <path>\tpath to UNIX socket file\n");
+         return 0;
+      case 's':
+         socket_path = optarg;
+         break;
+      default:
+         fprintf(stderr, "Invalid arguments.\n");
+         return 3;
+      }
+   }
+   if (socket_path == NULL) {
+      /* socket_path was not set by user, use default value. */
+      socket_path = DAEMON_UNIX_PATH_FILENAME_FORMAT;
+   }
 
    supervisor_sd = connect_to_supervisor();
    if(supervisor_sd < 0){
