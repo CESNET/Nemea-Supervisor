@@ -174,7 +174,7 @@ void get_local_IP ()
 }
 
 /**if choice TRUE -> parse file, else parse buffer*/
-int load_configuration (const int choice, const char * buffer)
+int load_configuration(const int choice, const char * buffer)
 {
    int str_len = 0;
    xmlChar * key = NULL;
@@ -627,7 +627,7 @@ void start_module(const int module_number)
    }
 }
 
-void restart_module (const int module_number)
+void restart_module(const int module_number)
 {
    if (running_modules[module_number].module_running == FALSE) {
       start_module(module_number);
@@ -658,7 +658,7 @@ void restart_module (const int module_number)
       dup2(fd_stderr,2); //stderr
       close(fd_stdout);
       close(fd_stderr);
-      char ** params = make_module_arguments(running_modules[module_number].module_number);
+      char **params = make_module_arguments(running_modules[module_number].module_number);
       fprintf(stdout,"---> %s | %s   %s   %s    %s\n", asctime (timeinfo), params[0], params[1], params[2], params[3]);
       fprintf(stderr,"---> %s | %s   %s   %s    %s\n", asctime (timeinfo), params[0], params[1], params[2], params[3]);
       fflush(stdout);
@@ -771,14 +771,14 @@ int api_initialization(int *argc, char **argv)
    running_modules_array_size = RUNNING_MODULES_ARRAY_START_SIZE;
    running_modules = (running_module_t *) calloc (running_modules_array_size,sizeof(running_module_t));
    for(y=0;y<running_modules_array_size;y++) {
-      running_modules[y].module_ifces = (interface_t *) calloc (IFCES_ARRAY_START_SIZE, sizeof(interface_t));
+      running_modules[y].module_ifces = (interface_t *) calloc(IFCES_ARRAY_START_SIZE, sizeof(interface_t));
       running_modules[y].module_running = FALSE;
       running_modules[y].module_ifces_array_size = IFCES_ARRAY_START_SIZE;
       running_modules[y].module_ifces_cnt = 0;
    }
 
    //load configuration
-   load_configuration (TRUE,config_file);
+   load_configuration(TRUE,config_file);
 
    //logs directory
    struct stat st = {0};
@@ -2003,7 +2003,7 @@ int daemon_init(int * d_sd)
 }
 
 
-int daemon_get_client (int * d_sd)
+int daemon_get_client(int * d_sd)
 {
    struct sockaddr_storage remoteaddr; // client address
    socklen_t addrlen;
