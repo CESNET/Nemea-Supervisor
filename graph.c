@@ -513,13 +513,23 @@ void check_port_duplicates(graph_node_t * first)
          y = x+1;
          while (iter_node_ptr != NULL) {
             while (y<iter_node_ptr->num_node_output_interfaces) {
-               if (node_ptr->node_output_interfaces[x].node_interface_port == iter_node_ptr->node_output_interfaces[y].node_interface_port) {
-                  VERBOSE(N_STDOUT,"Modules %d%s and %d%s have output interface with same port %d.\n",
-                        node_ptr->module_number,
-                        ((running_module_t *) node_ptr->module_data)->module_name,
-                        iter_node_ptr->module_number,
-                        ((running_module_t *)iter_node_ptr->module_data)->module_name,
-                        node_ptr->node_output_interfaces[x].node_interface_port)
+               graph_node_output_interface_t *node_x = &node_ptr->node_output_interfaces[x];
+               graph_node_output_interface_t *node_y = &iter_node_ptr->node_output_interfaces[y];
+               if ((strcmp(node_x->ifc_struct->ifc_type, node_y->ifc_struct->ifc_type) == 0)) {
+                  /* types of IFCs are the same */
+                  if (((strcmp(node_x->ifc_struct->ifc_type, "TCP") == 0) &&
+                        /* compare int ports if TCP else compare ifc_params strings */
+                        (node_x->node_interface_port == node_y->node_interface_port)) ||
+                        (strcmp(node_x->ifc_struct->ifc_params, node_y->ifc_struct->ifc_params) == 0)) {
+                     VERBOSE(N_STDOUT,"Modules %d%s and %d%s have output interface with same port %d of type %s with params %s.\n",
+                           node_ptr->module_number,
+                           ((running_module_t *) node_ptr->module_data)->module_name,
+                           iter_node_ptr->module_number,
+                           ((running_module_t *) iter_node_ptr->module_data)->module_name,
+                           node_x->node_interface_port,
+                           node_x->ifc_struct->ifc_type,
+                           node_x->ifc_struct->ifc_params)
+                  }
                }
                y++;
             }
