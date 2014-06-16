@@ -2046,9 +2046,9 @@ void daemon_mode(int * arg)
       client_sd = daemon_get_client(&daemon_sd);
       if(client_sd == -1) {
          connected = FALSE;
-         continue;
+         /* Bind was probably unsuccessful. */
+         return;
       }
-
 
       client_stream_input = fdopen(client_sd, "r");
       if (client_stream_input == NULL) {
