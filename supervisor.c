@@ -1601,11 +1601,9 @@ void *service_thread_routine(void* arg)
 
    while (service_thread_continue == TRUE) {
       pthread_mutex_lock(&running_modules_lock);
-      time ( &rawtime );
-      timeinfo = localtime ( &rawtime );
+      time(&rawtime);
+      timeinfo = localtime(&rawtime);
 
-      VERBOSE(MODULE_EVENT,"------> %s", asctime(timeinfo));
-      VERBOSE(STATISTICS,"------> %s", asctime(timeinfo));
       usleep(100000);
       update_module_status();
       restart_modules();
@@ -1659,6 +1657,7 @@ void *service_thread_routine(void* arg)
                }
                if (running_modules[x].module_service_ifc_isconnected == TRUE) {
                   if (send(running_modules[x].module_service_sd,(void *) request, sizeof_intptr, 0) == -1) {
+                     VERBOSE(STATISTICS,"------> %s", asctime(timeinfo));
                      VERBOSE(STATISTICS,"Error while sending request to module %d_%s.\n",x,running_modules[x].module_name);
                      if (errno == ENOTCONN) {
                         running_modules[x].module_service_ifc_isconnected = FALSE;
@@ -1690,6 +1689,7 @@ void *service_thread_routine(void* arg)
          // check_graph_values(graph_first_node);
          // print_statistics(graph_first_node);
 
+         VERBOSE(STATISTICS,"------> %s", asctime(timeinfo));
          for (x=0;x<loaded_modules_cnt;x++) {
             if (running_modules[x].module_running){
                VERBOSE(STATISTICS,"NAME:  %s, PID: %d, EN: %d, SIFC: %d, S: %d, ISC: %d | ",
@@ -1728,6 +1728,7 @@ void *service_thread_routine(void* arg)
       if ((running_modules[x].module_has_service_ifc == TRUE) &&
             (running_modules[x].module_status == TRUE) &&
             (running_modules[x].module_service_ifc_isconnected == TRUE)) {
+         VERBOSE(MODULE_EVENT,"------> %s", asctime(timeinfo));
          VERBOSE(MODULE_EVENT,"-- disconnecting from module %d_%s\n",x, running_modules[x].module_name);
          close(running_modules[x].module_service_sd);
       }
