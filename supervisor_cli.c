@@ -64,7 +64,7 @@ union tcpip_socket_addr {
    struct sockaddr_un unix_addr; ///< used for path of UNIX socket
 };
 
-int connect_to_supervisor()
+int connect_to_supervisor(char *socket_path)
 {
    printf("Connecting to Supervisor-daemon...\n");
    int sockfd;
@@ -73,7 +73,7 @@ int connect_to_supervisor()
    memset(&addr, 0, sizeof(addr));
 
    addr.unix_addr.sun_family = AF_UNIX;
-   snprintf(addr.unix_addr.sun_path, sizeof(addr.unix_addr.sun_path) - 1, DAEMON_UNIX_PATH_FILENAME_FORMAT);
+   snprintf(addr.unix_addr.sun_path, sizeof(addr.unix_addr.sun_path) - 1, socket_path);
    sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
    if (connect(sockfd, (struct sockaddr *) &addr.unix_addr, sizeof(addr.unix_addr)) == -1) {
       return -1;
@@ -117,7 +117,7 @@ int main(int argc, char **argv)
       socket_path = DAEMON_UNIX_PATH_FILENAME_FORMAT;
    }
 
-   supervisor_sd = connect_to_supervisor();
+   supervisor_sd = connect_to_supervisor(socket_path);
    if(supervisor_sd < 0){
       printf("Could not connect to supervisor.\n");
       return 0;

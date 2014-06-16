@@ -1943,7 +1943,7 @@ int daemon_init(int * d_sd)
    struct addrinfo *p;
    memset(&addr, 0, sizeof(addr));
    addr.unix_addr.sun_family = AF_UNIX;
-   snprintf(addr.unix_addr.sun_path, sizeof(addr.unix_addr.sun_path) - 1, DAEMON_UNIX_PATH_FILENAME_FORMAT);
+   snprintf(addr.unix_addr.sun_path, sizeof(addr.unix_addr.sun_path) - 1, socket_path);
 
    /* if socket file exists, it could be hard to create new socket and bind */
    unlink(DAEMON_UNIX_PATH_FILENAME_FORMAT); /* error when file does not exist is not a problem */
@@ -2195,7 +2195,7 @@ void daemon_mode(int * arg)
    fclose(client_stream_output);
    close(client_sd);
    close(daemon_sd);
-   unlink(DAEMON_UNIX_PATH_FILENAME_FORMAT);
+   unlink(socket_path);
    return;
 }
 
