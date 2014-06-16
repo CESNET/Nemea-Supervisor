@@ -3,9 +3,10 @@
  * \brief Structures and functions for supervisor.
  * \author Marek Svepes <svepemar@fit.cvut.cz>
  * \date 2013
+ * \date 2014
  */
 /*
- * Copyright (C) 2013 CESNET
+ * Copyright (C) 2013,2014 CESNET
  *
  * LICENSE TERMS
  *
@@ -62,17 +63,17 @@
 #include <limits.h>
 
 #ifndef PERM_LOGSDIR
-#define PERM_LOGSDIR 	(S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH) ///< Permissions of directory with stdout and stderr logs of modules
+#define PERM_LOGSDIR    (S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH) ///< Permissions of directory with stdout and stderr logs of modules
 #endif
 
 #ifndef PERM_LOGFILE
-#define PERM_LOGFILE 	(S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH) ///< Permissions of files with stdout and stderr logs of module
+#define PERM_LOGFILE    (S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH) ///< Permissions of files with stdout and stderr logs of module
 #endif
 
-#define TRUE 								1 ///< Bool true
-#define FALSE 								0 ///< Bool false
-#define RUNNING_MODULES_ARRAY_START_SIZE 	10 ///< Initial size of allocated running_modules array.
-#define IFCES_ARRAY_START_SIZE				5 ///< Initial size of allocated interface_t array of every module.
+#define TRUE                        1 ///< Bool true
+#define FALSE                       0 ///< Bool false
+#define RUNNING_MODULES_ARRAY_START_SIZE  10 ///< Initial size of allocated running_modules array.
+#define IFCES_ARRAY_START_SIZE            5 ///< Initial size of allocated interface_t array of every module.
 
 
 
@@ -80,97 +81,95 @@
 
 /** Structure with information about one loaded interface of module */
 typedef struct interface_s {
-	char *	ifc_note; ///< Interface note
-	char *	ifc_type; ///< Interface type (TCP/UNIXSOCKET)
-	char * 	ifc_params; ///< Interface parameters (input interface ~ address,port; output interface ~ port,number of connections)
-	char *	ifc_direction; ///< Interface direction (IN, OUT)
+   char *ifc_note; ///< Interface note
+   char *ifc_type; ///< Interface type (TCP/UNIXSOCKET)
+   char *ifc_params; ///< Interface parameters (input interface ~ address,port; output interface ~ port,number of connections)
+   char *ifc_direction; ///< Interface direction (IN, OUT)
 } interface_t;
 
 /** Structure used for commanding remote_supervisor */
 typedef struct remote_info_s {
-	int 	command_num; ///< Number of command.
-	int 	size_of_recv; ///< Number of bytes to receive by remote_supervisor.
+   int   command_num; ///< Number of command.
+   int   size_of_recv; ///< Number of bytes to receive by remote_supervisor.
 } remote_info_t;
 
 /** Structure with information about one running module */
 typedef struct running_module_s {
-	int 			module_restart_timer;  ///< Timer used for monitoring max number of restarts/minute.
-	int 			module_cloned; ///< TRUE if module was cloned because of overload, else FALSE.
-	int 			module_served_by_service_thread; ///< TRUE if module was added to graph struct by sevice thread, FALSE on start.
-	int 			module_ifces_array_size; ///< Number of allocated interface_t structures by module.
-	int 			module_running; ///< TRUE after first start of module, else FALSE.
-	char *			module_params; ///< Module parameter (loaded from config file).
-	int 			module_enabled; ///< TRUE if module is enabled, else FALSE.
-	int 			module_ifces_cnt; ///< Number of modules loaded interfaces.
-	int 			module_num_out_ifc; ///< Number of modules output interfaces.
-	int 			module_num_in_ifc; ///< Number of modules input interfaces.
-	int *			module_counters_array; ///< Array of statistics with counters.
-	int 			module_service_ifc_isconnected; ///< if supervisor is connected to module ~ TRUE, else ~ FALSE
-	int 			module_has_service_ifc; ///< if module has service interface ~ TRUE, else ~ FALSE
-	int 			module_service_sd; ///< Socket descriptor of the service connection.
-	char *			module_name; ///< Module name (loaded from config file).
-	int 			module_status; ///< Module status (TRUE ~ running, FALSE ~ stopped)
-	int				module_restart_cnt; ///< Number of module restarts.
-	pid_t			module_pid; ///< Modules process PID.
-	char *			module_path; ///< Path to module from current directory
-	interface_t *	module_ifces; ///< Array of interface_t structures with information about every loaded interface of module
-	int 			last_cpu_usage_kernel_mode; ///< Percentage of CPU usage in last period in kernel mode.
-	int 			last_cpu_usage_user_mode; ///< Percentage of CPU usage in last period in user mode.
-	int 			percent_cpu_usage_kernel_mode; ///< Percentage of CPU usage in current period in kernel mode.
-	int 			percent_cpu_usage_user_mode; ///< Percentage of CPU usage in current period in user mode.
-	int 			num_periods_overload; ///< Number of periods of overloading CPU.
-	int 			remote_module; ///< TRUE if module was sent to remote_supervisor, else FALSE.
-	int 			module_number; ///< Index to running_modules array.
+   int         module_restart_timer;  ///< Timer used for monitoring max number of restarts/minute.
+   int         module_cloned; ///< TRUE if module was cloned because of overload, else FALSE.
+   int         module_served_by_service_thread; ///< TRUE if module was added to graph struct by sevice thread, FALSE on start.
+   int         module_ifces_array_size; ///< Number of allocated interface_t structures by module.
+   int         module_running; ///< TRUE after first start of module, else FALSE.
+   char       *module_params; ///< Module parameter (loaded from config file).
+   int         module_enabled; ///< TRUE if module is enabled, else FALSE.
+   int         module_ifces_cnt; ///< Number of modules loaded interfaces.
+   int         module_num_out_ifc; ///< Number of modules output interfaces.
+   int         module_num_in_ifc; ///< Number of modules input interfaces.
+   int        *module_counters_array; ///< Array of statistics with counters.
+   int         module_service_ifc_isconnected; ///< if supervisor is connected to module ~ TRUE, else ~ FALSE
+   int         module_has_service_ifc; ///< if module has service interface ~ TRUE, else ~ FALSE
+   int         module_service_sd; ///< Socket descriptor of the service connection.
+   char       *module_name; ///< Module name (loaded from config file).
+   int         module_status; ///< Module status (TRUE ~ running, FALSE ~ stopped)
+   int         module_restart_cnt; ///< Number of module restarts.
+   pid_t       module_pid; ///< Modules process PID.
+   char       *module_path; ///< Path to module from current directory
+   interface_t *module_ifces; ///< Array of interface_t structures with information about every loaded interface of module
+   int         last_cpu_usage_kernel_mode; ///< Percentage of CPU usage in last period in kernel mode.
+   int         last_cpu_usage_user_mode; ///< Percentage of CPU usage in last period in user mode.
+   int         percent_cpu_usage_kernel_mode; ///< Percentage of CPU usage in current period in kernel mode.
+   int         percent_cpu_usage_user_mode; ///< Percentage of CPU usage in current period in user mode.
+   int         num_periods_overload; ///< Number of periods of overloading CPU.
+   int         remote_module; ///< TRUE if module was sent to remote_supervisor, else FALSE.
+   int         module_number; ///< Index to running_modules array.
 } running_module_t;
-
-
 
 /***********FUNCTIONS***********/
 
 /** Function saves local IP address as a string in global variable.
  */
-void get_local_IP ();
+void get_local_IP();
 
 /** Function parses XML file or buffer with XML code and saves modules configuration in running_modules array.
  * @param[in] choice If TRUE -> parse file, else parse buffer.
  * @param[in] buffer If choice TRUE -> file name, else buffer with XML code.
  * @return TRUE if success, else FALSE.
  */
-int load_configuration (const int choice, const char * buffer);
+int load_configuration(const int choice, const char * buffer);
 
 /** Function prints list of loaded modules with their params and all their interfaces with params.
  */
-void print_configuration ();
+void print_configuration();
 
 /** Function creates array of strings for function execvp() before executing new module (its process).
  * @param[in] number_of_module Index to running_modules array.
  * @return Array of strings. 
  */
-char ** make_module_arguments (const int number_of_module);
+char **make_module_arguments(const int number_of_module);
 
 /** Function prints a list of user operations and scans one number as an input.
  * @return Number of selected operation.
  */
-int print_menu ();
+int print_menu();
 
 /** Function is used for first start of module, allocates its array for statistics, initialize its variables, creates new process, redirects stdout, stderr and executes module.
  * @param[in] module_number Index to running_modules array.
  */
-void start_module (const int module_number);
+void start_module(const int module_number);
 
 /** Function is used to restart module, reinitialize its variables, creates new process, redirects stdout, stderr and executes module.
  * @param[in] module_number Index to running_modules array.
  */
-void restart_module (const int module_number);
+void restart_module(const int module_number);
 
 /** Function sends SIGINT to selected module.
  * @param[in] module_number Index to running_modules array.
  */
-void stop_module (const int module_number);
+void stop_module(const int module_number);
 
 /** Function updates running modules processes status.
  */
-void update_module_status ();
+void update_module_status();
 
 /** SIGPIPE handler.
  */
@@ -308,3 +307,4 @@ void daemon_mode(int * arg);
 void * remote_supervisor_accept_routine ();
 
 #endif
+

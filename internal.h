@@ -2,10 +2,11 @@
  * \file internal.h
  * \brief VERBOSE macro header.
  * \author Marek Svepes <svepemar@fit.cvut.cz>
+ * \date 2013
  * \date 2014
  */
 /*
- * Copyright (C) 2013 CESNET
+ * Copyright (C) 2013,2014 CESNET
  *
  * LICENSE TERMS
  *
@@ -47,15 +48,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define STATISTICS 		1
-#define MODULE_EVENT 	2
-#define N_STDOUT 		3
+#define STATISTICS      1
+#define MODULE_EVENT    2
+#define N_STDOUT     3
 
-extern FILE * input_fd;
-extern FILE * output_fd;
+extern FILE *input_fd;
+extern FILE *output_fd;
 
-extern FILE * statistics_fd;
-extern FILE * module_event_fd;
+extern FILE *statistics_fd;
+extern FILE *module_event_fd;
 
 extern char verbose_msg[4096];
 
@@ -67,3 +68,4 @@ void print_msg(int level, char *string);
 }
 
 #endif
+

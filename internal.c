@@ -5,7 +5,7 @@
  * \date 2014
  */
 /*
- * Copyright (C) 2013 CESNET
+ * Copyright (C) 2013,2014 CESNET
  *
  * LICENSE TERMS
  *
@@ -54,20 +54,21 @@ char verbose_msg[4096];
 
 void print_msg(int level, char *string)
 {
-	switch(level){
-	case STATISTICS:
-		fprintf(statistics_fd, "%s", string);
-		fflush(statistics_fd);
-		break;
+   switch(level){
+   case STATISTICS:
+      fprintf(statistics_fd, "%s", string);
+      fflush(statistics_fd);
+      break;
 
-	case MODULE_EVENT:
-		fprintf(module_event_fd, "%s", string);
-		fflush(module_event_fd);
-		break;
+   case MODULE_EVENT:
+      fprintf(module_event_fd, "%s", string);
+      fflush(module_event_fd);
+      break;
 
-	case N_STDOUT:
-		fprintf(output_fd, "%s", string);
-		fflush(output_fd);
-		break;
-	}
+   case N_STDOUT:
+      fprintf(output_fd, "%s", string);
+      fflush(output_fd);
+      break;
+   }
 }
+

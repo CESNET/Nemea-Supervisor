@@ -2,10 +2,11 @@
  * \file graph.h
  * \brief Graph structures and methods.
  * \author Marek Svepes <svepemar@fit.cvut.cz>
+ * \date 2013
  * \date 2014
  */
 /*
- * Copyright (C) 2013 CESNET
+ * Copyright (C) 2013,2014 CESNET
  *
  * LICENSE TERMS
  *
@@ -46,8 +47,8 @@
 
 #include "supervisor.h"
 
-#define GRAPH_SOURCE_FILE 					"./graph_code" ///< Name of file with generated code for dot program.
-#define DEFAULT_NUM_CLIENTS_OUTPUT_IFC		10 ///< Default number of clients of output interface.
+#define GRAPH_SOURCE_FILE              "./graph_code" ///< Name of file with generated code for dot program.
+#define DEFAULT_NUM_CLIENTS_OUTPUT_IFC    10 ///< Default number of clients of output interface.
 
 
 /***********STRUCTURES***********/
@@ -59,41 +60,41 @@ typedef struct graph_node_output_interface_s graph_node_output_interface_t;
 
 /** Structure representing one input interface of module. */
 struct graph_node_input_interface_s {
-	interface_t * 					ifc_struct; ///< Pointer to interface_t structure of running_module_t struct.
-	graph_node_t * 					parent_node; ///< Pointer to parent node.
-	int 							message_counter; ///< Received messages counter of this node input interface.
-	int 							node_interface_port; ///< Port of this node interface.
-	graph_node_output_interface_t * node_interface_output_ifc; ///< Pointer to connected output interface of another module.
+   interface_t *              ifc_struct; ///< Pointer to interface_t structure of running_module_t struct.
+   graph_node_t *                parent_node; ///< Pointer to parent node.
+   int                     message_counter; ///< Received messages counter of this node input interface.
+   int                     node_interface_port; ///< Port of this node interface.
+   graph_node_output_interface_t * node_interface_output_ifc; ///< Pointer to connected output interface of another module.
 };
 
 /** Structure representing one output interface of module. */
 struct graph_node_output_interface_s {
-	interface_t * 					ifc_struct; ///< Pointer to interface_t structure of running_module_t struct.
-	graph_node_t * 					parent_node; ///< Pointer to parent node.
-	int 							message_counter; ///< Sent messages counter of this node output interface.
-	int 							node_children_counter; ///< Node children counter.
-	graph_node_input_interface_t ** node_children; ///< Array of connected node input interfaces of another nodes (node children). 
-	int 							node_interface_port; ///< Port of this node interface.
-	edge_statistics_t *				statistics; ///< Pointer to array of edge_statistics_t structures.
+   interface_t            *ifc_struct; ///< Pointer to interface_t structure of running_module_t struct.
+   graph_node_t           *parent_node; ///< Pointer to parent node.
+   int                     message_counter; ///< Sent messages counter of this node output interface.
+   int                     node_children_counter; ///< Node children counter.
+   graph_node_input_interface_t **node_children; ///< Array of connected node input interfaces of another nodes (node children).
+   int                     node_interface_port; ///< Port of this node interface.
+   edge_statistics_t      *statistics; ///< Pointer to array of edge_statistics_t structures.
 };
 
 /** Structure representing one module in graph structure. */
 struct graph_node_s {
-	void * 							module_data; ///< Pointer to running_module_t structure of module represented by this node.
-	int 							module_number; ///< Index to running_modules array.
-	graph_node_t * 					next_node; ///< Pointer to next node.
-	graph_node_input_interface_t * 	node_input_interfaces; ///< Array of node input interfaces structures.
-	graph_node_output_interface_t * node_output_interfaces; ///< Array of node output interfaces structures.
-	int 							num_node_input_interfaces; ///< Number of node input interfaces structures.
-	int 							num_node_output_interfaces; ///< Number of node output interface structures.
+   void                          *module_data; ///< Pointer to running_module_t structure of module represented by this node.
+   int                            module_number; ///< Index to running_modules array.
+   graph_node_t *                 next_node; ///< Pointer to next node.
+   graph_node_input_interface_t   *node_input_interfaces; ///< Array of node input interfaces structures.
+   graph_node_output_interface_t  *node_output_interfaces; ///< Array of node output interfaces structures.
+   int                     num_node_input_interfaces; ///< Number of node input interfaces structures.
+   int                     num_node_output_interfaces; ///< Number of node output interface structures.
 };
 
 /** Structure used for message calculations of every output interface. */
 struct edge_statistics_s {
-	int 							last_period_counters_difference; ///< Difference between sent and received messages of node output interface connected with another node input interface.
-	int 							num_periods; ///< Number of checked periods.
-	int 							expected_value; ///< Expected value of messages loss rate of node output interface connected with another node input interface.
-	int 							period_differences_suma; ///< Suma of all period differences between sent and received messages of node output interface connected with another node input interface.
+   int                     last_period_counters_difference; ///< Difference between sent and received messages of node output interface connected with another node input interface.
+   int                     num_periods; ///< Number of checked periods.
+   int                     expected_value; ///< Expected value of messages loss rate of node output interface connected with another node input interface.
+   int                     period_differences_suma; ///< Suma of all period differences between sent and received messages of node output interface connected with another node input interface.
 };
 
 
@@ -119,7 +120,7 @@ void update_graph_values (graph_node_t * first);
 void generate_graph_code(graph_node_t * first);
 
 /** Function executes dot and display program and connects them with pipe.
- * @param[in] 
+ * @param[in]
  */
 void show_graph();
 
@@ -133,7 +134,7 @@ void free_graph_node(graph_node_t * node);
  */
 void destroy_graph(graph_node_t * first);
 
-/** Function changes IP addresses of connected intput interfaces to selected module and input interfaces of selected module. 
+/** Function changes IP addresses of connected intput interfaces to selected module and input interfaces of selected module.
  * @param[in] first Pointer to first node in the list of nodes.
  * @param[in] module_num Module nuber.
  * @param[in] local_addr String with local IP address.
@@ -169,3 +170,4 @@ void print_statistics(graph_node_t * first);
 void check_port_duplicates(graph_node_t * first);
 
 #endif
+

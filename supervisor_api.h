@@ -2,10 +2,11 @@
  * \file supervisor_api.h
  * \brief Supervisor public functions.
  * \author Marek Svepes <svepemar@fit.cvut.cz>
+ * \date 2013
  * \date 2014
  */
 /*
- * Copyright (C) 2013 CESNET
+ * Copyright (C) 2013,2014 CESNET
  *
  * LICENSE TERMS
  *
@@ -41,6 +42,9 @@
  *
  */
 
+#ifndef SUPERVISOR_API_H
+#define SUPERVISOR_API_H
+
 /** API */
 int api_initialization(const int * argc, char ** argv);
 
@@ -67,3 +71,6 @@ void api_show_graph();
 void api_run_temp_conf();
 
 void api_set_verbose_level();
+
+#endif
+

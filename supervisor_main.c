@@ -2,10 +2,11 @@
  * \file supervisor_main.c
  * \brief Supervisor main function.
  * \author Marek Svepes <svepemar@fit.cvut.cz>
+ * \date 2013
  * \date 2014
  */
 /*
- * Copyright (C) 2013 CESNET
+ * Copyright (C) 2013,2014 CESNET
  *
  * LICENSE TERMS
  *
@@ -46,61 +47,61 @@
 
 int main (int argc, char * argv [])
 {
-	if(api_initialization(&argc, argv)){
-		return 0;
-	}
+   if(api_initialization(&argc, argv)){
+      return 0;
+   }
 
-	int ret_val = 0;
-	
-	while ((ret_val = api_print_menu()) != 9) {
-		switch(ret_val) {
-		// case 0:
-		// 	api_set_verbose_level();
-		// 	break;
+   int ret_val = 0;
 
-		case 1:
-			api_start_configuration();
-			break;
-			
-		case 2:
-			api_stop_configuration();
-			break;
-				
-		// case 3:
-		// 	api_start_module();		
-		// 	break;
+   while ((ret_val = api_print_menu()) != 9) {
+      switch(ret_val) {
+      // case 0:
+      //    api_set_verbose_level();
+      //    break;
 
-		case 3:
-			api_set_module_enabled();
-			break;
+      case 1:
+         api_start_configuration();
+         break;
 
-		case 4:
-			api_stop_module();
-			break;
+      case 2:
+         api_stop_configuration();
+         break;
 
-		case 5:
-			api_show_running_modules_status();
-			break;
+      // case 3:
+      //    api_start_module();
+      //    break;
 
-		case 6:
-			api_show_available_modules();
-			break;
+      case 3:
+         api_set_module_enabled();
+         break;
 
-		case 7:
-			api_show_graph();
-			break;
+      case 4:
+         api_stop_module();
+         break;
 
-		case 8:
-			api_run_temp_conf();
-			break;
+      case 5:
+         api_show_running_modules_status();
+         break;
 
-		default:
-			printf("Wrong input.\n");
-			break;
-		}
-	}
+      case 6:
+         api_show_available_modules();
+         break;
 
-	api_quit();
+      case 7:
+         api_show_graph();
+         break;
 
-	return 0;
+      case 8:
+         api_run_temp_conf();
+         break;
+
+      default:
+         printf("Wrong input.\n");
+         break;
+      }
+   }
+
+   api_quit();
+
+   return 0;
 }
