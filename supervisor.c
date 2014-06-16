@@ -1745,7 +1745,7 @@ void start_service_thread()
    pthread_create(&service_thread_id, NULL, service_thread_routine, NULL);
 
    // acceptor_thread_id = (pthread_t *) calloc (1,sizeof(pthread_t));
-   pthread_create(&acceptor_thread_id, NULL, remote_supervisor_accept_routine, NULL);
+   //pthread_create(&acceptor_thread_id, NULL, remote_supervisor_accept_routine, NULL);
 }
 
 // void stop_threads()
