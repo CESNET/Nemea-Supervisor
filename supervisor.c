@@ -1874,12 +1874,13 @@ int parse_arguments(int *argc, char **argv)
       socket_path = DAEMON_UNIX_PATH_FILENAME_FORMAT;
    }
    if (config_file == NULL) {
-      printf("Missing required config file (-f|--config-file).\n");
+      fprintf(stderr, "Missing required config file (-f|--config-file).\n");
       return FALSE;
    }
    if (strstr(config_file, ".xml") == NULL) {
       free(config_file);
       config_file = NULL;
+      fprintf(stderr, "File does not have expected .xml extension.\n");
       return FALSE;
    }
    return TRUE;
