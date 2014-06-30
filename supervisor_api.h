@@ -45,32 +45,23 @@
 #ifndef SUPERVISOR_API_H
 #define SUPERVISOR_API_H
 
-/** API */
-int api_initialization(const int * argc, char ** argv);
+int 	supervisor_initialization(const int * argc, char ** argv);
+void 	supervisor_termination();
 
-void api_start_configuration();
+/*Interactive mode*/
+int 	interactive_get_option();
+void 	interactive_start_configuration();
+void 	interactive_stop_configuration();
+void 	interactive_set_module_enabled();
+void 	interactive_stop_module();
+void 	interactive_show_running_modules_status();
+void 	interactive_show_available_modules();
+void 	interactive_show_graph();
+void 	interactive_run_temp_conf();
 
-void api_stop_configuration();
 
-void api_start_module();
+/*NC API*/
 
-void api_stop_module();
-
-void api_set_module_enabled();
-
-void api_show_running_modules_status();
-
-void api_show_available_modules();
-
-void api_quit();
-
-int api_print_menu();
-
-void api_show_graph();
-
-void api_run_temp_conf();
-
-void api_set_verbose_level();
 
 #endif
 

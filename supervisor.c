@@ -83,7 +83,6 @@ int         loaded_modules_cnt; ///< Current number of loaded modules.
 
 pthread_mutex_t running_modules_lock; ///< mutex for locking counters
 int         service_thread_continue; ///< condition variable of main loop of the service_thread
-int         configuration_running; ///< if whole configuration was executed than ~ 1, else ~ 0
 
 graph_node_t *    graph_first_node; ///< First node of graph nodes list.
 graph_node_t *    graph_last_node; ///< Last node of graph nodes list.
@@ -378,7 +377,7 @@ int load_configuration(const int choice, const char * buffer)
 }
 
 
-void print_configuration ()
+void interactive_show_available_modules ()
 {
    int x,y = 0;
    VERBOSE(N_STDOUT,"---PRINTING CONFIGURATION---\n");
@@ -394,6 +393,7 @@ void print_configuration ()
       }
    }
 }
+
 
 char **make_module_arguments(const int number_of_module)
 {
@@ -441,17 +441,8 @@ char **make_module_arguments(const int number_of_module)
 
    for (x=0; x<running_modules[number_of_module].module_ifces_cnt; x++) {
       if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type,"SERVICE", 7)) {
-         // if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type, "TCP", 3)) {
-         //    strncpy(ptr,"s",1);
-         //    ptr++;
-         // } else if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type, "UNIXSOCKET", 10)) {
          strncpy(ptr,"s",1);
          ptr++;
-         // } else {
-         //    VERBOSE(N_STDOUT,"%s\n", running_modules[number_of_module].module_ifces[x].ifc_type);
-         //    VERBOSE(N_STDOUT,"Wrong ifc_type in module %d.\n", number_of_module);
-         //    return NULL;
-         // }
       }
    }
 
@@ -553,9 +544,28 @@ char **make_module_arguments(const int number_of_module)
    return params;
 }
 
-int print_menu ()
+
+int get_number_from_input()
 {
+   char buffer[1000];
+   memset(buffer,0,1000);
    int ret_val = 0;
+
+   fscanf(input_fd, "%s", buffer);
+   if(strlen(buffer) > 2){
+      return -1;
+   } else if ((strlen(buffer) == 2) && ((buffer[0] > '9' || buffer[0] < '1') || (buffer[1] > '9' || buffer[1] < '0'))) {
+      return -1;
+   } else if (!sscanf(buffer,"%d",&ret_val)) {
+      return -1;
+   }
+   
+   return ret_val;
+}
+
+
+int interactive_get_option()
+{
    VERBOSE(N_STDOUT,"--------OPTIONS--------\n");
    VERBOSE(N_STDOUT,"1. RUN CONFIGURATION\n");
    VERBOSE(N_STDOUT,"2. STOP CONFIGURATION\n");
@@ -566,74 +576,22 @@ int print_menu ()
    VERBOSE(N_STDOUT,"7. SHOW GRAPH\n");
    VERBOSE(N_STDOUT,"8. RUN TEMP CONF\n");
    VERBOSE(N_STDOUT,"9. QUIT\n");
-   if (!fscanf(input_fd,"%d",&ret_val)) {
-      VERBOSE(N_STDOUT,"Wrong i<Input.\n");
-      return -1;
-   }
-   return ret_val;
+
+   return get_number_from_input();
 }
 
 
-void start_module(const int module_number)
-{
-   if (running_modules[module_number].module_running == TRUE) {
-      VERBOSE(MODULE_EVENT,"Module %d has been already started.\n", module_number);
-      return;
-   } else {
-      VERBOSE(MODULE_EVENT,"Starting module %d_%s.\n", module_number, running_modules[module_number].module_name);
-      running_modules[module_number].module_running = TRUE;
-   }
-
-   time_t rawtime;
-   struct tm * timeinfo;
-   time ( &rawtime );
-   timeinfo = localtime ( &rawtime );
-
-   char log_path_stdout[100];
-   char log_path_stderr[100];
-   int x = 0;
-
-   running_modules[module_number].module_enabled = TRUE;
-   running_modules[module_number].module_restart_cnt = 0;
-   running_modules[module_number].module_service_sd = -1;
-   running_modules[module_number].remote_module = FALSE;
-
-   running_modules[module_number].module_counters_array = (int *) calloc (3*running_modules[module_number].module_num_out_ifc + running_modules[module_number].module_num_in_ifc,sizeof(int));
-   sprintf(log_path_stdout,"%s%d_%s_stdout",LOGSDIR_NAME, module_number, running_modules[module_number].module_name);
-   sprintf(log_path_stderr,"%s%d_%s_stderr",LOGSDIR_NAME, module_number, running_modules[module_number].module_name);
-
-   fflush(stdout);
-   running_modules[module_number].module_pid = fork();
-   if (running_modules[module_number].module_pid == 0) {
-      int fd_stdout = open(log_path_stdout, O_RDWR | O_CREAT | O_APPEND, PERM_LOGFILE);
-      int fd_stderr = open(log_path_stderr, O_RDWR | O_CREAT | O_APPEND, PERM_LOGFILE);
-      dup2(fd_stdout,1); //stdout
-      dup2(fd_stderr,2); //stderr
-      close(fd_stdout);
-      close(fd_stderr);
-      char ** params = make_module_arguments(module_number);
-      fprintf(stdout,"---> %s | %s   %s   %s    %s\n", asctime (timeinfo), params[0], params[1], params[2], params[3]);
-      fprintf(stderr,"---> %s | %s   %s   %s    %s\n", asctime (timeinfo), params[0], params[1], params[2], params[3]);
-      fflush(stdout);
-      execvp(running_modules[module_number].module_path, params);
-      VERBOSE(N_STDOUT,"Error while executing module binary.\n");
-      running_modules[module_number].module_enabled = FALSE;
-      exit(1);
-   } else if (running_modules[module_number].module_pid == -1) {
-      running_modules[module_number].module_status = FALSE;
-      VERBOSE(N_STDOUT,"Error in fork.\n");
-   } else {
-      running_modules[module_number].module_status = TRUE;
-   }
-}
-
-void restart_module(const int module_number)
+void re_start_module(const int module_number)
 {
    if (running_modules[module_number].module_running == FALSE) {
-      start_module(module_number);
-      return;
+      VERBOSE(MODULE_EVENT,"Starting module %d_%s.\n", module_number, running_modules[module_number].module_name);
+      running_modules[module_number].module_counters_array = (int *) calloc (3*running_modules[module_number].module_num_out_ifc + running_modules[module_number].module_num_in_ifc,sizeof(int));
+      running_modules[module_number].remote_module = FALSE;
+      running_modules[module_number].module_running = TRUE;
+   } else {
+      VERBOSE(MODULE_EVENT,"Restarting module %d_%s\n", module_number, running_modules[module_number].module_name);
    }
-   VERBOSE(MODULE_EVENT,"Restarting module %d_%s\n", module_number, running_modules[module_number].module_name);
+
    char log_path_stdout[100];
    char log_path_stderr[100];
    sprintf(log_path_stdout,"%s%d_%s_stdout",LOGSDIR_NAME, module_number, running_modules[module_number].module_name);
@@ -729,7 +687,7 @@ void sigpipe_handler(int sig)
    }
 }
 
-int api_initialization(int *argc, char **argv)
+int supervisor_initialization(int *argc, char **argv)
 {
    start_range_reserved_ports = 12000;
    next_reserved_port = start_range_reserved_ports;
@@ -789,7 +747,6 @@ int api_initialization(int *argc, char **argv)
    // verbose_level = 0;
    pthread_mutex_init(&running_modules_lock,NULL);
    service_thread_continue = TRUE;
-   configuration_running = FALSE;
 
    VERBOSE(N_STDOUT,"-- Starting service thread --\n");
    start_service_thread();
@@ -817,25 +774,24 @@ int api_initialization(int *argc, char **argv)
    return 0;
 }
 
-void api_start_configuration()
+
+void interactive_start_configuration()
 {
-   if (configuration_running) {
-      VERBOSE(N_STDOUT,"Configuration is already running, you cannot start another module from loaded xml config_file.\n");
-      return;
-   }
    pthread_mutex_lock(&running_modules_lock);
    VERBOSE(MODULE_EVENT,"Starting configuration...\n");
-   // configuration_running = TRUE;
    int x = 0;
    for (x=0; x<loaded_modules_cnt; x++) {
-      // start_module(x);
-      running_modules[x].module_enabled = TRUE;
+      if(running_modules[x].module_enabled == FALSE){
+         running_modules[x].module_restart_cnt = -1;
+         running_modules[x].module_enabled = TRUE;
+      }
    }
    VERBOSE(MODULE_EVENT,"Configuration is running.\n");
    pthread_mutex_unlock(&running_modules_lock);
 }
 
-void api_stop_configuration()
+
+void interactive_stop_configuration()
 {
    pthread_mutex_lock(&running_modules_lock);
    VERBOSE(MODULE_EVENT,"Stopping configuration...\n");
@@ -849,44 +805,46 @@ void api_stop_configuration()
    pthread_mutex_unlock(&running_modules_lock);
 }
 
-void api_start_module()
+
+void interactive_set_module_enabled()
 {
-   if (configuration_running) {
-      VERBOSE(MODULE_EVENT,"Configuration is already running, you cannot start another module loaded from xml config_file.\n");
-      return;
-   }
    pthread_mutex_lock(&running_modules_lock);
-   int x = 0;
    VERBOSE(N_STDOUT,"Type in module number\n");
-   if (!fscanf(input_fd,"%d",&x)) {
-      VERBOSE(N_STDOUT,"Wrong input.\n");
-      pthread_mutex_unlock(&running_modules_lock);
-      return;
-   }
+   int x = get_number_from_input();
+
    if (x>=loaded_modules_cnt || x<0) {
       VERBOSE(N_STDOUT,"Wrong input, type in 0 - %d.\n", loaded_modules_cnt-1);
       pthread_mutex_unlock(&running_modules_lock);
       return;
    }
-   start_module(x);
+
+   if (running_modules[x].module_enabled){
+      VERBOSE(N_STDOUT,"Module %d%s is already enabled.\n", x, running_modules[x].module_name);
+   } else {
+      running_modules[x].module_enabled = TRUE;
+      running_modules[x].module_restart_cnt = -1;
+   }
    pthread_mutex_unlock(&running_modules_lock);
 }
 
-void api_stop_module()
+
+void interactive_stop_module()
 {
    pthread_mutex_lock(&running_modules_lock);
-   int x = 0;
+   int x = 0, running_modules_counter = 0;
    for (x=0;x<loaded_modules_cnt;x++) {
       if (running_modules[x].module_status) {
          VERBOSE(N_STDOUT,"%d_%s running (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
+         running_modules_counter++;
       }
    }
-   VERBOSE(N_STDOUT,"Type in number of module to kill:\n");
-   if (!fscanf(input_fd,"%d",&x)) {
-      VERBOSE(N_STDOUT,"Wrong input.\n");
+   if(running_modules_counter == 0){
+      VERBOSE(N_STDOUT,"All modules are stopped.\n");
       pthread_mutex_unlock(&running_modules_lock);
       return;
    }
+   VERBOSE(N_STDOUT,"Type in number of module to kill:\n");
+   x = get_number_from_input();
    if (x>=loaded_modules_cnt || x<0) {
       VERBOSE(N_STDOUT,"Wrong input, type in 0 - %d.\n", loaded_modules_cnt-1);
       pthread_mutex_unlock(&running_modules_lock);
@@ -897,34 +855,6 @@ void api_stop_module()
    pthread_mutex_unlock(&running_modules_lock);
 }
 
-void api_set_module_enabled()
-{
-   int x = 0;
-   pthread_mutex_lock(&running_modules_lock);
-   VERBOSE(N_STDOUT,"Type in module number\n");
-   if (!fscanf(input_fd,"%d",&x)) {
-      VERBOSE(N_STDOUT,"Wrong input.\n");
-      pthread_mutex_unlock(&running_modules_lock);
-      return;
-   }
-   if (x>=loaded_modules_cnt || x<0) {
-      VERBOSE(N_STDOUT,"Wrong input, type in 0 - %d.\n", loaded_modules_cnt-1);
-      pthread_mutex_unlock(&running_modules_lock);
-      return;
-   }
-   if (running_modules[x].module_enabled){
-      VERBOSE(N_STDOUT,"Module %d%s is already enabled.\n", x, running_modules[x].module_name);
-   } else {
-      running_modules[x].module_enabled=TRUE;
-      if (running_modules[x].module_running){
-         running_modules[x].module_restart_cnt = -1;
-      } else {
-         running_modules[x].module_restart_cnt = 0;
-      }
-   }
-
-   pthread_mutex_unlock(&running_modules_lock);
-}
 
 void restart_modules()
 {
@@ -934,22 +864,20 @@ void restart_modules()
          running_modules[x].module_restart_timer = 0;
          running_modules[x].module_restart_cnt = 0;
       }
-      // VERBOSE(N_STDOUT,"%d,%d%s> restartcnt: %d, timer: %d\n", running_modules[x].module_pid, x, running_modules[x].module_name, running_modules[x].module_restart_cnt, running_modules[x].module_restart_timer);
-
       if (running_modules[x].module_enabled == TRUE && running_modules[x].module_status == FALSE && (running_modules[x].module_restart_cnt == MAX_RESTARTS_PER_MINUTE)) {
          VERBOSE(N_STDOUT,"Module: %d_%s was restarted %d times per minute and it is down again. I set it disabled.\n",x, running_modules[x].module_name, MAX_RESTARTS_PER_MINUTE);
          running_modules[x].module_enabled = FALSE;
       } else if (running_modules[x].module_status == FALSE && running_modules[x].module_enabled == TRUE && running_modules[x].remote_module == FALSE) {
-         restart_module(x);
+         re_start_module(x);
       }
    }
 }
 
-void api_show_running_modules_status()
+void interactive_show_running_modules_status()
 {
    int x = 0;
    if (loaded_modules_cnt == 0) {
-      VERBOSE(N_STDOUT,"No module running.\n");
+      VERBOSE(N_STDOUT,"No module is loaded.\n");
       return;
    }
    for (x=0; x<loaded_modules_cnt; x++) {
@@ -963,19 +891,14 @@ void api_show_running_modules_status()
    }
 }
 
-void api_show_available_modules()
-{
-   print_configuration();
-}
-
-void api_quit()
+void supervisor_termination()
 {
    int x, y;
    VERBOSE(N_STDOUT,"-- Aborting service thread --\n");
    // stop_threads();
    service_thread_continue = 0;
    sleep(3);
-   api_stop_configuration();
+   interactive_stop_configuration();
    /* TODO use local pointer */
    for (x=0;x<loaded_modules_cnt;x++) {
       if (running_modules[x].module_counters_array != NULL) {
@@ -1015,12 +938,6 @@ void api_quit()
       free(running_modules);
    }
    destroy_graph(graph_first_node);
-   // if(service_thread_id != NULL) {
-   //    free(service_thread_id);
-   // }
-   // if(acceptor_thread_id != NULL) {
-   //    free(acceptor_thread_id);
-   // }
    if (config_file != NULL) {
       free(config_file);
    }
@@ -1029,16 +946,6 @@ void api_quit()
    fclose(statistics_fd);
    fclose(module_event_fd);
 }
-
-int api_print_menu()
-{
-   return print_menu();
-}
-
-// void api_update_module_status()
-// {
-//    update_module_status();
-// }
 
 char *get_param_by_delimiter(const char *source, char **dest, const char delimiter)
 {
@@ -1535,6 +1442,23 @@ void check_differences()
    }
 }
 
+void generate_periodic_picture()
+{
+   if (graph_first_node == NULL) {
+      return;
+   }
+   generate_graph_code(graph_first_node);
+   generate_picture();
+}
+
+void interactive_show_graph()
+{
+   if (graph_first_node == NULL) {
+      VERBOSE(N_STDOUT,"No module with service ifc running.\n");
+      return;
+   }
+   show_picture();
+}
 
 int service_get_data(int sd, int running_module_number)
 {
@@ -1681,7 +1605,7 @@ void *service_thread_routine(void* arg)
          // check_cpu_usage();
 
          update_graph_values(graph_first_node);
-
+         generate_periodic_picture();
          // compute_differences(graph_first_node);
          // check_differences();
 
@@ -1756,16 +1680,6 @@ void start_service_thread()
 //    // }
 // }
 
-void api_show_graph()
-{
-   if (graph_first_node == NULL) {
-      VERBOSE(N_STDOUT,"No module with service ifc running.\n");
-      return;
-   }
-   generate_graph_code(graph_first_node);
-   show_graph();
-}
-
 void run_temp_configuration()
 {
    pthread_mutex_lock(&running_modules_lock);
@@ -1798,32 +1712,17 @@ void run_temp_configuration()
       return;
    }
    free(buffer2);
-   while (x<loaded_modules_cnt) {
-      start_module(x);
-      x++;
-   }
+   // while (x<loaded_modules_cnt) {
+   //    start_module(x);
+   //    x++;
+   // }
    pthread_mutex_unlock(&running_modules_lock);
 }
 
-void api_run_temp_conf()
+void interactive_run_temp_conf()
 {
    run_temp_configuration();
 }
-
-// void api_set_verbose_level()
-// {
-//    // int x = 0;
-//    VERBOSE(N_STDOUT,"Type in 0 or 1 to set verbose level of supervisor:\n");
-//    if(!fscanf(input_fd,"%d",&selected_module)) {
-//       VERBOSE(N_STDOUT,"Wrong input.\n");
-//       return;
-//    }
-//    // if(x>1 || x<0) {
-//    //    VERBOSE(N_STDOUT,"Wrong input.\n");
-//    // } else {
-//    //    verbose_flag = x;
-//    // }
-// }
 
 int parse_arguments(int *argc, char **argv)
 {
@@ -2136,31 +2035,31 @@ void daemon_mode(int * arg)
 
                switch (request) {
                case 1:
-                  api_start_configuration();
+                  interactive_start_configuration();
                   break;
                case 2:
-                  api_stop_configuration();
+                  interactive_stop_configuration();
                   break;
                case 3:
-                  api_set_module_enabled();
+                  interactive_set_module_enabled();
                   break;
                case 4:
-                  api_stop_module();
+                  interactive_stop_module();
                   break;
                case 5:
-                  api_show_running_modules_status();
+                  interactive_show_running_modules_status();
                   break;
                case 6:
-                  api_show_available_modules();
+                  interactive_show_available_modules();
                   break;
                case 7:
-                  api_show_graph();
+                  interactive_show_graph();
                   break;
                case 8:
-                  api_run_temp_conf();
+                  interactive_run_temp_conf();
                   break;
                case 9:
-                  api_quit();
+                  supervisor_termination();
                   connected = FALSE;
                   terminated = TRUE;
                   break;

@@ -233,10 +233,10 @@ void generate_graph_code(graph_node_t * first)
       }
 
       for (x=0; x<node_ptr->num_node_input_interfaces;x++) {
-         fprintf(fd, "\t\tINPUTIFC%d%d\n", node_ptr->node_input_interfaces[x].node_interface_port, running_module->module_number);
+         fprintf(fd, "\t\tIN%d%d\n", node_ptr->node_input_interfaces[x].node_interface_port, running_module->module_number);
       }
       for (x=0; x<node_ptr->num_node_output_interfaces;x++) {
-         fprintf(fd, "\t\tOUTPUTIFC%d%d\n", node_ptr->node_output_interfaces[x].node_interface_port, running_module->module_number);
+         fprintf(fd, "\t\tOUT%d%d\n", node_ptr->node_output_interfaces[x].node_interface_port, running_module->module_number);
       }
       fprintf(fd, "\t}\n");
       node_ptr = node_ptr->next_node;
@@ -251,16 +251,15 @@ void generate_graph_code(graph_node_t * first)
 
       for (x=0; x<node_ptr->num_node_output_interfaces; x++) {
          for (y=0; y<node_ptr->node_output_interfaces[x].node_children_counter; y++) {
-            fprintf(fd, "\tOUTPUTIFC%d%d->INPUTIFC%d%d[color=red, label=\"send:%d\\nrecv:%d\\nEX:%d\"];\n",
+            fprintf(fd, "\tOUT%d%d->IN%d%d[color=red, label=\"send:%d\\nrecv:%d\\n\"];\n",
                   node_ptr->node_output_interfaces[x].node_interface_port,
                   ((running_module_t *) node_ptr->module_data)->module_number,
                   node_ptr->node_output_interfaces[x].node_children[y]->node_interface_port,
                   ((running_module_t *) node_ptr->node_output_interfaces[x].node_children[y]->parent_node->module_data)->module_number,
                   node_ptr->node_output_interfaces[x].message_counter,
-                  node_ptr->node_output_interfaces[x].node_children[y]->message_counter,
-                  node_ptr->node_output_interfaces[x].statistics[y].expected_value);
+                  node_ptr->node_output_interfaces[x].node_children[y]->message_counter);
          }
-         printf("\n");
+         // printf("\n");
       }
 
       node_ptr = node_ptr->next_node;
@@ -270,7 +269,22 @@ void generate_graph_code(graph_node_t * first)
    fclose(fd);
 }
 
-void show_graph()
+void generate_picture()
+{
+   int pid_dot;
+   if ((pid_dot = fork()) == 0) {
+      //child dot
+      execl("/usr/bin/dot","dot","-Tpng", GRAPH_SOURCE_FILE,"-o","graph_picture.png",NULL);
+      printf("error while executing dot\n");
+      exit(1);
+   } else if (pid_dot == -1) {
+      //error dot
+      printf("error while forking dot\n");
+      exit(1);
+   }
+}
+
+void show_picture()
 {
    int pid_dot, pid_display;
    int pipe2[2];

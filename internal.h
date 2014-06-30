@@ -50,7 +50,7 @@
 
 #define STATISTICS      1
 #define MODULE_EVENT    2
-#define N_STDOUT     3
+#define N_STDOUT     	3
 
 extern FILE *input_fd;
 extern FILE *output_fd;
