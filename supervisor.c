@@ -493,11 +493,11 @@ char **make_module_arguments(const int number_of_module)
       params[3] = NULL;
    } else {
       int params_counter;
-      char buffer[100];
+      char buffer[1000];
       int num_module_params = 0;
       int module_params_length = strlen(running_modules[number_of_module].module_params);
-      for(x=0; x<module_params_length; x++) {
-         if(running_modules[number_of_module].module_params[x] == 32) {
+      for (x=0; x<module_params_length; x++) {
+         if (running_modules[number_of_module].module_params[x] == 32) {
             num_module_params++;
          }
       }
@@ -518,7 +518,7 @@ char **make_module_arguments(const int number_of_module)
       params_counter = 3;
 
       y=0;
-      memset(buffer,0,100);
+      memset(buffer,0,1000);
       for (x=0; x<module_params_length; x++) {
          /* TODO why 32? */
          if (running_modules[number_of_module].module_params[x] == 32) {
@@ -526,7 +526,7 @@ char **make_module_arguments(const int number_of_module)
             /* TODO check if params is not NULL */
             sprintf(params[params_counter],"%s",buffer);
             params_counter++;
-            memset(buffer,0,100);
+            memset(buffer,0,1000);
             y=0;
          } else {
             buffer[y] = running_modules[number_of_module].module_params[x];
