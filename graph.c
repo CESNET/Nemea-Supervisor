@@ -112,7 +112,7 @@ graph_node_t * add_graph_node (graph_node_t * first, graph_node_t * last, void *
       node_ptr = first;
       while (node_ptr != NULL) {
          for (y=0; y<node_ptr->num_node_input_interfaces; y++) {
-            if(new_node->node_output_interfaces[x].node_interface_port == node_ptr->node_input_interfaces[y].node_interface_port){
+            if (new_node->node_output_interfaces[x].node_interface_port == node_ptr->node_input_interfaces[y].node_interface_port) {
                new_node->node_output_interfaces[x].node_children[new_node->node_output_interfaces[x].node_children_counter] = &(node_ptr->node_input_interfaces[y]);
                new_node->node_output_interfaces[x].node_children_counter++;
                node_ptr->node_input_interfaces[y].node_interface_output_ifc = &new_node->node_output_interfaces[x];
@@ -228,8 +228,10 @@ void generate_graph_code(graph_node_t * first)
       fprintf(fd, "\tsubgraph cluster%s%d {\n", running_module->module_name, running_module->module_number);
       if (running_module->remote_module) {
          fprintf(fd, "\t\tlabel=\"%s%d,remote\";\n\t\tstyle=filled;\n\t\tcolor=grey;\n\t\tnode[style=filled,color=white];\n", running_module->module_name, running_module->module_number);
+      } else if (running_module->module_status) {
+         fprintf(fd, "\t\tlabel=\"%s%d\\nrunning\";\n\t\tstyle=filled;\n\t\tcolor=grey;\n\t\tnode[style=filled,color=white];\n", running_module->module_name, running_module->module_number);
       } else {
-         fprintf(fd, "\t\tlabel=\"%s%d\";\n\t\tstyle=filled;\n\t\tcolor=grey;\n\t\tnode[style=filled,color=white];\n", running_module->module_name, running_module->module_number);
+         fprintf(fd, "\t\tlabel=\"%s%d\\nstopped\";\n\t\tstyle=filled;\n\t\tcolor=grey;\n\t\tnode[style=filled,color=white];\n", running_module->module_name, running_module->module_number);
       }
 
       for (x=0; x<node_ptr->num_node_input_interfaces;x++) {
@@ -271,7 +273,7 @@ void generate_graph_code(graph_node_t * first)
 
 void generate_picture()
 {
-   int pid_dot;
+   int pid_dot, status = 0;
    if ((pid_dot = fork()) == 0) {
       //child dot
       execl("/usr/bin/dot","dot","-Tpng", GRAPH_SOURCE_FILE,"-o","graph_picture.png",NULL);
@@ -280,12 +282,15 @@ void generate_picture()
    } else if (pid_dot == -1) {
       //error dot
       printf("error while forking dot\n");
-      exit(1);
+      return;
+   } else {
+      waitpid(pid_dot, &status, WUNTRACED);
    }
 }
 
 void show_picture()
 {
+   int result = 0, status = 0;
    int pid_dot, pid_display;
    int pipe2[2];
    if (pipe(pipe2) == -1) {
@@ -303,7 +308,7 @@ void show_picture()
    } else if (pid_dot == -1) {
       //error dot
       printf("error while forking dot\n");
-      exit(1);
+      return;
    }
 
    if ((pid_display = fork()) == 0) {
@@ -316,11 +321,14 @@ void show_picture()
    } else if (pid_display == -1) {
       //error display
       printf("error while forking display\n");
-      exit(1);
+      waitpid(pid_dot, &status, WUNTRACED);
+      return;
    } else {
       //parent display
       close(pipe2[0]);
       close(pipe2[1]);
+      waitpid(pid_dot, &status, WUNTRACED);
+      // waitpid(pid_display, &status, WUNTRACED);
    }
 }
 
@@ -328,11 +336,11 @@ void free_graph_node(graph_node_t * node)
 {
    if (node->next_node != NULL) {
       free_graph_node(node->next_node);
-      if(node != NULL) {
+      if (node != NULL) {
          free(node);
       }
    } else {
-      if(node != NULL) {
+      if (node != NULL) {
          free(node);
       }
    }
@@ -458,12 +466,12 @@ void compute_differences(graph_node_t * first)
       if (((running_module_t *)node_ptr->module_data)->module_status == TRUE) {
          for (x=0; x<node_ptr->num_node_output_interfaces; x++) {
             for (y=0; y<node_ptr->node_output_interfaces[x].node_children_counter; y++) {
-               // if(((running_module_t *)node_ptr->node_output_interfaces[x].node_children[y]->parent_node->module_data)->module_status == TRUE){
+               // if (((running_module_t *)node_ptr->node_output_interfaces[x].node_children[y]->parent_node->module_data)->module_status == TRUE) {
                   node_ptr->node_output_interfaces[x].statistics[y].num_periods++;
                   actual_difference = node_ptr->node_output_interfaces[x].message_counter - node_ptr->node_output_interfaces[x].node_children[y]->message_counter;
-                  if(actual_difference == -1){
+                  if (actual_difference == -1) {
                      period_difference = 0;
-                  } else if (actual_difference < node_ptr->node_output_interfaces[x].statistics[y].last_period_counters_difference){
+                  } else if (actual_difference < node_ptr->node_output_interfaces[x].statistics[y].last_period_counters_difference) {
                      period_difference = 0;
                   } else {
                      period_difference = actual_difference - node_ptr->node_output_interfaces[x].statistics[y].last_period_counters_difference;
@@ -474,13 +482,13 @@ void compute_differences(graph_node_t * first)
                   printf("---\nModule %d> actual:%d, last:%d, perioddif:%d, suma:%d, EX:%d\n", node_ptr->module_number, actual_difference, node_ptr->node_output_interfaces[x].statistics[y].last_period_counters_difference,
                                                    period_difference, node_ptr->node_output_interfaces[x].statistics[y].period_differences_suma, node_ptr->node_output_interfaces[x].statistics[y].expected_value);
                   printf("Module %d> perioddif:%d, suma:%d, EX:%d\n", node_ptr->module_number, period_difference, node_ptr->node_output_interfaces[x].statistics[y].period_differences_suma, node_ptr->node_output_interfaces[x].statistics[y].expected_value);
-                  if(node_ptr->module_number == 4 && node_ptr->node_output_interfaces[x].node_children[y]->parent_node->module_number == 2){
+                  if (node_ptr->module_number == 4 && node_ptr->node_output_interfaces[x].node_children[y]->parent_node->module_number == 2) {
                      printf("%d  %d    %d\n", node_ptr->node_output_interfaces[x].statistics[y].num_periods, period_difference, node_ptr->node_output_interfaces[x].statistics[y].expected_value);
                   }
                   */
-                  if(actual_difference == -1){
+                  if (actual_difference == -1) {
                      // node_ptr->node_output_interfaces[x].statistics[y].last_period_counters_difference = -1;
-                  } else if (actual_difference < node_ptr->node_output_interfaces[x].statistics[y].last_period_counters_difference){
+                  } else if (actual_difference < node_ptr->node_output_interfaces[x].statistics[y].last_period_counters_difference) {
                      // node_ptr->node_output_interfaces[x].statistics[y].last_period_counters_difference = -1;
                   } else {
                      node_ptr->node_output_interfaces[x].statistics[y].last_period_counters_difference = actual_difference;
