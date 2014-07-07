@@ -402,20 +402,94 @@ void interactive_show_available_modules ()
 
 char **make_module_arguments(const int number_of_module)
 {
-   char atr[1000]; // TODO
-   memset(atr,0,1000); // TODO
-   int x = 0,y=0;
-   char * ptr = atr;
-   int str_len;
+   int size_of_atr = DEFAULT_SIZE_OF_BUFFER;
+   char * atr = (char *) calloc (size_of_atr, sizeof(char));
+   int x = 0, y = 0;
+   int ptr = 0;
+   int str_len = 0;
+   int params_counter = 0;
+   char ** params = NULL;
 
-   for(x=0; x<running_modules[number_of_module].module_ifces_cnt; x++) {
-      if(running_modules[number_of_module].module_ifces[x].ifc_direction != NULL) {
+   //binary without libtrap interfaces
+   if (running_modules[number_of_module].module_ifces_cnt == 0) {
+      if (running_modules[number_of_module].module_params == NULL) {
+         params = (char **) calloc (2,sizeof(char*));
+
+         str_len = strlen(running_modules[number_of_module].module_name);
+         params[0] = (char *) calloc (str_len+1, sizeof(char));   // binary name for exec
+         strncpy(params[0],running_modules[number_of_module].module_name, str_len+1);
+         params[1] = NULL;
+      } else {
+         int size_of_buffer = DEFAULT_SIZE_OF_BUFFER;
+         char * buffer = (char *) calloc (size_of_buffer, sizeof(char));
+         int num_module_params = 0;
+         int module_params_length = strlen(running_modules[number_of_module].module_params);
+         
+         for (x=0; x<module_params_length; x++) {
+            if (running_modules[number_of_module].module_params[x] == 32) {
+               num_module_params++;
+            }
+         }
+         num_module_params++;
+
+         params = (char **) calloc (2+num_module_params,sizeof(char*));
+         str_len = strlen(running_modules[number_of_module].module_name);
+         params[0] = (char *) calloc (str_len+1, sizeof(char));   // binary name for exec
+         strncpy(params[0],running_modules[number_of_module].module_name, str_len+1);
+
+         params_counter = 1;
+
+         y=0;
+         for (x=0; x<module_params_length; x++) {
+            if (running_modules[number_of_module].module_params[x] == 32) {
+               params[params_counter] = (char *) calloc (strlen(buffer)+1,sizeof(char));
+               sprintf(params[params_counter],"%s",buffer);
+               params_counter++;
+               memset(buffer,0,size_of_buffer);
+               y=0;
+            } else {
+               if (y >= size_of_buffer) {
+                  size_of_buffer += size_of_buffer/2;
+                  buffer = (char *) realloc (buffer, size_of_buffer*sizeof(char));
+                  memset(buffer + y, 0, size_of_buffer/3);
+               }
+               buffer[y] = running_modules[number_of_module].module_params[x];
+               y++;
+            }
+         }
+         params[params_counter] = (char *) calloc (strlen(buffer)+1,sizeof(char));
+         sprintf(params[params_counter],"%s",buffer);
+         params_counter++;
+
+         params[params_counter] = NULL;
+      }
+
+      fprintf(stdout,"Supervisor - executed command: %s", running_modules[number_of_module].module_path);
+      fprintf(stderr,"Supervisor - executed command: %s", running_modules[number_of_module].module_path);
+      
+      if (params_counter > 0) {
+         for (x=1; x<params_counter; x++) {
+            fprintf(stdout,"   %s",params[x]);
+            fprintf(stderr,"   %s",params[x]);
+         }
+      }
+
+      fprintf(stdout,"\n");
+      fprintf(stderr,"\n");
+
+      return params;
+   }
+
+
+
+   for (x=0; x<running_modules[number_of_module].module_ifces_cnt; x++) {
+      if (running_modules[number_of_module].module_ifces[x].ifc_direction != NULL) {
          if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_direction, "IN", 2)) {
             if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type, "TCP", 3)) {
-               strncpy(ptr,"t",1);
+               strncpy(atr + ptr,"t",1);
                ptr++;
             } else if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type, "UNIXSOCKET", 10)) {
-               strncpy(ptr,"u",1);
+               strncpy(atr + ptr,"u",1);
                ptr++;
             } else {
                VERBOSE(N_STDOUT,"%s\n", running_modules[number_of_module].module_ifces[x].ifc_type);
@@ -430,10 +504,10 @@ char **make_module_arguments(const int number_of_module)
       if (running_modules[number_of_module].module_ifces[x].ifc_direction != NULL) {
          if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_direction,"OUT", 3)) {
             if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type, "TCP", 3)) {
-               strncpy(ptr,"t",1);
+               strncpy(atr + ptr,"t",1);
                ptr++;
             } else if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type, "UNIXSOCKET", 10)) {
-               strncpy(ptr,"u",1);
+               strncpy(atr + ptr,"u",1);
                ptr++;
             } else {
                VERBOSE(N_STDOUT,"%s\n", running_modules[number_of_module].module_ifces[x].ifc_type);
@@ -446,18 +520,23 @@ char **make_module_arguments(const int number_of_module)
 
    for (x=0; x<running_modules[number_of_module].module_ifces_cnt; x++) {
       if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type,"SERVICE", 7)) {
-         strncpy(ptr,"s",1);
+         strncpy(atr + ptr,"s",1);
          ptr++;
       }
    }
 
-   strncpy(ptr,";",1);
+   strncpy(atr + ptr,";",1);
    ptr++;
 
    for (x=0; x<running_modules[number_of_module].module_ifces_cnt; x++) {
       if (running_modules[number_of_module].module_ifces[x].ifc_direction != NULL) {
          if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_direction,"IN", 2)) {
-            sprintf(ptr,"%s;",running_modules[number_of_module].module_ifces[x].ifc_params);
+            if ((strlen(atr) + strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1) >= (3*size_of_atr)/5) {
+               size_of_atr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + (size_of_atr/2);
+               atr = (char *) realloc (atr, size_of_atr*sizeof(char));
+               memset(atr + ptr, 0, size_of_atr - ptr);
+            }
+            sprintf(atr + ptr,"%s;",running_modules[number_of_module].module_ifces[x].ifc_params);
             ptr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1;
          }
       }
@@ -466,7 +545,12 @@ char **make_module_arguments(const int number_of_module)
    for (x=0; x<running_modules[number_of_module].module_ifces_cnt; x++) {
       if (running_modules[number_of_module].module_ifces[x].ifc_direction != NULL) {
          if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_direction,"OUT", 3)) {
-            sprintf(ptr,"%s;",running_modules[number_of_module].module_ifces[x].ifc_params);
+            if ((strlen(atr) + strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1) >= (3*size_of_atr)/5) {
+               size_of_atr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + (size_of_atr/2);
+               atr = (char *) realloc (atr, size_of_atr*sizeof(char));
+               memset(atr + ptr, 0, size_of_atr - ptr);
+            }
+            sprintf(atr + ptr,"%s;",running_modules[number_of_module].module_ifces[x].ifc_params);
             ptr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1;
          }
       }
@@ -474,13 +558,17 @@ char **make_module_arguments(const int number_of_module)
 
    for (x=0; x<running_modules[number_of_module].module_ifces_cnt; x++) {
       if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type,"SERVICE", 7)) {
-         sprintf(ptr,"%s;",running_modules[number_of_module].module_ifces[x].ifc_params);
+         if ((strlen(atr) + strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1) >= (3*size_of_atr)/5) {
+            size_of_atr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + (size_of_atr/2);
+            atr = (char *) realloc (atr, size_of_atr*sizeof(char));
+            memset(atr + ptr, 0, size_of_atr - ptr);
+         }
+         sprintf(atr + ptr,"%s;",running_modules[number_of_module].module_ifces[x].ifc_params);
          ptr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1;
       }
    }
-   memset(ptr-1,0,1);
+   memset(atr + ptr-1,0,1);
 
-   char ** params = NULL;
    if (running_modules[number_of_module].module_params == NULL) {
       params = (char **) calloc (4,sizeof(char*));
       /* TODO check if params is not NULL!!! */
@@ -497,10 +585,11 @@ char **make_module_arguments(const int number_of_module)
 
       params[3] = NULL;
    } else {
-      int params_counter;
-      char buffer[1000];
+      int size_of_buffer = DEFAULT_SIZE_OF_BUFFER;
+      char * buffer = (char *) calloc (size_of_buffer, sizeof(char));
       int num_module_params = 0;
       int module_params_length = strlen(running_modules[number_of_module].module_params);
+      
       for (x=0; x<module_params_length; x++) {
          if (running_modules[number_of_module].module_params[x] == 32) {
             num_module_params++;
@@ -523,7 +612,6 @@ char **make_module_arguments(const int number_of_module)
       params_counter = 3;
 
       y=0;
-      memset(buffer,0,1000);
       for (x=0; x<module_params_length; x++) {
          /* TODO why 32? */
          if (running_modules[number_of_module].module_params[x] == 32) {
@@ -531,9 +619,14 @@ char **make_module_arguments(const int number_of_module)
             /* TODO check if params is not NULL */
             sprintf(params[params_counter],"%s",buffer);
             params_counter++;
-            memset(buffer,0,1000);
+            memset(buffer,0,size_of_buffer);
             y=0;
          } else {
+            if (y >= size_of_buffer) {
+               size_of_buffer += size_of_buffer/2;
+               buffer = (char *) realloc (buffer, size_of_buffer*sizeof(char));
+               memset(buffer + y, 0, size_of_buffer/3);
+            }
             buffer[y] = running_modules[number_of_module].module_params[x];
             y++;
          }
@@ -546,6 +639,20 @@ char **make_module_arguments(const int number_of_module)
 
       params[params_counter] = NULL;
    }
+   
+   fprintf(stdout,"Supervisor - executed command: %s   %s   %s", running_modules[number_of_module].module_path, params[1], params[2]);
+   fprintf(stderr,"Supervisor - executed command: %s   %s   %s", running_modules[number_of_module].module_path, params[1], params[2]);
+   
+   if (params_counter > 0) {
+      for (x=3; x<params_counter; x++) {
+         fprintf(stdout,"   %s",params[x]);
+         fprintf(stderr,"   %s",params[x]);
+      }
+   }
+
+   fprintf(stdout,"\n");
+   fprintf(stderr,"\n");
+
    return params;
 }
 
