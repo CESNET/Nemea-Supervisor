@@ -58,6 +58,9 @@
 #define TRUE            1 ///< Bool true
 #define FALSE           0 ///< Bool false
 #define DAEMON_UNIX_PATH_FILENAME_FORMAT  "/tmp/supervisor_daemon.sock"
+#define DAEMON_STOP_CODE 951753
+#define DAEMON_CONFIG_MODE_CODE 789123
+#define DAEMON_STATS_MODE_CODE 456987
 
 union tcpip_socket_addr {
    struct addrinfo tcpip_addr; ///< used for TCPIP socket
@@ -171,16 +174,20 @@ int main(int argc, char **argv)
       } else if (ret_val) {
          if (FD_ISSET(0, &read_fds)) {
             scanf("%s", buffer);
-            if (strcmp(buffer,"quit") == 0) {
+            if (strcmp(buffer,"Cquit") == 0) {
                close(supervisor_stream_input_fd);
                fclose(supervisor_stream_input);
                fclose(supervisor_stream_output);
                close(supervisor_sd);
                connected = FALSE;
                break;
+            } else if (strcmp(buffer,"Dstop") == 0) {
+               fprintf(supervisor_stream_output,"%d\n", DAEMON_STOP_CODE);
+               fflush(supervisor_stream_output);
+            } else {
+               fprintf(supervisor_stream_output,"%s\n",buffer);
+               fflush(supervisor_stream_output);
             }
-            fprintf(supervisor_stream_output,"%s\n",buffer);
-            fflush(supervisor_stream_output);
          }
          if (FD_ISSET(supervisor_stream_input_fd, &read_fds)) {
             usleep(200000);

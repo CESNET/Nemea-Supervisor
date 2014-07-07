@@ -567,15 +567,15 @@ int get_number_from_input()
 int interactive_get_option()
 {
    VERBOSE(N_STDOUT,"--------OPTIONS--------\n");
-   VERBOSE(N_STDOUT,"1. RUN CONFIGURATION\n");
-   VERBOSE(N_STDOUT,"2. STOP CONFIGURATION\n");
-   VERBOSE(N_STDOUT,"3. SET MODULE ENABLED\n");
-   VERBOSE(N_STDOUT,"4. STOP MODUL\n");
+   VERBOSE(N_STDOUT,"1. START ALL MODULES\n");
+   VERBOSE(N_STDOUT,"2. STOP ALL MODULES\n");
+   VERBOSE(N_STDOUT,"3. START MODULE\n");
+   VERBOSE(N_STDOUT,"4. STOP MODULE\n");
    VERBOSE(N_STDOUT,"5. STARTED MODULES STATUS\n");
    VERBOSE(N_STDOUT,"6. AVAILABLE MODULES\n");
    VERBOSE(N_STDOUT,"7. SHOW GRAPH\n");
-   VERBOSE(N_STDOUT,"8. RUN TEMP CONF\n");
-   VERBOSE(N_STDOUT,"9. QUIT\n");
+   VERBOSE(N_STDOUT,"8. LOAD CONFIGURATION\n");
+   VERBOSE(N_STDOUT,"9. STOP SUPERVISOR\n");
 
    return get_number_from_input();
 }
@@ -1982,18 +1982,6 @@ void daemon_mode(int * arg)
       input_fd = client_stream_input;
       output_fd = client_stream_output;
 
-      VERBOSE(N_STDOUT,"--------OPTIONS--------\n");
-      VERBOSE(N_STDOUT,"1. RUN CONFIGURATION\n");
-      VERBOSE(N_STDOUT,"2. STOP CONFIGURATION\n");
-      VERBOSE(N_STDOUT,"3. SET MODULE ENABLED\n");
-      VERBOSE(N_STDOUT,"4. STOP MODUL\n");
-      VERBOSE(N_STDOUT,"5. STARTED MODULES STATUS\n");
-      VERBOSE(N_STDOUT,"6. AVAILABLE MODULES\n");
-      VERBOSE(N_STDOUT,"7. SHOW GRAPH\n");
-      VERBOSE(N_STDOUT,"8. RUN TEMP CONF\n");
-      VERBOSE(N_STDOUT,"9. STOP SUPERVISOR-DAEMON\n");
-      VERBOSE(N_STDOUT,"-- Type \"quit\" to exit client --\n");
-
       while (connected != 0) {
          request = -1;
 
@@ -2069,16 +2057,16 @@ void daemon_mode(int * arg)
                }
 
                VERBOSE(N_STDOUT,"--------OPTIONS--------\n");
-               VERBOSE(N_STDOUT,"1. RUN CONFIGURATION\n");
-               VERBOSE(N_STDOUT,"2. STOP CONFIGURATION\n");
-               VERBOSE(N_STDOUT,"3. SET MODULE ENABLED\n");
-               VERBOSE(N_STDOUT,"4. STOP MODUL\n");
+               VERBOSE(N_STDOUT,"1. START ALL MODULES\n");
+               VERBOSE(N_STDOUT,"2. STOP ALL MODULES\n");
+               VERBOSE(N_STDOUT,"3. START MODULE\n");
+               VERBOSE(N_STDOUT,"4. STOP MODULE\n");
                VERBOSE(N_STDOUT,"5. STARTED MODULES STATUS\n");
                VERBOSE(N_STDOUT,"6. AVAILABLE MODULES\n");
                VERBOSE(N_STDOUT,"7. SHOW GRAPH\n");
-               VERBOSE(N_STDOUT,"8. RUN TEMP CONF\n");
-               VERBOSE(N_STDOUT,"9. STOP SUPERVISOR-DAEMON\n");
-               VERBOSE(N_STDOUT,"-- Type \"quit\" to exit client --\n");
+               VERBOSE(N_STDOUT,"8. LOAD CONFIGURATION\n");
+               VERBOSE(N_STDOUT,"-- Type \"Cquit\" to exit client --\n");
+               VERBOSE(N_STDOUT,"-- Type \"Dstop\" to stop daemon --\n");
 
             }
          } else {
