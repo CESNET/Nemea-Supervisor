@@ -905,16 +905,42 @@ void interactive_start_configuration()
 
 void interactive_stop_configuration()
 {
+   char * dest_port = NULL;
+   char buffer[DEFAULT_SIZE_OF_BUFFER];
+   memset(buffer, 0, DEFAULT_SIZE_OF_BUFFER);
+   int x = 0, y = 0;
+
    pthread_mutex_lock(&running_modules_lock);
    VERBOSE(MODULE_EVENT,"Stopping configuration...\n");
-   int x = 0;
    for (x=0; x<loaded_modules_cnt; x++) {
-      if (running_modules[x].module_enabled){
+      if (running_modules[x].module_enabled) {
          stop_module(x);
       }
    }
    VERBOSE(MODULE_EVENT,"Configuration stopped.\n");
    pthread_mutex_unlock(&running_modules_lock);
+
+   sleep(1);
+
+   pthread_mutex_lock(&running_modules_lock);
+   update_module_status();
+   for (x=0; x<loaded_modules_cnt; x++) {
+      if (running_modules[x].module_status) {
+         kill(running_modules[x].module_pid,9);
+         for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
+            if (strcmp(running_modules[x].module_ifces[y].ifc_type, "SERVICE") == 0 || ((strcmp(running_modules[x].module_ifces[y].ifc_type, "UNIXSOCKET") == 0)
+                                                                                       && (strcmp(running_modules[x].module_ifces[y].ifc_direction, "OUT") == 0))) {
+               get_param_by_delimiter(running_modules[x].module_ifces[y].ifc_params, &dest_port, ',');
+               sprintf(buffer,UNIX_PATH_FILENAME_FORMAT,dest_port);
+               unlink(buffer);
+            }
+         }
+      }
+   }
+   pthread_mutex_unlock(&running_modules_lock);
+   if (dest_port != NULL) {
+      free(dest_port);      
+   }
 }
 
 
@@ -942,15 +968,19 @@ void interactive_set_module_enabled()
 
 void interactive_stop_module()
 {
+   char * dest_port = NULL;
+   char buffer[DEFAULT_SIZE_OF_BUFFER];
+   memset(buffer, 0, DEFAULT_SIZE_OF_BUFFER);
+   int x = 0, y = 0, running_modules_counter = 0;
+   
    pthread_mutex_lock(&running_modules_lock);
-   int x = 0, running_modules_counter = 0;
    for (x=0;x<loaded_modules_cnt;x++) {
       if (running_modules[x].module_status) {
          VERBOSE(N_STDOUT,"%d_%s running (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
          running_modules_counter++;
       }
    }
-   if(running_modules_counter == 0){
+   if (running_modules_counter == 0) {
       VERBOSE(N_STDOUT,"All modules are stopped.\n");
       pthread_mutex_unlock(&running_modules_lock);
       return;
@@ -965,6 +995,26 @@ void interactive_stop_module()
       stop_module(x);
    }
    pthread_mutex_unlock(&running_modules_lock);
+
+   sleep(1);
+
+   pthread_mutex_lock(&running_modules_lock);
+   update_module_status();
+   if (running_modules[x].module_status) {
+      kill(running_modules[x].module_pid,9);
+      for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
+         if (strcmp(running_modules[x].module_ifces[y].ifc_type, "SERVICE") == 0 || ((strcmp(running_modules[x].module_ifces[y].ifc_type, "UNIXSOCKET") == 0)
+                                                                                       && (strcmp(running_modules[x].module_ifces[y].ifc_direction, "OUT") == 0))) {
+            get_param_by_delimiter(running_modules[x].module_ifces[y].ifc_params, &dest_port, ',');
+            sprintf(buffer,UNIX_PATH_FILENAME_FORMAT,dest_port);
+            unlink(buffer);
+         }
+      }
+   }   
+   pthread_mutex_unlock(&running_modules_lock);
+   if (dest_port != NULL) {
+      free(dest_port);      
+   }
 }
 
 
