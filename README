@@ -1,14 +1,57 @@
 Supervisor:
 =================
 
-1) interactive mode: 	./supervisor -f config_file.xml
+Supervisor can run in one of two basic modes:
+1) Interactive Mode:
+  ./supervisor -f config_file.xml
 
-2) daemon mode: 		./supervisor -f config_file.xml --daemon
-						./supervisor_cli (client for controlling the daemon)
+2) Daemon Mode:
+  Supervisor is executed with `--daemon` and runs as a process in backround
+  of the operating system.
+  ./supervisor -f config_file.xml --daemon
 
-Supervisor client allows user to get statistics about message flows between modules and cpu usage of modules.
-First of all supervisor daemon must be running. If so, user can execute "./supervisor_cli -x" and client will print statistics and quit.
-Example of clients output:
+  The activity of the running daemon can be controlled by a special thin client:
+  ./supervisor_cli (client for controlling the daemon)
+
+  Both daemon and client supports `-s` to specify path to the UNIX socket
+  that is used for communication between daemon and client.
+
+  Note: paths must match to communicate with right Supervisor daemon
+
+Statistics about Nemea modules:
+==================
+  Supervisor client has a special mode that is enabled by `-x`. It allows user
+  to get statistics about message numbers and cpu usage of modules.
+  In `-x` mode, client connects to the supervisor, receives and prints statistics,
+  disconnects and terminates.
+  ./supervisor_cli -x
+
+  Note: Supervisor daemon must be running.
+
+Output format - description:
+------------------------
+<module unique name>,<information type>,<statistics/identification>
+
+For different "information type", the part "statistics/identification" differs.
+
+Example#1:
+  flowcounter1,in,0,1020229
+The example means: number of received messages (1020229) of input interface (in)
+with interface number (0) of the module (flowcounter1).
+
+Example#2:
+  traffic_repeater2,out,0,510114,392,2
+The example means: number of sent messages (510114), number of sent buffers (392),
+number of executed "buffer auto-flushes" (2) of output interface (out)
+with interface number (0) of the module (traffic_repeater2).
+
+Example#3:
+  flowcounter1,cpu,2,1
+The example means: usage of CPU (cpu) in percent in kernel mode (2) and user mode (1)
+of the module (flowcounter1).
+
+
+Overall Example of the output with statistics:
 ------------------------
 flowcounter1,in,0,1020229
 flowcounter2,in,0,507519
@@ -33,5 +76,3 @@ nfreader1,cpu,7,1
 nfreader2,cpu,5,0
 traffic_merger3,cpu,5,2
 
-module_name,direction,interface_number,counters
-module_name,cpu,kernel_mode,user_mode
