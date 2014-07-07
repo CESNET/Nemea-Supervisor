@@ -1,0 +1,37 @@
+Supervisor:
+=================
+
+1) interactive mode: 	./supervisor -f config_file.xml
+
+2) daemon mode: 		./supervisor -f config_file.xml --daemon
+						./supervisor_cli (client for controlling the daemon)
+
+Supervisor client allows user to get statistics about message flows between modules and cpu usage of modules.
+First of all supervisor daemon must be running. If so, user can execute "./supervisor_cli -x" and client will print statistics and quit.
+Example of clients output:
+------------------------
+flowcounter1,in,0,1020229
+flowcounter2,in,0,507519
+flowcounter3,in,0,508817
+flowcounter4,in,0,508817
+traffic_repeater1,in,0,510115
+traffic_repeater1,out,0,510114,392,2
+traffic_repeater2,in,0,510115
+traffic_repeater2,out,0,510114,392,2
+nfreader1,out,0,515307,396,0
+nfreader2,out,0,533479,410,0
+traffic_merger3,in,0,510764
+traffic_merger3,in,1,510763
+traffic_merger3,out,0,1021527,786,2
+flowcounter1,cpu,2,1
+flowcounter2,cpu,1,0
+flowcounter3,cpu,1,0
+flowcounter4,cpu,2,0
+traffic_repeater1,cpu,2,1
+traffic_repeater2,cpu,2,1
+nfreader1,cpu,7,1
+nfreader2,cpu,5,0
+traffic_merger3,cpu,5,2
+
+module_name,direction,interface_number,counters
+module_name,cpu,kernel_mode,user_mode
