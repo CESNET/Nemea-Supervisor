@@ -69,7 +69,7 @@ union tcpip_socket_addr {
 
 int connect_to_supervisor(char *socket_path)
 {
-   printf("Connecting to Supervisor-daemon...\n");
+   // printf("Connecting to Supervisor-daemon...\n");
    int sockfd;
    union tcpip_socket_addr addr;
 
@@ -132,7 +132,7 @@ int main(int argc, char **argv)
       printf("Could not connect to supervisor.\n");
       return 0;
    } else {
-      printf("Connected !\n");
+      // printf("Connected !\n");
       connected = TRUE;
    }
 

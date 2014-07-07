@@ -48,14 +48,13 @@
 
 int main (int argc, char * argv [])
 {
-   if(supervisor_initialization(&argc, argv)){
+   if (supervisor_initialization(&argc, argv)) {
       return 0;
    }
-
    int ret_val = 0;
 
    while ((ret_val = interactive_get_option()) != 9) {
-      switch(ret_val) {
+      switch (ret_val) {
       case 1:
          interactive_start_configuration();
          break;
@@ -65,6 +64,7 @@ int main (int argc, char * argv [])
          break;
 
       case 3:
+         // sup_nc_set_module_enabled(name,op);
          interactive_set_module_enabled();
          break;
 
@@ -93,8 +93,6 @@ int main (int argc, char * argv [])
          break;
       }
    }
-
    supervisor_termination();
-
    return 0;
 }

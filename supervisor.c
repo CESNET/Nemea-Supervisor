@@ -126,6 +126,7 @@ void start_service_thread();
 int parse_arguments(int *argc, char **argv);
 void print_help();
 void daemon_mode();
+char *get_param_by_delimiter(const char *source, char **dest, const char delimiter);
 
 
 void get_local_IP ()
@@ -140,7 +141,7 @@ void get_local_IP ()
    }
 
    for (ifa = myaddrs; ifa != NULL; ifa = ifa->ifa_next) {
-      if (ifa->ifa_addr == NULL){
+      if (ifa->ifa_addr == NULL) {
          continue;
       }
       if (!(ifa->ifa_flags & IFF_UP)) {
@@ -151,7 +152,7 @@ void get_local_IP ()
       case AF_INET: {
             struct sockaddr_in *s4 = (struct sockaddr_in *)ifa->ifa_addr;
             in_addr = &s4->sin_addr;
-            if(strcmp(ifa->ifa_name,"eth0") == 0){
+            if (strcmp(ifa->ifa_name,"eth0") == 0) {
                if (!inet_ntop(ifa->ifa_addr->sa_family, in_addr, supervisor_address, 50)) {
                   // printf("%s: inet_ntop failed!\n", ifa->ifa_name);
                } else {
@@ -223,7 +224,7 @@ int load_configuration(const int choice, const char * buffer)
          break;
       }
       current_node = current_node-> next;
-      if(current_node == NULL) {
+      if (current_node == NULL) {
          fprintf(stderr,"Tag \"modules\" wasnt found.\n");
          xmlFreeDoc(xml_tree);
          return FALSE;
@@ -265,7 +266,7 @@ int load_configuration(const int choice, const char * buffer)
          while (module_atr != NULL) {
             if ((!xmlStrcmp(module_atr->name,BAD_CAST "params"))) {
                key = xmlNodeListGetString(xml_tree, module_atr->xmlChildrenNode, 1);
-               if(key == NULL) {
+               if (key == NULL) {
                   running_modules[loaded_modules_cnt].module_params = NULL;
                } else {
                   str_len = strlen((char *) key);
@@ -275,7 +276,7 @@ int load_configuration(const int choice, const char * buffer)
                }
             } else if ((!xmlStrcmp(module_atr->name,BAD_CAST "name"))) {
                key = xmlNodeListGetString(xml_tree, module_atr->xmlChildrenNode, 1);
-               if(key == NULL) {
+               if (key == NULL) {
                   running_modules[loaded_modules_cnt].module_name = NULL;
                } else {
                   str_len = strlen((char *) key);
@@ -285,7 +286,7 @@ int load_configuration(const int choice, const char * buffer)
                }
             } else if ((!xmlStrcmp(module_atr->name,BAD_CAST "path"))) {
                key = xmlNodeListGetString(xml_tree, module_atr->xmlChildrenNode, 1);
-               if(key == NULL) {
+               if (key == NULL) {
                   running_modules[loaded_modules_cnt].module_path = NULL;
                } else {
                   str_len = strlen((char *) key);
@@ -300,7 +301,7 @@ int load_configuration(const int choice, const char * buffer)
                while (ifc_ptr != NULL) {
                   if (!xmlStrcmp(ifc_ptr->name,BAD_CAST "interface")) {
                      ifc_atr = ifc_ptr->xmlChildrenNode;
-                     if(ifc_cnt == running_modules[loaded_modules_cnt].module_ifces_array_size) {
+                     if (ifc_cnt == running_modules[loaded_modules_cnt].module_ifces_array_size) {
                         VERBOSE(N_STDOUT,"REALLOCING MODULE INTERFACES ARRAY --->\n");
                         int origin_size = running_modules[loaded_modules_cnt].module_ifces_array_size;
                         running_modules[loaded_modules_cnt].module_ifces_array_size += running_modules[loaded_modules_cnt].module_ifces_array_size/2;
@@ -311,7 +312,7 @@ int load_configuration(const int choice, const char * buffer)
                      while (ifc_atr != NULL) {
                         if ((!xmlStrcmp(ifc_atr->name,BAD_CAST "note"))) {
                            key =xmlNodeListGetString(xml_tree, ifc_atr->xmlChildrenNode, 1);
-                           if(key == NULL) {
+                           if (key == NULL) {
                               running_modules[loaded_modules_cnt].module_ifces[ifc_cnt].ifc_note = NULL;
                            } else {
                               str_len = strlen((char *) key);
@@ -321,7 +322,7 @@ int load_configuration(const int choice, const char * buffer)
                            }
                         } else if ((!xmlStrcmp(ifc_atr->name,BAD_CAST "type"))) {
                            key =xmlNodeListGetString(xml_tree, ifc_atr->xmlChildrenNode, 1);
-                           if(key == NULL) {
+                           if (key == NULL) {
                               running_modules[loaded_modules_cnt].module_ifces[ifc_cnt].ifc_type = NULL;
                            } else {
                               str_len = strlen((char *) key);
@@ -331,7 +332,7 @@ int load_configuration(const int choice, const char * buffer)
                            }
                         } else if ((!xmlStrcmp(ifc_atr->name,BAD_CAST "direction"))) {
                            key =xmlNodeListGetString(xml_tree, ifc_atr->xmlChildrenNode, 1);
-                           if(key == NULL) {
+                           if (key == NULL) {
                               running_modules[loaded_modules_cnt].module_ifces[ifc_cnt].ifc_direction= NULL;
                            } else {
                               str_len = strlen((char *) key);
@@ -341,7 +342,7 @@ int load_configuration(const int choice, const char * buffer)
                            }
                         } else if ((!xmlStrcmp(ifc_atr->name,BAD_CAST "params"))) {
                            key =xmlNodeListGetString(xml_tree, ifc_atr->xmlChildrenNode, 1);
-                           if(key == NULL) {
+                           if (key == NULL) {
                               running_modules[loaded_modules_cnt].module_ifces[ifc_cnt].ifc_params = NULL;
                            } else {
                               str_len = strlen((char *) key);
@@ -362,9 +363,9 @@ int load_configuration(const int choice, const char * buffer)
 
             module_atr = module_atr->next;
          }
-         for(x=0; x<running_modules[loaded_modules_cnt].module_ifces_cnt; x++) {
-            if(running_modules[loaded_modules_cnt].module_ifces[x].ifc_direction != NULL) {
-               if(strncmp(running_modules[loaded_modules_cnt].module_ifces[x].ifc_direction, "IN", 2) == 0) {
+         for (x=0; x<running_modules[loaded_modules_cnt].module_ifces_cnt; x++) {
+            if (running_modules[loaded_modules_cnt].module_ifces[x].ifc_direction != NULL) {
+               if (strncmp(running_modules[loaded_modules_cnt].module_ifces[x].ifc_direction, "IN", 2) == 0) {
                   running_modules[loaded_modules_cnt].module_num_in_ifc++;
                } else if (strncmp(running_modules[loaded_modules_cnt].module_ifces[x].ifc_direction, "OUT", 3) == 0) {
                   running_modules[loaded_modules_cnt].module_num_out_ifc++;
@@ -390,7 +391,7 @@ void interactive_show_available_modules ()
    for (x=0; x < loaded_modules_cnt; x++) {
       VERBOSE(N_STDOUT,"%d_%s:  PATH:%s  PARAMS:%s\n", x, running_modules[x].module_name, running_modules[x].module_path, running_modules[x].module_params);
 
-      for(y=0; y<running_modules[x].module_ifces_cnt; y++) {
+      for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
          VERBOSE(N_STDOUT,"\tIFC%d\tNOTE: %s\n",y, running_modules[x].module_ifces[y].ifc_note);
          VERBOSE(N_STDOUT,"\t\tTYPE: %s\n", running_modules[x].module_ifces[y].ifc_type);
          VERBOSE(N_STDOUT,"\t\tDIRECTION: %s\n", running_modules[x].module_ifces[y].ifc_direction);
@@ -664,7 +665,7 @@ int get_number_from_input()
    int ret_val = 0;
 
    fscanf(input_fd, "%s", buffer);
-   if(strlen(buffer) > 2){
+   if (strlen(buffer) > 2) {
       return -1;
    } else if ((strlen(buffer) == 2) && ((buffer[0] > '9' || buffer[0] < '1') || (buffer[1] > '9' || buffer[1] < '0'))) {
       return -1;
@@ -728,10 +729,11 @@ void re_start_module(const int module_number)
       dup2(fd_stderr,2); //stderr
       close(fd_stdout);
       close(fd_stderr);
+      fprintf(stdout,"---> %s", asctime (timeinfo));
+      fprintf(stderr,"---> %s", asctime (timeinfo));
       char **params = make_module_arguments(running_modules[module_number].module_number);
-      fprintf(stdout,"---> %s | %s   %s   %s    %s\n", asctime (timeinfo), params[0], params[1], params[2], params[3]);
-      fprintf(stderr,"---> %s | %s   %s   %s    %s\n", asctime (timeinfo), params[0], params[1], params[2], params[3]);
       fflush(stdout);
+      fflush(stderr);
       execvp(running_modules[module_number].module_path, params);
       VERBOSE(N_STDOUT,"Error while executing module binary.\n");
       running_modules[module_number].module_enabled = FALSE;
@@ -743,7 +745,7 @@ void re_start_module(const int module_number)
    } else {
       running_modules[module_number].module_status = TRUE;
       running_modules[module_number].module_restart_cnt++;
-      if (running_modules[module_number].module_restart_cnt == 1){
+      if (running_modules[module_number].module_restart_cnt == 1) {
          running_modules[module_number].module_restart_timer = 0;
       }
    }
@@ -751,12 +753,10 @@ void re_start_module(const int module_number)
 
 void stop_module (const int module_number)
 {
+   running_modules[module_number].module_enabled = FALSE;
    if (running_modules[module_number].module_status) {
       VERBOSE(MODULE_EVENT,"Stopping module %d_%s.\n", module_number, running_modules[module_number].module_name);
-      running_modules[module_number].module_enabled = FALSE;
       kill(running_modules[module_number].module_pid,2);
-      running_modules[module_number].module_status = FALSE;
-      running_modules[module_number].module_service_ifc_isconnected = FALSE;
    }
 }
 
@@ -794,7 +794,7 @@ void update_module_status()
 
 void sigpipe_handler(int sig)
 {
-   if(sig == SIGPIPE) {
+   if (sig == SIGPIPE) {
       VERBOSE(N_STDOUT,"SIGPIPE catched..\n");
    }
 }
@@ -840,7 +840,7 @@ int supervisor_initialization(int *argc, char **argv)
    //init running_modules structures alloc size RUNNING_MODULES_ARRAY_START_SIZE
    running_modules_array_size = RUNNING_MODULES_ARRAY_START_SIZE;
    running_modules = (running_module_t *) calloc (running_modules_array_size,sizeof(running_module_t));
-   for(y=0;y<running_modules_array_size;y++) {
+   for (y=0;y<running_modules_array_size;y++) {
       running_modules[y].module_ifces = (interface_t *) calloc(IFCES_ARRAY_START_SIZE, sizeof(interface_t));
       running_modules[y].module_running = FALSE;
       running_modules[y].module_ifces_array_size = IFCES_ARRAY_START_SIZE;
@@ -871,7 +871,7 @@ int supervisor_initialization(int *argc, char **argv)
    sa.sa_flags = 0;
    sigemptyset(&sa.sa_mask);
 
-   if(sigaction(SIGPIPE,&sa,NULL) == -1) {
+   if (sigaction(SIGPIPE,&sa,NULL) == -1) {
       VERBOSE(N_STDOUT,"ERROR sigaction !!\n");
    }
 
@@ -893,7 +893,7 @@ void interactive_start_configuration()
    VERBOSE(MODULE_EVENT,"Starting configuration...\n");
    int x = 0;
    for (x=0; x<loaded_modules_cnt; x++) {
-      if(running_modules[x].module_enabled == FALSE){
+      if (running_modules[x].module_enabled == FALSE) {
          running_modules[x].module_restart_cnt = -1;
          running_modules[x].module_enabled = TRUE;
       }
@@ -956,7 +956,7 @@ void interactive_set_module_enabled()
       return;
    }
 
-   if (running_modules[x].module_enabled){
+   if (running_modules[x].module_enabled) {
       VERBOSE(N_STDOUT,"Module %d%s is already enabled.\n", x, running_modules[x].module_name);
    } else {
       running_modules[x].module_enabled = TRUE;
@@ -1022,7 +1022,7 @@ void restart_modules()
 {
    int x = 0;
    for (x=0; x<loaded_modules_cnt; x++) {
-      if(++running_modules[x].module_restart_timer == 30){
+      if (++running_modules[x].module_restart_timer == 30) {
          running_modules[x].module_restart_timer = 0;
          running_modules[x].module_restart_cnt = 0;
       }
@@ -1056,11 +1056,12 @@ void interactive_show_running_modules_status()
 void supervisor_termination()
 {
    int x, y;
-   VERBOSE(N_STDOUT,"-- Aborting service thread --\n");
    // stop_threads();
+   VERBOSE(N_STDOUT,"-- Stopping modules --\n");
+   interactive_stop_configuration();
+   VERBOSE(N_STDOUT,"-- Aborting service thread --\n");
    service_thread_continue = 0;
    sleep(3);
-   interactive_stop_configuration();
    /* TODO use local pointer */
    for (x=0;x<loaded_modules_cnt;x++) {
       if (running_modules[x].module_counters_array != NULL) {
@@ -1143,7 +1144,7 @@ void update_cpu_usage(long int * last_total_cpu_usage)
    int x;
    char path[20];
    memset(path,0,20);
-   int rozdil_total = 0;
+   int difference_total = 0;
 
    if (fscanf(proc_stat_fd,"cpu") != 0) {
       return;
@@ -1155,9 +1156,11 @@ void update_cpu_usage(long int * last_total_cpu_usage)
       }
       new_total_cpu_usage += num;
    }
-   rozdil_total = new_total_cpu_usage - *last_total_cpu_usage;
+
+   difference_total = new_total_cpu_usage - *last_total_cpu_usage;
+
    if (show_cpu_usage_flag) {
-      VERBOSE(STATISTICS,"total_cpu difference total cpu usage> %d\n", rozdil_total);
+      VERBOSE(STATISTICS,"total_cpu difference total cpu usage> %d\n", difference_total);
    }
    *last_total_cpu_usage = new_total_cpu_usage;
    fclose(proc_stat_fd);
@@ -1174,11 +1177,11 @@ void update_cpu_usage(long int * last_total_cpu_usage)
                   running_modules[x].last_cpu_usage_user_mode,
                   running_modules[x].last_cpu_usage_kernel_mode,
                   utime, stime,
-                  100 * (utime - running_modules[x].last_cpu_usage_user_mode)/rozdil_total,
-                  100 * (stime - running_modules[x].last_cpu_usage_kernel_mode)/rozdil_total);
+                  100 * (utime - running_modules[x].last_cpu_usage_user_mode)/difference_total,
+                  100 * (stime - running_modules[x].last_cpu_usage_kernel_mode)/difference_total);
          }
-         running_modules[x].percent_cpu_usage_kernel_mode = 100 * (utime - running_modules[x].last_cpu_usage_kernel_mode)/rozdil_total;
-         running_modules[x].percent_cpu_usage_user_mode = 100 * (utime - running_modules[x].last_cpu_usage_user_mode)/rozdil_total;
+         running_modules[x].percent_cpu_usage_kernel_mode = 100 * (stime - running_modules[x].last_cpu_usage_kernel_mode)/difference_total;
+         running_modules[x].percent_cpu_usage_user_mode = 100 * (utime - running_modules[x].last_cpu_usage_user_mode)/difference_total;
          running_modules[x].last_cpu_usage_user_mode = utime;
          running_modules[x].last_cpu_usage_kernel_mode = stime;
          fclose(proc_stat_fd);
@@ -1202,7 +1205,7 @@ int count_struct_size(int module_num)
    }
 
    for (x=0; x<running_modules[module_num].module_ifces_cnt; x++) {
-      // if(running_modules[module_num].module_ifces[x].ifc_note != NULL){
+      // if (running_modules[module_num].module_ifces[x].ifc_note != NULL) {
       //    size += strlen(running_modules[module_num].module_ifces[x].ifc_note) + 1;
       // }
       if (running_modules[module_num].module_ifces[x].ifc_type != NULL) {
@@ -1231,7 +1234,7 @@ void send_to_remote_running_module_struct(int num_module)
 
    if (running_modules[num_module].module_params != NULL) {
       ret_val = send(remote_supervisor_socketd, running_modules[num_module].module_params, strlen(running_modules[num_module].module_params)+1, 0);
-      if(ret_val == -1){
+      if (ret_val == -1) {
          printf("Error while sending request to remote Supervisor\n");
       }
    }
@@ -1315,11 +1318,11 @@ void check_cpu_usage()
    int tosend[1];
    int selected_module = -1;
 
-   // condition 1, if(num_periods_overload>10)
+   // condition 1, if (num_periods_overload>10)
    for (x=0;x<loaded_modules_cnt;x++) {
       if (running_modules[x].module_status) {
          if ((running_modules[x].percent_cpu_usage_kernel_mode > 50) ||
-               (running_modules[x].percent_cpu_usage_user_mode > 50)){
+               (running_modules[x].percent_cpu_usage_user_mode > 50)) {
             running_modules[x].num_periods_overload++;
             VERBOSE(N_STDOUT,"module %d%s overload\n",x,running_modules[x].module_name);
          } else {
@@ -1368,7 +1371,7 @@ void check_cpu_usage()
             if (module_data->remote_module) {
                send_command_to_remote(2, module_data->module_number);
             } else {
-               if(module_data->module_enabled){
+               if (module_data->module_enabled) {
                   stop_module(module_data->module_number);
                   module_data->module_enabled = TRUE;
                }
@@ -1377,7 +1380,7 @@ void check_cpu_usage()
       }
       return;
    } else {
-      // condition 2, if(CPU overload)
+      // condition 2, if (CPU overload)
    }
 
 }
@@ -1389,16 +1392,16 @@ void check_differences()
    int select = -1;
    graph_node_t * node_ptr = graph_first_node;
 
-   // while(node_ptr != NULL){
-   //    //if(...){
+   // while(node_ptr != NULL) {
+   //    //if (...) {
    //    // select module
    //    //}
    //    node_ptr = node_ptr->next_node;
    // }
-   // if(running_modules[select].module_cloned == FALSE && running_modules[select].module_status && running_modules[select].remote_module == FALSE){
+   // if (running_modules[select].module_cloned == FALSE && running_modules[select].module_status && running_modules[select].remote_module == FALSE) {
    if (FALSE) {
       running_modules[select].module_cloned = TRUE;
-      if((loaded_modules_cnt + running_modules[select].module_num_in_ifc + running_modules[select].module_num_out_ifc + 1) >= running_modules_array_size){
+      if ((loaded_modules_cnt + running_modules[select].module_num_in_ifc + running_modules[select].module_num_out_ifc + 1) >= running_modules_array_size) {
          //realloc
       }
 
@@ -1699,7 +1702,7 @@ void *service_thread_routine(void* arg)
          if (running_modules[y].module_served_by_service_thread == FALSE) {
             running_modules[y].module_number = y;
             for (x=0; x<running_modules[y].module_ifces_cnt; x++) {
-               if((strncmp(running_modules[y].module_ifces[x].ifc_type, "SERVICE", 7) == 0)) {
+               if ((strncmp(running_modules[y].module_ifces[x].ifc_type, "SERVICE", 7) == 0)) {
                   running_modules[y].module_has_service_ifc = TRUE;
                }
             }
@@ -1890,15 +1893,7 @@ void start_service_thread()
    //pthread_create(&acceptor_thread_id, NULL, remote_supervisor_accept_routine, NULL);
 }
 
-// void stop_threads()
-// {
-//    service_thread_continue = 0;
-//    // if(remote_supervisor_connected){
-//    //    pthread_kill(acceptor_thread_id,2);
-//    // }
-// }
-
-void run_temp_configuration()
+void interactive_run_temp_conf()
 {
    pthread_mutex_lock(&running_modules_lock);
    int x = loaded_modules_cnt;
@@ -1908,11 +1903,11 @@ void run_temp_configuration()
    char * ptr = buffer1;
    VERBOSE(N_STDOUT,"Paste in xml code with modules configuration starting with <modules> tag and ending with </modules> tag.\n");
    while(1) {
-      if(!fscanf(input_fd,"%s",ptr)) {
+      if (!fscanf(input_fd,"%s",ptr)) {
          VERBOSE(N_STDOUT,"Wrong input.\n");
          continue;
       }
-      if(strstr(ptr,"</modules>") != NULL) {
+      if (strstr(ptr,"</modules>") != NULL) {
          break;
       }
       ptr += strlen(ptr);
@@ -1935,11 +1930,6 @@ void run_temp_configuration()
    //    x++;
    // }
    pthread_mutex_unlock(&running_modules_lock);
-}
-
-void interactive_run_temp_conf()
-{
-   run_temp_configuration();
 }
 
 int parse_arguments(int *argc, char **argv)
@@ -2096,7 +2086,7 @@ int daemon_init(int * d_sd)
       VERBOSE(N_STDOUT,"fork failed!\n");
       exit(1);
    } else if (process_id > 0) {
-      if(config_file != NULL){
+      if (config_file != NULL) {
          free(config_file);
       }
       fclose(statistics_fd);
@@ -2107,7 +2097,7 @@ int daemon_init(int * d_sd)
 
    umask(0);
    sid = setsid();
-   if(sid < 0) {
+   if (sid < 0) {
       // Return failure
       exit(1);
    }
@@ -2163,7 +2153,7 @@ void daemon_mode(int * arg)
    while (terminated == FALSE) {
       // get client
       client_sd = daemon_get_client(&daemon_sd);
-      if(client_sd == -1) {
+      if (client_sd == -1) {
          connected = FALSE;
          /* Bind was probably unsuccessful. */
          return;
