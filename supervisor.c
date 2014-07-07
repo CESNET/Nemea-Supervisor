@@ -68,9 +68,14 @@
 #include <net/if.h>
 #include <ifaddrs.h>
 
-#define LOGSDIR_NAME    "./modules_logs/" ///< Name of directory with modules logs
-#define TRAP_PARAM      "-i" ///< Interface parameter for libtrap
+#define LOGSDIR_NAME             "./modules_logs/" ///< Name of directory with modules logs
+#define TRAP_PARAM               "-i" ///< Interface parameter for libtrap
 #define MAX_RESTARTS_PER_MINUTE  3  ///< Maximum number of module restarts per minute
+#define DEFAULT_SIZE_OF_BUFFER   100
+
+#define DAEMON_STOP_CODE 951753
+#define DAEMON_CONFIG_MODE_CODE 789123
+#define DAEMON_STATS_MODE_CODE 456987
 
 #define UNIX_PATH_FILENAME_FORMAT   "/tmp/trap-localhost-%s.sock" ///< Modules output interfaces socket, to which connects service thread.
 #define DAEMON_UNIX_PATH_FILENAME_FORMAT  "/tmp/supervisor_daemon.sock"  ///<  Daemon socket.
@@ -1559,106 +1564,162 @@ void *service_thread_routine(void* arg)
             }
          }
       }
-      if (1) {
-         int request[1];
-         memset(request,0, sizeof(int));
-         request[0] = 1;
-         for (x=0;x<loaded_modules_cnt;x++) {
-            if (running_modules[x].module_has_service_ifc == TRUE && running_modules[x].module_status == TRUE) {
-               if (running_modules[x].module_service_ifc_isconnected == FALSE) {
-                  y=0;
-                  while (1) {
-                     if ((strncmp(running_modules[x].module_ifces[y].ifc_type, "SERVICE", 7) == 0)) {
-                        break;
-                     } else {
-                        y++;
-                     }
+      
+      int request[1];
+      memset(request,0, sizeof(int));
+      request[0] = 1;
+      for (x=0;x<loaded_modules_cnt;x++) {
+         if (running_modules[x].module_has_service_ifc == TRUE && running_modules[x].module_status == TRUE) {
+            if (running_modules[x].module_service_ifc_isconnected == FALSE) {
+               y=0;
+               while (1) {
+                  if ((strncmp(running_modules[x].module_ifces[y].ifc_type, "SERVICE", 7) == 0)) {
+                     break;
+                  } else {
+                     y++;
                   }
-                  if (running_modules[x].module_service_sd != -1) {
-                     close(running_modules[x].module_service_sd);
-                  }
-                  connect_to_module_service_ifc(x,y);
                }
-               if (running_modules[x].module_service_ifc_isconnected == TRUE) {
-                  if (send(running_modules[x].module_service_sd,(void *) request, sizeof_intptr, 0) == -1) {
-                     VERBOSE(STATISTICS,"------> %s", asctime(timeinfo));
-                     VERBOSE(STATISTICS,"Error while sending request to module %d_%s.\n",x,running_modules[x].module_name);
-                     if (errno == ENOTCONN) {
-                        running_modules[x].module_service_ifc_isconnected = FALSE;
-                     }
+               if (running_modules[x].module_service_sd != -1) {
+                  close(running_modules[x].module_service_sd);
+               }
+               connect_to_module_service_ifc(x,y);
+            }
+            if (running_modules[x].module_service_ifc_isconnected == TRUE) {
+               if (send(running_modules[x].module_service_sd,(void *) request, sizeof_intptr, 0) == -1) {
+                  VERBOSE(STATISTICS,"------> %s", asctime(timeinfo));
+                  VERBOSE(STATISTICS,"Error while sending request to module %d_%s.\n",x,running_modules[x].module_name);
+                  if (errno == ENOTCONN) {
+                     running_modules[x].module_service_ifc_isconnected = FALSE;
                   }
                }
             }
          }
-         update_module_status();
-         for (x=0;x<loaded_modules_cnt;x++) {
-            if (running_modules[x].module_has_service_ifc == TRUE && running_modules[x].module_status == TRUE) {
-               if (running_modules[x].module_service_ifc_isconnected == TRUE) {
-                  if (!(service_get_data(running_modules[x].module_service_sd, x))) {
-                     //TODO
-                     continue;
-                  }
-               }
-            }
-         }
-         // update_cpu_usage(&last_total_cpu_usage);
-         // check_cpu_usage();
-
-         update_graph_values(graph_first_node);
-         generate_periodic_picture();
-         // compute_differences(graph_first_node);
-         // check_differences();
-
-         pthread_mutex_unlock(&running_modules_lock);
-         // check_graph_values(graph_first_node);
-         // print_statistics(graph_first_node);
-
-         VERBOSE(STATISTICS,"------> %s", asctime(timeinfo));
-         for (x=0;x<loaded_modules_cnt;x++) {
-            if (running_modules[x].module_running){
-               VERBOSE(STATISTICS,"NAME:  %s, PID: %d, EN: %d, SIFC: %d, S: %d, ISC: %d | ",
-                     running_modules[x].module_name,
-                     running_modules[x].module_pid,
-                     running_modules[x].module_enabled,
-                     running_modules[x].module_has_service_ifc,
-                     running_modules[x].module_status,
-                     running_modules[x].module_service_ifc_isconnected);
-               if (running_modules[x].module_has_service_ifc && running_modules[x].module_service_ifc_isconnected && running_modules[x].module_status) {
-                  VERBOSE(STATISTICS,"CNT_RM:  ");
-                  for (y=0; y<running_modules[x].module_num_in_ifc; y++) {
-                     VERBOSE(STATISTICS,"%d  ", running_modules[x].module_counters_array[y]);
-                  }
-                  VERBOSE(STATISTICS,"CNT_SM:  ");
-                  for (y=0; y<running_modules[x].module_num_out_ifc; y++) {
-                     VERBOSE(STATISTICS,"%d  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc]);
-                  }
-                  VERBOSE(STATISTICS,"CNT_SB:  ");
-                  for (y=0; y<running_modules[x].module_num_out_ifc; y++) {
-                     VERBOSE(STATISTICS,"%d  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc + running_modules[x].module_num_out_ifc]);
-                  }
-                  VERBOSE(STATISTICS,"CNT_AF:  ");
-                  for (y=0; y<running_modules[x].module_num_out_ifc; y++) {
-                     VERBOSE(STATISTICS,"%d  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc + 2*running_modules[x].module_num_out_ifc]);
-                  }
-               }
-               VERBOSE(STATISTICS,"\n");
-            }
-         }
-         sleep(2);
       }
+      update_module_status();
+      for (x=0;x<loaded_modules_cnt;x++) {
+         if (running_modules[x].module_has_service_ifc == TRUE && running_modules[x].module_status == TRUE) {
+            if (running_modules[x].module_service_ifc_isconnected == TRUE) {
+               if (!(service_get_data(running_modules[x].module_service_sd, x))) {
+                  //TODO
+                  continue;
+               }
+            }
+         }
+      }
+      update_cpu_usage(&last_total_cpu_usage);
+      // check_cpu_usage();
+
+      update_graph_values(graph_first_node);
+      generate_periodic_picture();
+      // compute_differences(graph_first_node);
+      // check_differences();
+
+      pthread_mutex_unlock(&running_modules_lock);
+      // check_graph_values(graph_first_node);
+      // print_statistics(graph_first_node);
+
+      VERBOSE(STATISTICS,"------> %s", asctime(timeinfo));
+      for (x=0;x<loaded_modules_cnt;x++) {
+         if (running_modules[x].module_running) {
+            VERBOSE(STATISTICS,"NAME:  %s, PID: %d, EN: %d, SIFC: %d, S: %d, ISC: %d | ",
+                  running_modules[x].module_name,
+                  running_modules[x].module_pid,
+                  running_modules[x].module_enabled,
+                  running_modules[x].module_has_service_ifc,
+                  running_modules[x].module_status,
+                  running_modules[x].module_service_ifc_isconnected);
+            if (running_modules[x].module_has_service_ifc && running_modules[x].module_service_ifc_isconnected && running_modules[x].module_status) {
+               VERBOSE(STATISTICS,"CNT_RM:  ");
+               for (y=0; y<running_modules[x].module_num_in_ifc; y++) {
+                  VERBOSE(STATISTICS,"%d  ", running_modules[x].module_counters_array[y]);
+               }
+               VERBOSE(STATISTICS,"CNT_SM:  ");
+               for (y=0; y<running_modules[x].module_num_out_ifc; y++) {
+                  VERBOSE(STATISTICS,"%d  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc]);
+               }
+               VERBOSE(STATISTICS,"CNT_SB:  ");
+               for (y=0; y<running_modules[x].module_num_out_ifc; y++) {
+                  VERBOSE(STATISTICS,"%d  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc + running_modules[x].module_num_out_ifc]);
+               }
+               VERBOSE(STATISTICS,"CNT_AF:  ");
+               for (y=0; y<running_modules[x].module_num_out_ifc; y++) {
+                  VERBOSE(STATISTICS,"%d  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc + 2*running_modules[x].module_num_out_ifc]);
+               }
+            }
+            VERBOSE(STATISTICS,"\n");
+         }
+      }
+      sleep(2);
+      
    }
 
    for (x=0;x<loaded_modules_cnt;x++) {
-      if ((running_modules[x].module_has_service_ifc == TRUE) &&
-            (running_modules[x].module_status == TRUE) &&
-            (running_modules[x].module_service_ifc_isconnected == TRUE)) {
+      if ((running_modules[x].module_has_service_ifc == TRUE) && (running_modules[x].module_service_ifc_isconnected == TRUE)) {
          VERBOSE(MODULE_EVENT,"------> %s", asctime(timeinfo));
          VERBOSE(MODULE_EVENT,"-- disconnecting from module %d_%s\n",x, running_modules[x].module_name);
-         close(running_modules[x].module_service_sd);
+         if (running_modules[x].module_service_sd != -1) {
+            close(running_modules[x].module_service_sd);
+         }
       }
    }
 
    pthread_exit(NULL);
+}
+
+char * make_formated_statistics()
+{
+   int size_of_buffer = 5*DEFAULT_SIZE_OF_BUFFER;
+   char * buffer = (char *) calloc (size_of_buffer, sizeof(char));
+   int x, y, counter = 0;
+   int ptr = 0;
+
+   for (x=0; x<loaded_modules_cnt; x++) {
+      if(running_modules[x].module_status) {
+         counter = 0;
+         for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
+            if(running_modules[x].module_ifces[y].ifc_direction != NULL) {
+               if(strcmp(running_modules[x].module_ifces[y].ifc_direction, "IN") == 0) {
+                  ptr += sprintf(buffer + ptr, "%s,in,%d,%d\n", running_modules[x].module_name, counter, running_modules[x].module_counters_array[counter]);
+                  counter++;
+                  if (strlen(buffer) >= (3*size_of_buffer)/5) {
+                     size_of_buffer += size_of_buffer/2;
+                     buffer = (char *) realloc (buffer, size_of_buffer * sizeof(char));
+                     memset(buffer + ptr, 0, size_of_buffer - ptr);
+                  }
+               }
+            }
+         }
+         counter = 0;
+         for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
+            if(running_modules[x].module_ifces[y].ifc_direction != NULL) {
+               if(strcmp(running_modules[x].module_ifces[y].ifc_direction, "OUT") == 0) {
+                  ptr += sprintf(buffer + ptr, "%s,out,%d,%d,%d,%d\n", running_modules[x].module_name, counter, running_modules[x].module_counters_array[counter + running_modules[x].module_num_in_ifc],
+                                                                           running_modules[x].module_counters_array[counter + running_modules[x].module_num_in_ifc + running_modules[x].module_num_out_ifc],
+                                                                           running_modules[x].module_counters_array[counter + running_modules[x].module_num_in_ifc + 2*running_modules[x].module_num_out_ifc]);
+                  counter++;  
+                  if (strlen(buffer) >= (3*size_of_buffer)/5) {
+                     size_of_buffer += size_of_buffer/2;
+                     buffer = (char *) realloc (buffer, size_of_buffer * sizeof(char));
+                     memset(buffer + ptr, 0, size_of_buffer - ptr);
+                  }             
+               }
+            }
+         }
+      }
+   }
+
+   for (x=0; x<loaded_modules_cnt; x++) {
+      if(running_modules[x].module_status) {
+         ptr += sprintf(buffer + ptr, "%s,cpu,%d,%d\n", running_modules[x].module_name, running_modules[x].percent_cpu_usage_kernel_mode, running_modules[x].percent_cpu_usage_user_mode);
+         if (strlen(buffer) >= (3*size_of_buffer)/5) {
+            size_of_buffer += size_of_buffer/2;
+            buffer = (char *) realloc (buffer, size_of_buffer * sizeof(char));
+            memset(buffer + ptr, 0, size_of_buffer - ptr);
+         }
+      }
+   }
+
+   return buffer;
 }
 
 
@@ -2046,11 +2107,33 @@ void daemon_mode(int * arg)
                case 8:
                   interactive_run_temp_conf();
                   break;
-               case 9:
+               case DAEMON_STOP_CODE:
                   supervisor_termination();
                   connected = FALSE;
                   terminated = TRUE;
                   break;
+               case DAEMON_CONFIG_MODE_CODE:
+                  //client config mode
+                  break;
+               case DAEMON_STATS_MODE_CODE: {
+                  //client stats mode
+                  char * stats_buffer = make_formated_statistics();
+                  int buffer_len = strlen(stats_buffer);
+                  char stats_buffer2[buffer_len+1];
+                  memset(stats_buffer2,0,buffer_len+1);
+                  strncpy(stats_buffer2, stats_buffer, buffer_len+1);
+                  VERBOSE(N_STDOUT,"STATS:\n%s", stats_buffer2);
+                  free(stats_buffer);
+
+                  input_fd = stdin;
+                  output_fd = stdout;
+                  VERBOSE(N_STDOUT, "Client has disconnected.\n");
+                  connected = FALSE;
+                  fclose(client_stream_input);
+                  fclose(client_stream_output);
+                  close(client_sd);
+                  break;
+               }
                default:
                   VERBOSE(N_STDOUT, "Error input\n");
                   break;

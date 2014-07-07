@@ -99,17 +99,24 @@ int main(int argc, char **argv)
    char testbuffer[100];
    memset(testbuffer,0,100);
    char *socket_path = NULL;
+   int just_stats = FALSE;
 
-   char opt;
-   while ((opt = getopt(argc, argv, "hs:")) != -1) {
+   int opt;
+   while ((opt = getopt(argc, argv, "hs:x")) != -1) {
       switch (opt) {
       case 'h':
          printf("Usage: supervisor_cli [-h] [-s <path>]\n"
                "\t-h\tshows this help\n\t-s <path>\tpath to UNIX socket file\n");
          return 0;
+      
       case 's':
          socket_path = optarg;
          break;
+
+      case 'x':
+         just_stats = TRUE;
+         break;
+
       default:
          fprintf(stderr, "Invalid arguments.\n");
          return 3;
@@ -152,6 +159,14 @@ int main(int argc, char **argv)
 
    fd_set read_fds;
    struct timeval tv;
+
+   if(just_stats) {
+      fprintf(supervisor_stream_output,"%d\n", DAEMON_STATS_MODE_CODE);
+   } else {
+      fprintf(supervisor_stream_output,"%d\n", DAEMON_CONFIG_MODE_CODE);
+   }
+   fflush(supervisor_stream_output);
+
 
    while (connected) {
       FD_ZERO(&read_fds);
@@ -214,6 +229,14 @@ int main(int argc, char **argv)
       fsync(supervisor_stream_input_fd);
       fflush(supervisor_stream_input);
       fflush(stdout);
+
+      if (just_stats) {
+         close(supervisor_sd);
+         fclose(supervisor_stream_input);
+         fclose(supervisor_stream_output);
+         close(supervisor_stream_input_fd);
+         return 0;
+      }
    }
 
    return 0;
