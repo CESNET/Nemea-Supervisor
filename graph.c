@@ -273,6 +273,7 @@ void generate_graph_code(graph_node_t * first)
 
 void generate_picture()
 {
+#if HAVE_DOT == 1
    int pid_dot, status = 0;
    if ((pid_dot = fork()) == 0) {
       //child dot
@@ -286,10 +287,12 @@ void generate_picture()
    } else {
       waitpid(pid_dot, &status, WUNTRACED);
    }
+#endif
 }
 
 void show_picture()
 {
+#if HAVE_DOT == 1
    int result = 0, status = 0;
    int pid_dot, pid_display;
    int pipe2[2];
@@ -330,6 +333,7 @@ void show_picture()
       waitpid(pid_dot, &status, WUNTRACED);
       // waitpid(pid_display, &status, WUNTRACED);
    }
+#endif
 }
 
 void free_graph_node(graph_node_t * node)
