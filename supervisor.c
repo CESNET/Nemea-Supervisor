@@ -264,7 +264,19 @@ int load_configuration(const int choice, const char * buffer)
          module_atr = module_ptr->xmlChildrenNode;
 
          while (module_atr != NULL) {
-            if ((!xmlStrcmp(module_atr->name,BAD_CAST "params"))) {
+            if ((!xmlStrcmp(module_atr->name,BAD_CAST "enabled"))) {
+               key = xmlNodeListGetString(xml_tree, module_atr->xmlChildrenNode, 1);
+               if (key == NULL) {
+                  running_modules[loaded_modules_cnt].module_enabled = FALSE;
+               } else {
+                  if (strncmp(key, "true", strlen(key)) == 0) {
+                     running_modules[loaded_modules_cnt].module_enabled = TRUE;
+                  } else {
+                     running_modules[loaded_modules_cnt].module_enabled = FALSE;
+                  }
+                  xmlFree(key);
+               }
+            } else if ((!xmlStrcmp(module_atr->name,BAD_CAST "params"))) {
                key = xmlNodeListGetString(xml_tree, module_atr->xmlChildrenNode, 1);
                if (key == NULL) {
                   running_modules[loaded_modules_cnt].module_params = NULL;
@@ -389,13 +401,10 @@ void interactive_show_available_modules ()
    VERBOSE(N_STDOUT,"---PRINTING CONFIGURATION---\n");
 
    for (x=0; x < loaded_modules_cnt; x++) {
-      VERBOSE(N_STDOUT,"%d_%s:  PATH:%s  PARAMS:%s\n", x, running_modules[x].module_name, running_modules[x].module_path, running_modules[x].module_params);
-
+      VERBOSE(N_STDOUT,"%c%d_%s:  PATH:%s  PARAMS:%s\n", (running_modules[x].module_enabled == 0 ? ' ' : '*'), x, running_modules[x].module_name, running_modules[x].module_path, running_modules[x].module_params);
+      
       for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
-         VERBOSE(N_STDOUT,"\tIFC%d\tNOTE: %s\n",y, running_modules[x].module_ifces[y].ifc_note);
-         VERBOSE(N_STDOUT,"\t\tTYPE: %s\n", running_modules[x].module_ifces[y].ifc_type);
-         VERBOSE(N_STDOUT,"\t\tDIRECTION: %s\n", running_modules[x].module_ifces[y].ifc_direction);
-         VERBOSE(N_STDOUT,"\t\tPARAMS: %s\n", running_modules[x].module_ifces[y].ifc_params);
+         VERBOSE(N_STDOUT,"\tIFC%d:  %s;%s;%s;%s\n", y, running_modules[x].module_ifces[y].ifc_direction, running_modules[x].module_ifces[y].ifc_type, running_modules[x].module_ifces[y].ifc_params, running_modules[x].module_ifces[y].ifc_note);
       }
    }
 }
