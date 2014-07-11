@@ -2275,7 +2275,7 @@ void daemon_mode(int * arg)
                   interactive_show_graph();
                   break;
                case 8:
-                  interactive_run_temp_conf();
+                  reload_configuration();
                   break;
                case DAEMON_STOP_CODE:
                   supervisor_termination();
