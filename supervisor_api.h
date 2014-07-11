@@ -61,6 +61,7 @@ void 	interactive_run_temp_conf();
 
 
 /*NC API*/
+void reload_configuration();
 
 
 #endif

@@ -122,6 +122,7 @@ typedef struct running_module_s {
    int         num_periods_overload; ///< Number of periods of overloading CPU.
    int         remote_module; ///< TRUE if module was sent to remote_supervisor, else FALSE.
    int         module_number; ///< Index to running_modules array.
+   int         module_modified_by_reload;
 } running_module_t;
 
 /***********FUNCTIONS***********/

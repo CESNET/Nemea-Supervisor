@@ -673,7 +673,10 @@ int get_number_from_input()
    memset(buffer,0,1000);
    int ret_val = 0;
 
-   fscanf(input_fd, "%s", buffer);
+   if (fscanf(input_fd, "%s", buffer) == 0) {
+      return -1;
+   }
+   
    if (strlen(buffer) > 2) {
       return -1;
    } else if ((strlen(buffer) == 2) && ((buffer[0] > '9' || buffer[0] < '1') || (buffer[1] > '9' || buffer[1] < '0'))) {
@@ -696,7 +699,7 @@ int interactive_get_option()
    VERBOSE(N_STDOUT,"5. STARTED MODULES STATUS\n");
    VERBOSE(N_STDOUT,"6. AVAILABLE MODULES\n");
    VERBOSE(N_STDOUT,"7. SHOW GRAPH\n");
-   VERBOSE(N_STDOUT,"8. LOAD CONFIGURATION\n");
+   VERBOSE(N_STDOUT,"8. RELOAD CONFIGURATION\n");
    VERBOSE(N_STDOUT,"9. STOP SUPERVISOR\n");
 
    return get_number_from_input();
@@ -776,7 +779,7 @@ void update_module_status()
    pid_t result;
 
    for (x=0; x<loaded_modules_cnt; x++) {
-      if (running_modules[x].module_running) {
+      if (running_modules[x].module_pid > 0) {
          result = waitpid(running_modules[x].module_pid , &status, WNOHANG);
          if (result == 0) {
            // Child still alive
@@ -1073,8 +1076,9 @@ void supervisor_termination()
    sleep(3);
    /* TODO use local pointer */
    for (x=0;x<loaded_modules_cnt;x++) {
-      if (running_modules[x].module_counters_array != NULL) {
+      if (running_modules[x].module_running && running_modules[x].module_counters_array != NULL) {
          free(running_modules[x].module_counters_array);
+         running_modules[x].module_counters_array = NULL;
       }
    }
    for (x=0;x<running_modules_array_size;x++) {
@@ -1082,36 +1086,46 @@ void supervisor_termination()
          /* TODO set every freed pointer to NULL */
          if (running_modules[x].module_ifces[y].ifc_note != NULL) {
             free(running_modules[x].module_ifces[y].ifc_note);
+            running_modules[x].module_ifces[y].ifc_note = NULL;
          }
          if (running_modules[x].module_ifces[y].ifc_type != NULL) {
             free(running_modules[x].module_ifces[y].ifc_type);
+            running_modules[x].module_ifces[y].ifc_type = NULL;
          }
          if (running_modules[x].module_ifces[y].ifc_direction != NULL) {
             free(running_modules[x].module_ifces[y].ifc_direction);
+            running_modules[x].module_ifces[y].ifc_direction = NULL;
          }
          if (running_modules[x].module_ifces[y].ifc_params != NULL) {
             free(running_modules[x].module_ifces[y].ifc_params);
+            running_modules[x].module_ifces[y].ifc_params = NULL;
          }
       }
       if (running_modules[x].module_ifces != NULL) {
          free(running_modules[x].module_ifces);
+         running_modules[x].module_ifces = NULL;
       }
       if (running_modules[x].module_path != NULL) {
          free(running_modules[x].module_path);
+         running_modules[x].module_path = NULL;
       }
       if (running_modules[x].module_name != NULL) {
          free(running_modules[x].module_name);
+         running_modules[x].module_name = NULL;
       }
       if (running_modules[x].module_params != NULL) {
          free(running_modules[x].module_params);
+         running_modules[x].module_params = NULL;
       }
    }
    if (running_modules != NULL) {
       free(running_modules);
+      running_modules = NULL;
    }
    destroy_graph(graph_first_node);
    if (config_file != NULL) {
       free(config_file);
+      config_file = NULL;
    }
 
    // close(remote_supervisor_socketd);
@@ -1789,7 +1803,7 @@ void *service_thread_routine(void* arg)
 
       VERBOSE(STATISTICS,"------> %s", asctime(timeinfo));
       for (x=0;x<loaded_modules_cnt;x++) {
-         if (running_modules[x].module_running) {
+         if (running_modules[x].module_status) {
             VERBOSE(STATISTICS,"NAME:  %s, PID: %d, EN: %d, SIFC: %d, S: %d, ISC: %d | ",
                   running_modules[x].module_name,
                   running_modules[x].module_pid,
@@ -2278,7 +2292,7 @@ void daemon_mode(int * arg)
                   char stats_buffer2[buffer_len+1];
                   memset(stats_buffer2,0,buffer_len+1);
                   strncpy(stats_buffer2, stats_buffer, buffer_len+1);
-                  VERBOSE(N_STDOUT,"STATS:\n%s", stats_buffer2);
+                  VERBOSE(N_STDOUT,"%s", stats_buffer2);
                   free(stats_buffer);
 
                   input_fd = stdin;
@@ -2303,7 +2317,7 @@ void daemon_mode(int * arg)
                VERBOSE(N_STDOUT,"5. STARTED MODULES STATUS\n");
                VERBOSE(N_STDOUT,"6. AVAILABLE MODULES\n");
                VERBOSE(N_STDOUT,"7. SHOW GRAPH\n");
-               VERBOSE(N_STDOUT,"8. LOAD CONFIGURATION\n");
+               VERBOSE(N_STDOUT,"8. RELOAD CONFIGURATION\n");
                VERBOSE(N_STDOUT,"-- Type \"Cquit\" to exit client --\n");
                VERBOSE(N_STDOUT,"-- Type \"Dstop\" to stop daemon --\n");
 
@@ -2395,3 +2409,668 @@ void *remote_supervisor_accept_routine()
    pthread_exit(NULL);
 }
 
+int get_shorter_string_length(char * first, char * second)
+{
+   int first_len = strlen(first);
+   int second_len = strlen(second);
+
+   if (first_len > second_len) {
+      return second_len;
+   } else {
+      return first_len;
+   }
+}
+
+int find_loaded_module(char * name)
+{
+   int x;
+
+   for (x=0; x<loaded_modules_cnt; x++) {
+      if (strncmp(running_modules[x].module_name, name, get_shorter_string_length(running_modules[x].module_name, name)) == 0) {
+         return x;
+      }
+   }
+
+   return -1;
+}
+
+void free_module_on_index(int index)
+{
+   int y;
+   for (y=0; y<running_modules[index].module_ifces_cnt; y++) {
+         if (running_modules[index].module_ifces[y].ifc_note != NULL) {
+            free(running_modules[index].module_ifces[y].ifc_note);
+            running_modules[index].module_ifces[y].ifc_note = NULL;
+         }
+         if (running_modules[index].module_ifces[y].ifc_type != NULL) {
+            free(running_modules[index].module_ifces[y].ifc_type);
+            running_modules[index].module_ifces[y].ifc_type = NULL;
+         }
+         if (running_modules[index].module_ifces[y].ifc_direction != NULL) {
+            free(running_modules[index].module_ifces[y].ifc_direction);
+            running_modules[index].module_ifces[y].ifc_direction = NULL;
+         }
+         if (running_modules[index].module_ifces[y].ifc_params != NULL) {
+            free(running_modules[index].module_ifces[y].ifc_params);
+            running_modules[index].module_ifces[y].ifc_params = NULL;
+         }
+      }
+      if (running_modules[index].module_ifces != NULL) {
+         free(running_modules[index].module_ifces);
+         running_modules[index].module_ifces = NULL;
+      }
+      if (running_modules[index].module_path != NULL) {
+         free(running_modules[index].module_path);
+         running_modules[index].module_path = NULL;
+      }
+      if (running_modules[index].module_name != NULL) {
+         free(running_modules[index].module_name);
+         running_modules[index].module_name = NULL;
+      }
+      if (running_modules[index].module_params != NULL) {
+         free(running_modules[index].module_params);
+         running_modules[index].module_params = NULL;
+      }
+}
+
+void free_module_interfaces_on_index(int index)
+{
+   int y;
+   for (y=0; y<running_modules[index].module_ifces_cnt; y++) {
+      if (running_modules[index].module_ifces[y].ifc_note != NULL) {
+         free(running_modules[index].module_ifces[y].ifc_note);
+         running_modules[index].module_ifces[y].ifc_note = NULL;
+      }
+      if (running_modules[index].module_ifces[y].ifc_type != NULL) {
+         free(running_modules[index].module_ifces[y].ifc_type);
+         running_modules[index].module_ifces[y].ifc_type = NULL;
+      }
+      if (running_modules[index].module_ifces[y].ifc_direction != NULL) {
+         free(running_modules[index].module_ifces[y].ifc_direction);
+         running_modules[index].module_ifces[y].ifc_direction = NULL;
+      }
+      if (running_modules[index].module_ifces[y].ifc_params != NULL) {
+         free(running_modules[index].module_ifces[y].ifc_params);
+         running_modules[index].module_ifces[y].ifc_params = NULL;
+      }
+   }
+}
+
+int reload_configuration()
+{
+   pthread_mutex_lock(&running_modules_lock);
+
+   int inserted_modules = 0, removed_modules = 0, modified_modules = 0;
+   int x = 0, y = 0;
+   int ret_val = 0;
+   int module_index = 0;
+   int modifying = 0;
+   int original_module_ifc_cnt = 0, new_module_ifc_cnt = 0;
+   int original_loaded_modules_cnt = loaded_modules_cnt;
+   int already_loaded_modules[loaded_modules_cnt];
+   memset(already_loaded_modules, 0, loaded_modules_cnt*sizeof(int));
+   int str_len = 0;
+   char buffer[100];
+   memset(buffer,0,100);
+   
+   xmlChar * key = NULL;
+   xmlDocPtr xml_tree = NULL;
+   xmlNodePtr current_node = NULL;
+
+   for (x=0; x<loaded_modules_cnt; x++) {
+      running_modules[x].module_modified_by_reload = FALSE;
+   }
+   
+   /*Get the name of a new config file */
+   VERBOSE(N_STDOUT, "Type in a name of the xml file to be loaded including \".xml\"; (to reload same config file type \"default\"):\n");
+   if (fscanf(input_fd,"%s",buffer) == 0) {
+      xml_tree = xmlParseFile(config_file);
+   } else if (strcmp(buffer, "default") == 0) {
+      xml_tree = xmlParseFile(config_file);
+   } else {
+      xml_tree = xmlParseFile(buffer);
+   }
+
+   if (xml_tree == NULL) {
+      fprintf(stderr,"Document not parsed successfully. \n");
+      pthread_mutex_unlock(&running_modules_lock);
+      return FALSE;
+   }
+
+   current_node = xmlDocGetRootElement(xml_tree);
+
+   if (current_node == NULL) {
+      fprintf(stderr,"empty document\n");
+      xmlFreeDoc(xml_tree);
+      pthread_mutex_unlock(&running_modules_lock);
+      return FALSE;
+   }
+
+   if (xmlStrcmp(current_node->name, BAD_CAST "nemea-supervisor")) {
+      fprintf(stderr,"document of the wrong type, root node != nemea-supervisor\n");
+      xmlFreeDoc(xml_tree);
+      pthread_mutex_unlock(&running_modules_lock);
+      return FALSE;
+   }
+
+   if (current_node->xmlChildrenNode == NULL) {
+      fprintf(stderr,"no child of nemea-supervisor tag found\n");
+      xmlFreeDoc(xml_tree);
+      pthread_mutex_unlock(&running_modules_lock);
+      return FALSE;
+   }
+
+   current_node = current_node->xmlChildrenNode;
+   while (1) {
+      if (!xmlStrcmp(current_node->name, BAD_CAST "modules")) {
+         break;
+      }
+      current_node = current_node-> next;
+      if (current_node == NULL) {
+         fprintf(stderr,"Tag \"modules\" wasnt found.\n");
+         xmlFreeDoc(xml_tree);
+         pthread_mutex_unlock(&running_modules_lock);
+         return FALSE;
+      }
+   }
+
+   /*****************/
+   VERBOSE(N_STDOUT,"- - -\nProcessing new configuration...\n");
+   xmlNodePtr module_ptr = current_node->xmlChildrenNode;
+   xmlNodePtr module_atr = NULL, ifc_ptr = NULL, ifc_atr = NULL;
+   int ifc_cnt = 0;
+   int last_module = FALSE;
+
+   while (module_ptr != NULL) {
+      if (!xmlStrcmp(module_ptr->name,BAD_CAST "module"))   {
+
+         //check allocated memory, if we dont have enough -> realloc
+         if (loaded_modules_cnt == running_modules_array_size) {
+            // VERBOSE(N_STDOUT,"REALLOCING MODULES ARRAY --->\n");
+            int origin_size = running_modules_array_size;
+            running_modules_array_size += running_modules_array_size/2;
+            running_modules = (running_module_t * ) realloc (running_modules, (running_modules_array_size)*sizeof(running_module_t));
+            memset(running_modules + origin_size,0,(origin_size/2)*sizeof(running_module_t));
+            for (y=loaded_modules_cnt; y<running_modules_array_size; y++) {
+               running_modules[y].module_ifces = (interface_t *) calloc (IFCES_ARRAY_START_SIZE, sizeof(interface_t));
+               running_modules[y].module_running = FALSE;
+               running_modules[y].module_ifces_array_size = IFCES_ARRAY_START_SIZE;
+               running_modules[y].module_ifces_cnt = 0;
+            }
+            graph_node_t * node_ptr = graph_first_node;
+            x = 0;
+            while (node_ptr != NULL) {
+               node_ptr->module_data = (void *) &running_modules[x];
+               node_ptr = node_ptr->next_node;
+               x++;
+            }
+         }
+         module_atr = module_ptr->xmlChildrenNode;
+
+         while (module_atr != NULL) {
+            if ((!xmlStrcmp(module_atr->name,BAD_CAST "name"))) {
+               key = xmlNodeListGetString(xml_tree, module_atr->xmlChildrenNode, 1);
+               if (key == NULL) {
+                  module_ptr = module_ptr->next;
+                  module_ptr = module_ptr->next;
+                  if (module_ptr == NULL) {
+                     last_module = TRUE;
+                     break;
+                  } else {
+                     module_atr = module_ptr->xmlChildrenNode;
+                     continue;
+                  }
+               } else {
+                  ret_val = find_loaded_module(key);
+                  if (ret_val == -1) { // new module
+                     // VERBOSE(N_STDOUT,"------\nLoading new module..\n");
+                     module_index = loaded_modules_cnt;
+                     inserted_modules++;
+                     modifying = FALSE;
+                     break;
+                  } else { // already loaded module -> check vals
+                     // VERBOSE(N_STDOUT,"------\nUploading existing module..\n");
+                     module_index = ret_val;
+                     already_loaded_modules[module_index] = 1;
+                     modifying = TRUE;                      
+                     break;                   
+                  }
+               }
+            }
+            module_atr = module_atr->next;
+         }
+         if (last_module) {
+            break;
+         }
+         xmlFree(key);
+
+         module_atr = module_ptr->xmlChildrenNode;
+         while (module_atr != NULL) {
+            if ((!xmlStrcmp(module_atr->name,BAD_CAST "enabled"))) {
+               key = xmlNodeListGetString(xml_tree, module_atr->xmlChildrenNode, 1);
+               if (key == NULL) {
+                  running_modules[module_index].module_enabled = FALSE;
+               } else {
+                  if (strncmp(key, "true", strlen(key)) == 0) {
+                     running_modules[module_index].module_enabled = TRUE;
+                  } else {
+                     running_modules[module_index].module_enabled = FALSE;
+                  }
+                  xmlFree(key);
+               }
+            } else if ((!xmlStrcmp(module_atr->name,BAD_CAST "params"))) {
+               key = xmlNodeListGetString(xml_tree, module_atr->xmlChildrenNode, 1);
+               if (modifying) {
+                  if (running_modules[module_index].module_params != NULL && key != NULL) {
+                     if (strcmp(key, running_modules[module_index].module_params) != 0) {
+                        running_modules[module_index].module_modified_by_reload = TRUE;
+                        if (running_modules[module_index].module_params != NULL) {
+                           free(running_modules[module_index].module_params);
+                        }
+                        str_len = strlen((char *) key);
+                        running_modules[module_index].module_params = (char *) calloc (str_len+1, sizeof(char));
+                        strncpy(running_modules[module_index].module_params, (char *) key, str_len+1);
+                     }
+                     xmlFree(key);
+                  } else if (running_modules[module_index].module_params == NULL && key == NULL) {
+                     // new one and old one NULL -> OK
+                  } else if (running_modules[module_index].module_params == NULL) {
+                     running_modules[module_index].module_modified_by_reload = TRUE;
+                     str_len = strlen((char *) key);
+                     running_modules[module_index].module_params = (char *) calloc (str_len+1, sizeof(char));
+                     strncpy(running_modules[module_index].module_params, (char *) key, str_len+1);
+                     xmlFree(key);
+                  } else if (key == NULL) {
+                     running_modules[module_index].module_modified_by_reload = TRUE;
+                     if (running_modules[module_index].module_params != NULL) {
+                        free(running_modules[module_index].module_params);
+                        running_modules[module_index].module_params = NULL;
+                     }
+                  }
+               } else {
+                  if (key == NULL) {
+                  running_modules[module_index].module_params = NULL;
+                  } else {
+                     str_len = strlen((char *) key);
+                     running_modules[module_index].module_params = (char *) calloc (str_len+1, sizeof(char));
+                     strncpy(running_modules[module_index].module_params, (char *) key, str_len+1);
+                     xmlFree(key);
+                  }
+               }
+            } else if ((!xmlStrcmp(module_atr->name,BAD_CAST "name"))) {
+               key = xmlNodeListGetString(xml_tree, module_atr->xmlChildrenNode, 1);
+               if (modifying) {
+                  if (running_modules[module_index].module_name != NULL && key != NULL) {
+                     if (strcmp(key, running_modules[module_index].module_name) != 0) {
+                        running_modules[module_index].module_modified_by_reload = TRUE;
+                        if (running_modules[module_index].module_name != NULL) {
+                           free(running_modules[module_index].module_name);
+                        }
+                        str_len = strlen((char *) key);
+                        running_modules[module_index].module_name = (char *) calloc (str_len+1, sizeof(char));
+                        strncpy(running_modules[module_index].module_name, (char *) key, str_len+1);
+                     }
+                     xmlFree(key);
+                  } else if (running_modules[module_index].module_name == NULL && key == NULL) {
+                     // new one and old one NULL -> OK
+                  } else if (running_modules[module_index].module_name == NULL) {
+                     running_modules[module_index].module_modified_by_reload = TRUE;
+                     str_len = strlen((char *) key);
+                     running_modules[module_index].module_name = (char *) calloc (str_len+1, sizeof(char));
+                     strncpy(running_modules[module_index].module_name, (char *) key, str_len+1);
+                     xmlFree(key);
+                  } else if (key == NULL) {
+                     running_modules[module_index].module_modified_by_reload = TRUE;
+                     if (running_modules[module_index].module_name != NULL) {
+                        free(running_modules[module_index].module_name);
+                        running_modules[module_index].module_name = NULL;
+                     }
+                  }
+               } else {
+                  if (key == NULL) {
+                  running_modules[module_index].module_name = NULL;
+                  } else {
+                     str_len = strlen((char *) key);
+                     running_modules[module_index].module_name = (char *) calloc (str_len+1, sizeof(char));
+                     strncpy(running_modules[module_index].module_name, (char *) key, str_len+1);
+                     xmlFree(key);
+                  }
+               }
+            } else if ((!xmlStrcmp(module_atr->name,BAD_CAST "path"))) {
+               key = xmlNodeListGetString(xml_tree, module_atr->xmlChildrenNode, 1);
+               if (modifying) {
+                  if (running_modules[module_index].module_path != NULL && key != NULL) {
+                     if (strcmp(key, running_modules[module_index].module_path) != 0) {
+                        running_modules[module_index].module_modified_by_reload = TRUE;
+                        if (running_modules[module_index].module_path != NULL) {
+                           free(running_modules[module_index].module_path);
+                        }
+                        str_len = strlen((char *) key);
+                        running_modules[module_index].module_path = (char *) calloc (str_len+1, sizeof(char));
+                        strncpy(running_modules[module_index].module_path, (char *) key, str_len+1);
+                     }
+                     xmlFree(key);
+                  } else if (running_modules[module_index].module_path == NULL && key == NULL) {
+                     // new one and old one NULL -> OK
+                  } else if (running_modules[module_index].module_path == NULL) {
+                     running_modules[module_index].module_modified_by_reload = TRUE;
+                     str_len = strlen((char *) key);
+                     running_modules[module_index].module_path = (char *) calloc (str_len+1, sizeof(char));
+                     strncpy(running_modules[module_index].module_path, (char *) key, str_len+1);
+                     xmlFree(key);
+                  } else if (key == NULL) {
+                     running_modules[module_index].module_modified_by_reload = TRUE;
+                     if (running_modules[module_index].module_path != NULL) {
+                        free(running_modules[module_index].module_path);
+                        running_modules[module_index].module_path = NULL;
+                     }
+                  }
+               } else {
+                  if (key == NULL) {
+                  running_modules[module_index].module_path = NULL;
+                  } else {
+                     str_len = strlen((char *) key);
+                     running_modules[module_index].module_path = (char *) calloc (str_len+1, sizeof(char));
+                     strncpy(running_modules[module_index].module_path, (char *) key, str_len+1);
+                     xmlFree(key);
+                  }
+               }
+            } else if ((!xmlStrcmp(module_atr->name,BAD_CAST "trapinterfaces"))) {
+               ifc_cnt=0;
+               ifc_ptr = module_atr->xmlChildrenNode;
+
+               if (modifying) {
+                  original_module_ifc_cnt = running_modules[module_index].module_ifces_cnt;
+                  new_module_ifc_cnt = 0;
+
+                  while (ifc_ptr != NULL) {
+                     if (!xmlStrcmp(ifc_ptr->name,BAD_CAST "interface")) {
+                        new_module_ifc_cnt++;
+                     }
+                     ifc_ptr = ifc_ptr->next;
+                  }
+                  if (original_module_ifc_cnt != new_module_ifc_cnt) {
+                     // VERBOSE(N_STDOUT,"Original ifc cnt:%d, New ifc cnt:%d -> reloading module ifces..\n", original_module_ifc_cnt, new_module_ifc_cnt);                     
+                     running_modules[module_index].module_modified_by_reload = TRUE;
+                     free_module_interfaces_on_index(module_index);
+                     running_modules[module_index].module_ifces_cnt = 0;
+                     running_modules[module_index].module_num_out_ifc = 0;
+                     running_modules[module_index].module_num_in_ifc = 0;
+                     modifying = FALSE;
+                  }
+                  ifc_ptr = module_atr->xmlChildrenNode;
+               }
+
+               while (ifc_ptr != NULL) {
+                  if (!xmlStrcmp(ifc_ptr->name,BAD_CAST "interface")) {
+                     ifc_atr = ifc_ptr->xmlChildrenNode;
+                     if (running_modules[module_index].module_ifces_array_size == 0) {
+                        running_modules[module_index].module_ifces = (interface_t *) calloc(IFCES_ARRAY_START_SIZE, sizeof(interface_t));
+                        running_modules[module_index].module_ifces_array_size = IFCES_ARRAY_START_SIZE;
+                        running_modules[module_index].module_ifces_cnt = 0;
+                     } else if (ifc_cnt == running_modules[module_index].module_ifces_array_size) {
+                        // VERBOSE(N_STDOUT,"REALLOCING MODULE INTERFACES ARRAY --->\n");
+                        int origin_size = running_modules[module_index].module_ifces_array_size;
+                        running_modules[module_index].module_ifces_array_size += running_modules[module_index].module_ifces_array_size/2;
+                        running_modules[module_index].module_ifces = (interface_t *) realloc (running_modules[module_index].module_ifces, (running_modules[module_index].module_ifces_array_size) * sizeof(interface_t));
+                        memset(running_modules[module_index].module_ifces + origin_size,0,(origin_size/2)*sizeof(interface_t));
+                     }
+
+                     while (ifc_atr != NULL) {
+                        if ((!xmlStrcmp(ifc_atr->name,BAD_CAST "note"))) {
+                           key =xmlNodeListGetString(xml_tree, ifc_atr->xmlChildrenNode, 1);
+                           if (modifying) {
+                              if (running_modules[module_index].module_ifces[ifc_cnt].ifc_note != NULL && key != NULL) {
+                                 if (strcmp(key, running_modules[module_index].module_ifces[ifc_cnt].ifc_note) != 0) {
+                                    running_modules[module_index].module_modified_by_reload = TRUE;
+                                    free_module_interfaces_on_index(module_index);
+                                    ifc_cnt = -1;
+                                    ifc_ptr = module_atr->xmlChildrenNode;
+                                    running_modules[module_index].module_ifces_cnt = -1;
+                                    running_modules[module_index].module_num_out_ifc = 0;
+                                    running_modules[module_index].module_num_in_ifc = 0;
+                                    modifying = FALSE;
+                                    xmlFree(key);
+                                    break;
+                                 }
+                                 xmlFree(key);
+                              } else if (running_modules[module_index].module_ifces[ifc_cnt].ifc_note == NULL && key == NULL) {
+                                 // new one and old one NULL -> OK
+                              } else {
+                                 running_modules[module_index].module_modified_by_reload = TRUE;
+                                 free_module_interfaces_on_index(module_index);
+                                 ifc_cnt = -1;
+                                 ifc_ptr = module_atr->xmlChildrenNode;
+                                 running_modules[module_index].module_ifces_cnt = -1;
+                                 running_modules[module_index].module_num_out_ifc = 0;
+                                 running_modules[module_index].module_num_in_ifc = 0;
+                                 modifying = FALSE;
+                                 xmlFree(key);
+                                 break;
+                              }
+                           } else {
+                              if (key == NULL) {
+                                 running_modules[module_index].module_ifces[ifc_cnt].ifc_note = NULL;
+                              } else {
+                                 str_len = strlen((char *) key);
+                                 running_modules[module_index].module_ifces[ifc_cnt].ifc_note = (char *) calloc (str_len+1, sizeof(char));
+                                 strncpy(running_modules[module_index].module_ifces[ifc_cnt].ifc_note , (char *) key, str_len+1);
+                                 xmlFree(key);
+                              }
+                           }
+                        } else if ((!xmlStrcmp(ifc_atr->name,BAD_CAST "type"))) {
+                           key =xmlNodeListGetString(xml_tree, ifc_atr->xmlChildrenNode, 1);
+                           if (modifying) {
+                              if (running_modules[module_index].module_ifces[ifc_cnt].ifc_type != NULL && key != NULL) {
+                                 if (strcmp(key, running_modules[module_index].module_ifces[ifc_cnt].ifc_type) != 0) {
+                                    running_modules[module_index].module_modified_by_reload = TRUE;
+                                    free_module_interfaces_on_index(module_index);
+                                    ifc_cnt = -1;
+                                    ifc_ptr = module_atr->xmlChildrenNode;
+                                    running_modules[module_index].module_ifces_cnt = -1;
+                                    running_modules[module_index].module_num_out_ifc = 0;
+                                    running_modules[module_index].module_num_in_ifc = 0;
+                                    modifying = FALSE;
+                                    xmlFree(key);
+                                    break;
+                                 }
+                                 xmlFree(key);
+                              } else if (running_modules[module_index].module_ifces[ifc_cnt].ifc_type == NULL && key == NULL) {
+                                 // new one and old one NULL -> OK
+                              } else {
+                                 running_modules[module_index].module_modified_by_reload = TRUE;
+                                 free_module_interfaces_on_index(module_index);
+                                 ifc_cnt = -1;
+                                 ifc_ptr = module_atr->xmlChildrenNode;
+                                 running_modules[module_index].module_ifces_cnt = -1;
+                                 running_modules[module_index].module_num_out_ifc = 0;
+                                 running_modules[module_index].module_num_in_ifc = 0;
+                                 modifying = FALSE;
+                                 xmlFree(key);
+                                 break;
+                              }
+                           } else {
+                              if (key == NULL) {
+                                 running_modules[module_index].module_ifces[ifc_cnt].ifc_type = NULL;
+                              } else {
+                                 str_len = strlen((char *) key);
+                                 running_modules[module_index].module_ifces[ifc_cnt].ifc_type = (char *) calloc (str_len+1, sizeof(char));
+                                 strncpy(running_modules[module_index].module_ifces[ifc_cnt].ifc_type, (char *) key, str_len+1);
+                                 xmlFree(key);
+                              }
+                           }
+                        } else if ((!xmlStrcmp(ifc_atr->name,BAD_CAST "direction"))) {
+                           key =xmlNodeListGetString(xml_tree, ifc_atr->xmlChildrenNode, 1);
+                           if (modifying) {
+                              if (running_modules[module_index].module_ifces[ifc_cnt].ifc_direction != NULL && key != NULL) {
+                                 if (strcmp(key, running_modules[module_index].module_ifces[ifc_cnt].ifc_direction) != 0) {
+                                    running_modules[module_index].module_modified_by_reload = TRUE;
+                                    free_module_interfaces_on_index(module_index);
+                                    ifc_cnt = -1;
+                                    ifc_ptr = module_atr->xmlChildrenNode;
+                                    running_modules[module_index].module_ifces_cnt = -1;
+                                    running_modules[module_index].module_num_out_ifc = 0;
+                                    running_modules[module_index].module_num_in_ifc = 0;
+                                    modifying = FALSE;
+                                    xmlFree(key);
+                                    break;
+                                 }
+                                 xmlFree(key);
+                              } else if (running_modules[module_index].module_ifces[ifc_cnt].ifc_direction == NULL && key == NULL) {
+                                 // new one and old one NULL -> OK
+                              } else {
+                                 running_modules[module_index].module_modified_by_reload = TRUE;
+                                 free_module_interfaces_on_index(module_index);
+                                 ifc_cnt = -1;
+                                 ifc_ptr = module_atr->xmlChildrenNode;
+                                 running_modules[module_index].module_ifces_cnt = -1;
+                                 running_modules[module_index].module_num_out_ifc = 0;
+                                 running_modules[module_index].module_num_in_ifc = 0;
+                                 modifying = FALSE;
+                                 xmlFree(key);
+                                 break;
+                              }
+                           } else {
+                              if (key == NULL) {
+                                 running_modules[module_index].module_ifces[ifc_cnt].ifc_direction= NULL;
+                              } else {
+                                 str_len = strlen((char *) key);
+                                 running_modules[module_index].module_ifces[ifc_cnt].ifc_direction = (char *) calloc (str_len+1, sizeof(char));
+                                 strncpy(running_modules[module_index].module_ifces[ifc_cnt].ifc_direction, (char *) key, str_len+1);
+                                 xmlFree(key);
+                              }
+                           }
+                        } else if ((!xmlStrcmp(ifc_atr->name,BAD_CAST "params"))) {
+                           key =xmlNodeListGetString(xml_tree, ifc_atr->xmlChildrenNode, 1);
+                           if (modifying) {
+                              if (running_modules[module_index].module_ifces[ifc_cnt].ifc_params != NULL && key != NULL) {
+                                 if (strcmp(key, running_modules[module_index].module_ifces[ifc_cnt].ifc_params) != 0) {
+                                    running_modules[module_index].module_modified_by_reload = TRUE;
+                                    free_module_interfaces_on_index(module_index);
+                                    ifc_cnt = -1;
+                                    ifc_ptr = module_atr->xmlChildrenNode;
+                                    running_modules[module_index].module_ifces_cnt = -1;
+                                    running_modules[module_index].module_num_out_ifc = 0;
+                                    running_modules[module_index].module_num_in_ifc = 0;
+                                    modifying = FALSE;
+                                    xmlFree(key);
+                                    break;
+                                 }
+                                 xmlFree(key);
+                              } else if (running_modules[module_index].module_ifces[ifc_cnt].ifc_params == NULL && key == NULL) {
+                                 // new one and old one NULL -> OK
+                              } else {
+                                 running_modules[module_index].module_modified_by_reload = TRUE;
+                                 free_module_interfaces_on_index(module_index);
+                                 ifc_cnt = -1;
+                                 ifc_ptr = module_atr->xmlChildrenNode;
+                                 running_modules[module_index].module_ifces_cnt = -1;
+                                 running_modules[module_index].module_num_out_ifc = 0;
+                                 running_modules[module_index].module_num_in_ifc = 0;
+                                 modifying = FALSE;
+                                 xmlFree(key);
+                                 break;
+                              }
+                           } else {
+                              if (key == NULL) {
+                                 running_modules[module_index].module_ifces[ifc_cnt].ifc_params = NULL;
+                              } else {
+                                 str_len = strlen((char *) key);
+                                 running_modules[module_index].module_ifces[ifc_cnt].ifc_params = (char *) calloc (str_len+1+10, sizeof(char));
+                                 strncpy(running_modules[module_index].module_ifces[ifc_cnt].ifc_params, (char *) key, str_len+1);
+                                 xmlFree(key);
+                              }
+                           }
+                        }
+                        ifc_atr=ifc_atr->next;
+                     }
+
+                     ifc_cnt++;
+                     if (!modifying) {
+                        running_modules[module_index].module_ifces_cnt++;
+                     }
+                  }
+                  ifc_ptr = ifc_ptr->next;
+               }
+            }
+
+            module_atr = module_atr->next;
+         }
+         if (!modifying) {
+            running_modules[module_index].module_num_in_ifc = 0;
+            running_modules[module_index].module_num_in_ifc = 0;
+            for (x=0; x<running_modules[module_index].module_ifces_cnt; x++) {
+               if (running_modules[module_index].module_ifces[x].ifc_direction != NULL) {
+                  if (strncmp(running_modules[module_index].module_ifces[x].ifc_direction, "IN", 2) == 0) {
+                     running_modules[module_index].module_num_in_ifc++;
+                  } else if (strncmp(running_modules[module_index].module_ifces[x].ifc_direction, "OUT", 3) == 0) {
+                     running_modules[module_index].module_num_out_ifc++;
+                  }
+               }
+            }
+         }
+         if (module_index == loaded_modules_cnt) {
+            loaded_modules_cnt++;
+         }
+      }
+      module_ptr = module_ptr->next;
+   }
+
+   xmlFreeDoc(xml_tree);
+   xmlCleanupParser();
+
+
+   int deleted_modules_cnt = -1;
+   // VERBOSE(N_STDOUT,"-- Finishing --\n");
+   for (x=0; x<original_loaded_modules_cnt; x++) {
+      if (already_loaded_modules[x] == 0) {
+         removed_modules++;
+         deleted_modules_cnt++;
+         if (running_modules[x].module_status) {
+            kill(running_modules[x].module_pid, 2);
+         }
+         // VERBOSE(N_STDOUT,"Deleting module %d\n",x);
+         free_module_on_index(x-deleted_modules_cnt);
+         running_modules[x-deleted_modules_cnt].module_ifces_cnt = 0;
+         running_modules[x-deleted_modules_cnt].module_num_out_ifc = 0;
+         running_modules[x-deleted_modules_cnt].module_num_in_ifc = 0;
+         running_modules[x-deleted_modules_cnt].module_ifces_array_size = 0;
+         for (y=(x-deleted_modules_cnt); y<(loaded_modules_cnt-1); y++) {
+            // VERBOSE(N_STDOUT,"posouvam %d<-%d\n",y,y+1);
+            memcpy(&running_modules[y], &running_modules[y+1], sizeof(running_module_t));
+         }
+         loaded_modules_cnt--;
+         memset(&running_modules[loaded_modules_cnt], 0, sizeof(running_module_t));
+      }
+   }
+
+   destroy_graph(graph_first_node);
+   graph_first_node = NULL;
+   graph_last_node = NULL;
+   for (x=0; x<loaded_modules_cnt; x++) {
+      running_modules[x].module_served_by_service_thread = FALSE;
+      if (running_modules[x].module_running && running_modules[x].module_modified_by_reload) {   
+         if (running_modules[x].module_counters_array != NULL) {
+            free(running_modules[x].module_counters_array);
+         }
+         running_modules[x].module_running = FALSE;
+         if (running_modules[x].module_status) {
+            kill(running_modules[x].module_pid, 2);   
+         }
+      }
+   }
+
+   for (x=0; x<loaded_modules_cnt; x++) {
+      if (running_modules[x].module_modified_by_reload) {
+         modified_modules++;
+      }
+   }
+
+   VERBOSE(N_STDOUT,"Inserted modules:\t%d\n", inserted_modules);
+   VERBOSE(N_STDOUT,"Removed modules:\t%d\n", removed_modules);
+   VERBOSE(N_STDOUT,"Modified modules:\t%d\n", modified_modules);
+   VERBOSE(N_STDOUT,"Unmodified modules:\t%d\n", original_loaded_modules_cnt - modified_modules - removed_modules);
+
+   pthread_mutex_unlock(&running_modules_lock);
+   return TRUE;
+}

@@ -85,7 +85,7 @@ int main (int argc, char * argv [])
          break;
 
       case 8:
-         interactive_run_temp_conf();
+         reload_configuration();
          break;
 
       default:
