@@ -41,7 +41,7 @@
  *
  */
 
-
+#include "config.h"
 #include "graph.h"
 #include "internal.h"
 
