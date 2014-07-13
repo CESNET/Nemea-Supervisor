@@ -1,6 +1,33 @@
 Supervisor:
 =================
 
+This module allows user to configure and monitor Nemea modules. User specifies modules
+in xml configuration file, which is input for the Supervisor.
+
+Example configuration of one module called flowcounter:
+
+<module>
+  <enabled>false</enabled>
+  <params></params>
+  <name>flowcounter</name>
+  <path>../modules/flowcounter/flowcounter</path>
+  <trapinterfaces>
+    <interface>
+      <note></note>
+      <type>TCP</type>
+      <direction>IN</direction>
+      <params>localhost,8004</params>
+    </interface>
+  </trapinterfaces>
+</module>
+
+Every module contains unique name, path to binary file, parameters, enabled flag
+and trap interfaces. Enabled flag tells Supervisor to run or not to run module after
+startup. Every trap interface is specified by type (tcp, unixsocket or service),
+direction (in or out), parameters (output interface: address + port; input
+interface: port + number of clients) and optional note.
+
+==================
 Supervisor can run in one of two basic modes:
 1) Interactive Mode:
   ./supervisor -f config_file.xml
@@ -17,6 +44,53 @@ Supervisor can run in one of two basic modes:
   that is used for communication between daemon and client.
 
   Note: paths must match to communicate with right Supervisor daemon
+
+
+Supervisor arguments:
+ -f config_file.xml   xml file with initial configuration
+ -L logs_path         optional path to Supervisor and modules logs
+                      (default home/supervisor_logs/)
+ -s socket_path       optional path to unix socket used for communication
+                      with supervisor client (default /tmp/supervisor_daemon.sock)
+ -v                   optional verbose flag used for enabling printing stats
+                      about messages and CPU usage (more about these stats down below)
+                      to "supervisor_log_statistics" file in logs dir
+ --daemon             flag used for running Supervisor as a process in background
+ -h                   program prints help and terminates
+
+==================
+User can do various operations with modules via Supervisor. After launch appears
+menu with available operations:
+
+--------OPTIONS--------
+1. START ALL MODULES - starts all modules from loaded configuration
+2. STOP ALL MODULES - stops all modules from loaded configuration
+3. START MODULE - starts one specific module from loaded configuration
+4. STOP MODULE - stops one specific module from loaded configuration
+5. STARTED MODULES STATUS - displays status of loaded modules (stopped or running)
+6. AVAILABLE MODULES - prints out actual loaded configuration
+7. SHOW GRAPH - if dot program is installed, this operation displays picture
+                of oriented graph of modules
+8. RELOAD CONFIGURATION - operation allows user to reload actual configuration
+                          from initial xml file or from another xml file
+9. STOP SUPERVISOR - this operation terminates whole supervisor
+
+
+Note: for reload operation is important unique module name. There are three cases,
+      that can occur during reloading:
+
+a) Supervisor didnt find module with same name in loaded configuration -> inserting new
+   module.
+b) Supervisor found module with same name in loaded configuration -> compares every value
+   and if there is a difference, module will be reloaded.
+c) Module in loaded configuration was not found in reloaded configuration -> it is
+   removed.
+
+Supervisor monitors status of all modules and if needed, modules are auto-restarted.
+Every module can be run with special "service" interface, which allows Supervisor to get
+statistics about sent and received messages from module.
+Another monitored event is CPU usage of every module.
+These events are periodically monitored.
 
 Statistics about Nemea modules:
 ==================
