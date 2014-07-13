@@ -1711,6 +1711,55 @@ void connect_to_module_service_ifc(int module, int num_ifc)
    free(dest_port);
 }
 
+void print_statistics_and_cpu_usage(struct tm * timeinfo)
+{
+   int x = 0, y = 0;
+   VERBOSE(STATISTICS,"------> %s", asctime(timeinfo));
+   for (x=0;x<loaded_modules_cnt;x++) {
+      if (running_modules[x].module_status) {
+         VERBOSE(STATISTICS,"NAME:  %s; PID: %d; | CPU: O_S %d%%; O_U %d%%; P_S %d%%; P_U %d%%; | ",
+            running_modules[x].module_name,
+            running_modules[x].module_pid,
+            running_modules[x].overall_percent_module_cpu_usage_kernel_mode,
+            running_modules[x].overall_percent_module_cpu_usage_user_mode,
+            running_modules[x].last_period_percent_cpu_usage_kernel_mode,
+            running_modules[x].last_period_percent_cpu_usage_user_mode);
+         if (running_modules[x].module_has_service_ifc && running_modules[x].module_service_ifc_isconnected) {
+            VERBOSE(STATISTICS,"CNT_RM:  ");
+            for (y=0; y<running_modules[x].module_num_in_ifc; y++) {
+               VERBOSE(STATISTICS,"%d  ", running_modules[x].module_counters_array[y]);
+            }
+            VERBOSE(STATISTICS,"CNT_SM:  ");
+            for (y=0; y<running_modules[x].module_num_out_ifc; y++) {
+               VERBOSE(STATISTICS,"%d  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc]);
+            }
+            VERBOSE(STATISTICS,"CNT_SB:  ");
+            for (y=0; y<running_modules[x].module_num_out_ifc; y++) {
+               VERBOSE(STATISTICS,"%d  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc + running_modules[x].module_num_out_ifc]);
+            }
+            VERBOSE(STATISTICS,"CNT_AF:  ");
+            for (y=0; y<running_modules[x].module_num_out_ifc; y++) {
+               VERBOSE(STATISTICS,"%d  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc + 2*running_modules[x].module_num_out_ifc]);
+            }
+         }
+         VERBOSE(STATISTICS,"\n");
+      }
+   }
+}
+
+void print_statistics_legend()
+{
+   VERBOSE(STATISTICS,"Legend CPU stats:\n"
+                        "\tO_S - overall kernel mode percentage (overall system)\n"
+                        "\tO_U - overall user mode percentage (overall user)\n"
+                        "\tP_S - periodic kernel mode percentage (periodic system)\n"
+                        "\tP_U - periodic user mode percentage (periodic user)\n"
+                        "Legend messages stats:\n"
+                        "\tCNT_RM - counter of received messages of one trap interface (INPUT IFC)\n"
+                        "\tCNT_SM - counter of sent messages of one trap interface (OUTPUT IFC)\n"
+                        "\tCNT_SB - send buffer counter of one trap interface (OUTPUT IFC)\n"
+                        "\tCNT_AF - autoflush counter of one trap interface (OUTPUT IFC)\n");
+}
 
 void *service_thread_routine(void* arg)
 {
@@ -1720,6 +1769,10 @@ void *service_thread_routine(void* arg)
 
    time_t rawtime;
    struct tm * timeinfo;
+
+   if (verbose_flag) {
+      print_statistics_legend();
+   }
 
    while (service_thread_continue == TRUE) {
       pthread_mutex_lock(&running_modules_lock);
@@ -1811,39 +1864,11 @@ void *service_thread_routine(void* arg)
       // check_graph_values(graph_first_node);
       // print_statistics(graph_first_node);
 
-      VERBOSE(STATISTICS,"------> %s", asctime(timeinfo));
-      for (x=0;x<loaded_modules_cnt;x++) {
-         if (running_modules[x].module_status) {
-            VERBOSE(STATISTICS,"NAME:  %s, PID: %d, EN: %d, SIFC: %d, S: %d, ISC: %d | ",
-                  running_modules[x].module_name,
-                  running_modules[x].module_pid,
-                  running_modules[x].module_enabled,
-                  running_modules[x].module_has_service_ifc,
-                  running_modules[x].module_status,
-                  running_modules[x].module_service_ifc_isconnected);
-            if (running_modules[x].module_has_service_ifc && running_modules[x].module_service_ifc_isconnected && running_modules[x].module_status) {
-               VERBOSE(STATISTICS,"CNT_RM:  ");
-               for (y=0; y<running_modules[x].module_num_in_ifc; y++) {
-                  VERBOSE(STATISTICS,"%d  ", running_modules[x].module_counters_array[y]);
-               }
-               VERBOSE(STATISTICS,"CNT_SM:  ");
-               for (y=0; y<running_modules[x].module_num_out_ifc; y++) {
-                  VERBOSE(STATISTICS,"%d  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc]);
-               }
-               VERBOSE(STATISTICS,"CNT_SB:  ");
-               for (y=0; y<running_modules[x].module_num_out_ifc; y++) {
-                  VERBOSE(STATISTICS,"%d  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc + running_modules[x].module_num_out_ifc]);
-               }
-               VERBOSE(STATISTICS,"CNT_AF:  ");
-               for (y=0; y<running_modules[x].module_num_out_ifc; y++) {
-                  VERBOSE(STATISTICS,"%d  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc + 2*running_modules[x].module_num_out_ifc]);
-               }
-            }
-            VERBOSE(STATISTICS,"\n");
-         }
+      if (verbose_flag) {
+         print_statistics_and_cpu_usage(timeinfo);
       }
+
       sleep(2);
-      
    }
 
    for (x=0;x<loaded_modules_cnt;x++) {
