@@ -95,34 +95,37 @@ typedef struct remote_info_s {
 
 /** Structure with information about one running module */
 typedef struct running_module_s {
-   int         module_restart_timer;  ///< Timer used for monitoring max number of restarts/minute.
-   int         module_cloned; ///< TRUE if module was cloned because of overload, else FALSE.
-   int         module_served_by_service_thread; ///< TRUE if module was added to graph struct by sevice thread, FALSE on start.
-   int         module_ifces_array_size; ///< Number of allocated interface_t structures by module.
-   int         module_running; ///< TRUE after first start of module, else FALSE.
-   char       *module_params; ///< Module parameter (loaded from config file).
-   int         module_enabled; ///< TRUE if module is enabled, else FALSE.
-   int         module_ifces_cnt; ///< Number of modules loaded interfaces.
-   int         module_num_out_ifc; ///< Number of modules output interfaces.
-   int         module_num_in_ifc; ///< Number of modules input interfaces.
-   int        *module_counters_array; ///< Array of statistics with counters.
-   int         module_service_ifc_isconnected; ///< if supervisor is connected to module ~ TRUE, else ~ FALSE
-   int         module_has_service_ifc; ///< if module has service interface ~ TRUE, else ~ FALSE
-   int         module_service_sd; ///< Socket descriptor of the service connection.
-   char       *module_name; ///< Module name (loaded from config file).
-   int         module_status; ///< Module status (TRUE ~ running, FALSE ~ stopped)
-   int         module_restart_cnt; ///< Number of module restarts.
-   pid_t       module_pid; ///< Modules process PID.
-   char       *module_path; ///< Path to module from current directory
-   interface_t *module_ifces; ///< Array of interface_t structures with information about every loaded interface of module
-   int         last_cpu_usage_kernel_mode; ///< Percentage of CPU usage in last period in kernel mode.
-   int         last_cpu_usage_user_mode; ///< Percentage of CPU usage in last period in user mode.
-   int         percent_cpu_usage_kernel_mode; ///< Percentage of CPU usage in current period in kernel mode.
-   int         percent_cpu_usage_user_mode; ///< Percentage of CPU usage in current period in user mode.
-   int         num_periods_overload; ///< Number of periods of overloading CPU.
-   int         remote_module; ///< TRUE if module was sent to remote_supervisor, else FALSE.
-   int         module_number; ///< Index to running_modules array.
-   int         module_modified_by_reload;
+   int            module_enabled; ///< TRUE if module is enabled, else FALSE.
+   char          *module_params; ///< Module parameter (loaded from config file).
+   char          *module_name; ///< Module name (loaded from config file).
+   char          *module_path; ///< Path to module from current directory
+   interface_t   *module_ifces; ///< Array of interface_t structures with information about every loaded interface of module
+   int            module_ifces_array_size; ///< Number of allocated interface_t structures by module.
+   int            module_ifces_cnt; ///< Number of modules loaded interfaces.
+   int            module_num_out_ifc; ///< Number of modules output interfaces.
+   int            module_num_in_ifc; ///< Number of modules input interfaces.
+   int            module_restart_timer;  ///< Timer used for monitoring max number of restarts/minute.
+   int            module_restart_cnt; ///< Number of module restarts.
+   int            module_has_service_ifc; ///< if module has service interface ~ TRUE, else ~ FALSE
+   int            module_service_ifc_isconnected; ///< if supervisor is connected to module ~ TRUE, else ~ FALSE
+   int            module_served_by_service_thread; ///< TRUE if module was added to graph struct by sevice thread, FALSE on start.
+   int            module_running; ///< TRUE after first start of module, else FALSE.
+   int            module_status; ///< Module status (TRUE ~ running, FALSE ~ stopped)
+   pid_t          module_pid; ///< Modules process PID.
+   int           *module_counters_array; ///< Array of statistics with counters.
+   int            module_service_sd; ///< Socket descriptor of the service connection.
+   int            module_cloned; ///< TRUE if module was cloned because of overload, else FALSE.
+   int            remote_module; ///< TRUE if module was sent to remote_supervisor, else FALSE.
+   int            module_number; ///< Index to running_modules array.
+   int            module_modified_by_reload;
+   int            num_periods_overload; ///< Number of periods of overloading CPU.
+   long int       total_cpu_usage_during_module_startup;
+   int            last_period_cpu_usage_kernel_mode; ///< Percentage of CPU usage in last period in kernel mode.
+   int            last_period_cpu_usage_user_mode; ///< Percentage of CPU usage in last period in user mode.
+   int            last_period_percent_cpu_usage_kernel_mode; ///< Percentage of CPU usage in current period in kernel mode.
+   int            last_period_percent_cpu_usage_user_mode; ///< Percentage of CPU usage in current period in user mode.
+   int            overall_percent_module_cpu_usage_kernel_mode;
+   int            overall_percent_module_cpu_usage_user_mode;
 } running_module_t;
 
 /***********FUNCTIONS***********/

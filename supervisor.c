@@ -120,6 +120,7 @@ union tcpip_socket_addr {
    struct sockaddr_un unix_addr; ///< used for path of UNIX socket
 };
 
+long int get_total_cpu_usage();
 void * remote_supervisor_accept_routine();
 void start_service_thread();
 // void stop_threads();
@@ -723,8 +724,13 @@ void re_start_module(const int module_number)
    sprintf(log_path_stderr,"%s%d_%s_stderr",LOGSDIR_NAME, module_number, running_modules[module_number].module_name);
 
    memset(running_modules[module_number].module_counters_array, 0, (running_modules[module_number].module_num_in_ifc + (3*running_modules[module_number].module_num_out_ifc)) * sizeof(int));
-   running_modules[module_number].last_cpu_usage_user_mode = 0;
-   running_modules[module_number].last_cpu_usage_kernel_mode = 0;
+   running_modules[module_number].total_cpu_usage_during_module_startup = get_total_cpu_usage();
+   running_modules[module_number].last_period_cpu_usage_kernel_mode = 0;
+   running_modules[module_number].last_period_cpu_usage_user_mode = 0;
+   running_modules[module_number].last_period_percent_cpu_usage_kernel_mode = 0;
+   running_modules[module_number].last_period_percent_cpu_usage_user_mode = 0;
+   running_modules[module_number].overall_percent_module_cpu_usage_kernel_mode = 0;
+   running_modules[module_number].overall_percent_module_cpu_usage_user_mode = 0;
    running_modules[module_number].module_service_sd = -1;
 
    time_t rawtime;
@@ -1158,19 +1164,17 @@ char *get_param_by_delimiter(const char *source, char **dest, const char delimit
    return param_end + 1;
 }
 
-void update_cpu_usage(long int * last_total_cpu_usage)
+long int get_total_cpu_usage()
 {
-   int utime = 0, stime = 0;
    long int new_total_cpu_usage = 0;
    FILE * proc_stat_fd = fopen("/proc/stat","r");
-   int num = 0;
-   int x;
-   char path[20];
-   memset(path,0,20);
-   int difference_total = 0;
+   int x = 0, num = 0;
 
-   if (fscanf(proc_stat_fd,"cpu") != 0) {
-      return;
+   if (proc_stat_fd == NULL) {
+      return -1;
+   } else if (fscanf(proc_stat_fd,"cpu") != 0) {
+      fclose(proc_stat_fd);
+      return -1;
    }
 
    for (x=0; x<10; x++) {
@@ -1180,13 +1184,20 @@ void update_cpu_usage(long int * last_total_cpu_usage)
       new_total_cpu_usage += num;
    }
 
-   difference_total = new_total_cpu_usage - *last_total_cpu_usage;
-
-   if (show_cpu_usage_flag) {
-      VERBOSE(STATISTICS,"total_cpu difference total cpu usage> %d\n", difference_total);
-   }
-   *last_total_cpu_usage = new_total_cpu_usage;
    fclose(proc_stat_fd);
+   return new_total_cpu_usage;
+}
+
+void update_module_cpu_usage(long int * last_total_cpu_usage)
+{
+   int utime = 0, stime = 0, x = 0;
+   FILE * proc_stat_fd = NULL;
+   char path[20];
+   memset(path,0,20);
+   long int new_total_cpu_usage = get_total_cpu_usage();
+   long int difference_total = new_total_cpu_usage - *last_total_cpu_usage;
+
+   *last_total_cpu_usage = new_total_cpu_usage;
 
    for (x=0;x<loaded_modules_cnt;x++) {
       if (running_modules[x].module_status) {
@@ -1195,18 +1206,17 @@ void update_cpu_usage(long int * last_total_cpu_usage)
          if (!fscanf(proc_stat_fd,"%*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %d %d", &utime , &stime)) {
             continue;
          }
-         if (show_cpu_usage_flag) {
-            VERBOSE(STATISTICS,"Last_u%d Last_s%d, New_u%d New_s%d |>>   u%d%% s%d%%\n",
-                  running_modules[x].last_cpu_usage_user_mode,
-                  running_modules[x].last_cpu_usage_kernel_mode,
-                  utime, stime,
-                  100 * (utime - running_modules[x].last_cpu_usage_user_mode)/difference_total,
-                  100 * (stime - running_modules[x].last_cpu_usage_kernel_mode)/difference_total);
+         if (running_modules[x].total_cpu_usage_during_module_startup != -1) {
+            running_modules[x].overall_percent_module_cpu_usage_kernel_mode = 100 * ((float)stime/(float)(new_total_cpu_usage - running_modules[x].total_cpu_usage_during_module_startup));
+            running_modules[x].overall_percent_module_cpu_usage_user_mode = 100 * ((float)utime/(float)(new_total_cpu_usage - running_modules[x].total_cpu_usage_during_module_startup));
+         } else {
+            running_modules[x].overall_percent_module_cpu_usage_kernel_mode = 0;
+            running_modules[x].overall_percent_module_cpu_usage_user_mode = 0;
          }
-         running_modules[x].percent_cpu_usage_kernel_mode = 100 * (stime - running_modules[x].last_cpu_usage_kernel_mode)/difference_total;
-         running_modules[x].percent_cpu_usage_user_mode = 100 * (utime - running_modules[x].last_cpu_usage_user_mode)/difference_total;
-         running_modules[x].last_cpu_usage_user_mode = utime;
-         running_modules[x].last_cpu_usage_kernel_mode = stime;
+         running_modules[x].last_period_percent_cpu_usage_kernel_mode = 100 * (stime - running_modules[x].last_period_cpu_usage_kernel_mode)/difference_total;
+         running_modules[x].last_period_percent_cpu_usage_user_mode = 100 * (utime - running_modules[x].last_period_cpu_usage_user_mode)/difference_total;
+         running_modules[x].last_period_cpu_usage_kernel_mode = stime;
+         running_modules[x].last_period_cpu_usage_user_mode = utime;
          fclose(proc_stat_fd);
       }
    }
@@ -1344,8 +1354,8 @@ void check_cpu_usage()
    // condition 1, if (num_periods_overload>10)
    for (x=0;x<loaded_modules_cnt;x++) {
       if (running_modules[x].module_status) {
-         if ((running_modules[x].percent_cpu_usage_kernel_mode > 50) ||
-               (running_modules[x].percent_cpu_usage_user_mode > 50)) {
+         if ((running_modules[x].last_period_percent_cpu_usage_kernel_mode > 50) ||
+               (running_modules[x].last_period_percent_cpu_usage_user_mode > 50)) {
             running_modules[x].num_periods_overload++;
             VERBOSE(N_STDOUT,"module %d%s overload\n",x,running_modules[x].module_name);
          } else {
@@ -1789,7 +1799,7 @@ void *service_thread_routine(void* arg)
             }
          }
       }
-      update_cpu_usage(&last_total_cpu_usage);
+      update_module_cpu_usage(&last_total_cpu_usage);
       // check_cpu_usage();
 
       update_graph_values(graph_first_node);
@@ -1893,7 +1903,7 @@ char * make_formated_statistics()
 
    for (x=0; x<loaded_modules_cnt; x++) {
       if(running_modules[x].module_status) {
-         ptr += sprintf(buffer + ptr, "%s,cpu,%d,%d\n", running_modules[x].module_name, running_modules[x].percent_cpu_usage_kernel_mode, running_modules[x].percent_cpu_usage_user_mode);
+         ptr += sprintf(buffer + ptr, "%s,cpu,%d,%d\n", running_modules[x].module_name, running_modules[x].last_period_percent_cpu_usage_kernel_mode, running_modules[x].last_period_percent_cpu_usage_user_mode);
          if (strlen(buffer) >= (3*size_of_buffer)/5) {
             size_of_buffer += size_of_buffer/2;
             buffer = (char *) realloc (buffer, size_of_buffer * sizeof(char));
