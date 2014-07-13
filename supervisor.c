@@ -68,7 +68,7 @@
 #include <net/if.h>
 #include <ifaddrs.h>
 
-#define LOGSDIR_NAME             "./modules_logs/" ///< Name of directory with modules logs
+#define DEFAULT_LOGSDIR_PATH     "./supervisor_logs/" ///< Name of directory with modules logs
 #define TRAP_PARAM               "-i" ///< Interface parameter for libtrap
 #define MAX_RESTARTS_PER_MINUTE  3  ///< Maximum number of module restarts per minute
 #define DEFAULT_SIZE_OF_BUFFER   100
@@ -96,13 +96,13 @@ pthread_t   service_thread_id; ///< Service thread identificator.
 pthread_t   acceptor_thread_id; ///< Acceptor thread identificator.
 
 // supervisor flags
-int   help_flag;        // -h argument
-int   file_flag;        // -f "file" arguments
-char *config_file = NULL;
-char *socket_path = NULL;
-int   show_cpu_usage_flag; // --show-cpuusage
-int   verbose_flag;     // -v
-int   daemon_flag;      // --daemon
+int      help_flag;        // -h 
+int      file_flag;        // -f "file" arguments
+int      verbose_flag;     // -v messages and cpu_usage stats
+int      daemon_flag;      // --daemon
+char *   config_file = NULL;
+char *   socket_path = NULL;
+char *   logs_path = NULL;
 
 
 int         remote_supervisor_socketd; ///< Socket descriptor of remote_supervisor.
@@ -718,10 +718,25 @@ void re_start_module(const int module_number)
       VERBOSE(MODULE_EVENT,"Restarting module %d_%s\n", module_number, running_modules[module_number].module_name);
    }
 
-   char log_path_stdout[100];
-   char log_path_stderr[100];
-   sprintf(log_path_stdout,"%s%d_%s_stdout",LOGSDIR_NAME, module_number, running_modules[module_number].module_name);
-   sprintf(log_path_stderr,"%s%d_%s_stderr",LOGSDIR_NAME, module_number, running_modules[module_number].module_name);
+   char log_path_stdout[200];
+   char log_path_stderr[200];
+   memset(log_path_stderr,0,200);
+   memset(log_path_stdout,0,200);
+   int str_len = 0;
+
+   if (logs_path == NULL) {
+      sprintf(log_path_stdout,"%s%d_%s_stdout",DEFAULT_LOGSDIR_PATH, module_number, running_modules[module_number].module_name);
+      sprintf(log_path_stderr,"%s%d_%s_stderr",DEFAULT_LOGSDIR_PATH, module_number, running_modules[module_number].module_name);
+   } else {
+      str_len = strlen(logs_path);
+      if (logs_path[str_len-1] == '/') {
+         sprintf(log_path_stdout,"%s%d_%s_stdout",logs_path, module_number, running_modules[module_number].module_name);
+         sprintf(log_path_stderr,"%s%d_%s_stderr",logs_path, module_number, running_modules[module_number].module_name);
+      } else {
+         sprintf(log_path_stdout,"%s/%d_%s_stdout",logs_path, module_number, running_modules[module_number].module_name);
+         sprintf(log_path_stderr,"%s/%d_%s_stderr",logs_path, module_number, running_modules[module_number].module_name);
+      }
+   }
 
    memset(running_modules[module_number].module_counters_array, 0, (running_modules[module_number].module_num_in_ifc + (3*running_modules[module_number].module_num_out_ifc)) * sizeof(int));
    running_modules[module_number].total_cpu_usage_during_module_startup = get_total_cpu_usage();
@@ -824,16 +839,19 @@ int supervisor_initialization(int *argc, char **argv)
    get_local_IP();
    input_fd = stdin;
    output_fd = stdout;
+   char file_path[200];
+   memset(file_path,0,200);
+   int y = 0, ret_val = 0, str_len = 0;
 
-   statistics_fd = fopen("./supervisor_log_statistics", "w");
-   module_event_fd = fopen("./supervisor_log_module_event", "w");
-
+   logs_path = NULL;
    config_file = NULL;
-   show_cpu_usage_flag = FALSE;
    verbose_flag = FALSE;
    help_flag = FALSE;
    file_flag = FALSE;
-   int ret_val = parse_arguments(argc, argv);
+   graph_first_node = NULL;
+   graph_last_node = NULL;
+   
+   ret_val = parse_arguments(argc, argv);
    if (ret_val) {
       if (help_flag) {
          print_help();
@@ -846,14 +864,44 @@ int supervisor_initialization(int *argc, char **argv)
       return 1;
    }
 
+   //logs directory
+   struct stat st = {0};
+   if (logs_path == NULL) {
+      if (stat(DEFAULT_LOGSDIR_PATH, &st) == -1) {
+         mkdir(DEFAULT_LOGSDIR_PATH, PERM_LOGSDIR);
+      }
+      sprintf(file_path,"%ssupervisor_log_statistics",DEFAULT_LOGSDIR_PATH);
+      statistics_fd = fopen(file_path, "w");
+      memset(file_path,0,200);
+      sprintf(file_path,"%ssupervisor_log_module_event",DEFAULT_LOGSDIR_PATH);
+      module_event_fd = fopen(file_path, "w");
+   } else {
+      if (stat(logs_path, &st) == -1) {
+         mkdir(logs_path, PERM_LOGSDIR);
+      }
+      str_len = strlen(logs_path);
+      if (logs_path[str_len-1] == '/') {
+         sprintf(file_path,"%ssupervisor_log_statistics",logs_path);
+         statistics_fd = fopen(file_path, "w");
+         memset(file_path,0,200);
+         sprintf(file_path,"%ssupervisor_log_module_event",logs_path);
+         module_event_fd = fopen(file_path, "w");
+      } else {
+         sprintf(file_path,"%s/supervisor_log_statistics",logs_path);
+         statistics_fd = fopen(file_path, "w");
+         memset(file_path,0,200);
+         sprintf(file_path,"%s/supervisor_log_module_event",logs_path);
+         module_event_fd = fopen(file_path, "w");
+      }
+   }
+
    int daemon_arg;
    if (daemon_flag) {
       daemon_init(&daemon_arg);
    }
 
 
-   int y;
-   VERBOSE(N_STDOUT,"---LOADING CONFIGURATION---\n");
+   VERBOSE(N_STDOUT,"--- LOADING CONFIGURATION ---\n");
    loaded_modules_cnt = 0;
    //init running_modules structures alloc size RUNNING_MODULES_ARRAY_START_SIZE
    running_modules_array_size = RUNNING_MODULES_ARRAY_START_SIZE;
@@ -867,12 +915,6 @@ int supervisor_initialization(int *argc, char **argv)
 
    //load configuration
    load_configuration(TRUE,config_file);
-
-   //logs directory
-   struct stat st = {0};
-   if (stat(LOGSDIR_NAME, &st) == -1) {
-      mkdir(LOGSDIR_NAME, PERM_LOGSDIR);
-   }
 
    // verbose_level = 0;
    pthread_mutex_init(&running_modules_lock,NULL);
@@ -892,9 +934,6 @@ int supervisor_initialization(int *argc, char **argv)
    if (sigaction(SIGPIPE,&sa,NULL) == -1) {
       VERBOSE(N_STDOUT,"ERROR sigaction !!\n");
    }
-
-   graph_first_node = NULL;
-   graph_last_node = NULL;
 
    if (daemon_flag) {
       daemon_mode(&daemon_arg);
@@ -1128,10 +1167,16 @@ void supervisor_termination()
       free(running_modules);
       running_modules = NULL;
    }
+
    destroy_graph(graph_first_node);
+
    if (config_file != NULL) {
       free(config_file);
       config_file = NULL;
+   }
+   if (logs_path != NULL) {
+      free(logs_path);
+      logs_path = NULL;
    }
 
    // close(remote_supervisor_socketd);
@@ -2001,12 +2046,11 @@ int parse_arguments(int *argc, char **argv)
          {"config-file",  required_argument,    0, 'f'},
          {"help", no_argument,           0,  'h' },
          {"verbose",  no_argument,       0,  'v' },
-         {"show-cpuusage",  no_argument, 0,  'C' },
          {"daemon-socket",  required_argument,  0, 's'},
          {0, 0, 0, 0}
       };
 
-      c = getopt_long(*argc, argv, "df:hvCs:", long_options, &option_index);
+      c = getopt_long(*argc, argv, "df:hvs:L:", long_options, &option_index);
       if (c == -1) {
          break;
       }
@@ -2025,11 +2069,11 @@ int parse_arguments(int *argc, char **argv)
          config_file = strdup(optarg);
          file_flag = TRUE;
          break;
-      case 'C':
-         show_cpu_usage_flag = TRUE;
-         break;
       case 'd':
          daemon_flag = TRUE;
+         break;
+      case 'L':
+         logs_path = strdup(optarg);
          break;
       }
    }
@@ -2110,7 +2154,7 @@ int daemon_init(int * d_sd)
    struct addrinfo *p;
    memset(&addr, 0, sizeof(addr));
    addr.unix_addr.sun_family = AF_UNIX;
-   snprintf(addr.unix_addr.sun_path, sizeof(addr.unix_addr.sun_path) - 1, socket_path);
+   snprintf(addr.unix_addr.sun_path, sizeof(addr.unix_addr.sun_path) - 1, "%s", socket_path);
 
    /* if socket file exists, it could be hard to create new socket and bind */
    unlink(DAEMON_UNIX_PATH_FILENAME_FORMAT); /* error when file does not exist is not a problem */
@@ -2137,6 +2181,9 @@ int daemon_init(int * d_sd)
    // create daemon
    pid_t process_id = 0;
    pid_t sid = 0;
+   char file_path[200];
+   memset(file_path,0,200);
+   int str_len = 0;
 
    fflush(stdout);
    process_id = fork();
@@ -2146,6 +2193,9 @@ int daemon_init(int * d_sd)
    } else if (process_id > 0) {
       if (config_file != NULL) {
          free(config_file);
+      }
+      if (logs_path != NULL) {
+         free(logs_path);
       }
       fclose(statistics_fd);
       fclose(module_event_fd);
@@ -2161,7 +2211,19 @@ int daemon_init(int * d_sd)
    }
    // chdir("./modules_logs/");
 
-   int fd_fd = open ("supervisor_log", O_RDWR | O_CREAT | O_APPEND, PERM_LOGFILE);
+   if (logs_path == NULL) {
+      sprintf(file_path,"%ssupervisor_log",DEFAULT_LOGSDIR_PATH);
+   } else {
+      str_len = strlen(logs_path);
+      if (logs_path[str_len-1] == '/') {
+         sprintf(file_path,"%ssupervisor_log",logs_path);
+      } else {
+         sprintf(file_path,"%s/supervisor_log",logs_path);
+      }
+   }
+
+
+   int fd_fd = open (file_path, O_RDWR | O_CREAT | O_APPEND, PERM_LOGFILE);
    dup2(fd_fd, 1);
    dup2(fd_fd, 2);
    close(fd_fd);
