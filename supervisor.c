@@ -120,6 +120,7 @@ char *get_param_by_delimiter(const char *source, char **dest, const char delimit
 /**if choice TRUE -> parse file, else parse buffer*/
 int load_configuration(const int choice, const char * buffer)
 {
+   int last_module = FALSE;
    int str_len = 0;
    xmlChar * key = NULL;
    int x = 0, y = 0;
@@ -203,6 +204,34 @@ int load_configuration(const int choice, const char * buffer)
          module_atr = module_ptr->xmlChildrenNode;
 
          while (module_atr != NULL) {
+            if ((!xmlStrcmp(module_atr->name,BAD_CAST "name"))) {
+               key = xmlNodeListGetString(xml_tree, module_atr->xmlChildrenNode, 1);
+               if (key == NULL) {
+                  module_ptr = module_ptr->next;
+                  module_ptr = module_ptr->next;
+                  if (module_ptr == NULL) {
+                     last_module = TRUE;
+                     break;
+                  } else {
+                     module_atr = module_ptr->xmlChildrenNode;
+                     continue;
+                  }
+               } else {
+                  break;
+               }
+            }
+            module_atr = module_atr->next;
+         }
+         if (last_module) {
+            break;
+         }
+         if (key != NULL) {
+            xmlFree(key);
+            key = NULL;
+         }
+
+         module_atr = module_ptr->xmlChildrenNode;
+         while (module_atr != NULL) {
             if ((!xmlStrcmp(module_atr->name,BAD_CAST "enabled"))) {
                key = xmlNodeListGetString(xml_tree, module_atr->xmlChildrenNode, 1);
                if (key == NULL) {
@@ -213,7 +242,10 @@ int load_configuration(const int choice, const char * buffer)
                   } else {
                      running_modules[loaded_modules_cnt].module_enabled = FALSE;
                   }
-                  xmlFree(key);
+                  if (key != NULL) {
+                     xmlFree(key);
+                     key = NULL;
+                  }
                }
             } else if ((!xmlStrcmp(module_atr->name,BAD_CAST "params"))) {
                key = xmlNodeListGetString(xml_tree, module_atr->xmlChildrenNode, 1);
@@ -223,7 +255,10 @@ int load_configuration(const int choice, const char * buffer)
                   str_len = strlen((char *) key);
                   running_modules[loaded_modules_cnt].module_params = (char *) calloc (str_len+1, sizeof(char));
                   strncpy(running_modules[loaded_modules_cnt].module_params, (char *) key, str_len+1);
-                  xmlFree(key);
+                  if (key != NULL) {
+                     xmlFree(key);
+                     key = NULL;
+                  }
                }
             } else if ((!xmlStrcmp(module_atr->name,BAD_CAST "name"))) {
                key = xmlNodeListGetString(xml_tree, module_atr->xmlChildrenNode, 1);
@@ -233,7 +268,10 @@ int load_configuration(const int choice, const char * buffer)
                   str_len = strlen((char *) key);
                   running_modules[loaded_modules_cnt].module_name = (char *) calloc (str_len+1, sizeof(char));
                   strncpy(running_modules[loaded_modules_cnt].module_name, (char *) key, str_len+1);
-                  xmlFree(key);
+                  if (key != NULL) {
+                     xmlFree(key);
+                     key = NULL;
+                  }
                }
             } else if ((!xmlStrcmp(module_atr->name,BAD_CAST "path"))) {
                key = xmlNodeListGetString(xml_tree, module_atr->xmlChildrenNode, 1);
@@ -243,7 +281,10 @@ int load_configuration(const int choice, const char * buffer)
                   str_len = strlen((char *) key);
                   running_modules[loaded_modules_cnt].module_path = (char *) calloc (str_len+1, sizeof(char));
                   strncpy(running_modules[loaded_modules_cnt].module_path, (char *) key, str_len+1);
-                  xmlFree(key);
+                  if (key != NULL) {
+                     xmlFree(key);
+                     key = NULL;
+                  }
                }
             } else if ((!xmlStrcmp(module_atr->name,BAD_CAST "trapinterfaces"))) {
                ifc_cnt=0;
@@ -269,7 +310,10 @@ int load_configuration(const int choice, const char * buffer)
                               str_len = strlen((char *) key);
                               running_modules[loaded_modules_cnt].module_ifces[ifc_cnt].ifc_note = (char *) calloc (str_len+1, sizeof(char));
                               strncpy(running_modules[loaded_modules_cnt].module_ifces[ifc_cnt].ifc_note , (char *) key, str_len+1);
-                              xmlFree(key);
+                              if (key != NULL) {
+                                 xmlFree(key);
+                                 key = NULL;
+                              }
                            }
                         } else if ((!xmlStrcmp(ifc_atr->name,BAD_CAST "type"))) {
                            key =xmlNodeListGetString(xml_tree, ifc_atr->xmlChildrenNode, 1);
@@ -279,7 +323,10 @@ int load_configuration(const int choice, const char * buffer)
                               str_len = strlen((char *) key);
                               running_modules[loaded_modules_cnt].module_ifces[ifc_cnt].ifc_type = (char *) calloc (str_len+1, sizeof(char));
                               strncpy(running_modules[loaded_modules_cnt].module_ifces[ifc_cnt].ifc_type, (char *) key, str_len+1);
-                              xmlFree(key);
+                              if (key != NULL) {
+                                 xmlFree(key);
+                                 key = NULL;
+                              }
                            }
                         } else if ((!xmlStrcmp(ifc_atr->name,BAD_CAST "direction"))) {
                            key =xmlNodeListGetString(xml_tree, ifc_atr->xmlChildrenNode, 1);
@@ -289,7 +336,10 @@ int load_configuration(const int choice, const char * buffer)
                               str_len = strlen((char *) key);
                               running_modules[loaded_modules_cnt].module_ifces[ifc_cnt].ifc_direction = (char *) calloc (str_len+1, sizeof(char));
                               strncpy(running_modules[loaded_modules_cnt].module_ifces[ifc_cnt].ifc_direction, (char *) key, str_len+1);
-                              xmlFree(key);
+                              if (key != NULL) {
+                                 xmlFree(key);
+                                 key = NULL;
+                              }
                            }
                         } else if ((!xmlStrcmp(ifc_atr->name,BAD_CAST "params"))) {
                            key =xmlNodeListGetString(xml_tree, ifc_atr->xmlChildrenNode, 1);
@@ -299,7 +349,10 @@ int load_configuration(const int choice, const char * buffer)
                               str_len = strlen((char *) key);
                               running_modules[loaded_modules_cnt].module_ifces[ifc_cnt].ifc_params = (char *) calloc (str_len+1+10, sizeof(char));
                               strncpy(running_modules[loaded_modules_cnt].module_ifces[ifc_cnt].ifc_params, (char *) key, str_len+1);
-                              xmlFree(key);
+                              if (key != NULL) {
+                                 xmlFree(key);
+                                 key = NULL;
+                              }
                            }
                         }
                         ifc_atr=ifc_atr->next;
@@ -431,16 +484,18 @@ char **make_module_arguments(const int number_of_module)
    for (x=0; x<running_modules[number_of_module].module_ifces_cnt; x++) {
       if (running_modules[number_of_module].module_ifces[x].ifc_direction != NULL) {
          if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_direction, "IN", 2)) {
-            if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type, "TCP", 3)) {
-               strncpy(atr + ptr,"t",1);
-               ptr++;
-            } else if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type, "UNIXSOCKET", 10)) {
-               strncpy(atr + ptr,"u",1);
-               ptr++;
-            } else {
-               VERBOSE(N_STDOUT,"%s\n", running_modules[number_of_module].module_ifces[x].ifc_type);
-               VERBOSE(N_STDOUT,"Wrong ifc_type in module %d.\n", number_of_module);
-               return NULL;
+            if (running_modules[number_of_module].module_ifces[x].ifc_type != NULL) {
+               if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type, "TCP", 3)) {
+                  strncpy(atr + ptr,"t",1);
+                  ptr++;
+               } else if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type, "UNIXSOCKET", 10)) {
+                  strncpy(atr + ptr,"u",1);
+                  ptr++;
+               } else {
+                  VERBOSE(N_STDOUT,"%s\n", running_modules[number_of_module].module_ifces[x].ifc_type);
+                  VERBOSE(N_STDOUT,"Wrong ifc_type in module %d.\n", number_of_module);
+                  return NULL;
+               }
             }
          }
       }
@@ -449,25 +504,29 @@ char **make_module_arguments(const int number_of_module)
    for (x=0; x<running_modules[number_of_module].module_ifces_cnt; x++) {
       if (running_modules[number_of_module].module_ifces[x].ifc_direction != NULL) {
          if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_direction,"OUT", 3)) {
-            if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type, "TCP", 3)) {
-               strncpy(atr + ptr,"t",1);
-               ptr++;
-            } else if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type, "UNIXSOCKET", 10)) {
-               strncpy(atr + ptr,"u",1);
-               ptr++;
-            } else {
-               VERBOSE(N_STDOUT,"%s\n", running_modules[number_of_module].module_ifces[x].ifc_type);
-               VERBOSE(N_STDOUT,"Wrong ifc_type in module %d.\n", number_of_module);
-               return NULL;
+            if (running_modules[number_of_module].module_ifces[x].ifc_type != NULL) {
+               if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type, "TCP", 3)) {
+                  strncpy(atr + ptr,"t",1);
+                  ptr++;
+               } else if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type, "UNIXSOCKET", 10)) {
+                  strncpy(atr + ptr,"u",1);
+                  ptr++;
+               } else {
+                  VERBOSE(N_STDOUT,"%s\n", running_modules[number_of_module].module_ifces[x].ifc_type);
+                  VERBOSE(N_STDOUT,"Wrong ifc_type in module %d.\n", number_of_module);
+                  return NULL;
+               }
             }
          }
       }
    }
 
    for (x=0; x<running_modules[number_of_module].module_ifces_cnt; x++) {
-      if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type,"SERVICE", 7)) {
-         strncpy(atr + ptr,"s",1);
-         ptr++;
+      if (running_modules[number_of_module].module_ifces[x].ifc_type != NULL) {
+         if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type,"SERVICE", 7)) {
+            strncpy(atr + ptr,"s",1);
+            ptr++;
+         }
       }
    }
 
@@ -477,13 +536,15 @@ char **make_module_arguments(const int number_of_module)
    for (x=0; x<running_modules[number_of_module].module_ifces_cnt; x++) {
       if (running_modules[number_of_module].module_ifces[x].ifc_direction != NULL) {
          if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_direction,"IN", 2)) {
-            if ((strlen(atr) + strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1) >= (3*size_of_atr)/5) {
-               size_of_atr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + (size_of_atr/2);
-               atr = (char *) realloc (atr, size_of_atr*sizeof(char));
-               memset(atr + ptr, 0, size_of_atr - ptr);
+            if (running_modules[number_of_module].module_ifces[x].ifc_params != NULL) {
+               if ((strlen(atr) + strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1) >= (3*size_of_atr)/5) {
+                  size_of_atr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + (size_of_atr/2);
+                  atr = (char *) realloc (atr, size_of_atr*sizeof(char));
+                  memset(atr + ptr, 0, size_of_atr - ptr);
+               }
+               sprintf(atr + ptr,"%s;",running_modules[number_of_module].module_ifces[x].ifc_params);
+               ptr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1;
             }
-            sprintf(atr + ptr,"%s;",running_modules[number_of_module].module_ifces[x].ifc_params);
-            ptr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1;
          }
       }
    }
@@ -491,26 +552,32 @@ char **make_module_arguments(const int number_of_module)
    for (x=0; x<running_modules[number_of_module].module_ifces_cnt; x++) {
       if (running_modules[number_of_module].module_ifces[x].ifc_direction != NULL) {
          if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_direction,"OUT", 3)) {
-            if ((strlen(atr) + strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1) >= (3*size_of_atr)/5) {
-               size_of_atr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + (size_of_atr/2);
-               atr = (char *) realloc (atr, size_of_atr*sizeof(char));
-               memset(atr + ptr, 0, size_of_atr - ptr);
+            if (running_modules[number_of_module].module_ifces[x].ifc_params != NULL) {
+               if ((strlen(atr) + strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1) >= (3*size_of_atr)/5) {
+                  size_of_atr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + (size_of_atr/2);
+                  atr = (char *) realloc (atr, size_of_atr*sizeof(char));
+                  memset(atr + ptr, 0, size_of_atr - ptr);
+               }
+               sprintf(atr + ptr,"%s;",running_modules[number_of_module].module_ifces[x].ifc_params);
+               ptr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1;
             }
-            sprintf(atr + ptr,"%s;",running_modules[number_of_module].module_ifces[x].ifc_params);
-            ptr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1;
          }
       }
    }
 
    for (x=0; x<running_modules[number_of_module].module_ifces_cnt; x++) {
-      if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type,"SERVICE", 7)) {
-         if ((strlen(atr) + strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1) >= (3*size_of_atr)/5) {
-            size_of_atr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + (size_of_atr/2);
-            atr = (char *) realloc (atr, size_of_atr*sizeof(char));
-            memset(atr + ptr, 0, size_of_atr - ptr);
+      if (running_modules[number_of_module].module_ifces[x].ifc_type != NULL) {
+         if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type,"SERVICE", 7)) {
+            if (running_modules[number_of_module].module_ifces[x].ifc_params != NULL) {
+               if ((strlen(atr) + strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1) >= (3*size_of_atr)/5) {
+                  size_of_atr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + (size_of_atr/2);
+                  atr = (char *) realloc (atr, size_of_atr*sizeof(char));
+                  memset(atr + ptr, 0, size_of_atr - ptr);
+               }
+               sprintf(atr + ptr,"%s;",running_modules[number_of_module].module_ifces[x].ifc_params);
+               ptr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1;
+            }
          }
-         sprintf(atr + ptr,"%s;",running_modules[number_of_module].module_ifces[x].ifc_params);
-         ptr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1;
       }
    }
    memset(atr + ptr-1,0,1);
@@ -697,10 +764,15 @@ void re_start_module(const int module_number)
       close(fd_stderr);
       fprintf(stdout,"---> %s", asctime (timeinfo));
       fprintf(stderr,"---> %s", asctime (timeinfo));
-      char **params = make_module_arguments(running_modules[module_number].module_number);
-      fflush(stdout);
-      fflush(stderr);
-      execvp(running_modules[module_number].module_path, params);
+      if (running_modules[module_number].module_path == NULL) {
+         VERBOSE(N_STDOUT,"Module path == NULL.\n");
+         running_modules[module_number].module_enabled = FALSE;
+      } else {
+         char **params = make_module_arguments(running_modules[module_number].module_number);
+         fflush(stdout);
+         fflush(stderr);
+         execvp(running_modules[module_number].module_path, params);
+      }
       VERBOSE(N_STDOUT,"Error while executing module binary.\n");
       running_modules[module_number].module_enabled = FALSE;
       exit(1);
@@ -913,18 +985,25 @@ void interactive_stop_configuration()
       if (running_modules[x].module_status) {
          kill(running_modules[x].module_pid,9);
          for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
-            if (strcmp(running_modules[x].module_ifces[y].ifc_type, "SERVICE") == 0 || ((strcmp(running_modules[x].module_ifces[y].ifc_type, "UNIXSOCKET") == 0)
-                                                                                       && (strcmp(running_modules[x].module_ifces[y].ifc_direction, "OUT") == 0))) {
-               get_param_by_delimiter(running_modules[x].module_ifces[y].ifc_params, &dest_port, ',');
-               sprintf(buffer,UNIX_PATH_FILENAME_FORMAT,dest_port);
-               unlink(buffer);
+            if (running_modules[x].module_ifces[y].ifc_type != NULL) {
+               if (strcmp(running_modules[x].module_ifces[y].ifc_type, "SERVICE") == 0 || ((strcmp(running_modules[x].module_ifces[y].ifc_type, "UNIXSOCKET") == 0)
+                                                                                          && (running_modules[x].module_ifces[y].ifc_direction != NULL)
+                                                                                          && (strcmp(running_modules[x].module_ifces[y].ifc_direction, "OUT") == 0))) {
+                  if (running_modules[x].module_ifces[y].ifc_params == NULL) {
+                     continue;
+                  }
+                  get_param_by_delimiter(running_modules[x].module_ifces[y].ifc_params, &dest_port, ',');
+                  sprintf(buffer,UNIX_PATH_FILENAME_FORMAT,dest_port);
+                  unlink(buffer);
+               }
             }
          }
       }
    }
    pthread_mutex_unlock(&running_modules_lock);
    if (dest_port != NULL) {
-      free(dest_port);      
+      free(dest_port);
+      dest_port = NULL;      
    }
 }
 
@@ -988,17 +1067,24 @@ void interactive_stop_module()
    if (running_modules[x].module_status) {
       kill(running_modules[x].module_pid,9);
       for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
-         if (strcmp(running_modules[x].module_ifces[y].ifc_type, "SERVICE") == 0 || ((strcmp(running_modules[x].module_ifces[y].ifc_type, "UNIXSOCKET") == 0)
+         if (running_modules[x].module_ifces[y].ifc_type != NULL) {
+            if (strcmp(running_modules[x].module_ifces[y].ifc_type, "SERVICE") == 0 || ((strcmp(running_modules[x].module_ifces[y].ifc_type, "UNIXSOCKET") == 0)
+                                                                                       && (running_modules[x].module_ifces[y].ifc_direction != NULL)
                                                                                        && (strcmp(running_modules[x].module_ifces[y].ifc_direction, "OUT") == 0))) {
-            get_param_by_delimiter(running_modules[x].module_ifces[y].ifc_params, &dest_port, ',');
-            sprintf(buffer,UNIX_PATH_FILENAME_FORMAT,dest_port);
-            unlink(buffer);
+               if (running_modules[x].module_ifces[y].ifc_params == NULL) {
+                  continue;
+               }
+               get_param_by_delimiter(running_modules[x].module_ifces[y].ifc_params, &dest_port, ',');
+               sprintf(buffer,UNIX_PATH_FILENAME_FORMAT,dest_port);
+               unlink(buffer);
+            }
          }
       }
    }   
    pthread_mutex_unlock(&running_modules_lock);
    if (dest_port != NULL) {
-      free(dest_port);      
+      free(dest_port);
+      dest_port = NULL;     
    }
 }
 
@@ -1236,6 +1322,10 @@ void connect_to_module_service_ifc(int module, int num_ifc)
    int sockfd;
    union tcpip_socket_addr addr;
 
+   if (running_modules[module].module_ifces[num_ifc].ifc_params == NULL) {
+      running_modules[module].module_service_ifc_isconnected = FALSE;
+      return;
+   }
    get_param_by_delimiter(running_modules[module].module_ifces[num_ifc].ifc_params, &dest_port, ',');
    VERBOSE(MODULE_EVENT,"-- Connecting to module %d_%s on port %s\n",module,running_modules[module].module_name, dest_port);
 
@@ -1247,19 +1337,28 @@ void connect_to_module_service_ifc(int module, int num_ifc)
    if (sockfd == -1) {
       VERBOSE(MODULE_EVENT,"Error while opening socket.\n");
       running_modules[module].module_service_ifc_isconnected = FALSE;
-      free(dest_port);
+      if (dest_port != NULL) {
+         free(dest_port);
+         dest_port = NULL;
+      }
       return;
    }
    if (connect(sockfd, (struct sockaddr *) &addr.unix_addr, sizeof(addr.unix_addr)) == -1) {
       VERBOSE(MODULE_EVENT,"Error while connecting to module %d_%s on port %s\n",module,running_modules[module].module_name, dest_port);
       running_modules[module].module_service_ifc_isconnected = FALSE;
-      free(dest_port);
+      if (dest_port != NULL) {
+         free(dest_port);
+         dest_port = NULL;
+      }
       close(sockfd);
       return;
    }
    running_modules[module].module_service_sd = sockfd;
    running_modules[module].module_service_ifc_isconnected = TRUE;
-   free(dest_port);
+   if (dest_port != NULL) {
+      free(dest_port);
+      dest_port = NULL;
+   }
 }
 
 void print_statistics_and_cpu_usage(struct tm * timeinfo)
@@ -1339,8 +1438,11 @@ void *service_thread_routine(void* arg)
          if (running_modules[y].module_served_by_service_thread == FALSE) {
             running_modules[y].module_number = y;
             for (x=0; x<running_modules[y].module_ifces_cnt; x++) {
-               if ((strncmp(running_modules[y].module_ifces[x].ifc_type, "SERVICE", 7) == 0)) {
-                  running_modules[y].module_has_service_ifc = TRUE;
+               if (running_modules[y].module_ifces[x].ifc_type != NULL) {
+                  if ((strncmp(running_modules[y].module_ifces[x].ifc_type, "SERVICE", 7) == 0)) {
+                     running_modules[y].module_has_service_ifc = TRUE;
+                     break;
+                  }
                }
             }
             graph_node_t * new_node = add_graph_node (graph_first_node, graph_last_node, (void *) &running_modules[y]);
@@ -1370,11 +1472,12 @@ void *service_thread_routine(void* arg)
             if (running_modules[x].module_service_ifc_isconnected == FALSE) {
                y=0;
                while (1) {
-                  if ((strncmp(running_modules[x].module_ifces[y].ifc_type, "SERVICE", 7) == 0)) {
-                     break;
-                  } else {
-                     y++;
+                  if (running_modules[x].module_ifces[y].ifc_type != NULL) {
+                     if ((strncmp(running_modules[x].module_ifces[y].ifc_type, "SERVICE", 7) == 0)) {
+                        break;
+                     } 
                   }
+                  y++;
                }
                if (running_modules[x].module_service_sd != -1) {
                   close(running_modules[x].module_service_sd);
@@ -1542,8 +1645,10 @@ int parse_arguments(int *argc, char **argv)
       return FALSE;
    }
    if (strstr(config_file, ".xml") == NULL) {
-      free(config_file);
-      config_file = NULL;
+      if (config_file != NULL) {
+         free(config_file);
+         config_file = NULL;
+      }
       fprintf(stderr, "File does not have expected .xml extension.\n");
       return FALSE;
    }
@@ -1648,9 +1753,11 @@ int daemon_init(int * d_sd)
    } else if (process_id > 0) {
       if (config_file != NULL) {
          free(config_file);
+         config_file = NULL;
       }
       if (logs_path != NULL) {
          free(logs_path);
+         logs_path = NULL;
       }
       fclose(statistics_fd);
       fclose(module_event_fd);
@@ -1844,8 +1951,10 @@ void daemon_mode(int * arg)
                   memset(stats_buffer2,0,buffer_len+1);
                   strncpy(stats_buffer2, stats_buffer, buffer_len+1);
                   VERBOSE(N_STDOUT,"%s", stats_buffer2);
-                  free(stats_buffer);
-
+                  if (stats_buffer != NULL) {
+                     free(stats_buffer);
+                     stats_buffer = NULL;
+                  }
                   input_fd = stdin;
                   output_fd = stdout;
                   VERBOSE(N_STDOUT, "Client has disconnected.\n");
@@ -2128,7 +2237,10 @@ int reload_configuration()
          if (last_module) {
             break;
          }
-         xmlFree(key);
+         if (key != NULL) {
+            xmlFree(key);
+            key = NULL;
+         }
 
          module_atr = module_ptr->xmlChildrenNode;
          while (module_atr != NULL) {
@@ -2142,7 +2254,10 @@ int reload_configuration()
                   } else {
                      running_modules[module_index].module_enabled = FALSE;
                   }
-                  xmlFree(key);
+                  if (key != NULL) {
+                     xmlFree(key);
+                     key = NULL;
+                  }
                }
             } else if ((!xmlStrcmp(module_atr->name,BAD_CAST "params"))) {
                key = xmlNodeListGetString(xml_tree, module_atr->xmlChildrenNode, 1);
@@ -2152,12 +2267,16 @@ int reload_configuration()
                         running_modules[module_index].module_modified_by_reload = TRUE;
                         if (running_modules[module_index].module_params != NULL) {
                            free(running_modules[module_index].module_params);
+                           running_modules[module_index].module_params = NULL;
                         }
                         str_len = strlen((char *) key);
                         running_modules[module_index].module_params = (char *) calloc (str_len+1, sizeof(char));
                         strncpy(running_modules[module_index].module_params, (char *) key, str_len+1);
                      }
-                     xmlFree(key);
+                     if (key != NULL) {
+                        xmlFree(key);
+                        key = NULL;
+                     }
                   } else if (running_modules[module_index].module_params == NULL && key == NULL) {
                      // new one and old one NULL -> OK
                   } else if (running_modules[module_index].module_params == NULL) {
@@ -2165,7 +2284,10 @@ int reload_configuration()
                      str_len = strlen((char *) key);
                      running_modules[module_index].module_params = (char *) calloc (str_len+1, sizeof(char));
                      strncpy(running_modules[module_index].module_params, (char *) key, str_len+1);
-                     xmlFree(key);
+                     if (key != NULL) {
+                        xmlFree(key);
+                        key = NULL;
+                     }
                   } else if (key == NULL) {
                      running_modules[module_index].module_modified_by_reload = TRUE;
                      if (running_modules[module_index].module_params != NULL) {
@@ -2180,7 +2302,10 @@ int reload_configuration()
                      str_len = strlen((char *) key);
                      running_modules[module_index].module_params = (char *) calloc (str_len+1, sizeof(char));
                      strncpy(running_modules[module_index].module_params, (char *) key, str_len+1);
-                     xmlFree(key);
+                     if (key != NULL) {
+                        xmlFree(key);
+                        key = NULL;
+                     }
                   }
                }
             } else if ((!xmlStrcmp(module_atr->name,BAD_CAST "name"))) {
@@ -2191,12 +2316,16 @@ int reload_configuration()
                         running_modules[module_index].module_modified_by_reload = TRUE;
                         if (running_modules[module_index].module_name != NULL) {
                            free(running_modules[module_index].module_name);
+                           running_modules[module_index].module_name = NULL;
                         }
                         str_len = strlen((char *) key);
                         running_modules[module_index].module_name = (char *) calloc (str_len+1, sizeof(char));
                         strncpy(running_modules[module_index].module_name, (char *) key, str_len+1);
                      }
-                     xmlFree(key);
+                     if (key != NULL) {
+                        xmlFree(key);
+                        key = NULL;
+                     }
                   } else if (running_modules[module_index].module_name == NULL && key == NULL) {
                      // new one and old one NULL -> OK
                   } else if (running_modules[module_index].module_name == NULL) {
@@ -2204,7 +2333,10 @@ int reload_configuration()
                      str_len = strlen((char *) key);
                      running_modules[module_index].module_name = (char *) calloc (str_len+1, sizeof(char));
                      strncpy(running_modules[module_index].module_name, (char *) key, str_len+1);
-                     xmlFree(key);
+                     if (key != NULL) {
+                        xmlFree(key);
+                        key = NULL;
+                     }
                   } else if (key == NULL) {
                      running_modules[module_index].module_modified_by_reload = TRUE;
                      if (running_modules[module_index].module_name != NULL) {
@@ -2219,7 +2351,10 @@ int reload_configuration()
                      str_len = strlen((char *) key);
                      running_modules[module_index].module_name = (char *) calloc (str_len+1, sizeof(char));
                      strncpy(running_modules[module_index].module_name, (char *) key, str_len+1);
-                     xmlFree(key);
+                     if (key != NULL) {
+                        xmlFree(key);
+                        key = NULL;
+                     }
                   }
                }
             } else if ((!xmlStrcmp(module_atr->name,BAD_CAST "path"))) {
@@ -2230,12 +2365,16 @@ int reload_configuration()
                         running_modules[module_index].module_modified_by_reload = TRUE;
                         if (running_modules[module_index].module_path != NULL) {
                            free(running_modules[module_index].module_path);
+                           running_modules[module_index].module_path = NULL;
                         }
                         str_len = strlen((char *) key);
                         running_modules[module_index].module_path = (char *) calloc (str_len+1, sizeof(char));
                         strncpy(running_modules[module_index].module_path, (char *) key, str_len+1);
                      }
-                     xmlFree(key);
+                     if (key != NULL) {
+                        xmlFree(key);
+                        key = NULL;
+                     }
                   } else if (running_modules[module_index].module_path == NULL && key == NULL) {
                      // new one and old one NULL -> OK
                   } else if (running_modules[module_index].module_path == NULL) {
@@ -2243,7 +2382,10 @@ int reload_configuration()
                      str_len = strlen((char *) key);
                      running_modules[module_index].module_path = (char *) calloc (str_len+1, sizeof(char));
                      strncpy(running_modules[module_index].module_path, (char *) key, str_len+1);
-                     xmlFree(key);
+                     if (key != NULL) {
+                        xmlFree(key);
+                        key = NULL;
+                     }
                   } else if (key == NULL) {
                      running_modules[module_index].module_modified_by_reload = TRUE;
                      if (running_modules[module_index].module_path != NULL) {
@@ -2258,7 +2400,10 @@ int reload_configuration()
                      str_len = strlen((char *) key);
                      running_modules[module_index].module_path = (char *) calloc (str_len+1, sizeof(char));
                      strncpy(running_modules[module_index].module_path, (char *) key, str_len+1);
-                     xmlFree(key);
+                     if (key != NULL) {
+                        xmlFree(key);
+                        key = NULL;
+                     }
                   }
                }
             } else if ((!xmlStrcmp(module_atr->name,BAD_CAST "trapinterfaces"))) {
@@ -2316,10 +2461,16 @@ int reload_configuration()
                                     running_modules[module_index].module_num_out_ifc = 0;
                                     running_modules[module_index].module_num_in_ifc = 0;
                                     modifying = FALSE;
-                                    xmlFree(key);
+                                    if (key != NULL) {
+                                       xmlFree(key);
+                                       key = NULL;
+                                    }
                                     break;
                                  }
-                                 xmlFree(key);
+                                 if (key != NULL) {
+                                    xmlFree(key);
+                                    key = NULL;
+                                 }
                               } else if (running_modules[module_index].module_ifces[ifc_cnt].ifc_note == NULL && key == NULL) {
                                  // new one and old one NULL -> OK
                               } else {
@@ -2331,7 +2482,10 @@ int reload_configuration()
                                  running_modules[module_index].module_num_out_ifc = 0;
                                  running_modules[module_index].module_num_in_ifc = 0;
                                  modifying = FALSE;
-                                 xmlFree(key);
+                                 if (key != NULL) {
+                                    xmlFree(key);
+                                    key = NULL;
+                                 }
                                  break;
                               }
                            } else {
@@ -2341,7 +2495,10 @@ int reload_configuration()
                                  str_len = strlen((char *) key);
                                  running_modules[module_index].module_ifces[ifc_cnt].ifc_note = (char *) calloc (str_len+1, sizeof(char));
                                  strncpy(running_modules[module_index].module_ifces[ifc_cnt].ifc_note , (char *) key, str_len+1);
-                                 xmlFree(key);
+                                 if (key != NULL) {
+                                    xmlFree(key);
+                                    key = NULL;
+                                 }
                               }
                            }
                         } else if ((!xmlStrcmp(ifc_atr->name,BAD_CAST "type"))) {
@@ -2357,10 +2514,16 @@ int reload_configuration()
                                     running_modules[module_index].module_num_out_ifc = 0;
                                     running_modules[module_index].module_num_in_ifc = 0;
                                     modifying = FALSE;
-                                    xmlFree(key);
+                                    if (key != NULL) {
+                                       xmlFree(key);
+                                       key = NULL;
+                                    }
                                     break;
                                  }
-                                 xmlFree(key);
+                                 if (key != NULL) {
+                                    xmlFree(key);
+                                    key = NULL;
+                                 }
                               } else if (running_modules[module_index].module_ifces[ifc_cnt].ifc_type == NULL && key == NULL) {
                                  // new one and old one NULL -> OK
                               } else {
@@ -2372,7 +2535,10 @@ int reload_configuration()
                                  running_modules[module_index].module_num_out_ifc = 0;
                                  running_modules[module_index].module_num_in_ifc = 0;
                                  modifying = FALSE;
-                                 xmlFree(key);
+                                 if (key != NULL) {
+                                    xmlFree(key);
+                                    key = NULL;
+                                 }
                                  break;
                               }
                            } else {
@@ -2382,7 +2548,10 @@ int reload_configuration()
                                  str_len = strlen((char *) key);
                                  running_modules[module_index].module_ifces[ifc_cnt].ifc_type = (char *) calloc (str_len+1, sizeof(char));
                                  strncpy(running_modules[module_index].module_ifces[ifc_cnt].ifc_type, (char *) key, str_len+1);
-                                 xmlFree(key);
+                                 if (key != NULL) {
+                                    xmlFree(key);
+                                    key = NULL;
+                                 }
                               }
                            }
                         } else if ((!xmlStrcmp(ifc_atr->name,BAD_CAST "direction"))) {
@@ -2398,10 +2567,16 @@ int reload_configuration()
                                     running_modules[module_index].module_num_out_ifc = 0;
                                     running_modules[module_index].module_num_in_ifc = 0;
                                     modifying = FALSE;
-                                    xmlFree(key);
+                                    if (key != NULL) {
+                                       xmlFree(key);
+                                       key = NULL;
+                                    }
                                     break;
                                  }
-                                 xmlFree(key);
+                                 if (key != NULL) {
+                                    xmlFree(key);
+                                    key = NULL;
+                                 }
                               } else if (running_modules[module_index].module_ifces[ifc_cnt].ifc_direction == NULL && key == NULL) {
                                  // new one and old one NULL -> OK
                               } else {
@@ -2413,7 +2588,10 @@ int reload_configuration()
                                  running_modules[module_index].module_num_out_ifc = 0;
                                  running_modules[module_index].module_num_in_ifc = 0;
                                  modifying = FALSE;
-                                 xmlFree(key);
+                                 if (key != NULL) {
+                                    xmlFree(key);
+                                    key = NULL;
+                                 }
                                  break;
                               }
                            } else {
@@ -2423,7 +2601,10 @@ int reload_configuration()
                                  str_len = strlen((char *) key);
                                  running_modules[module_index].module_ifces[ifc_cnt].ifc_direction = (char *) calloc (str_len+1, sizeof(char));
                                  strncpy(running_modules[module_index].module_ifces[ifc_cnt].ifc_direction, (char *) key, str_len+1);
-                                 xmlFree(key);
+                                 if (key != NULL) {
+                                    xmlFree(key);
+                                    key = NULL;
+                                 }
                               }
                            }
                         } else if ((!xmlStrcmp(ifc_atr->name,BAD_CAST "params"))) {
@@ -2439,10 +2620,16 @@ int reload_configuration()
                                     running_modules[module_index].module_num_out_ifc = 0;
                                     running_modules[module_index].module_num_in_ifc = 0;
                                     modifying = FALSE;
-                                    xmlFree(key);
+                                    if (key != NULL) {
+                                       xmlFree(key);
+                                       key = NULL;
+                                    }
                                     break;
                                  }
-                                 xmlFree(key);
+                                 if (key != NULL) {
+                                    xmlFree(key);
+                                    key = NULL;
+                                 }
                               } else if (running_modules[module_index].module_ifces[ifc_cnt].ifc_params == NULL && key == NULL) {
                                  // new one and old one NULL -> OK
                               } else {
@@ -2454,7 +2641,10 @@ int reload_configuration()
                                  running_modules[module_index].module_num_out_ifc = 0;
                                  running_modules[module_index].module_num_in_ifc = 0;
                                  modifying = FALSE;
-                                 xmlFree(key);
+                                 if (key != NULL) {
+                                    xmlFree(key);
+                                    key = NULL;
+                                 }
                                  break;
                               }
                            } else {
@@ -2464,7 +2654,10 @@ int reload_configuration()
                                  str_len = strlen((char *) key);
                                  running_modules[module_index].module_ifces[ifc_cnt].ifc_params = (char *) calloc (str_len+1+10, sizeof(char));
                                  strncpy(running_modules[module_index].module_ifces[ifc_cnt].ifc_params, (char *) key, str_len+1);
-                                 xmlFree(key);
+                                 if (key != NULL) {
+                                    xmlFree(key);
+                                    key = NULL;
+                                 }
                               }
                            }
                         }
@@ -2538,6 +2731,7 @@ int reload_configuration()
       if (running_modules[x].module_running && running_modules[x].module_modified_by_reload) {   
          if (running_modules[x].module_counters_array != NULL) {
             free(running_modules[x].module_counters_array);
+            running_modules[x].module_counters_array = NULL;
          }
          running_modules[x].module_running = FALSE;
          if (running_modules[x].module_status) {

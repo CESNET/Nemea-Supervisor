@@ -66,7 +66,7 @@ graph_node_t * add_graph_node (graph_node_t * first, graph_node_t * last, void *
 
    y=0;
    for (x=0; x<running_module->module_ifces_cnt; x++) {
-      if (running_module->module_ifces[x].ifc_direction != NULL) {
+      if (running_module->module_ifces[x].ifc_direction != NULL && running_module->module_ifces[x].ifc_params != NULL) {
          if (!strcmp(running_module->module_ifces[x].ifc_direction, "IN")) {
             sscanf(running_module->module_ifces[x].ifc_params,"%*[^','],%d", &new_node->node_input_interfaces[y].node_interface_port);
             new_node->node_input_interfaces[y].parent_node = new_node;
@@ -78,7 +78,7 @@ graph_node_t * add_graph_node (graph_node_t * first, graph_node_t * last, void *
 
    y=0;
    for (x=0; x<running_module->module_ifces_cnt; x++) {
-      if (running_module->module_ifces[x].ifc_direction != NULL) {
+      if (running_module->module_ifces[x].ifc_direction != NULL && running_module->module_ifces[x].ifc_params != NULL) {
          if (!strcmp(running_module->module_ifces[x].ifc_direction, "OUT")) {
             if (sscanf(running_module->module_ifces[x].ifc_params,"%[^','],%d", port, &num_clients) != 2) {
                num_clients = DEFAULT_NUM_CLIENTS_OUTPUT_IFC;
@@ -279,10 +279,12 @@ void free_graph_node(graph_node_t * node)
       free_graph_node(node->next_node);
       if (node != NULL) {
          free(node);
+         node = NULL;
       }
    } else {
       if (node != NULL) {
          free(node);
+         node = NULL;
       }
    }
 }
@@ -299,14 +301,17 @@ void destroy_graph(graph_node_t * first)
    while (node_ptr != NULL) {
       if (node_ptr->node_input_interfaces != NULL) {
          free(node_ptr->node_input_interfaces);
+         node_ptr->node_input_interfaces = NULL;
       }
       for (x=0; x<node_ptr->num_node_output_interfaces; x++) {
          if (node_ptr->node_output_interfaces[x].node_children != NULL) {
             free(node_ptr->node_output_interfaces[x].node_children);
+            node_ptr->node_output_interfaces[x].node_children = NULL;
          }
       }
       if (node_ptr->node_output_interfaces != NULL) {
          free(node_ptr->node_output_interfaces);
+         node_ptr->node_output_interfaces = NULL;
       }
       node_ptr = node_ptr->next_node;
    }
@@ -328,20 +333,22 @@ void check_port_duplicates(graph_node_t * first)
             while (y<iter_node_ptr->num_node_output_interfaces) {
                graph_node_output_interface_t *node_x = &node_ptr->node_output_interfaces[x];
                graph_node_output_interface_t *node_y = &iter_node_ptr->node_output_interfaces[y];
-               if ((strcmp(node_x->ifc_struct->ifc_type, node_y->ifc_struct->ifc_type) == 0)) {
-                  /* types of IFCs are the same */
-                  if (((strcmp(node_x->ifc_struct->ifc_type, "TCP") == 0) &&
-                        /* compare int ports if TCP else compare ifc_params strings */
-                        (node_x->node_interface_port == node_y->node_interface_port)) ||
-                        (strcmp(node_x->ifc_struct->ifc_params, node_y->ifc_struct->ifc_params) == 0)) {
-                     VERBOSE(N_STDOUT,"Modules %d%s and %d%s have output interface with same port %d of type %s with params %s.\n",
-                           node_ptr->module_number,
-                           ((running_module_t *) node_ptr->module_data)->module_name,
-                           iter_node_ptr->module_number,
-                           ((running_module_t *) iter_node_ptr->module_data)->module_name,
-                           node_x->node_interface_port,
-                           node_x->ifc_struct->ifc_type,
-                           node_x->ifc_struct->ifc_params)
+               if (node_x->ifc_struct->ifc_type != NULL && node_y->ifc_struct->ifc_type != NULL) {
+                  if ((strcmp(node_x->ifc_struct->ifc_type, node_y->ifc_struct->ifc_type) == 0)) {
+                     /* types of IFCs are the same */
+                     if (((strcmp(node_x->ifc_struct->ifc_type, "TCP") == 0) &&
+                           /* compare int ports if TCP else compare ifc_params strings */
+                           (node_x->node_interface_port == node_y->node_interface_port)) ||
+                           (strcmp(node_x->ifc_struct->ifc_params, node_y->ifc_struct->ifc_params) == 0)) {
+                        VERBOSE(N_STDOUT,"Modules %d%s and %d%s have output interface with same port %d of type %s with params %s.\n",
+                              node_ptr->module_number,
+                              ((running_module_t *) node_ptr->module_data)->module_name,
+                              iter_node_ptr->module_number,
+                              ((running_module_t *) iter_node_ptr->module_data)->module_name,
+                              node_x->node_interface_port,
+                              node_x->ifc_struct->ifc_type,
+                              node_x->ifc_struct->ifc_params)
+                     }
                   }
                }
                y++;
