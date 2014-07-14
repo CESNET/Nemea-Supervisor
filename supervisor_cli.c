@@ -69,14 +69,13 @@ union tcpip_socket_addr {
 
 int connect_to_supervisor(char *socket_path)
 {
-   // printf("Connecting to Supervisor-daemon...\n");
    int sockfd;
    union tcpip_socket_addr addr;
 
    memset(&addr, 0, sizeof(addr));
 
    addr.unix_addr.sun_family = AF_UNIX;
-   snprintf(addr.unix_addr.sun_path, sizeof(addr.unix_addr.sun_path) - 1, socket_path);
+   snprintf(addr.unix_addr.sun_path, sizeof(addr.unix_addr.sun_path) - 1, "%s", socket_path);
    sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
    if (connect(sockfd, (struct sockaddr *) &addr.unix_addr, sizeof(addr.unix_addr)) == -1) {
       return -1;
@@ -132,7 +131,6 @@ int main(int argc, char **argv)
       printf("Could not connect to supervisor.\n");
       return 0;
    } else {
-      // printf("Connected !\n");
       connected = TRUE;
    }
 
@@ -188,8 +186,7 @@ int main(int argc, char **argv)
          break;
       } else if (ret_val) {
          if (FD_ISSET(0, &read_fds)) {
-            scanf("%s", buffer);
-            if (strcmp(buffer,"Cquit") == 0) {
+            if ((scanf("%s", buffer) == 0) || (strcmp(buffer,"Cquit") == 0)) {
                close(supervisor_stream_input_fd);
                fclose(supervisor_stream_input);
                fclose(supervisor_stream_output);

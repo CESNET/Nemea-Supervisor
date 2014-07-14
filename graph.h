@@ -53,7 +53,7 @@
 
 /***********STRUCTURES***********/
 
-typedef struct edge_statistics_s edge_statistics_t;
+// typedef struct edge_statistics_s edge_statistics_t;
 typedef struct graph_node_s graph_node_t;
 typedef struct graph_node_input_interface_s graph_node_input_interface_t;
 typedef struct graph_node_output_interface_s graph_node_output_interface_t;
@@ -75,7 +75,7 @@ struct graph_node_output_interface_s {
    int                     node_children_counter; ///< Node children counter.
    graph_node_input_interface_t **node_children; ///< Array of connected node input interfaces of another nodes (node children).
    int                     node_interface_port; ///< Port of this node interface.
-   edge_statistics_t      *statistics; ///< Pointer to array of edge_statistics_t structures.
+   // edge_statistics_t      *statistics; ///< Pointer to array of edge_statistics_t structures.
 };
 
 /** Structure representing one module in graph structure. */
@@ -88,16 +88,6 @@ struct graph_node_s {
    int                     num_node_input_interfaces; ///< Number of node input interfaces structures.
    int                     num_node_output_interfaces; ///< Number of node output interface structures.
 };
-
-/** Structure used for message calculations of every output interface. */
-struct edge_statistics_s {
-   int                     last_period_counters_difference; ///< Difference between sent and received messages of node output interface connected with another node input interface.
-   int                     num_periods; ///< Number of checked periods.
-   int                     expected_value; ///< Expected value of messages loss rate of node output interface connected with another node input interface.
-   int                     period_differences_suma; ///< Suma of all period differences between sent and received messages of node output interface connected with another node input interface.
-};
-
-
 
 /***********FUNCTIONS***********/
 
@@ -119,10 +109,12 @@ void update_graph_values (graph_node_t * first);
  */
 void generate_graph_code(graph_node_t * first);
 
+void generate_picture();
+
 /** Function executes dot and display program and connects them with pipe.
  * @param[in]
  */
-void show_graph();
+void show_picture();
 
 /** Graph node memory free.
  * @param[in] first Pointer to first node in the list of nodes.
@@ -133,36 +125,6 @@ void free_graph_node(graph_node_t * node);
  * @param[in] first Pointer to first node in the list of nodes.
  */
 void destroy_graph(graph_node_t * first);
-
-/** Function changes IP addresses of connected intput interfaces to selected module and input interfaces of selected module.
- * @param[in] first Pointer to first node in the list of nodes.
- * @param[in] module_num Module nuber.
- * @param[in] local_addr String with local IP address.
- * @param[in] remote_addr String with remote_supervisor IP address.
- */
-void graph_node_addresses_change (graph_node_t * first, int module_num, const char * local_addr, const char * remote_addr);
-
-/** Function updates selected module input interfaces in graph structure.
- * @param[in] first Pointer to first node in the list of nodes.
-* @param[in] selected_mod Selected module.
- */
-void update_module_input_ifces (graph_node_t * first, int selected_mod);
-
-/** Function updates selected module output interfaces in graph structure.
- * @param[in] first Pointer to first node in the list of nodes.
-* @param[in] selected_mod Selected module.
- */
-void update_module_output_ifces (graph_node_t * first, int selected_mod);
-
-/** Function computes new message loss rate statistics for each output interface of every module.
- * @param[in] first Pointer to first node in the list of nodes.
- */
-void compute_differences(graph_node_t * first);
-
-/** Function prints to stdout node output interfaces message loss rate statistics.
- * @param[in] first Pointer to first node in the list of nodes.
- */
-void print_statistics(graph_node_t * first);
 
 /** Function checks in graph structure if loaded modules dont have same output interface port.
  * @param[in] first Pointer to first node in the list of nodes.

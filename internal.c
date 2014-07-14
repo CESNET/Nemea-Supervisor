@@ -54,7 +54,7 @@ char verbose_msg[4096];
 
 void print_msg(int level, char *string)
 {
-   switch(level){
+   switch (level) {
    case STATISTICS:
       fprintf(statistics_fd, "%s", string);
       fflush(statistics_fd);

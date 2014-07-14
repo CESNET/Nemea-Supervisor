@@ -63,7 +63,6 @@
 #include <errno.h>
 #include <semaphore.h>
 #include <signal.h>
-#include <time.h>
 #include <sys/ioctl.h>
 #include <net/if.h>
 #include <ifaddrs.h>
@@ -93,7 +92,6 @@ graph_node_t *    graph_first_node; ///< First node of graph nodes list.
 graph_node_t *    graph_last_node; ///< Last node of graph nodes list.
 
 pthread_t   service_thread_id; ///< Service thread identificator.
-pthread_t   acceptor_thread_id; ///< Acceptor thread identificator.
 
 // supervisor flags
 int      help_flag;        // -h 
@@ -104,15 +102,6 @@ char *   config_file = NULL;
 char *   socket_path = NULL;
 char *   logs_path = NULL;
 
-
-int         remote_supervisor_socketd; ///< Socket descriptor of remote_supervisor.
-int         remote_supervisor_connected; ///< TRUE if remote_supervisor is connected.
-char        remote_supervisor_address[50]; ///< Remote_supervisor IP address (if connected).
-char        supervisor_address[50]; ///< Local IP address.
-
-int         start_range_reserved_ports; ///< Initial reserved port by supervisor.
-int         next_reserved_port; ///< Next reserved port by supervisor.
-
 /**************************************/
 
 union tcpip_socket_addr {
@@ -121,63 +110,12 @@ union tcpip_socket_addr {
 };
 
 long int get_total_cpu_usage();
-void * remote_supervisor_accept_routine();
 void start_service_thread();
-// void stop_threads();
 int parse_arguments(int *argc, char **argv);
 void print_help();
 void daemon_mode();
 char *get_param_by_delimiter(const char *source, char **dest, const char delimiter);
 
-
-void get_local_IP ()
-{
-   struct ifaddrs *myaddrs, *ifa;
-   void *in_addr;
-
-   if (getifaddrs(&myaddrs) != 0) {
-      perror("getifaddrs");
-      /* TODO Do we really want to exit the whole program? */
-      exit(1);
-   }
-
-   for (ifa = myaddrs; ifa != NULL; ifa = ifa->ifa_next) {
-      if (ifa->ifa_addr == NULL) {
-         continue;
-      }
-      if (!(ifa->ifa_flags & IFF_UP)) {
-         continue;
-      }
-
-      switch (ifa->ifa_addr->sa_family) {
-      case AF_INET: {
-            struct sockaddr_in *s4 = (struct sockaddr_in *)ifa->ifa_addr;
-            in_addr = &s4->sin_addr;
-            if (strcmp(ifa->ifa_name,"eth0") == 0) {
-               if (!inet_ntop(ifa->ifa_addr->sa_family, in_addr, supervisor_address, 50)) {
-                  // printf("%s: inet_ntop failed!\n", ifa->ifa_name);
-               } else {
-                  // printf("%s: %s\n", ifa->ifa_name, supervisor_address);
-               }
-               freeifaddrs(myaddrs);
-               return;
-            }
-            break;
-         }
-
-      case AF_INET6: {
-            struct sockaddr_in6 *s6 = (struct sockaddr_in6 *)ifa->ifa_addr;
-            in_addr = &s6->sin6_addr;
-            break;
-         }
-
-      default:
-         continue;
-      }
-   }
-
-   freeifaddrs(myaddrs);
-}
 
 /**if choice TRUE -> parse file, else parse buffer*/
 int load_configuration(const int choice, const char * buffer)
@@ -487,11 +425,8 @@ char **make_module_arguments(const int number_of_module)
 
       fprintf(stdout,"\n");
       fprintf(stderr,"\n");
-
       return params;
    }
-
-
 
    for (x=0; x<running_modules[number_of_module].module_ifces_cnt; x++) {
       if (running_modules[number_of_module].module_ifces[x].ifc_direction != NULL) {
@@ -663,7 +598,6 @@ char **make_module_arguments(const int number_of_module)
 
    fprintf(stdout,"\n");
    fprintf(stderr,"\n");
-
    return params;
 }
 
@@ -712,7 +646,6 @@ void re_start_module(const int module_number)
    if (running_modules[module_number].module_running == FALSE) {
       VERBOSE(MODULE_EVENT,"Starting module %d_%s.\n", module_number, running_modules[module_number].module_name);
       running_modules[module_number].module_counters_array = (int *) calloc (3*running_modules[module_number].module_num_out_ifc + running_modules[module_number].module_num_in_ifc,sizeof(int));
-      running_modules[module_number].remote_module = FALSE;
       running_modules[module_number].module_running = TRUE;
    } else {
       VERBOSE(MODULE_EVENT,"Restarting module %d_%s\n", module_number, running_modules[module_number].module_name);
@@ -834,9 +767,6 @@ void sigpipe_handler(int sig)
 
 int supervisor_initialization(int *argc, char **argv)
 {
-   start_range_reserved_ports = 12000;
-   next_reserved_port = start_range_reserved_ports;
-   get_local_IP();
    input_fd = stdin;
    output_fd = stdout;
    char file_path[200];
@@ -903,7 +833,6 @@ int supervisor_initialization(int *argc, char **argv)
 
    VERBOSE(N_STDOUT,"--- LOADING CONFIGURATION ---\n");
    loaded_modules_cnt = 0;
-   //init running_modules structures alloc size RUNNING_MODULES_ARRAY_START_SIZE
    running_modules_array_size = RUNNING_MODULES_ARRAY_START_SIZE;
    running_modules = (running_module_t *) calloc (running_modules_array_size,sizeof(running_module_t));
    for (y=0;y<running_modules_array_size;y++) {
@@ -916,7 +845,6 @@ int supervisor_initialization(int *argc, char **argv)
    //load configuration
    load_configuration(TRUE,config_file);
 
-   // verbose_level = 0;
    pthread_mutex_init(&running_modules_lock,NULL);
    service_thread_continue = TRUE;
 
@@ -1086,7 +1014,7 @@ void restart_modules()
       if (running_modules[x].module_enabled == TRUE && running_modules[x].module_status == FALSE && (running_modules[x].module_restart_cnt == MAX_RESTARTS_PER_MINUTE)) {
          VERBOSE(N_STDOUT,"Module: %d_%s was restarted %d times per minute and it is down again. I set it disabled.\n",x, running_modules[x].module_name, MAX_RESTARTS_PER_MINUTE);
          running_modules[x].module_enabled = FALSE;
-      } else if (running_modules[x].module_status == FALSE && running_modules[x].module_enabled == TRUE && running_modules[x].remote_module == FALSE) {
+      } else if (running_modules[x].module_status == FALSE && running_modules[x].module_enabled == TRUE) {
          re_start_module(x);
       }
    }
@@ -1102,8 +1030,6 @@ void interactive_show_running_modules_status()
    for (x=0; x<loaded_modules_cnt; x++) {
       if (running_modules[x].module_status == TRUE) {
          VERBOSE(N_STDOUT,"%d_%s running (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
-      } else if (running_modules[x].remote_module == TRUE) {
-         VERBOSE(N_STDOUT,"%d_%s remote_module (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
       } else {
          VERBOSE(N_STDOUT,"%d_%s stopped (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
       }
@@ -1113,7 +1039,6 @@ void interactive_show_running_modules_status()
 void supervisor_termination()
 {
    int x, y;
-   // stop_threads();
    VERBOSE(N_STDOUT,"-- Stopping modules --\n");
    interactive_stop_configuration();
    VERBOSE(N_STDOUT,"-- Aborting service thread --\n");
@@ -1179,7 +1104,6 @@ void supervisor_termination()
       logs_path = NULL;
    }
 
-   // close(remote_supervisor_socketd);
    fclose(statistics_fd);
    fclose(module_event_fd);
 }
@@ -1264,424 +1188,6 @@ void update_module_cpu_usage(long int * last_total_cpu_usage)
          running_modules[x].last_period_cpu_usage_user_mode = utime;
          fclose(proc_stat_fd);
       }
-   }
-}
-
-int count_struct_size(int module_num)
-{
-   int size = 0;
-   int x;
-
-   if (running_modules[module_num].module_path != NULL) {
-      size += strlen(running_modules[module_num].module_path) + 1;
-   }
-   if (running_modules[module_num].module_name != NULL) {
-      size += strlen(running_modules[module_num].module_name) + 1;
-   }
-   if (running_modules[module_num].module_params != NULL) {
-      size += strlen(running_modules[module_num].module_params) + 1;
-   }
-
-   for (x=0; x<running_modules[module_num].module_ifces_cnt; x++) {
-      // if (running_modules[module_num].module_ifces[x].ifc_note != NULL) {
-      //    size += strlen(running_modules[module_num].module_ifces[x].ifc_note) + 1;
-      // }
-      if (running_modules[module_num].module_ifces[x].ifc_type != NULL) {
-         size += strlen(running_modules[module_num].module_ifces[x].ifc_type) + 1;
-      }
-      if (running_modules[module_num].module_ifces[x].ifc_params != NULL) {
-         size += strlen(running_modules[module_num].module_ifces[x].ifc_params) + 1;
-      }
-      if (running_modules[module_num].module_ifces[x].ifc_direction != NULL) {
-         size += strlen(running_modules[module_num].module_ifces[x].ifc_direction) + 1;
-      }
-   }
-
-   return size;
-}
-
-void send_to_remote_running_module_struct(int num_module)
-{
-   int ret_val = 0;
-   int x;
-
-   ret_val = send(remote_supervisor_socketd, &running_modules[num_module], sizeof(running_module_t), 0);
-   if (ret_val == -1) {
-      printf("Error while sending request to remote Supervisor\n");
-   }
-
-   if (running_modules[num_module].module_params != NULL) {
-      ret_val = send(remote_supervisor_socketd, running_modules[num_module].module_params, strlen(running_modules[num_module].module_params)+1, 0);
-      if (ret_val == -1) {
-         printf("Error while sending request to remote Supervisor\n");
-      }
-   }
-   ret_val = send(remote_supervisor_socketd, running_modules[num_module].module_name, strlen(running_modules[num_module].module_name)+1, 0);
-   if (ret_val == -1) {
-      printf("Error while sending request to remote Supervisor\n");
-   }
-   ret_val = send(remote_supervisor_socketd, running_modules[num_module].module_path, strlen(running_modules[num_module].module_path)+1, 0);
-   if (ret_val == -1) {
-      printf("Error while sending request to remote Supervisor\n");
-   }
-
-   for (x=0; x<running_modules[num_module].module_ifces_cnt; x++) {
-      ret_val = send(remote_supervisor_socketd, running_modules[num_module].module_ifces[x].ifc_type, strlen(running_modules[num_module].module_ifces[x].ifc_type)+1, 0);
-      if (ret_val == -1) {
-         printf("Error while sending request to remote Supervisor\n");
-      }
-      ret_val = send(remote_supervisor_socketd, running_modules[num_module].module_ifces[x].ifc_params, strlen(running_modules[num_module].module_ifces[x].ifc_params)+1, 0);
-      if (ret_val == -1) {
-         printf("Error while sending request to remote Supervisor\n");
-      }
-      if (running_modules[num_module].module_ifces[x].ifc_direction != NULL) {
-         ret_val = send(remote_supervisor_socketd, running_modules[num_module].module_ifces[x].ifc_direction, strlen(running_modules[num_module].module_ifces[x].ifc_direction)+1, 0);
-         if (ret_val == -1) {
-            printf("Error while sending request to remote Supervisor\n");
-         }
-      }
-   }
-}
-
-void send_command_to_remote(int num_command, int num_module)
-{
-   remote_info_t command;
-   int ret_val = 0;
-
-   switch (num_command) {
-   case 1:
-      command.command_num = 1;
-      command.size_of_recv = count_struct_size(num_module);
-      ret_val = send(remote_supervisor_socketd, &command, sizeof(remote_info_t), 0);
-      if (ret_val == -1) {
-         printf("Error while sending request to remote Supervisor\n");
-      }
-      send_to_remote_running_module_struct(num_module);
-      break;
-
-   case 2:
-      command.command_num = 2;
-      command.size_of_recv = count_struct_size(num_module);
-      ret_val = send(remote_supervisor_socketd, &command, sizeof(remote_info_t), 0);
-      if (ret_val == -1) {
-         printf("Error while sending request to remote Supervisor\n");
-      }
-      send_to_remote_running_module_struct(num_module);
-      break;
-
-   case 3:
-      command.command_num = 3;
-      command.size_of_recv = 0;
-      ret_val = send(remote_supervisor_socketd, &command, sizeof(remote_info_t), 0);
-      if (ret_val == -1) {
-         printf("Error while sending request to remote Supervisor\n");
-      }
-      break;
-
-   case 4:
-      command.command_num = 4;
-      command.size_of_recv = 0;
-      ret_val = send(remote_supervisor_socketd, &command, sizeof(remote_info_t), 0);
-      if (ret_val == -1) {
-         printf("Error while sending request to remote Supervisor\n");
-      }
-      break;
-   }
-}
-
-void check_cpu_usage()
-{
-   remote_info_t command;
-   int x, y, ret_val;
-   int tosend[1];
-   int selected_module = -1;
-
-   // condition 1, if (num_periods_overload>10)
-   for (x=0;x<loaded_modules_cnt;x++) {
-      if (running_modules[x].module_status) {
-         if ((running_modules[x].last_period_percent_cpu_usage_kernel_mode > 50) ||
-               (running_modules[x].last_period_percent_cpu_usage_user_mode > 50)) {
-            running_modules[x].num_periods_overload++;
-            VERBOSE(N_STDOUT,"module %d%s overload\n",x,running_modules[x].module_name);
-         } else {
-            running_modules[x].num_periods_overload--;
-         }
-      }
-   }
-   for (x=0;x<loaded_modules_cnt;x++) {
-      if (running_modules[x].module_status) {
-         /* TODO why 3? it should be defined somewhere as a constant... */
-         if (running_modules[x].num_periods_overload > 3) {
-            selected_module = x;
-            break;
-         }
-      }
-   }
-
-   if ((selected_module >= 0) && (running_modules[selected_module].remote_module == FALSE) &&
-         remote_supervisor_connected && running_modules[selected_module].module_status) {
-
-      VERBOSE(N_STDOUT,"de se na to\nsup> %s, remote> %s", supervisor_address, remote_supervisor_address);
-
-      // stop module
-      stop_module(selected_module);
-      running_modules[selected_module].remote_module = TRUE;
-
-      //change IP adrresses of remote module input ifces and input ifces of modules connected to remote module
-      graph_node_addresses_change(graph_first_node, selected_module, supervisor_address, remote_supervisor_address);
-
-      //send to remote command to run new module and running_module struct
-      send_command_to_remote(1, selected_module);
-
-      sleep(1);
-      //restart modules which are connected to remote_module
-      graph_node_t * node_ptr = graph_first_node;
-      running_module_t * module_data = NULL;
-      while (node_ptr != NULL) {
-         if (((running_module_t *) node_ptr->module_data)->module_number == selected_module) {
-            break;
-         }
-         node_ptr = node_ptr->next_node;
-      }
-      for (x=0; x<node_ptr->num_node_output_interfaces; x++) {
-         for (y=0; y<node_ptr->node_output_interfaces[x].node_children_counter; y++) {
-            module_data = node_ptr->node_output_interfaces[x].node_children[y]->parent_node->module_data;
-            if (module_data->remote_module) {
-               send_command_to_remote(2, module_data->module_number);
-            } else {
-               if (module_data->module_enabled) {
-                  stop_module(module_data->module_number);
-                  module_data->module_enabled = TRUE;
-               }
-            }
-         }
-      }
-      return;
-   } else {
-      // condition 2, if (CPU overload)
-   }
-
-}
-
-void check_differences()
-{
-   int x,y,cnt;
-   int str_len = 0;
-   int select = -1;
-   graph_node_t * node_ptr = graph_first_node;
-
-   // while(node_ptr != NULL) {
-   //    //if (...) {
-   //    // select module
-   //    //}
-   //    node_ptr = node_ptr->next_node;
-   // }
-   // if (running_modules[select].module_cloned == FALSE && running_modules[select].module_status && running_modules[select].remote_module == FALSE) {
-   if (FALSE) {
-      running_modules[select].module_cloned = TRUE;
-      if ((loaded_modules_cnt + running_modules[select].module_num_in_ifc + running_modules[select].module_num_out_ifc + 1) >= running_modules_array_size) {
-         //realloc
-      }
-
-      /* TODO check pointers after allocation */
-      if (running_modules[select].module_params != NULL) {
-         str_len = strlen(running_modules[select].module_params);
-         running_modules[loaded_modules_cnt].module_params = (char *) calloc(str_len+1, sizeof(char));
-         strncpy(running_modules[loaded_modules_cnt].module_params, running_modules[select].module_params, str_len+1);
-      }
-
-      /* TODO check pointers after allocation */
-      str_len = strlen(running_modules[select].module_path);
-      running_modules[loaded_modules_cnt].module_path = (char *) calloc(str_len+1, sizeof(char));
-      strncpy(running_modules[loaded_modules_cnt].module_path, running_modules[select].module_path, str_len+1);
-
-      /* TODO check pointers after allocation */
-      str_len = strlen(running_modules[select].module_name);
-      running_modules[loaded_modules_cnt].module_name = (char *) calloc(str_len+1+5, sizeof(char));
-      sprintf(running_modules[loaded_modules_cnt].module_name,"%sClone", running_modules[select].module_name);
-
-      /* TODO check pointers after allocation */
-      running_modules[loaded_modules_cnt].module_ifces = (interface_t *) calloc(running_modules[select].module_ifces_cnt, sizeof(interface_t));
-      for (x=0; x<running_modules[select].module_ifces_cnt; x++) {
-         if (running_modules[select].module_ifces[x].ifc_note != NULL) {
-            /* TODO check pointers after allocation */
-            str_len = strlen(running_modules[select].module_ifces[x].ifc_note);
-            running_modules[loaded_modules_cnt].module_ifces[x].ifc_note = (char *) calloc(str_len+1, sizeof(char));
-            strcpy(running_modules[loaded_modules_cnt].module_ifces[x].ifc_note, running_modules[select].module_ifces[x].ifc_note);
-         }
-         if (running_modules[select].module_ifces[x].ifc_type != NULL) {
-            /* TODO check pointers after allocation */
-            str_len = strlen(running_modules[select].module_ifces[x].ifc_type);
-            running_modules[loaded_modules_cnt].module_ifces[x].ifc_type = (char *) calloc(str_len+1, sizeof(char));
-            strcpy(running_modules[loaded_modules_cnt].module_ifces[x].ifc_type, running_modules[select].module_ifces[x].ifc_type);
-         }
-         if (running_modules[select].module_ifces[x].ifc_params != NULL) {
-            /* TODO check pointers after allocation */
-            str_len = strlen(running_modules[select].module_ifces[x].ifc_params);
-            running_modules[loaded_modules_cnt].module_ifces[x].ifc_params = (char *) calloc(str_len+1, sizeof(char));
-            strcpy(running_modules[loaded_modules_cnt].module_ifces[x].ifc_params, running_modules[select].module_ifces[x].ifc_params);
-         }
-         if (running_modules[select].module_ifces[x].ifc_direction != NULL) {
-            /* TODO check pointers after allocation */
-            str_len = strlen(running_modules[select].module_ifces[x].ifc_direction);
-            running_modules[loaded_modules_cnt].module_ifces[x].ifc_direction = (char *) calloc(str_len+1, sizeof(char));
-            strcpy(running_modules[loaded_modules_cnt].module_ifces[x].ifc_direction, running_modules[select].module_ifces[x].ifc_direction);
-         }
-      }
-      running_modules[loaded_modules_cnt].module_ifces_cnt = running_modules[select].module_ifces_cnt;
-      running_modules[loaded_modules_cnt].module_num_in_ifc = running_modules[select].module_num_in_ifc;
-      running_modules[loaded_modules_cnt].module_num_out_ifc = running_modules[select].module_num_out_ifc;
-
-      cnt = 0;
-      for (x=0; x<running_modules[select].module_ifces_cnt; x++) {
-         if (running_modules[select].module_ifces[x].ifc_direction != NULL && strcmp(running_modules[select].module_ifces[x].ifc_direction, "IN") == 0) {
-            /* TODO check pointers after allocation */
-            running_modules[loaded_modules_cnt+1+cnt].module_ifces = (interface_t *) calloc(4, sizeof(interface_t));
-
-            if (running_modules[select].module_ifces[x].ifc_note != NULL) {
-               str_len = strlen(running_modules[select].module_ifces[x].ifc_note);
-               running_modules[loaded_modules_cnt+1+cnt].module_ifces[0].ifc_note = (char *) calloc(str_len+1, sizeof(char));
-               strcpy(running_modules[loaded_modules_cnt+1+cnt].module_ifces[0].ifc_note, running_modules[select].module_ifces[x].ifc_note);
-            }
-            if (running_modules[select].module_ifces[x].ifc_type != NULL) {
-               str_len = strlen(running_modules[select].module_ifces[x].ifc_type);
-               /* TODO check pointers after allocation */
-               running_modules[loaded_modules_cnt+1+cnt].module_ifces[0].ifc_type = (char *) calloc(str_len+1, sizeof(char));
-               strcpy(running_modules[loaded_modules_cnt+1+cnt].module_ifces[0].ifc_type, running_modules[select].module_ifces[x].ifc_type);
-            }
-            if (running_modules[select].module_ifces[x].ifc_params != NULL) {
-               /* TODO check pointers after allocation */
-               str_len = strlen(running_modules[select].module_ifces[x].ifc_params);
-               running_modules[loaded_modules_cnt+1+cnt].module_ifces[0].ifc_params = (char *)calloc(str_len+1, sizeof(char));
-               strcpy(running_modules[loaded_modules_cnt+1+cnt].module_ifces[0].ifc_params, running_modules[select].module_ifces[x].ifc_params);
-            }
-            if (running_modules[select].module_ifces[x].ifc_direction != NULL) {
-               /* TODO check pointers after allocation */
-               str_len = strlen(running_modules[select].module_ifces[x].ifc_direction);
-               running_modules[loaded_modules_cnt+1+cnt].module_ifces[0].ifc_direction = (char *)calloc(str_len+1, sizeof(char));
-               strcpy(running_modules[loaded_modules_cnt+1+cnt].module_ifces[0].ifc_direction, running_modules[select].module_ifces[x].ifc_direction);
-            }
-
-            /* TODO why this size for alloc? */
-            /* TODO check pointers after allocation */
-            running_modules[loaded_modules_cnt+1+cnt].module_path = (char *) calloc(10, sizeof(char));
-            sprintf(running_modules[loaded_modules_cnt+1+cnt].module_path,"Path");
-            running_modules[loaded_modules_cnt+1+cnt].module_name = (char *) calloc(10, sizeof(char));
-            sprintf(running_modules[loaded_modules_cnt+1+cnt].module_name,"Spliter");
-
-            //first spliter output ifc
-            /* TODO check pointers after allocation */
-            running_modules[loaded_modules_cnt+1+cnt].module_ifces[1].ifc_type = (char *) calloc(10, sizeof(char));
-            sprintf(running_modules[loaded_modules_cnt+1+cnt].module_ifces[1].ifc_type,"TCP");
-            running_modules[loaded_modules_cnt+1+cnt].module_ifces[1].ifc_params = (char *) calloc(10, sizeof(char));
-            sprintf(running_modules[loaded_modules_cnt+1+cnt].module_ifces[1].ifc_params,"%d,1", next_reserved_port);
-            //update selected module input ifc params to connect to spliter
-            free(running_modules[select].module_ifces[x].ifc_params);
-            /* TODO check pointers after allocation */
-            running_modules[select].module_ifces[x].ifc_params = (char *) calloc(20, sizeof(char));
-            sprintf(running_modules[select].module_ifces[x].ifc_params,"localhost,%d",next_reserved_port);
-            next_reserved_port++;
-            running_modules[loaded_modules_cnt+1+cnt].module_ifces[1].ifc_direction = (char *) calloc(10, sizeof(char));
-            sprintf(running_modules[loaded_modules_cnt+1+cnt].module_ifces[1].ifc_direction,"OUT");
-
-
-            /* TODO check pointers after allocation */
-            //second spliter output ifc
-            running_modules[loaded_modules_cnt+1+cnt].module_ifces[2].ifc_type = (char *) calloc(10, sizeof(char));
-            sprintf(running_modules[loaded_modules_cnt+1+cnt].module_ifces[2].ifc_type,"TCP");
-            running_modules[loaded_modules_cnt+1+cnt].module_ifces[2].ifc_params = (char *) calloc(10, sizeof(char));
-            sprintf(running_modules[loaded_modules_cnt+1+cnt].module_ifces[2].ifc_params,"%d,1", next_reserved_port);
-            //update clone module input ifc params to connect to spliter
-            free(running_modules[loaded_modules_cnt].module_ifces[x].ifc_params);
-            running_modules[loaded_modules_cnt].module_ifces[x].ifc_params = (char *) calloc(20, sizeof(char));
-            sprintf(running_modules[loaded_modules_cnt].module_ifces[x].ifc_params,"localhost,%d",next_reserved_port);
-            next_reserved_port++;
-            running_modules[loaded_modules_cnt+1+cnt].module_ifces[2].ifc_direction = (char *) calloc(10, sizeof(char));
-            sprintf(running_modules[loaded_modules_cnt+1+cnt].module_ifces[2].ifc_direction,"OUT");
-
-            running_modules[loaded_modules_cnt+1+cnt].module_ifces_cnt = 3;
-            running_modules[loaded_modules_cnt+1+cnt].module_num_in_ifc = 1;
-            running_modules[loaded_modules_cnt+1+cnt].module_num_out_ifc = 2;
-
-            cnt++;
-         }
-      }
-
-      update_module_input_ifces(graph_first_node, select);
-
-      cnt = 0;
-      for (x=0; x<running_modules[select].module_ifces_cnt; x++) {
-         if (running_modules[select].module_ifces[x].ifc_direction != NULL && strcmp(running_modules[select].module_ifces[x].ifc_direction, "OUT") == 0) {
-            running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces = (interface_t *)calloc(4, sizeof(interface_t));
-
-            if (running_modules[select].module_ifces[x].ifc_note != NULL) {
-               str_len = strlen(running_modules[select].module_ifces[x].ifc_note);
-               running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces[0].ifc_note = (char *)calloc(str_len+1, sizeof(char));
-               strcpy(running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces[0].ifc_note, running_modules[select].module_ifces[x].ifc_note);
-            }
-            if (running_modules[select].module_ifces[x].ifc_type != NULL) {
-               str_len = strlen(running_modules[select].module_ifces[x].ifc_type);
-               running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces[0].ifc_type = (char *)calloc(str_len+1, sizeof(char));
-               strcpy(running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces[0].ifc_type, running_modules[select].module_ifces[x].ifc_type);
-            }
-            if (running_modules[select].module_ifces[x].ifc_params != NULL) {
-               str_len = strlen(running_modules[select].module_ifces[x].ifc_params);
-               running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces[0].ifc_params = (char *)calloc(str_len+1, sizeof(char));
-               strcpy(running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces[0].ifc_params, running_modules[select].module_ifces[x].ifc_params);
-            }
-            if (running_modules[select].module_ifces[x].ifc_direction != NULL) {
-               str_len = strlen(running_modules[select].module_ifces[x].ifc_direction);
-               running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces[0].ifc_direction = (char *)calloc(str_len+1, sizeof(char));
-               strcpy(running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces[0].ifc_direction, running_modules[select].module_ifces[x].ifc_direction);
-            }
-
-            running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_path = (char *) calloc (10, sizeof(char));
-            sprintf(running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_path,"Path");
-            running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_name = (char *) calloc (10, sizeof(char));
-            sprintf(running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_name,"Merger");
-
-
-            //first merger input ifc
-            running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces[1].ifc_type = (char *)calloc(10, sizeof(char));
-            sprintf(running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces[1].ifc_type,"TCP");
-            running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces[1].ifc_params = (char *)calloc(20, sizeof(char));
-            sprintf(running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces[1].ifc_params,"localhost,%d", next_reserved_port);
-            //update selected module output ifc params
-            free(running_modules[select].module_ifces[x].ifc_params);
-            running_modules[select].module_ifces[x].ifc_params = (char *)calloc(20, sizeof(char));
-            sprintf(running_modules[select].module_ifces[x].ifc_params,"%d,1",next_reserved_port);
-            next_reserved_port++;
-            /* TODO check pointer for NULL */
-            running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces[1].ifc_direction = (char *) calloc(10, sizeof(char));
-            sprintf(running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces[1].ifc_direction,"IN");
-
-
-            /* TODO check pointer for NULL */
-            //second merger input ifc
-            running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces[2].ifc_type = (char *)calloc(10, sizeof(char));
-            sprintf(running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces[2].ifc_type,"TCP");
-            running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces[2].ifc_params = (char *)calloc(20, sizeof(char));
-            sprintf(running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces[2].ifc_params,"localhost,%d", next_reserved_port);
-            //update clone module output ifc params
-            free(running_modules[loaded_modules_cnt].module_ifces[x].ifc_params);
-            /* TODO set freed pointer to NULL */
-            running_modules[loaded_modules_cnt].module_ifces[x].ifc_params = (char *)calloc(20, sizeof(char));
-            sprintf(running_modules[loaded_modules_cnt].module_ifces[x].ifc_params,"%d,1",next_reserved_port);
-            next_reserved_port++;
-            running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces[2].ifc_direction = (char *)calloc(10, sizeof(char));
-            sprintf(running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces[2].ifc_direction,"IN");
-
-            running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_ifces_cnt = 3;
-            running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_num_in_ifc = 2;
-            running_modules[loaded_modules_cnt+1+cnt+running_modules[select].module_num_in_ifc].module_num_out_ifc = 1;
-
-            cnt++;
-         }
-      }
-
-      update_module_output_ifces(graph_first_node, select);
-
-      loaded_modules_cnt = loaded_modules_cnt + 1 + running_modules[select].module_num_in_ifc + running_modules[select].module_num_out_ifc;
    }
 }
 
@@ -1898,16 +1404,10 @@ void *service_thread_routine(void* arg)
          }
       }
       update_module_cpu_usage(&last_total_cpu_usage);
-      // check_cpu_usage();
-
       update_graph_values(graph_first_node);
       generate_periodic_picture();
-      // compute_differences(graph_first_node);
-      // check_differences();
 
       pthread_mutex_unlock(&running_modules_lock);
-      // check_graph_values(graph_first_node);
-      // print_statistics(graph_first_node);
 
       if (verbose_flag) {
          print_statistics_and_cpu_usage(timeinfo);
@@ -1985,54 +1485,9 @@ char * make_formated_statistics()
    return buffer;
 }
 
-
-
 void start_service_thread()
 {
-   // service_thread_id = (pthread_t) calloc (1,sizeof(pthread_t));
    pthread_create(&service_thread_id, NULL, service_thread_routine, NULL);
-
-   // acceptor_thread_id = (pthread_t *) calloc (1,sizeof(pthread_t));
-   //pthread_create(&acceptor_thread_id, NULL, remote_supervisor_accept_routine, NULL);
-}
-
-void interactive_run_temp_conf()
-{
-   pthread_mutex_lock(&running_modules_lock);
-   int x = loaded_modules_cnt;
-   /* TODO check pointer for NULL */
-   char * buffer1 = (char *)calloc(1000, sizeof(char));
-   char * buffer2 = (char *)calloc(1000, sizeof(char));
-   char * ptr = buffer1;
-   VERBOSE(N_STDOUT,"Paste in xml code with modules configuration starting with <modules> tag and ending with </modules> tag.\n");
-   while(1) {
-      if (!fscanf(input_fd,"%s",ptr)) {
-         VERBOSE(N_STDOUT,"Wrong input.\n");
-         continue;
-      }
-      if (strstr(ptr,"</modules>") != NULL) {
-         break;
-      }
-      ptr += strlen(ptr);
-      sprintf(ptr," ");
-      ptr++;
-   }
-   sprintf(buffer2,"<?xml version=\"1.0\"?>\n<nemea-supervisor>\n%s\n</nemea-supervisor>",buffer1);
-   free(buffer1);
-   /* TODO set pointer to NULL */
-
-   if (load_configuration(FALSE, buffer2) == FALSE) {
-      VERBOSE(N_STDOUT,"Xml code was not parsed successfully.\n");
-      free(buffer2);
-      pthread_mutex_unlock(&running_modules_lock);
-      return;
-   }
-   free(buffer2);
-   // while (x<loaded_modules_cnt) {
-   //    start_module(x);
-   //    x++;
-   // }
-   pthread_mutex_unlock(&running_modules_lock);
 }
 
 int parse_arguments(int *argc, char **argv)
@@ -2095,7 +1550,7 @@ int parse_arguments(int *argc, char **argv)
    return TRUE;
 }
 
-void print_help()
+void print_help() // ?????
 {
    VERBOSE(N_STDOUT,"--------------------------\n"
          "NEMEA Supervisor:\n"
@@ -2209,7 +1664,6 @@ int daemon_init(int * d_sd)
       // Return failure
       exit(1);
    }
-   // chdir("./modules_logs/");
 
    if (logs_path == NULL) {
       sprintf(file_path,"%ssupervisor_log",DEFAULT_LOGSDIR_PATH);
@@ -2438,74 +1892,6 @@ void daemon_mode(int * arg)
    return;
 }
 
-
-void *remote_supervisor_accept_routine()
-{
-   remote_supervisor_connected = FALSE;
-   char buffer[10];
-   int ret_val = 0;
-   struct sockaddr_in supervisor;
-   struct sockaddr_in supervisor_remote;
-   int supervisor_sd;
-   int supervisor_remote_sd;
-   int port = 11011;
-   socklen_t addrlen;
-
-   if ((supervisor_sd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == -1) {
-      VERBOSE(N_STDOUT,"Remote thread> Cannot create a socket.\n");
-      pthread_exit(NULL);
-   }
-
-   supervisor.sin_family = AF_INET;
-   supervisor.sin_port = htons(port);
-   supervisor.sin_addr.s_addr = INADDR_ANY;
-
-   if (bind(supervisor_sd, (struct sockaddr *)&supervisor, sizeof(supervisor)) == -1) {
-      VERBOSE(N_STDOUT, "Remote thread> Cannot bind the socket.\n");
-      close(supervisor_sd);
-      pthread_exit(NULL);
-   }
-
-   if (listen(supervisor_sd, 2) == -1) {
-      VERBOSE(N_STDOUT, "Remote thread> Error listening.\n");
-      close(supervisor_sd);
-      pthread_exit(NULL);
-   }
-
-
-   while (service_thread_continue == TRUE) {
-      if (remote_supervisor_connected == FALSE) {
-         addrlen = sizeof(supervisor_remote);
-         supervisor_remote_sd = accept(supervisor_sd, (struct sockaddr*)&supervisor_remote, &addrlen);
-         if (supervisor_remote_sd == -1) {
-            VERBOSE(N_STDOUT, "Remote thread> Error accept.\n");
-            close(supervisor_sd);
-            pthread_exit(NULL);
-         }
-         strcpy(remote_supervisor_address, inet_ntoa((struct in_addr)supervisor_remote.sin_addr));
-         remote_supervisor_socketd = supervisor_remote_sd;
-         remote_supervisor_connected = TRUE;
-         VERBOSE(N_STDOUT, "Remote thread> Got connection: %s", remote_supervisor_address);
-      }
-      ret_val = recv(supervisor_remote_sd, buffer, 1, MSG_DONTWAIT);
-      if (ret_val == -1) {
-         if (errno == EAGAIN) {
-            sleep(1);
-            continue;
-         }
-         VERBOSE(N_STDOUT, "Remote thread> Error recv.\n");
-      } else if (ret_val == 0) {
-         VERBOSE(N_STDOUT, "Remote thread> Remote client has disconnected.\n");
-         close(supervisor_remote_sd);
-         remote_supervisor_connected = FALSE;
-      }
-   }
-
-   close(remote_supervisor_socketd);
-   close(supervisor_sd);
-   pthread_exit(NULL);
-}
-
 int get_shorter_string_length(char * first, char * second)
 {
    int first_len = strlen(first);
@@ -2619,9 +2005,12 @@ int reload_configuration()
    }
    
    /*Get the name of a new config file */
-   VERBOSE(N_STDOUT, "Type in a name of the xml file to be loaded including \".xml\"; (to reload same config file type \"default\"):\n");
+   VERBOSE(N_STDOUT, "Type in a name of the xml file to be loaded including \".xml\"; (to reload same config file type \"default\" or to cancel reloading type \"cancel\"):\n");
    if (fscanf(input_fd,"%s",buffer) == 0) {
       xml_tree = xmlParseFile(config_file);
+   } else if (strcmp(buffer, "cancel") == 0) {
+      pthread_mutex_unlock(&running_modules_lock);
+      return FALSE;
    } else if (strcmp(buffer, "default") == 0) {
       xml_tree = xmlParseFile(config_file);
    } else {

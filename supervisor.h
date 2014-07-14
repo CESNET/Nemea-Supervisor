@@ -45,6 +45,7 @@
 #ifndef SUPERVISOR_H
 #define SUPERVISOR_H
 
+#include <time.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -87,12 +88,6 @@ typedef struct interface_s {
    char *ifc_direction; ///< Interface direction (IN, OUT)
 } interface_t;
 
-/** Structure used for commanding remote_supervisor */
-typedef struct remote_info_s {
-   int   command_num; ///< Number of command.
-   int   size_of_recv; ///< Number of bytes to receive by remote_supervisor.
-} remote_info_t;
-
 /** Structure with information about one running module */
 typedef struct running_module_s {
    int            module_enabled; ///< TRUE if module is enabled, else FALSE.
@@ -114,11 +109,8 @@ typedef struct running_module_s {
    pid_t          module_pid; ///< Modules process PID.
    int           *module_counters_array; ///< Array of statistics with counters.
    int            module_service_sd; ///< Socket descriptor of the service connection.
-   int            module_cloned; ///< TRUE if module was cloned because of overload, else FALSE.
-   int            remote_module; ///< TRUE if module was sent to remote_supervisor, else FALSE.
    int            module_number; ///< Index to running_modules array.
    int            module_modified_by_reload;
-   int            num_periods_overload; ///< Number of periods of overloading CPU.
    long int       total_cpu_usage_during_module_startup;
    int            last_period_cpu_usage_kernel_mode; ///< Percentage of CPU usage in last period in kernel mode.
    int            last_period_cpu_usage_user_mode; ///< Percentage of CPU usage in last period in user mode.
@@ -130,10 +122,6 @@ typedef struct running_module_s {
 
 /***********FUNCTIONS***********/
 
-/** Function saves local IP address as a string in global variable.
- */
-void get_local_IP();
-
 /** Function parses XML file or buffer with XML code and saves modules configuration in running_modules array.
  * @param[in] choice If TRUE -> parse file, else parse buffer.
  * @param[in] buffer If choice TRUE -> file name, else buffer with XML code.
@@ -143,7 +131,7 @@ int load_configuration(const int choice, const char * buffer);
 
 /** Function prints list of loaded modules with their params and all their interfaces with params.
  */
-void print_configuration();
+void interactive_show_available_modules ();
 
 /** Function creates array of strings for function execvp() before executing new module (its process).
  * @param[in] number_of_module Index to running_modules array.
@@ -151,20 +139,17 @@ void print_configuration();
  */
 char **make_module_arguments(const int number_of_module);
 
+int get_number_from_input();
+
 /** Function prints a list of user operations and scans one number as an input.
  * @return Number of selected operation.
  */
-int print_menu();
+int interactive_get_option();
 
 /** Function is used for first start of module, allocates its array for statistics, initialize its variables, creates new process, redirects stdout, stderr and executes module.
  * @param[in] module_number Index to running_modules array.
  */
-void start_module(const int module_number);
-
-/** Function is used to restart module, reinitialize its variables, creates new process, redirects stdout, stderr and executes module.
- * @param[in] module_number Index to running_modules array.
- */
-void restart_module(const int module_number);
+void re_start_module(const int module_number);
 
 /** Function sends SIGINT to selected module.
  * @param[in] module_number Index to running_modules array.
@@ -184,27 +169,23 @@ void sigpipe_handler(int sig);
  * @param[in] argv Argv of main function.
  * @return 0 if interactive mode, 2 if daemon mode, 1 if error.
  */
-int api_initialization(int *argc, char **argv);
+int supervisor_initialization(int *argc, char **argv);
 
 /** Starts every loaded module.
  */
-void api_start_configuration();
+void interactive_start_configuration();
 
 /** Stops every loaded module.
  */
-void api_stop_configuration();
-
-/** Function scans one number as an input and pastes it as and argument to function start_module();
- */
-void api_start_module();
-
-/** Function scans one number as an input and pastes it as and argument to function stop_module();
- */
-void api_stop_module();
+void interactive_stop_configuration();
 
 /** Function scans one number as an input and uses it as an index to running_module array setting selected module enabled.
  */
-void api_set_module_enabled();
+void interactive_set_module_enabled();
+
+/** Function scans one number as an input and pastes it as and argument to function stop_module();
+ */
+void interactive_stop_module();
 
 /** Function uses restart_module() for stopped, enabled modules.
  */
@@ -212,41 +193,24 @@ void restart_modules();
 
 /** Function prints a list of loaded modules with their status - running/stopped/remote.
  */
-void api_show_running_modules_status();
+void interactive_show_running_modules_status();
 
 /** Function stops service thread and acceptor thread and frees allocated memory.
  */
-void api_quit();
+void supervisor_termination();
+
+char *get_param_by_delimiter(const char *source, char **dest, const char delimiter);
+
+long int get_total_cpu_usage();
 
 /** Function updates running modules CPU usage - in kernel/user mode.
  * @param[in] last_total_cpu_usage Total cpu usage in last period.
  */
-void update_cpu_usage(long int * last_total_cpu_usage);
+void update_module_cpu_usage(long int * last_total_cpu_usage);
 
-/** Function counts size of all modules allocated strings.
- * @param[in] module_num Index to running_modules array.
- * @return Size of strings.
- */
-int count_struct_size(int module_num);
+void generate_periodic_picture();
 
-/** Function sends selected module running_module struct to remote_supervisor.
- * @param[in] num_module Index to running_modules array.
- */
-void send_to_remote_running_module_struct (int num_module);
-
-/** Function sends struct with number of command to remote_supervisor (for example 1 to run new module).
- * @param[in] num_command Command number.
- * @param[in] num_module Index to running_modules array.
- */
-void send_command_to_remote(int num_command, int num_module);
-
-/** Function checks CPU usage of running modules and if some module overloads CPU for more than 10 periods, its send to remote_supervisor.
- */
-void check_cpu_usage();
-
-/** If any running module is missing lots of messages, its duplicated and connected with splitter and merger.
- */
-void check_differences();
+void interactive_show_graph();
 
 /** Function receives data from running modules with statistics.
  * @param[in] sd Socket descriptor of module.
@@ -261,22 +225,20 @@ int service_get_data(int sd, int running_module_number);
  */
 void connect_to_module_service_ifc(int module, int num_ifc);
 
+void print_statistics_and_cpu_usage(struct tm * timeinfo);
+
+void print_statistics_legend();
+
 /** Main routine of service thread.
  * @param[in] arg NULL.
  */
 void * service_thread_routine(void* arg);
 
+char * make_formated_statistics();
+
 /** Function creates 2 threads - service and acceptor thread.
  */
 void start_service_thread();
-
-/** Function calls 2 graph functions to show modules graph.
- */
-void api_show_graph();
-
-/** Function loads user input with XML configuration of additional modules and with load_configuration() function parses and adds it to running_modules array.
- */
-void run_temp_configuration();
 
 /** Function parses program arguments.
  * @param[in] argc Argc of main function.
@@ -306,9 +268,15 @@ int daemon_get_client (int * d_sd);
  */
 void daemon_mode(int * arg);
 
-/** Main routine of acceptor thread - accepts new connection from remote_supervisor.
- */
-void * remote_supervisor_accept_routine ();
+int get_shorter_string_length(char * first, char * second);
+
+int find_loaded_module(char * name);
+
+void free_module_on_index(int index);
+
+void free_module_interfaces_on_index(int index);
+
+int reload_configuration();
 
 #endif
 
