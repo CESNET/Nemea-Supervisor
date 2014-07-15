@@ -27,6 +27,26 @@ startup. Every trap interface is specified by type (tcp, unixsocket or service),
 direction (in or out), parameters (output interface: address + port; input
 interface: port + number of clients) and optional note.
 
+The configuration file has been designed according to the data model of the Supervisor.
+Data model tree:
+
+module: nemea
+   +--rw nemea-supervisor
+      +--rw modules
+      +--rw name? string
+      +--rw module* [name]
+         +--rw name string
+         +--rw params? string
+         +--rw enabled boolean
+         +--ro running? boolean
+         +--rw path string
+         +--rw trapinterfaces
+            +--rw interface* [type direction params]
+               +--rw note? string
+               +--rw type trapifc-type
+               +--rw direction trapifc-direction
+               +--rw params string
+
 ==================
 Supervisor can run in one of two basic modes:
 1) Interactive Mode:
@@ -48,13 +68,13 @@ Supervisor can run in one of two basic modes:
 
 Supervisor arguments:
  -f config_file.xml   xml file with initial configuration
- -L logs_path         optional path to Supervisor and modules logs
-                      (default home/supervisor_logs/)
+ -L logs_path         optional path to Supervisor logs directory
+                      (default /home/$user/supervisor_logs/)
  -s socket_path       optional path to unix socket used for communication
                       with supervisor client (default /tmp/supervisor_daemon.sock)
  -v                   optional verbose flag used for enabling printing stats
-                      about messages and CPU usage (more about these stats down below)
-                      to "supervisor_log_statistics" file in logs dir
+                      about messages and CPU usage to "supervisor_log_statistics"
+                      file in logs directory (more about these stats down below)
  --daemon             flag used for running Supervisor as a process in background
  -h                   program prints help and terminates
 
@@ -68,29 +88,36 @@ menu with available operations:
 3. START MODULE - starts one specific module from loaded configuration
 4. STOP MODULE - stops one specific module from loaded configuration
 5. STARTED MODULES STATUS - displays status of loaded modules (stopped or running)
+                            and PIDs of modules processes
 6. AVAILABLE MODULES - prints out actual loaded configuration
 7. SHOW GRAPH - if dot program is installed, this operation displays picture
                 of oriented graph of modules
 8. RELOAD CONFIGURATION - operation allows user to reload actual configuration
                           from initial xml file or from another xml file
-9. STOP SUPERVISOR - this operation terminates whole supervisor
+9. STOP SUPERVISOR - this operation terminates whole Supervisor
 
 
 Note: for reload operation is important unique module name. There are three cases,
       that can occur during reloading:
 
-a) Supervisor didnt find module with same name in loaded configuration -> inserting new
+a) Supervisor didnt find a module with same name in loaded configuration -> inserting a new
    module.
-b) Supervisor found module with same name in loaded configuration -> compares every value
-   and if there is a difference, module will be reloaded.
+b) Supervisor found a module with same name in loaded configuration -> compares every value
+   and if there is a difference, the module will be reloaded.
 c) Module in loaded configuration was not found in reloaded configuration -> it is
    removed.
 
-Supervisor monitors status of all modules and if needed, modules are auto-restarted.
+Supervisor monitors the status of all modules and if needed, modules are auto-restarted.
 Every module can be run with special "service" interface, which allows Supervisor to get
 statistics about sent and received messages from module.
 Another monitored event is CPU usage of every module.
 These events are periodically monitored.
+
+Supervisor also provides logs with different types of output:
+ logs#1 - stdout and stderr of every started module
+ logs#2 - supervisor output - this includes modules events (start, stop, restart,
+          connecting to module, errors etc.) and in different output file statistics
+          about messages and CPU usage.
 
 Statistics about Nemea modules:
 ==================
