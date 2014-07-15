@@ -67,7 +67,6 @@
 #include <net/if.h>
 #include <ifaddrs.h>
 
-#define DEFAULT_LOGSDIR_PATH     "./supervisor_logs/" ///< Name of directory with modules logs
 #define TRAP_PARAM               "-i" ///< Interface parameter for libtrap
 #define MAX_RESTARTS_PER_MINUTE  3  ///< Maximum number of module restarts per minute
 #define DEFAULT_SIZE_OF_BUFFER   100
@@ -101,6 +100,8 @@ int      daemon_flag;      // --daemon
 char *   config_file = NULL;
 char *   socket_path = NULL;
 char *   logs_path = NULL;
+
+char *   default_logsdir_path = NULL;
 
 /**************************************/
 
@@ -584,8 +585,6 @@ char **make_module_arguments(const int number_of_module)
 
    if (running_modules[number_of_module].module_params == NULL) {
       params = (char **) calloc (4,sizeof(char*));
-      /* TODO check if params is not NULL!!! */
-
       str_len = strlen(running_modules[number_of_module].module_name);
       params[0] = (char *) calloc (str_len+1, sizeof(char));   // binary name for exec
       strncpy(params[0],running_modules[number_of_module].module_name, str_len+1);
@@ -611,7 +610,6 @@ char **make_module_arguments(const int number_of_module)
       num_module_params++;
 
       params = (char **) calloc (4+num_module_params,sizeof(char*));
-      /* TODO check if params is not NULL!!! */
       str_len = strlen(running_modules[number_of_module].module_name);
       params[0] = (char *) calloc (str_len+1, sizeof(char));   // binary name for exec
       strncpy(params[0],running_modules[number_of_module].module_name, str_len+1);
@@ -626,10 +624,8 @@ char **make_module_arguments(const int number_of_module)
 
       y=0;
       for (x=0; x<module_params_length; x++) {
-         /* TODO why 32? */
          if (running_modules[number_of_module].module_params[x] == 32) {
             params[params_counter] = (char *) calloc (strlen(buffer)+1,sizeof(char));
-            /* TODO check if params is not NULL */
             sprintf(params[params_counter],"%s",buffer);
             params_counter++;
             memset(buffer,0,size_of_buffer);
@@ -645,7 +641,6 @@ char **make_module_arguments(const int number_of_module)
          }
       }
       params[params_counter] = (char *) calloc (strlen(buffer)+1,sizeof(char));
-      /* TODO check if params is not NULL */
       sprintf(params[params_counter],"%s",buffer);
       params_counter++;
 
@@ -725,8 +720,8 @@ void re_start_module(const int module_number)
    int str_len = 0;
 
    if (logs_path == NULL) {
-      sprintf(log_path_stdout,"%s%d_%s_stdout",DEFAULT_LOGSDIR_PATH, module_number, running_modules[module_number].module_name);
-      sprintf(log_path_stderr,"%s%d_%s_stderr",DEFAULT_LOGSDIR_PATH, module_number, running_modules[module_number].module_name);
+      sprintf(log_path_stdout,"%s%d_%s_stdout",default_logsdir_path, module_number, running_modules[module_number].module_name);
+      sprintf(log_path_stderr,"%s%d_%s_stderr",default_logsdir_path, module_number, running_modules[module_number].module_name);
    } else {
       str_len = strlen(logs_path);
       if (logs_path[str_len-1] == '/') {
@@ -844,6 +839,7 @@ int supervisor_initialization(int *argc, char **argv)
    char file_path[200];
    memset(file_path,0,200);
    int y = 0, ret_val = 0, str_len = 0;
+   char * user_name = NULL;
 
    logs_path = NULL;
    config_file = NULL;
@@ -869,13 +865,17 @@ int supervisor_initialization(int *argc, char **argv)
    //logs directory
    struct stat st = {0};
    if (logs_path == NULL) {
-      if (stat(DEFAULT_LOGSDIR_PATH, &st) == -1) {
-         mkdir(DEFAULT_LOGSDIR_PATH, PERM_LOGSDIR);
+      if ((user_name = getenv("HOME")) != 0) {
+         default_logsdir_path = (char *) calloc (200, sizeof(char));
+         sprintf(default_logsdir_path,"%s/supervisor_logs/", user_name);
       }
-      sprintf(file_path,"%ssupervisor_log_statistics",DEFAULT_LOGSDIR_PATH);
+      if (stat(default_logsdir_path, &st) == -1) {
+         mkdir(default_logsdir_path, PERM_LOGSDIR);
+      }
+      sprintf(file_path,"%ssupervisor_log_statistics",default_logsdir_path);
       statistics_fd = fopen(file_path, "w");
       memset(file_path,0,200);
-      sprintf(file_path,"%ssupervisor_log_module_event",DEFAULT_LOGSDIR_PATH);
+      sprintf(file_path,"%ssupervisor_log_module_event",default_logsdir_path);
       module_event_fd = fopen(file_path, "w");
    } else {
       if (stat(logs_path, &st) == -1) {
@@ -1130,7 +1130,6 @@ void supervisor_termination()
    VERBOSE(N_STDOUT,"-- Aborting service thread --\n");
    service_thread_continue = 0;
    sleep(3);
-   /* TODO use local pointer */
    for (x=0;x<loaded_modules_cnt;x++) {
       if (running_modules[x].module_running && running_modules[x].module_counters_array != NULL) {
          free(running_modules[x].module_counters_array);
@@ -1139,7 +1138,6 @@ void supervisor_termination()
    }
    for (x=0;x<running_modules_array_size;x++) {
       for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
-         /* TODO set every freed pointer to NULL */
          if (running_modules[x].module_ifces[y].ifc_note != NULL) {
             free(running_modules[x].module_ifces[y].ifc_note);
             running_modules[x].module_ifces[y].ifc_note = NULL;
@@ -1188,6 +1186,10 @@ void supervisor_termination()
    if (logs_path != NULL) {
       free(logs_path);
       logs_path = NULL;
+   }
+   if (default_logsdir_path != NULL) {
+      free(default_logsdir_path);
+      default_logsdir_path = NULL;
    }
 
    fclose(statistics_fd);
@@ -1282,8 +1284,8 @@ void generate_periodic_picture()
    if (graph_first_node == NULL) {
       return;
    }
-   generate_graph_code(graph_first_node);
-   generate_picture();
+   generate_graph_code(graph_first_node, logs_path, default_logsdir_path);
+   generate_picture(logs_path, default_logsdir_path);
 }
 
 void interactive_show_graph()
@@ -1292,7 +1294,7 @@ void interactive_show_graph()
       VERBOSE(N_STDOUT,"No module with service ifc running.\n");
       return;
    }
-   show_picture();
+   show_picture(logs_path, default_logsdir_path);
 }
 
 int service_get_data(int sd, int running_module_number)
@@ -1488,9 +1490,7 @@ void *service_thread_routine(void* arg)
                if (send(running_modules[x].module_service_sd,(void *) request, sizeof_intptr, 0) == -1) {
                   VERBOSE(STATISTICS,"------> %s", asctime(timeinfo));
                   VERBOSE(STATISTICS,"Error while sending request to module %d_%s.\n",x,running_modules[x].module_name);
-                  if (errno == ENOTCONN) {
-                     running_modules[x].module_service_ifc_isconnected = FALSE;
-                  }
+                  running_modules[x].module_service_ifc_isconnected = FALSE;
                }
             }
          }
@@ -1500,7 +1500,6 @@ void *service_thread_routine(void* arg)
          if (running_modules[x].module_has_service_ifc == TRUE && running_modules[x].module_status == TRUE) {
             if (running_modules[x].module_service_ifc_isconnected == TRUE) {
                if (!(service_get_data(running_modules[x].module_service_sd, x))) {
-                  //TODO
                   continue;
                }
             }
@@ -1605,6 +1604,7 @@ int parse_arguments(int *argc, char **argv)
          {"help", no_argument,           0,  'h' },
          {"verbose",  no_argument,       0,  'v' },
          {"daemon-socket",  required_argument,  0, 's'},
+         {"logs-path",  required_argument,  0, 'L'},
          {0, 0, 0, 0}
       };
 
@@ -1615,7 +1615,7 @@ int parse_arguments(int *argc, char **argv)
 
       switch (c) {
       case 'h':
-         printf("Usage: supervisor [-d|--daemon] -f|--config-file=path [-h|--help] [-v|--verbose] [-C|--show-cpuusage] [-s|--daemon-socket=path]\n");
+         printf("Usage: supervisor [-d|--daemon] -f|--config-file=path [-h|--help] [-v|--verbose] [-L|--logs-path] [-s|--daemon-socket=path]\n");
          return FALSE;
       case 's':
          socket_path = optarg;
@@ -1759,6 +1759,10 @@ int daemon_init(int * d_sd)
          free(logs_path);
          logs_path = NULL;
       }
+      if (default_logsdir_path != NULL) {
+         free(default_logsdir_path);
+         default_logsdir_path = NULL;
+      }
       fclose(statistics_fd);
       fclose(module_event_fd);
       VERBOSE(N_STDOUT,"process_id of child process %d \n", process_id);
@@ -1773,7 +1777,7 @@ int daemon_init(int * d_sd)
    }
 
    if (logs_path == NULL) {
-      sprintf(file_path,"%ssupervisor_log",DEFAULT_LOGSDIR_PATH);
+      sprintf(file_path,"%ssupervisor_log",default_logsdir_path);
    } else {
       str_len = strlen(logs_path);
       if (logs_path[str_len-1] == '/') {
@@ -1983,7 +1987,7 @@ void daemon_mode(int * arg)
 
             }
          } else {
-            /* TODO nothing here? -> add comment */
+            /* nothing to do here */
          }
 
          printf(".");
