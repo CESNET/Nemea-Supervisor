@@ -121,6 +121,7 @@ char *get_param_by_delimiter(const char *source, char **dest, const char delimit
 /**if choice TRUE -> parse file, else parse buffer*/
 int load_configuration(const int choice, const char * buffer)
 {
+   int needed_tags[2];
    int last_module = FALSE;
    int str_len = 0;
    xmlChar * key = NULL;
@@ -180,7 +181,7 @@ int load_configuration(const int choice, const char * buffer)
 
    while (module_ptr != NULL) {
       if (!xmlStrcmp(module_ptr->name,BAD_CAST "module"))   {
-
+         memset(needed_tags,0,2*sizeof(int));
          //check allocated memory, if we dont have enough -> realloc
          if (loaded_modules_cnt == running_modules_array_size) {
             VERBOSE(N_STDOUT,"REALLOCING MODULES ARRAY --->\n");
@@ -214,21 +215,49 @@ int load_configuration(const int choice, const char * buffer)
                      last_module = TRUE;
                      break;
                   } else {
+                     memset(needed_tags,0,2*sizeof(int));
                      module_atr = module_ptr->xmlChildrenNode;
                      continue;
                   }
                } else {
-                  break;
+                  needed_tags[0]++;
                }
+            } else if ((!xmlStrcmp(module_atr->name,BAD_CAST "path"))) {
+               key = xmlNodeListGetString(xml_tree, module_atr->xmlChildrenNode, 1);
+               if (key == NULL) {
+                  module_ptr = module_ptr->next;
+                  module_ptr = module_ptr->next;
+                  if (module_ptr == NULL) {
+                     last_module = TRUE;
+                     break;
+                  } else {
+                     memset(needed_tags,0,2*sizeof(int));
+                     module_atr = module_ptr->xmlChildrenNode;
+                     continue;
+                  }
+               } else {
+                  needed_tags[1]++;
+               }
+            }
+
+            if (key != NULL) {
+               xmlFree(key);
+               key = NULL;
             }
             module_atr = module_atr->next;
          }
+
          if (last_module) {
             break;
          }
          if (key != NULL) {
             xmlFree(key);
             key = NULL;
+         }
+         if ((needed_tags[0] != 1) || (needed_tags[1] != 1)) {
+            module_ptr = module_ptr->next;
+            module_ptr = module_ptr->next;
+            continue;
          }
 
          module_atr = module_ptr->xmlChildrenNode;
@@ -2096,6 +2125,7 @@ int reload_configuration()
 {
    pthread_mutex_lock(&running_modules_lock);
 
+   int needed_tags[2];
    int inserted_modules = 0, removed_modules = 0, modified_modules = 0;
    int x = 0, y = 0;
    int ret_val = 0;
@@ -2181,8 +2211,9 @@ int reload_configuration()
    int last_module = FALSE;
 
    while (module_ptr != NULL) {
-      if (!xmlStrcmp(module_ptr->name,BAD_CAST "module"))   {
-
+      if (!xmlStrcmp(module_ptr->name,BAD_CAST "module")) {
+         module_index = -1;
+         memset(needed_tags,0,2*sizeof(int));
          //check allocated memory, if we dont have enough -> realloc
          if (loaded_modules_cnt == running_modules_array_size) {
             // VERBOSE(N_STDOUT,"REALLOCING MODULES ARRAY --->\n");
@@ -2205,7 +2236,7 @@ int reload_configuration()
             }
          }
          module_atr = module_ptr->xmlChildrenNode;
-
+         
          while (module_atr != NULL) {
             if ((!xmlStrcmp(module_atr->name,BAD_CAST "name"))) {
                key = xmlNodeListGetString(xml_tree, module_atr->xmlChildrenNode, 1);
@@ -2216,34 +2247,71 @@ int reload_configuration()
                      last_module = TRUE;
                      break;
                   } else {
+                     if ((module_index < original_loaded_modules_cnt) && (module_index != -1)) {
+                        already_loaded_modules[module_index] = 0;               
+                     }
+                     module_index = -1;
+                     memset(needed_tags,0,2*sizeof(int));
                      module_atr = module_ptr->xmlChildrenNode;
                      continue;
                   }
                } else {
+                  needed_tags[0]++;
                   ret_val = find_loaded_module(key);
                   if (ret_val == -1) { // new module
                      // VERBOSE(N_STDOUT,"------\nLoading new module..\n");
                      module_index = loaded_modules_cnt;
-                     inserted_modules++;
                      modifying = FALSE;
-                     break;
                   } else { // already loaded module -> check vals
                      // VERBOSE(N_STDOUT,"------\nUploading existing module..\n");
                      module_index = ret_val;
                      already_loaded_modules[module_index] = 1;
-                     modifying = TRUE;                      
-                     break;                   
+                     modifying = TRUE;        
                   }
                }
+            } else if ((!xmlStrcmp(module_atr->name,BAD_CAST "path"))) {
+               key = xmlNodeListGetString(xml_tree, module_atr->xmlChildrenNode, 1);
+               if (key == NULL) {
+                  module_ptr = module_ptr->next;
+                  module_ptr = module_ptr->next;
+                  if (module_ptr == NULL) {
+                     last_module = TRUE;
+                     break;
+                  } else {
+                     if ((module_index < original_loaded_modules_cnt) && (module_index != -1)) {
+                        already_loaded_modules[module_index] = 0;               
+                     }
+                     module_index = -1;
+                     memset(needed_tags,0,2*sizeof(int));
+                     module_atr = module_ptr->xmlChildrenNode;
+                     continue;
+                  }
+               } else {
+                  needed_tags[1]++;
+               }
+            }
+
+            if (key != NULL) {
+               xmlFree(key);
+               key = NULL;
             }
             module_atr = module_atr->next;
          }
+         
          if (last_module) {
             break;
          }
          if (key != NULL) {
             xmlFree(key);
             key = NULL;
+         }
+         if ((needed_tags[0] != 1) || (needed_tags[1] != 1)) {
+            if ((module_index < original_loaded_modules_cnt) && (module_index != -1)) {
+               already_loaded_modules[module_index] = 0;               
+            }
+            module_ptr = module_ptr->next;
+            module_ptr = module_ptr->next;
+            continue;
          }
 
          module_atr = module_ptr->xmlChildrenNode;
@@ -2694,6 +2762,7 @@ int reload_configuration()
          }
          if (module_index == loaded_modules_cnt) {
             loaded_modules_cnt++;
+            inserted_modules++;
          }
       }
       module_ptr = module_ptr->next;
