@@ -2051,7 +2051,7 @@ int find_loaded_module(char * name)
    int x;
 
    for (x=0; x<loaded_modules_cnt; x++) {
-      if (strncmp(running_modules[x].module_name, name, get_shorter_string_length(running_modules[x].module_name, name)) == 0) {
+      if (strcmp(running_modules[x].module_name, name) == 0) {
          return x;
       }
    }
