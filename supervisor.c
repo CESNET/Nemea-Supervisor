@@ -78,7 +78,7 @@
 #define MODULES_UNIXSOCKET_PATH_FILENAME_FORMAT   "/tmp/trap-localhost-%s.sock" ///< Modules output interfaces socket, to which connects service thread.
 #define DEFAULT_DAEMON_UNIXSOCKET_PATH_FILENAME  "/tmp/supervisor_daemon.sock"  ///<  Daemon socket.
 
-#define NC_DEFAULT_LOGSDIR_PATH "/data/svepemar/"
+#define NC_DEFAULT_LOGSDIR_PATH "/tmp/supervisor_logs/"
 
 /*******GLOBAL VARIABLES*******/
 running_module_t *   running_modules = NULL;  ///< Information about running modules
@@ -93,7 +93,6 @@ graph_node_t *    graph_first_node = NULL; ///< First node of graph nodes list.
 graph_node_t *    graph_last_node = NULL; ///< Last node of graph nodes list.
 
 pthread_t   service_thread_id; ///< Service thread identificator.
-pthread_t   nc_clients_thread_id;
 
 // supervisor flags
 int      help_flag = FALSE;        // -h 
@@ -124,7 +123,6 @@ int parse_arguments(int *argc, char **argv);
 void print_help();
 void daemon_mode();
 char *get_param_by_delimiter(const char *source, char **dest, const char delimiter);
-void * nc_clients_thread_routine(void* arg);
 
 void create_output_dir()
 {
@@ -2881,7 +2879,6 @@ int nc_supervisor_initialization()
 
    VERBOSE(N_STDOUT,"-- Starting service thread --\n");
    start_service_thread();
-   // pthread_create(&nc_clients_thread_id, NULL, nc_clients_thread_routine, NULL);
 
    /* function prototype to set handler */
    void sigpipe_handler(int sig);
@@ -2896,39 +2893,4 @@ int nc_supervisor_initialization()
    }
 
    return 0;
-}
-
-void * nc_clients_thread_routine(void* arg)
-{
-   union tcpip_socket_addr addr;
-   struct addrinfo *p;
-   memset(&addr, 0, sizeof(addr));
-   addr.unix_addr.sun_family = AF_UNIX;
-   snprintf(addr.unix_addr.sun_path, sizeof(addr.unix_addr.sun_path) - 1, "%s", socket_path);
-
-   /* if socket file exists, it could be hard to create new socket and bind */
-   unlink(socket_path); /* error when file does not exist is not a problem */
-   int socket_sd = socket(AF_UNIX, SOCK_STREAM, 0);
-   if (bind(socket_sd, (struct sockaddr *) &addr.unix_addr, sizeof(addr.unix_addr)) != -1) {
-      p = (struct addrinfo *) &addr.unix_addr;
-      chmod(socket_path, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
-   } else {
-      /* error bind() failed */
-      p = NULL;
-   }
-   if (p == NULL) {
-      // if we got here, it means we didn't get bound
-      VERBOSE(N_STDOUT,"selectserver: failed to bind");
-      return;
-   }
-   // listen
-   if (listen(socket_sd, 0) == -1) {
-      //perror("listen");
-      VERBOSE(N_STDOUT,"Listen failed");
-      return;
-   }
-
-
-   daemon_mode(&socket_sd);
-   pthread_exit(NULL);
 }

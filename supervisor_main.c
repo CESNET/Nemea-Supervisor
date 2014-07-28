@@ -64,7 +64,6 @@ int main (int argc, char * argv [])
          break;
 
       case 3:
-         // sup_nc_set_module_enabled(name,op);
          interactive_set_module_enabled();
          break;
 
@@ -85,7 +84,7 @@ int main (int argc, char * argv [])
          break;
 
       case 8:
-         reload_configuration(FALSE, NULL);
+         reload_configuration(0, NULL);
          break;
 
       default:
