@@ -7,9 +7,9 @@ module "nemea" {
     "cejkat@cesnet.cz";
   description
     "Module specifying configuration of Nemea supervisor.";
-  revision "2014-03-18" {
+  revision "2014-07-28" {
     description
-      "Initial revision.";
+      "Model with state information and notification.";
   }
 
   typedef "trapifc-type" {
@@ -38,10 +38,26 @@ module "nemea" {
         description
           "Output interface.";
       }
+      enum "SERVICE" {
+        description
+          "Service interface.";
+      }
     }
   }
 
   container "nemea-supervisor" {
+    container "supervisor" {
+      leaf "verbose" {
+        type "boolean";
+        default "false";
+        description "Verbose level of supervisor log.";
+      }
+      leaf "module-restarts" {
+        type "uint8";
+        default "3";
+        description "Global number of automatic restarts of a module that ends.";
+      }
+    }
     container "modules" {
       leaf "name" {
         type "string";
@@ -52,19 +68,19 @@ module "nemea" {
         leaf "name" {
           type "string";
           description
-            "Name of module.";
+            "Unique name of the module.";
         }
         leaf "params" {
           type "string";
           description
-            "Additional parameters of module (program).";
+            "Additional parameters of the module (program).";
         }
 
         leaf "enabled" {
           type "boolean";
           mandatory "true";
           description
-            "Specify whether to start module or not.";
+            "Specify whether to start the module or not.";
         }
         leaf "running" {
           type "boolean";
@@ -72,15 +88,26 @@ module "nemea" {
           description
             "Specify whether the module is running.";
         }
+        leaf "restart-counter" {
+          type "uint8";
+          config "false";
+          description
+            "The number of repeated starts of the module.";
+        }
         leaf "path" {
           type "string";
           mandatory "true";
           description
             "Path to module (executable file).";
         }
+        leaf "module-restarts" {
+          type "uint8";
+          default "3";
+          description "Global number of automatic restarts of a module that ends.";
+        }
         container "trapinterfaces" {
           list "interface" {
-            key "type direction params";
+            key "type params";
             leaf "note" {
               type "string";
               description
@@ -104,9 +131,72 @@ module "nemea" {
               description
                 "Parameters of libtrap interface: hostname,port for input interface; port for output interface.";
             }
+            leaf "sent-msg-cnt" {
+              type "uint64";
+              config "false";
+              description
+                "Number of sent messages.";
+            }
+            leaf "recv-msg-cnt" {
+              type "uint64";
+              config "false";
+              description
+                "Number of received messages.";
+            }
+            leaf "sent-buffer-cnt" {
+              type "uint64";
+              config "false";
+              description
+                "Number of sent buffers.";
+            }
+            leaf "autoflush-cnt" {
+              type "uint64";
+              config "false";
+              description
+                "Number of Auto-Flush calls.";
+            }
+            leaf "drop-buffer-cnt" {
+              type "uint64";
+              config "false";
+              description
+                "Number of dropped buffers.";
+            }
+            leaf "drop-msg-cnt" {
+              type "uint64";
+              config "false";
+              description
+                "Number of dropped messages.";
+            }
           }
         }
       }
+    }
+  }
+  notification moduleStatusChanged {
+    description
+      "Indicates that the toast in progress has completed.";
+
+    leaf moduleStatus {
+      description
+        "Indicates the final toast status";
+      type enumeration {
+        enum started {
+          description
+            "The module started.";
+        }
+        enum stopped {
+          description
+            "The module stopped.";
+        }
+        enum restarted {
+          description
+            "The module was restarted.";
+        }
+      }
+    }
+    leaf moduleName {
+      type "string";
+      description "Module unique name.";
     }
   }
 }
