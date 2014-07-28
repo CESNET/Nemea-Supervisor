@@ -63,6 +63,7 @@ struct graph_node_input_interface_s {
    graph_node_t *                parent_node; ///< Pointer to parent node.
    int                     message_counter; ///< Received messages counter of this node input interface.
    int                     node_interface_port; ///< Port of this node interface.
+   char *                  unix_sock_interface_port;
    graph_node_output_interface_t * node_interface_output_ifc; ///< Pointer to connected output interface of another module.
 };
 
@@ -74,6 +75,7 @@ struct graph_node_output_interface_s {
    int                     node_children_counter; ///< Node children counter.
    graph_node_input_interface_t **node_children; ///< Array of connected node input interfaces of another nodes (node children).
    int                     node_interface_port; ///< Port of this node interface.
+   char *                  unix_sock_interface_port;
    // edge_statistics_t      *statistics; ///< Pointer to array of edge_statistics_t structures.
 };
 
