@@ -101,7 +101,11 @@ char *   config_file = NULL;
 char *   socket_path = NULL;
 char *   logs_path = NULL;
 
-char *   default_logsdir_path = NULL;
+char * statistics_file_path;
+char * module_event_file_path;
+char * supervisor_log_file_path;
+char * graph_picture_file_path;
+char * graph_code_file_path;
 
 /**************************************/
 
@@ -116,7 +120,61 @@ int parse_arguments(int *argc, char **argv);
 void print_help();
 void daemon_mode();
 char *get_param_by_delimiter(const char *source, char **dest, const char delimiter);
+void * nc_clients_thread_routine(void* arg);
 
+void create_output_dir()
+{
+   char * buffer = NULL;
+   struct stat st = {0};
+
+   if (netconf_flag) { // netconf mode
+      logs_path = (char *) calloc (strlen(NC_DEFAULT_LOGSDIR_PATH)+1, sizeof(char));
+      strcpy(logs_path, NC_DEFAULT_LOGSDIR_PATH);
+   } else { // interactive mode or daemon mode
+      if (logs_path == NULL) {
+         if ((buffer = getenv("HOME")) != 0) {
+            logs_path = (char *) calloc (strlen(buffer)+strlen("/supervisor_logs/")+1, sizeof(char));
+            sprintf(logs_path,"%s/supervisor_logs/", buffer);
+         }
+      } else {
+         if (logs_path[strlen(logs_path)-1] != '/') {
+            buffer = (char *) calloc (strlen(logs_path)+2, sizeof(char));
+            sprintf(buffer, "%s/", logs_path);
+            free(logs_path);
+            logs_path = buffer;
+         }
+      }
+
+      if (stat(logs_path, &st) == -1) {
+         mkdir(logs_path, PERM_LOGSDIR);
+      }
+   }
+}
+
+void create_output_files_strings()
+{
+   statistics_file_path = (char *) calloc (strlen(logs_path)+strlen("supervisor_log_statistics")+1, sizeof(char));
+   sprintf(statistics_file_path, "%ssupervisor_log_statistics", logs_path);
+   module_event_file_path = (char *) calloc (strlen(logs_path)+strlen("supervisor_log_module_event")+1, sizeof(char));
+   sprintf(module_event_file_path, "%ssupervisor_log_module_event", logs_path);
+   graph_picture_file_path = (char *) calloc (strlen(logs_path)+strlen("graph_picture.png")+1, sizeof(char));
+   sprintf(graph_picture_file_path, "%sgraph_picture.png", logs_path);
+   graph_code_file_path = (char *) calloc (strlen(logs_path)+strlen("graph_code")+1, sizeof(char));
+   sprintf(graph_code_file_path, "%sgraph_code", logs_path);
+
+   statistics_fd = fopen(statistics_file_path, "w");
+   module_event_fd = fopen(module_event_file_path, "w");
+
+   if (netconf_flag || daemon_flag) {
+      supervisor_log_file_path = (char *) calloc (strlen(logs_path)+strlen("supervisor_log")+1, sizeof(char));
+      sprintf(supervisor_log_file_path, "%ssupervisor_log", logs_path);
+
+      int fd_fd = open (supervisor_log_file_path, O_RDWR | O_CREAT | O_APPEND, PERM_LOGFILE);
+      dup2(fd_fd, 1);
+      dup2(fd_fd, 2);
+      close(fd_fd);
+   }
+}
 
 /**if choice TRUE -> parse file, else parse buffer*/
 int load_configuration(const int choice, const char * buffer)
@@ -746,21 +804,9 @@ void re_start_module(const int module_number)
    char log_path_stderr[200];
    memset(log_path_stderr,0,200);
    memset(log_path_stdout,0,200);
-   int str_len = 0;
 
-   if (logs_path == NULL) {
-      sprintf(log_path_stdout,"%s%d_%s_stdout",default_logsdir_path, module_number, running_modules[module_number].module_name);
-      sprintf(log_path_stderr,"%s%d_%s_stderr",default_logsdir_path, module_number, running_modules[module_number].module_name);
-   } else {
-      str_len = strlen(logs_path);
-      if (logs_path[str_len-1] == '/') {
-         sprintf(log_path_stdout,"%s%d_%s_stdout",logs_path, module_number, running_modules[module_number].module_name);
-         sprintf(log_path_stderr,"%s%d_%s_stderr",logs_path, module_number, running_modules[module_number].module_name);
-      } else {
-         sprintf(log_path_stdout,"%s/%d_%s_stdout",logs_path, module_number, running_modules[module_number].module_name);
-         sprintf(log_path_stderr,"%s/%d_%s_stderr",logs_path, module_number, running_modules[module_number].module_name);
-      }
-   }
+   sprintf(log_path_stdout,"%s%d_%s_stdout",logs_path, module_number, running_modules[module_number].module_name);
+   sprintf(log_path_stderr,"%s%d_%s_stderr",logs_path, module_number, running_modules[module_number].module_name);
 
    memset(running_modules[module_number].module_counters_array, 0, (running_modules[module_number].module_num_in_ifc + (3*running_modules[module_number].module_num_out_ifc)) * sizeof(int));
    running_modules[module_number].total_cpu_usage_during_module_startup = get_total_cpu_usage();
@@ -857,26 +903,27 @@ void update_module_status()
 void sigpipe_handler(int sig)
 {
    if (sig == SIGPIPE) {
-      VERBOSE(N_STDOUT,"SIGPIPE catched..\n");
+      VERBOSE(MODULE_EVENT,"SIGPIPE catched..\n");
    }
 }
 
 int supervisor_initialization(int *argc, char **argv)
 {
-   input_fd = stdin;
-   output_fd = stdout;
-   char file_path[200];
-   memset(file_path,0,200);
-   int y = 0, ret_val = 0, str_len = 0;
-   char * user_name = NULL;
+   int y = 0, ret_val = 0;
 
    logs_path = NULL;
    config_file = NULL;
+   socket_path = NULL;
    verbose_flag = FALSE;
    help_flag = FALSE;
    file_flag = FALSE;
+   daemon_flag = FALSE;
+   netconf_flag = FALSE;
    graph_first_node = NULL;
    graph_last_node = NULL;
+
+   input_fd = stdin;
+   output_fd = stdout;
    
    ret_val = parse_arguments(argc, argv);
    if (ret_val) {
@@ -891,46 +938,13 @@ int supervisor_initialization(int *argc, char **argv)
       return 1;
    }
 
-   //logs directory
-   struct stat st = {0};
-   if (logs_path == NULL) {
-      if ((user_name = getenv("HOME")) != 0) {
-         default_logsdir_path = (char *) calloc (200, sizeof(char));
-         sprintf(default_logsdir_path,"%s/supervisor_logs/", user_name);
-      }
-      if (stat(default_logsdir_path, &st) == -1) {
-         mkdir(default_logsdir_path, PERM_LOGSDIR);
-      }
-      sprintf(file_path,"%ssupervisor_log_statistics",default_logsdir_path);
-      statistics_fd = fopen(file_path, "w");
-      memset(file_path,0,200);
-      sprintf(file_path,"%ssupervisor_log_module_event",default_logsdir_path);
-      module_event_fd = fopen(file_path, "w");
-   } else {
-      if (stat(logs_path, &st) == -1) {
-         mkdir(logs_path, PERM_LOGSDIR);
-      }
-      str_len = strlen(logs_path);
-      if (logs_path[str_len-1] == '/') {
-         sprintf(file_path,"%ssupervisor_log_statistics",logs_path);
-         statistics_fd = fopen(file_path, "w");
-         memset(file_path,0,200);
-         sprintf(file_path,"%ssupervisor_log_module_event",logs_path);
-         module_event_fd = fopen(file_path, "w");
-      } else {
-         sprintf(file_path,"%s/supervisor_log_statistics",logs_path);
-         statistics_fd = fopen(file_path, "w");
-         memset(file_path,0,200);
-         sprintf(file_path,"%s/supervisor_log_module_event",logs_path);
-         module_event_fd = fopen(file_path, "w");
-      }
-   }
-
    int daemon_arg;
    if (daemon_flag) {
       daemon_init(&daemon_arg);
    }
 
+   create_output_dir();
+   create_output_files_strings();
 
    VERBOSE(N_STDOUT,"--- LOADING CONFIGURATION ---\n");
    loaded_modules_cnt = 0;
@@ -1216,9 +1230,26 @@ void supervisor_termination()
       free(logs_path);
       logs_path = NULL;
    }
-   if (default_logsdir_path != NULL) {
-      free(default_logsdir_path);
-      default_logsdir_path = NULL;
+
+   if (statistics_file_path != NULL) {
+      free(statistics_file_path);
+      statistics_file_path = NULL;
+   }
+   if (module_event_file_path != NULL) {
+      free(module_event_file_path);
+      module_event_file_path = NULL;
+   }
+   if (supervisor_log_file_path != NULL) {
+      free(supervisor_log_file_path);
+      supervisor_log_file_path = NULL;
+   }
+   if (graph_picture_file_path != NULL) {
+      free(graph_picture_file_path);
+      graph_picture_file_path = NULL;
+   }
+   if (graph_code_file_path != NULL) {
+      free(graph_code_file_path);
+      graph_code_file_path = NULL;
    }
 
    fclose(statistics_fd);
@@ -1313,8 +1344,8 @@ void generate_periodic_picture()
    if (graph_first_node == NULL) {
       return;
    }
-   generate_graph_code(graph_first_node, logs_path, default_logsdir_path);
-   generate_picture(logs_path, default_logsdir_path);
+   generate_graph_code(graph_first_node);
+   generate_picture();
 }
 
 void interactive_show_graph()
@@ -1323,7 +1354,7 @@ void interactive_show_graph()
       VERBOSE(N_STDOUT,"No module with service ifc running.\n");
       return;
    }
-   show_picture(logs_path, default_logsdir_path);
+   show_picture();
 }
 
 int service_get_data(int sd, int running_module_number)
@@ -1770,9 +1801,6 @@ int daemon_init(int * d_sd)
    // create daemon
    pid_t process_id = 0;
    pid_t sid = 0;
-   char file_path[200];
-   memset(file_path,0,200);
-   int str_len = 0;
 
    fflush(stdout);
    process_id = fork();
@@ -1788,12 +1816,6 @@ int daemon_init(int * d_sd)
          free(logs_path);
          logs_path = NULL;
       }
-      if (default_logsdir_path != NULL) {
-         free(default_logsdir_path);
-         default_logsdir_path = NULL;
-      }
-      fclose(statistics_fd);
-      fclose(module_event_fd);
       VERBOSE(N_STDOUT,"process_id of child process %d \n", process_id);
       exit(0);
    }
@@ -1808,19 +1830,20 @@ int daemon_init(int * d_sd)
    if (logs_path == NULL) {
       sprintf(file_path,"%ssupervisor_log",default_logsdir_path);
    } else {
-      str_len = strlen(logs_path);
-      if (logs_path[str_len-1] == '/') {
-         sprintf(file_path,"%ssupervisor_log",logs_path);
-      } else {
-         sprintf(file_path,"%s/supervisor_log",logs_path);
-      }
+      /* error bind() failed */
+      p = NULL;
    }
-
-
-   int fd_fd = open (file_path, O_RDWR | O_CREAT | O_APPEND, PERM_LOGFILE);
-   dup2(fd_fd, 1);
-   dup2(fd_fd, 2);
-   close(fd_fd);
+   if (p == NULL) {
+      // if we got here, it means we didn't get bound
+      VERBOSE(N_STDOUT,"selectserver: failed to bind");
+      return 10;
+   }
+   // listen
+   if (listen(*d_sd, 0) == -1) {
+      //perror("listen");
+      VERBOSE(N_STDOUT,"Listen failed");
+      return 10;
+   }
 
    return 0;
 }

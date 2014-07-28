@@ -106,14 +106,14 @@ void update_graph_values (graph_node_t * first);
 /** Function generates code for program dot to GRAPH_SOURCE_FILE.
  * @param[in] first Pointer to first node in the list of nodes.
  */
-void generate_graph_code(graph_node_t * first, char * logs_path, char * def_logs_path);
+void generate_graph_code(graph_node_t * first);
 
-void generate_picture(char * logs_path, char * def_logs_path);
+void generate_picture();
 
 /** Function executes dot and display program and connects them with pipe.
  * @param[in]
  */
-void show_picture(char * logs_path, char * def_logs_path);
+void show_picture();
 
 /** Graph node memory free.
  * @param[in] first Pointer to first node in the list of nodes.

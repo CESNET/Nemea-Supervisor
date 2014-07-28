@@ -45,10 +45,6 @@
 #include "graph.h"
 #include "internal.h"
 
-#define GRAPH_SOURCE_FILE_NAME   "graph_code" ///< Name of file with generated code for dot program.
-#define GRAPH_PICTURE_FILE_NAME  "graph_picture.png"
-
-
 graph_node_t * add_graph_node (graph_node_t * first, graph_node_t * last, void * data)
 {
    graph_node_t * node_ptr = NULL;
@@ -153,31 +149,16 @@ void update_graph_values(graph_node_t * first)
    }
 }
 
-void generate_graph_code(graph_node_t * first, char * logs_path, char * def_logs_path)
+void generate_graph_code(graph_node_t * first)
 {
    if (first == NULL) {
       return;
    }
 
-   char file_path[200];
-   memset(file_path,0,200);
-   int str_len = 0;
-
-   if (logs_path == NULL) {
-      sprintf(file_path,"%s%s", def_logs_path, GRAPH_SOURCE_FILE_NAME);
-   } else {
-      str_len = strlen(logs_path);
-      if (logs_path[str_len-1] == '/') {
-         sprintf(file_path,"%s%s", logs_path, GRAPH_SOURCE_FILE_NAME);
-      } else {
-         sprintf(file_path,"%s/%s", logs_path, GRAPH_SOURCE_FILE_NAME);
-      }
-   }
-
    running_module_t * running_module = NULL;
    int x,y;
    graph_node_t * node_ptr = first;
-   FILE * fd = fopen(file_path, "w");
+   FILE * fd = fopen(graph_code_file_path, "w");
 
    if (fd == NULL) {
       VERBOSE(N_STDOUT, "Could not open graph source file !\n");
@@ -231,33 +212,14 @@ void generate_graph_code(graph_node_t * first, char * logs_path, char * def_logs
    fclose(fd);
 }
 
-void generate_picture(char * logs_path, char * def_logs_path)
+void generate_picture()
 {
 #if HAVE_DOT == 1
    int pid_dot, status = 0;
-   char source_file_path[200];
-   memset(source_file_path,0,200);
-   char picture_file_path[200];
-   memset(picture_file_path,0,200);
-   int str_len = 0;
-
-   if (logs_path == NULL) {
-      sprintf(source_file_path,"%s%s", def_logs_path, GRAPH_SOURCE_FILE_NAME);
-      sprintf(picture_file_path,"%s%s", def_logs_path, GRAPH_PICTURE_FILE_NAME);
-   } else {
-      str_len = strlen(logs_path);
-      if (logs_path[str_len-1] == '/') {
-         sprintf(source_file_path,"%s%s", logs_path, GRAPH_SOURCE_FILE_NAME);
-         sprintf(picture_file_path,"%s%s", logs_path, GRAPH_PICTURE_FILE_NAME);
-      } else {
-         sprintf(source_file_path,"%s/%s", logs_path, GRAPH_SOURCE_FILE_NAME);
-         sprintf(picture_file_path,"%s/%s", logs_path, GRAPH_PICTURE_FILE_NAME);
-      }
-   }
 
    if ((pid_dot = fork()) == 0) {
       //child dot
-      execl("/usr/bin/dot","dot","-Tpng", source_file_path,"-o",picture_file_path,NULL);
+      execl("/usr/bin/dot","dot","-Tpng", graph_code_file_path,"-o",graph_picture_file_path,NULL);
       printf("error while executing dot\n");
       exit(1);
    } else if (pid_dot == -1) {
@@ -270,26 +232,12 @@ void generate_picture(char * logs_path, char * def_logs_path)
 #endif
 }
 
-void show_picture(char * logs_path, char * def_logs_path)
+void show_picture()
 {
 #if HAVE_DOT == 1
    int result = 0, status = 0;
    int pid_dot, pid_display;
    int pipe2[2];
-   char file_path[200];
-   memset(file_path,0,200);
-   int str_len = 0;
-
-   if (logs_path == NULL) {
-      sprintf(file_path,"%s%s", def_logs_path, GRAPH_SOURCE_FILE_NAME);
-   } else {
-      str_len = strlen(logs_path);
-      if (logs_path[str_len-1] == '/') {
-         sprintf(file_path,"%s%s", logs_path, GRAPH_SOURCE_FILE_NAME);
-      } else {
-         sprintf(file_path,"%s/%s", logs_path, GRAPH_SOURCE_FILE_NAME);
-      }
-   }
 
    if (pipe(pipe2) == -1) {
       fprintf(stderr,"Pipe error.\n");
@@ -300,7 +248,7 @@ void show_picture(char * logs_path, char * def_logs_path)
       //child dot
       dup2(pipe2[1],1);
       close(pipe2[0]);
-      execl("/usr/bin/dot","dot","-Tpng", file_path,NULL);
+      execl("/usr/bin/dot","dot","-Tpng", graph_code_file_path,NULL);
       printf("error while executing dot\n");
       exit(1);
    } else if (pid_dot == -1) {
