@@ -54,6 +54,8 @@
 #include <errno.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <signal.h>
 
 #define TRUE            1 ///< Bool true
 #define FALSE           0 ///< Bool false
@@ -71,15 +73,21 @@ int connect_to_supervisor(char *socket_path)
 {
    int sockfd;
    union tcpip_socket_addr addr;
-
    memset(&addr, 0, sizeof(addr));
 
    addr.unix_addr.sun_family = AF_UNIX;
    snprintf(addr.unix_addr.sun_path, sizeof(addr.unix_addr.sun_path) - 1, "%s", socket_path);
+
    sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
-   if (connect(sockfd, (struct sockaddr *) &addr.unix_addr, sizeof(addr.unix_addr)) == -1) {
+   if (sockfd < 0) {
+      fprintf(stderr, "Could not create socket.\n");
       return -1;
    }
+
+   if (connect(sockfd, (struct sockaddr *) &addr.unix_addr, sizeof(addr.unix_addr)) < 0) {
+      close(sockfd);
+      return -1;
+   }   
    return sockfd;
 }
 
@@ -94,7 +102,6 @@ int main(int argc, char **argv)
    char buffer[1000];
    memset(buffer,0,1000);
    int command;
-
    char testbuffer[100];
    memset(testbuffer,0,100);
    char *socket_path = NULL;

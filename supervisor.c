@@ -75,28 +75,32 @@
 #define DAEMON_CONFIG_MODE_CODE 789123
 #define DAEMON_STATS_MODE_CODE 456987
 
-#define UNIX_PATH_FILENAME_FORMAT   "/tmp/trap-localhost-%s.sock" ///< Modules output interfaces socket, to which connects service thread.
-#define DAEMON_UNIX_PATH_FILENAME_FORMAT  "/tmp/supervisor_daemon.sock"  ///<  Daemon socket.
+#define MODULES_UNIXSOCKET_PATH_FILENAME_FORMAT   "/tmp/trap-localhost-%s.sock" ///< Modules output interfaces socket, to which connects service thread.
+#define DEFAULT_DAEMON_UNIXSOCKET_PATH_FILENAME  "/tmp/supervisor_daemon.sock"  ///<  Daemon socket.
+
+#define NC_DEFAULT_LOGSDIR_PATH "/data/svepemar/"
 
 /*******GLOBAL VARIABLES*******/
-running_module_t *   running_modules;  ///< Information about running modules
+running_module_t *   running_modules = NULL;  ///< Information about running modules
 
-int         running_modules_array_size;  ///< Current size of running_modules array.
-int         loaded_modules_cnt; ///< Current number of loaded modules.
+int         running_modules_array_size = 0;  ///< Current size of running_modules array.
+int         loaded_modules_cnt = 0; ///< Current number of loaded modules.
 
 pthread_mutex_t running_modules_lock; ///< mutex for locking counters
-int         service_thread_continue; ///< condition variable of main loop of the service_thread
+int         service_thread_continue = FALSE; ///< condition variable of main loop of the service_thread
 
-graph_node_t *    graph_first_node; ///< First node of graph nodes list.
-graph_node_t *    graph_last_node; ///< Last node of graph nodes list.
+graph_node_t *    graph_first_node = NULL; ///< First node of graph nodes list.
+graph_node_t *    graph_last_node = NULL; ///< Last node of graph nodes list.
 
 pthread_t   service_thread_id; ///< Service thread identificator.
+pthread_t   nc_clients_thread_id;
 
 // supervisor flags
-int      help_flag;        // -h 
-int      file_flag;        // -f "file" arguments
-int      verbose_flag;     // -v messages and cpu_usage stats
-int      daemon_flag;      // --daemon
+int      help_flag = FALSE;        // -h 
+int      file_flag = FALSE;        // -f "file" arguments
+int      verbose_flag = FALSE;     // -v messages and cpu_usage stats
+int      daemon_flag = FALSE;      // --daemon
+int      netconf_flag = FALSE;
 char *   config_file = NULL;
 char *   socket_path = NULL;
 char *   logs_path = NULL;
@@ -1367,7 +1371,7 @@ void connect_to_module_service_ifc(int module, int num_ifc)
    memset(&addr, 0, sizeof(addr));
 
    addr.unix_addr.sun_family = AF_UNIX;
-   snprintf(addr.unix_addr.sun_path, sizeof(addr.unix_addr.sun_path) - 1, UNIX_PATH_FILENAME_FORMAT, dest_port);
+   snprintf(addr.unix_addr.sun_path, sizeof(addr.unix_addr.sun_path) - 1, MODULES_UNIXSOCKET_PATH_FILENAME_FORMAT, dest_port);
    sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
    if (sockfd == -1) {
       VERBOSE(MODULE_EVENT,"Error while opening socket.\n");
@@ -1677,7 +1681,7 @@ int parse_arguments(int *argc, char **argv)
 
    if (socket_path == NULL) {
       /* socket_path was not set by user, use default value. */
-      socket_path = DAEMON_UNIX_PATH_FILENAME_FORMAT;
+      socket_path = DEFAULT_DAEMON_UNIXSOCKET_PATH_FILENAME;
    }
    if (config_file == NULL) {
       fprintf(stderr, "Missing required config file (-f|--config-file).\n");
@@ -1748,35 +1752,6 @@ void print_help() // ?????
 
 int daemon_init(int * d_sd)
 {
-   // create socket
-   union tcpip_socket_addr addr;
-   struct addrinfo *p;
-   memset(&addr, 0, sizeof(addr));
-   addr.unix_addr.sun_family = AF_UNIX;
-   snprintf(addr.unix_addr.sun_path, sizeof(addr.unix_addr.sun_path) - 1, "%s", socket_path);
-
-   /* if socket file exists, it could be hard to create new socket and bind */
-   unlink(DAEMON_UNIX_PATH_FILENAME_FORMAT); /* error when file does not exist is not a problem */
-   *d_sd = socket(AF_UNIX, SOCK_STREAM, 0);
-   if (bind(*d_sd, (struct sockaddr *) &addr.unix_addr, sizeof(addr.unix_addr)) != -1) {
-      p = (struct addrinfo *) &addr.unix_addr;
-      chmod(DAEMON_UNIX_PATH_FILENAME_FORMAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
-   } else {
-      /* error bind() failed */
-      p = NULL;
-   }
-   if (p == NULL) {
-      // if we got here, it means we didn't get bound
-      VERBOSE(N_STDOUT,"selectserver: failed to bind");
-      return 10;
-   }
-   // listen
-   if (listen(*d_sd, 1) == -1) {
-      //perror("listen");
-      VERBOSE(N_STDOUT,"Listen failed");
-      return 10;
-   }
-
    // create daemon
    pid_t process_id = 0;
    pid_t sid = 0;
@@ -1806,8 +1781,19 @@ int daemon_init(int * d_sd)
       exit(1);
    }
 
-   if (logs_path == NULL) {
-      sprintf(file_path,"%ssupervisor_log",default_logsdir_path);
+   // create socket
+   union tcpip_socket_addr addr;
+   struct addrinfo *p;
+   memset(&addr, 0, sizeof(addr));
+   addr.unix_addr.sun_family = AF_UNIX;
+   snprintf(addr.unix_addr.sun_path, sizeof(addr.unix_addr.sun_path) - 1, "%s", socket_path);
+
+   /* if socket file exists, it could be hard to create new socket and bind */
+   unlink(socket_path); /* error when file does not exist is not a problem */
+   *d_sd = socket(AF_UNIX, SOCK_STREAM, 0);
+   if (bind(*d_sd, (struct sockaddr *) &addr.unix_addr, sizeof(addr.unix_addr)) != -1) {
+      p = (struct addrinfo *) &addr.unix_addr;
+      chmod(socket_path, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
    } else {
       /* error bind() failed */
       p = NULL;
@@ -1830,16 +1816,30 @@ int daemon_init(int * d_sd)
 
 int daemon_get_client(int * d_sd)
 {
+   int error, ret_val;
+   socklen_t len;
    struct sockaddr_storage remoteaddr; // client address
    socklen_t addrlen;
    int newclient;
 
+   VERBOSE(N_STDOUT, "before accept\n");
    // handle new connection
    addrlen = sizeof remoteaddr;
-   newclient = accept(*d_sd, (struct sockaddr *)&remoteaddr, &addrlen);
-   if (newclient == -1) {
-      VERBOSE(N_STDOUT,"Accepting new client failed.");
-      return newclient;
+
+   while(1) {
+      newclient = accept(*d_sd, (struct sockaddr *)&remoteaddr, &addrlen);
+      if (newclient == -1) {
+         VERBOSE(N_STDOUT,"Accepting new client failed.");
+         return newclient;
+      }
+
+      error = 0;
+      len = sizeof (error);
+      ret_val = getsockopt (newclient, SOL_SOCKET, SO_ERROR, &error, &len );
+      if (ret_val == 0) {
+         VERBOSE(N_STDOUT, "Socket is up\n");
+         break;
+      }
    }
    VERBOSE(N_STDOUT,"Client has connected.\n");
    return newclient;
@@ -1848,6 +1848,7 @@ int daemon_get_client(int * d_sd)
 
 void daemon_mode(int * arg)
 {
+   int got_code = FALSE;
    int x = 0;
    int daemon_sd = *arg;
    int client_sd = -1;
@@ -1872,7 +1873,7 @@ void daemon_mode(int * arg)
       if (client_sd == -1) {
          connected = FALSE;
          /* Bind was probably unsuccessful. */
-         return;
+         continue;
       }
 
       client_stream_input = fdopen(client_sd, "r");
@@ -1908,38 +1909,37 @@ void daemon_mode(int * arg)
 
       while (connected != 0) {
          request = -1;
-
          FD_ZERO(&read_fds);
          FD_SET(client_stream_input_fd, &read_fds);
 
-         tv.tv_sec = 1;
+         tv.tv_sec = 2;
          tv.tv_usec = 0;
 
          ret_val = select(client_stream_input_fd+1, &read_fds, NULL, NULL, &tv);
-
          if (ret_val == -1) {
             perror("select()");
             fclose(client_stream_input);
             fclose(client_stream_output);
             close(client_sd);
             connected = FALSE;
+            got_code = FALSE;
             input_fd = stdin;
             output_fd = stdout;
             break;
          } else if (ret_val != 0) {
             if (FD_ISSET(client_stream_input_fd, &read_fds)) {
                ioctl(client_stream_input_fd, FIONREAD, &x);
-               if (x == 0) {
+               if (x == 0 || x == -1) {
                   input_fd = stdin;
                   output_fd = stdout;
                   VERBOSE(N_STDOUT, "Client has disconnected.\n");
                   connected = FALSE;
+                  got_code = FALSE;
                   fclose(client_stream_input);
                   fclose(client_stream_output);
                   close(client_sd);
                   break;
                }
-
                if (fscanf(input_fd,"%s",buffer) != 1) {
                   connected = FALSE;
                }
@@ -1968,7 +1968,7 @@ void daemon_mode(int * arg)
                   interactive_show_graph();
                   break;
                case 8:
-                  reload_configuration();
+                  reload_configuration(FALSE, NULL);
                   break;
                case DAEMON_STOP_CODE:
                   supervisor_termination();
@@ -1976,6 +1976,7 @@ void daemon_mode(int * arg)
                   terminated = TRUE;
                   break;
                case DAEMON_CONFIG_MODE_CODE:
+                  got_code = TRUE;
                   //client config mode
                   break;
                case DAEMON_STATS_MODE_CODE: {
@@ -1994,6 +1995,7 @@ void daemon_mode(int * arg)
                   output_fd = stdout;
                   VERBOSE(N_STDOUT, "Client has disconnected.\n");
                   connected = FALSE;
+                  got_code = FALSE;
                   fclose(client_stream_input);
                   fclose(client_stream_output);
                   close(client_sd);
@@ -2003,7 +2005,6 @@ void daemon_mode(int * arg)
                   VERBOSE(N_STDOUT, "Error input\n");
                   break;
                }
-
                VERBOSE(N_STDOUT,"--------OPTIONS--------\n");
                VERBOSE(N_STDOUT,"1. START ALL MODULES\n");
                VERBOSE(N_STDOUT,"2. STOP ALL MODULES\n");
@@ -2015,10 +2016,18 @@ void daemon_mode(int * arg)
                VERBOSE(N_STDOUT,"8. RELOAD CONFIGURATION\n");
                VERBOSE(N_STDOUT,"-- Type \"Cquit\" to exit client --\n");
                VERBOSE(N_STDOUT,"-- Type \"Dstop\" to stop daemon --\n");
-
             }
          } else {
-            /* nothing to do here */
+            if (got_code == FALSE) {
+               input_fd = stdin;
+               output_fd = stdout;
+               VERBOSE(N_STDOUT, "Client isn't responding.\n");
+               connected = FALSE;
+               fclose(client_stream_input);
+               fclose(client_stream_output);
+               close(client_sd);
+               break;
+            }
          }
 
          printf(".");
