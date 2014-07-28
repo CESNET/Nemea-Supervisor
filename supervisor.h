@@ -277,7 +277,7 @@ void free_module_on_index(int index);
 
 void free_module_interfaces_on_index(int index);
 
-int reload_configuration();
+int reload_configuration(const int choice, xmlNodePtr node);
 
 #endif
 

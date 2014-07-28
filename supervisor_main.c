@@ -85,7 +85,7 @@ int main (int argc, char * argv [])
          break;
 
       case 8:
-         reload_configuration();
+         reload_configuration(FALSE, NULL);
          break;
 
       default:

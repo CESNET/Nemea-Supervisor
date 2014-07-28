@@ -62,7 +62,7 @@ void 	interactive_run_temp_conf();
 
 /*NC API*/
 void reload_configuration();
-
+int nc_supervisor_initialization();
 
 #endif
 

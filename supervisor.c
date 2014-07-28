@@ -2123,7 +2123,7 @@ void free_module_interfaces_on_index(int index)
    }
 }
 
-int reload_configuration()
+int reload_configuration(const int choice, xmlNodePtr node)
 {
    pthread_mutex_lock(&running_modules_lock);
 
@@ -2149,26 +2149,30 @@ int reload_configuration()
       running_modules[x].module_modified_by_reload = FALSE;
    }
    
-   /*Get the name of a new config file */
-   VERBOSE(N_STDOUT, "Type in a name of the xml file to be loaded including \".xml\"; (to reload same config file type \"default\" or to cancel reloading type \"cancel\"):\n");
-   if (fscanf(input_fd,"%s",buffer) == 0) {
-      xml_tree = xmlParseFile(config_file);
-   } else if (strcmp(buffer, "cancel") == 0) {
-      pthread_mutex_unlock(&running_modules_lock);
-      return FALSE;
-   } else if (strcmp(buffer, "default") == 0) {
-      xml_tree = xmlParseFile(config_file);
-   } else {
-      xml_tree = xmlParseFile(buffer);
-   }
+   if (choice == FALSE) { //new file
+      /*Get the name of a new config file */
+      VERBOSE(N_STDOUT, "Type in a name of the xml file to be loaded including \".xml\"; (to reload same config file type \"default\" or to cancel reloading type \"cancel\"):\n");
+      if (fscanf(input_fd,"%s",buffer) == 0) {
+         xml_tree = xmlParseFile(config_file);
+      } else if (strcmp(buffer, "cancel") == 0) {
+         pthread_mutex_unlock(&running_modules_lock);
+         return FALSE;
+      } else if (strcmp(buffer, "default") == 0) {
+         xml_tree = xmlParseFile(config_file);
+      } else {
+         xml_tree = xmlParseFile(buffer);
+      }
 
-   if (xml_tree == NULL) {
-      fprintf(stderr,"Document not parsed successfully. \n");
-      pthread_mutex_unlock(&running_modules_lock);
-      return FALSE;
-   }
+      if (xml_tree == NULL) {
+         fprintf(stderr,"Document not parsed successfully. \n");
+         pthread_mutex_unlock(&running_modules_lock);
+         return FALSE;
+      }
 
-   current_node = xmlDocGetRootElement(xml_tree);
+      current_node = xmlDocGetRootElement(xml_tree);
+   } else { //netconf reload
+      current_node = node;
+   }
 
    if (current_node == NULL) {
       fprintf(stderr,"empty document\n");
@@ -2325,6 +2329,7 @@ int reload_configuration()
                } else {
                   if (strncmp(key, "true", strlen(key)) == 0) {
                      running_modules[module_index].module_enabled = TRUE;
+                     running_modules[module_index].module_restart_cnt = -1;
                   } else {
                      running_modules[module_index].module_enabled = FALSE;
                   }
@@ -2828,4 +2833,93 @@ int reload_configuration()
 
    pthread_mutex_unlock(&running_modules_lock);
    return TRUE;
+}
+
+int nc_supervisor_initialization()
+{
+   int y = 0;
+
+   logs_path = NULL;
+   config_file = NULL;
+   socket_path = DEFAULT_DAEMON_UNIXSOCKET_PATH_FILENAME;
+   verbose_flag = FALSE;
+   help_flag = FALSE;
+   file_flag = FALSE;
+   daemon_flag = FALSE;
+   netconf_flag = TRUE;
+   graph_first_node = NULL;
+   graph_last_node = NULL;
+
+   input_fd = stdin;
+   output_fd = stdout;
+
+   create_output_dir();
+   create_output_files_strings();
+
+   VERBOSE(N_STDOUT,"--- LOADING CONFIGURATION ---\n");
+   loaded_modules_cnt = 0;
+   running_modules_array_size = RUNNING_MODULES_ARRAY_START_SIZE;
+   running_modules = (running_module_t *) calloc (running_modules_array_size,sizeof(running_module_t));
+   for (y=0;y<running_modules_array_size;y++) {
+      running_modules[y].module_ifces = (interface_t *) calloc(IFCES_ARRAY_START_SIZE, sizeof(interface_t));
+      running_modules[y].module_running = FALSE;
+      running_modules[y].module_ifces_array_size = IFCES_ARRAY_START_SIZE;
+      running_modules[y].module_ifces_cnt = 0;
+   }
+
+   pthread_mutex_init(&running_modules_lock,NULL);
+   service_thread_continue = TRUE;
+
+   VERBOSE(N_STDOUT,"-- Starting service thread --\n");
+   start_service_thread();
+   // pthread_create(&nc_clients_thread_id, NULL, nc_clients_thread_routine, NULL);
+
+   /* function prototype to set handler */
+   void sigpipe_handler(int sig);
+   struct sigaction sa;
+
+   sa.sa_handler = sigpipe_handler;
+   sa.sa_flags = 0;
+   sigemptyset(&sa.sa_mask);
+
+   if (sigaction(SIGPIPE,&sa,NULL) == -1) {
+      VERBOSE(N_STDOUT,"ERROR sigaction !!\n");
+   }
+
+   return 0;
+}
+
+void * nc_clients_thread_routine(void* arg)
+{
+   union tcpip_socket_addr addr;
+   struct addrinfo *p;
+   memset(&addr, 0, sizeof(addr));
+   addr.unix_addr.sun_family = AF_UNIX;
+   snprintf(addr.unix_addr.sun_path, sizeof(addr.unix_addr.sun_path) - 1, "%s", socket_path);
+
+   /* if socket file exists, it could be hard to create new socket and bind */
+   unlink(socket_path); /* error when file does not exist is not a problem */
+   int socket_sd = socket(AF_UNIX, SOCK_STREAM, 0);
+   if (bind(socket_sd, (struct sockaddr *) &addr.unix_addr, sizeof(addr.unix_addr)) != -1) {
+      p = (struct addrinfo *) &addr.unix_addr;
+      chmod(socket_path, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+   } else {
+      /* error bind() failed */
+      p = NULL;
+   }
+   if (p == NULL) {
+      // if we got here, it means we didn't get bound
+      VERBOSE(N_STDOUT,"selectserver: failed to bind");
+      return;
+   }
+   // listen
+   if (listen(socket_sd, 0) == -1) {
+      //perror("listen");
+      VERBOSE(N_STDOUT,"Listen failed");
+      return;
+   }
+
+
+   daemon_mode(&socket_sd);
+   pthread_exit(NULL);
 }
