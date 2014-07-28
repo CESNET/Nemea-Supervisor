@@ -106,6 +106,7 @@ typedef struct running_module_s {
    int            module_served_by_service_thread; ///< TRUE if module was added to graph struct by sevice thread, FALSE on start.
    int            module_running; ///< TRUE after first start of module, else FALSE.
    int            module_status; ///< Module status (TRUE ~ running, FALSE ~ stopped)
+   int            sent_sigint;
    pid_t          module_pid; ///< Modules process PID.
    int           *module_counters_array; ///< Array of statistics with counters.
    int            module_service_sd; ///< Socket descriptor of the service connection.
@@ -158,7 +159,7 @@ void stop_module(const int module_number);
 
 /** Function updates running modules processes status.
  */
-void update_module_status();
+void service_update_module_status();
 
 /** SIGPIPE handler.
  */
@@ -189,7 +190,7 @@ void interactive_stop_module();
 
 /** Function uses restart_module() for stopped, enabled modules.
  */
-void restart_modules();
+void service_restart_modules();
 
 /** Function prints a list of loaded modules with their status - running/stopped/remote.
  */
