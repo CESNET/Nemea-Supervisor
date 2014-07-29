@@ -1,0 +1,33 @@
+Summary: Controller and monitoring module for Nemea
+Name: nemea-supervisor
+Version: @PACKAGE_VERSION@
+Release: @RELEASE@
+URL: http://www.liberouter.org/nemea
+Source: https://www.liberouter.org/repo/SOURCES/%{name}-%{version}-%{release}.tar.gz
+Group: Liberouter
+License: BSD
+Vendor: CESNET, z.s.p.o.
+Packager: @USERNAME@ <@USERMAIL@>
+BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}
+Requires: libtrap graphviz libxml2
+BuildRequires: gcc make doxygen pkgconfig libtrap-devel nemea-common-devel libxml2-devel
+Provides: nemea-supervisor
+
+%description
+
+%prep
+%setup
+
+%build
+./configure --prefix=%{_prefix} --libdir=%{_libdir} -q --enable-silent-rules;
+make -j5
+
+%install
+make -j5 DESTDIR=$RPM_BUILD_ROOT install
+
+%post
+
+%files
+%{_bindir}/*
+%{_docdir}/nemea-supervisor/README
+
