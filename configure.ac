@@ -5,12 +5,23 @@ AC_PREREQ([2.63])
 AC_INIT([nemea-supervisor], [1.0.0], [svepemar@fit.cvut.cz])
 AC_CONFIG_SRCDIR([supervisor.c])
 AC_CONFIG_HEADERS([config.h])
-AM_INIT_AUTOMAKE([-Wall])
+AM_INIT_AUTOMAKE([-Wall silent-rules])
+RELEASE=1
+AC_SUBST(RELEASE)
+USERNAME=`git config --get user.name`
+USERMAIL=`git config --get user.email`
+AC_SUBST(USERNAME)
+AC_SUBST(USERMAIL)
+# Check for rpmbuild
+AC_CHECK_PROG(RPMBUILD, rpmbuild, rpmbuild, [""])
+AM_CONDITIONAL(MAKE_RPMS, test x$RPMBUILD != x)
 
 # Checks for programs.
 AC_PROG_CC
-AC_PROG_MAKE_SET
 AM_PROG_CC_C_O
+AC_PROG_LN_S
+AC_PROG_INSTALL
+AC_PROG_MAKE_SET
 
 AC_CHECK_PROG(HAVE_DOT, dot, yes)
 AC_CHECK_PROG(HAVE_DISPLAY, display, yes)
@@ -44,7 +55,7 @@ AC_TYPE_PID_T
 AC_FUNC_FORK
 AC_CHECK_FUNCS([dup2 memset mkdir])
 
-AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([Makefile nemea-supervisor.spec])
 AC_OUTPUT
 echo
 echo
