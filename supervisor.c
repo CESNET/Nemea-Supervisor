@@ -164,17 +164,14 @@ void create_output_files_strings()
    graph_code_file_path = (char *) calloc (strlen(logs_path)+strlen("graph_code")+1, sizeof(char));
    sprintf(graph_code_file_path, "%sgraph_code", logs_path);
 
-   statistics_fd = fopen(statistics_file_path, "w");
-   module_event_fd = fopen(module_event_file_path, "w");
+   statistics_fd = fopen(statistics_file_path, "a");
+   module_event_fd = fopen(module_event_file_path, "a");
 
    if (netconf_flag || daemon_flag) {
       supervisor_log_file_path = (char *) calloc (strlen(logs_path)+strlen("supervisor_log")+1, sizeof(char));
       sprintf(supervisor_log_file_path, "%ssupervisor_log", logs_path);
 
-      int fd_fd = open (supervisor_log_file_path, O_RDWR | O_CREAT | O_APPEND, PERM_LOGFILE);
-      dup2(fd_fd, 1);
-      dup2(fd_fd, 2);
-      close(fd_fd);
+      output_fd = fopen (supervisor_log_file_path, "a");
    }
 }
 
@@ -1227,8 +1224,18 @@ void supervisor_termination()
       graph_code_file_path = NULL;
    }
 
-   fclose(statistics_fd);
-   fclose(module_event_fd);
+   if (netconf_flag && output_fd != NULL) {
+      fclose(output_fd);
+      output_fd = NULL;
+   }
+   if (statistics_fd != NULL) {
+      fclose(statistics_fd);
+      statistics_fd = NULL;
+   }
+   if (module_event_fd != NULL) {
+      fclose(module_event_fd);
+      module_event_fd = NULL;
+   }
 }
 
 char *get_param_by_delimiter(const char *source, char **dest, const char delimiter)
@@ -1846,6 +1853,7 @@ int daemon_get_client(int * d_sd)
 
 void daemon_mode(int * arg)
 {
+   FILE * supervisor_log_stream_ptr = output_fd;
    int got_code = FALSE;
    int x = 0;
    int daemon_sd = *arg;
@@ -1922,14 +1930,14 @@ void daemon_mode(int * arg)
             connected = FALSE;
             got_code = FALSE;
             input_fd = stdin;
-            output_fd = stdout;
+            output_fd = supervisor_log_stream_ptr;
             break;
          } else if (ret_val != 0) {
             if (FD_ISSET(client_stream_input_fd, &read_fds)) {
                ioctl(client_stream_input_fd, FIONREAD, &x);
                if (x == 0 || x == -1) {
                   input_fd = stdin;
-                  output_fd = stdout;
+                  output_fd = supervisor_log_stream_ptr;
                   VERBOSE(N_STDOUT, "Client has disconnected.\n");
                   connected = FALSE;
                   got_code = FALSE;
@@ -1990,7 +1998,7 @@ void daemon_mode(int * arg)
                      stats_buffer = NULL;
                   }
                   input_fd = stdin;
-                  output_fd = stdout;
+                  output_fd = supervisor_log_stream_ptr;
                   VERBOSE(N_STDOUT, "Client has disconnected.\n");
                   connected = FALSE;
                   got_code = FALSE;
@@ -2018,7 +2026,7 @@ void daemon_mode(int * arg)
          } else {
             if (got_code == FALSE) {
                input_fd = stdin;
-               output_fd = stdout;
+               output_fd = supervisor_log_stream_ptr;
                VERBOSE(N_STDOUT, "Client isn't responding.\n");
                connected = FALSE;
                fclose(client_stream_input);
@@ -2040,6 +2048,10 @@ void daemon_mode(int * arg)
    close(client_sd);
    close(daemon_sd);
    unlink(socket_path);
+   if (supervisor_log_stream_ptr != NULL) {
+      fclose(supervisor_log_stream_ptr);
+      supervisor_log_stream_ptr = NULL;
+   }
    return;
 }
 
