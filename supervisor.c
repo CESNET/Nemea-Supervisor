@@ -69,7 +69,7 @@
 #include <ifaddrs.h>
 
 #define TRAP_PARAM               "-i" ///< Interface parameter for libtrap
-#define MAX_RESTARTS_PER_MINUTE  3  ///< Maximum number of module restarts per minute
+#define DEFAULT_MAX_RESTARTS_PER_MINUTE  3  ///< Maximum number of module restarts per minute
 #define DEFAULT_SIZE_OF_BUFFER   100
 
 #define DAEMON_STOP_CODE 951753
@@ -89,11 +89,13 @@ int         loaded_modules_cnt = 0; ///< Current number of loaded modules.
 
 pthread_mutex_t running_modules_lock; ///< mutex for locking counters
 int         service_thread_continue = FALSE; ///< condition variable of main loop of the service_thread
+int         max_restarts_per_minute_config = DEFAULT_MAX_RESTARTS_PER_MINUTE;
 
 graph_node_t *    graph_first_node = NULL; ///< First node of graph nodes list.
 graph_node_t *    graph_last_node = NULL; ///< Last node of graph nodes list.
 
 pthread_t   service_thread_id; ///< Service thread identificator.
+pthread_t   nc_clients_thread_id;
 
 // supervisor flags
 int      help_flag = FALSE;        // -h 
@@ -1111,8 +1113,8 @@ void service_restart_modules()
          running_modules[x].module_restart_timer = 0;
          running_modules[x].module_restart_cnt = 0;
       }
-      if (running_modules[x].module_enabled == TRUE && running_modules[x].module_status == FALSE && (running_modules[x].module_restart_cnt == MAX_RESTARTS_PER_MINUTE)) {
-         VERBOSE(N_STDOUT,"Module: %d_%s was restarted %d times per minute and it is down again. I set it disabled.\n",x, running_modules[x].module_name, MAX_RESTARTS_PER_MINUTE);
+      if (running_modules[x].module_enabled == TRUE && running_modules[x].module_status == FALSE && (running_modules[x].module_restart_cnt == max_restarts_per_minute_config)) {
+         VERBOSE(N_STDOUT,"Module: %d_%s was restarted %d times per minute and it is down again. I set it disabled.\n",x, running_modules[x].module_name, max_restarts_per_minute_config);
          running_modules[x].module_enabled = FALSE;
       } else if (running_modules[x].module_status == FALSE && running_modules[x].module_enabled == TRUE) {
          re_start_module(x);
@@ -1465,9 +1467,7 @@ void *service_thread_routine(void* arg)
    time_t rawtime;
    struct tm * timeinfo;
 
-   if (verbose_flag) {
-      print_statistics_legend();
-   }
+   print_statistics_legend();
 
    while (service_thread_continue == TRUE) {
       pthread_mutex_lock(&running_modules_lock);
@@ -2240,8 +2240,35 @@ int reload_configuration(const int choice, xmlNodePtr node)
    /*****************/
    VERBOSE(N_STDOUT,"- - -\nProcessing new configuration...\n");
 
-   while(current_node != NULL) {
-      if (!xmlStrcmp(current_node->name, BAD_CAST "modules")) {
+   while (current_node != NULL) {
+      if (!xmlStrcmp(current_node->name, BAD_CAST "supervisor")) {
+         module_ptr = current_node->xmlChildrenNode;
+         while (module_ptr != NULL) {
+            if (!xmlStrcmp(module_ptr->name, BAD_CAST "verbose")) {
+               key = xmlNodeListGetString(xml_tree, module_ptr->xmlChildrenNode, 1);
+               if (key != NULL) {
+                  if (strcmp(key, "true") == 0) {
+                     verbose_flag = TRUE;
+                  } else if (strcmp(key, "false") == 0) {
+                     verbose_flag = FALSE;
+                  }
+               }
+            } else if (!xmlStrcmp(module_ptr->name, BAD_CAST "module-restarts")) {
+               key = xmlNodeListGetString(xml_tree, module_ptr->xmlChildrenNode, 1);
+               if (key != NULL) {
+                  x = 0;
+                  if ((sscanf(key,"%d",&x) == 1) && (x >= 0)) {
+                     max_restarts_per_minute_config = x;
+                  }
+               }
+            }
+            if (key != NULL) {
+               xmlFree(key);
+               key = NULL;
+            }
+            module_ptr = module_ptr->next;
+         }
+      } else if (!xmlStrcmp(current_node->name, BAD_CAST "modules")) {
          modules_got_profile = FALSE;
          module_ptr = current_node->xmlChildrenNode;
          module_atr = NULL, ifc_ptr = NULL, ifc_atr = NULL;
