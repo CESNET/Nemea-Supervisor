@@ -7,12 +7,11 @@
 #include <stdlib.h>
 #include <libxml/tree.h>
 #include <libnetconf_xml.h>
+#include <string.h>
 
-#include "../supervisor.h"
 #include "../supervisor_api.h"
-
-extern running_module_t *running_modules;
-extern int running_modules_cnt;
+#include "../internal.h"
+#include "ncnemea.h"
 
 /* transAPI version which must be compatible with libnetconf */
 int transapi_version = 4;
@@ -62,52 +61,8 @@ NC_EDIT_ERROPT_TYPE erropt = NC_EDIT_ERROPT_NOTSET;
  */
 int transapi_init(xmlDocPtr * running)
 {
-	char *argv[] = {
-		"supervisor", "-f", "/tmp/supervisor-running-config.xml"
-	};
-	int argc = 3;
-	LIBXML_TEST_VERSION;
-	if (*running == NULL) {
-		/* empty running */
-		xmlDocPtr nd = xmlNewDoc(BAD_CAST "1.0");
-		xmlNodePtr rd = NULL;
-		if (nd != NULL) {
-			rd = xmlNewNode(NULL, BAD_CAST "nemea-supervisor");
-			if (rd != NULL) {
-				xmlDocSetRootElement(nd, rd);
-				xmlDocDump(stderr, nd);
-				if (xmlSaveFormatFile(argv[2], nd, 0) == -1) {
-					xmlFreeDoc(nd);
-					fprintf(stderr,
-						"Save running into temp file failed (%s).\n",
-						argv[2]);
-					return EXIT_FAILURE;
-				}
-			} else {
-				fprintf(stderr,
-					"Creation of empty conf failed.\n");
-				return EXIT_FAILURE;
-			}
-		} else {
-			fprintf(stderr, "Creation of empty conf failed.\n");
-			return EXIT_FAILURE;
-		}
-
-	} else {
-		xmlDocDump(stderr, *running);
-		if (xmlSaveFormatFile(argv[2], *running, 0) == -1) {
-			xmlDocDump(stderr, *running);
-			fprintf(stderr,
-				"Save running into temp file failed.\n");
-			return EXIT_FAILURE;
-		}
-	}
-
-	if (api_initialization(&argc, argv) == 0) {
-		fprintf(stderr, "Supervisor API initialization failed.\n");
-		//return EXIT_FAILURE;
-	}
-	unlink(argv[2]);
+	nc_supervisor_initialization();
+	VERBOSE(N_STDOUT,"-- Transapi init --\n");
 	return EXIT_SUCCESS;
 }
 
@@ -116,8 +71,8 @@ int transapi_init(xmlDocPtr * running)
  */
 void transapi_close(void)
 {
-	fprintf(stderr, "Supervisor API cleanup.\n");
-	api_quit();
+	VERBOSE(N_STDOUT,"-- Transapi close --\n");
+	supervisor_termination();
 	return;
 }
 
@@ -132,38 +87,7 @@ void transapi_close(void)
 xmlDocPtr get_state_data(xmlDocPtr model, xmlDocPtr running,
 			 struct nc_err ** err)
 {
-	int i;
-	const char *templ =
-	    "<?xml version=\"1.0\"?><nemea-supervisor xmlns=\"urn:cesnet:tmc:nemea:1.0\"><modules/></nemea-supervisor>";
-	xmlDocPtr resp = NULL;
-	xmlNodePtr modules, module;
-
-	if (running_modules_cnt > 0) {
-		resp = xmlParseMemory(templ, strlen(templ));
-		if (resp == NULL) {
-			return NULL;
-		}
-		modules = xmlDocGetRootElement(resp);
-		modules = modules->children;
-		for (i = 0; i < running_modules_cnt; ++i) {
-			module =
-			    xmlNewChild(modules, NULL, BAD_CAST "module", NULL);
-			xmlNewChild(module, NULL, BAD_CAST "name",
-				    running_modules[i].module_name);
-			if (running_modules[i].module_status == TRUE) {
-				xmlNewChild(module, NULL, BAD_CAST "running",
-					    "true");
-			} else {
-				xmlNewChild(module, NULL, BAD_CAST "running",
-					    "false");
-			}
-			/* TODO check and free */
-			if (xmlAddChild(modules, module) == NULL) {
-				xmlFree(module);
-			}
-		}
-	}
-	return resp;
+	return nc_get_state_data();
 }
 
 /*
@@ -200,51 +124,55 @@ callback_nemea_nemea_supervisor_nemea_modules_nemea_module_nemea_enabled(void
 									 nc_err
 									 **error)
 {
-	xmlNodePtr module = NULL;
-	int index = -1;
-	module = node->parent;
-	if (module == NULL) {
-		(*error) = nc_err_new(NC_ERR_MISSING_ELEM);
-		return EXIT_FAILURE;
-	}
-	switch (op) {
-	case XMLDIFF_ADD:
-		//api_add_module(module);
-		break;
-	case XMLDIFF_REM:
-		//api_remove_module(module);
-		//cleanup module name in internal array
-		break;
-	case XMLDIFF_MOD:
-		//index = super_find_index(module);
-		if (index == -1) {
-			/* add new module that was not found */
-			//api_add_module(module);
-		} else {
-			xmlNodePtr t = node->children;
-			xmlChar *value = NULL;
-			for (t = node->children; t != NULL; t = t->next) {
-				if (t->type == XML_TEXT_NODE) {
-					value = xmlNodeGetContent(node);
-					break;
-				}
-			}
+	// if (output_file_stream != NULL) {
+	// 	fprintf(output_file_stream, "Nemea plugin callback> callback_nemea_nemea_supervisor_nemea_modules_nemea_module_nemea_enabled\n");
+	// 	fflush(output_file_stream);
+	// }
+	// xmlNodePtr module = NULL;
+	// int index = -1;
+	// module = node->parent;
+	// if (module == NULL) {
+	// 	(*error) = nc_err_new(NC_ERR_MISSING_ELEM);
+	// 	return EXIT_FAILURE;
+	// }
+	// switch (op) {
+	// case XMLDIFF_ADD:
+	// 	//api_add_module(module);
+	// 	break;
+	// case XMLDIFF_REM:
+	// 	//api_remove_module(module);
+	// 	//cleanup module name in internal array
+	// 	break;
+	// case XMLDIFF_MOD:
+	// 	//index = super_find_index(module);
+	// 	if (index == -1) {
+	// 		/* add new module that was not found */
+	// 		//api_add_module(module);
+	// 	} else {
+	// 		xmlNodePtr t = node->children;
+	// 		xmlChar *value = NULL;
+	// 		for (t = node->children; t != NULL; t = t->next) {
+	// 			if (t->type == XML_TEXT_NODE) {
+	// 				value = xmlNodeGetContent(node);
+	// 				break;
+	// 			}
+	// 		}
 
-			if (value != NULL) {
-				if (xmlStrcmp(value, BAD_CAST "true") == 0) {
-					fprintf(stderr, "Starting module %s.\n",
-						value);
-					//api_start_module();
-				} else {
-					fprintf(stderr, "Starting module %s.\n",
-						value);
-					//api_stop_module();
-				}
-				xmlFree(value);
-			}
-		}
-		break;
-	}
+	// 		if (value != NULL) {
+	// 			if (xmlStrcmp(value, BAD_CAST "true") == 0) {
+	// 				fprintf(stderr, "Starting module %s.\n",
+	// 					value);
+	// 				//api_start_module();
+	// 			} else {
+	// 				fprintf(stderr, "Starting module %s.\n",
+	// 					value);
+	// 				//api_stop_module();
+	// 			}
+	// 			xmlFree(value);
+	// 		}
+	// 	}
+	// 	break;
+	// }
 	return EXIT_SUCCESS;
 }
 
@@ -300,6 +228,9 @@ int callback_nemea_nemea_supervisor_nemea_modules(void **data, XMLDIFF_OP op,
 int callback_nemea_nemea_supervisor(void **data, XMLDIFF_OP op, xmlNodePtr node,
 				    struct nc_err **error)
 {
+	VERBOSE(N_STDOUT, "Callback supervisor... \n");
+	reload_configuration(TRUE, node);
+	interactive_show_available_modules();
 	return EXIT_SUCCESS;
 }
 
@@ -345,3 +276,33 @@ struct transapi_rpc_callbacks rpc_clbks = {
 	.callbacks = {
 		      }
 };
+
+void nc_notify(int module_event, const char * module_name)
+{
+	char buffer[300];
+	memset(buffer,0,300);
+	switch (module_event) {
+	case MODULE_EVENT_STARTED:
+		VERBOSE(N_STDOUT,"Notify -started-\n");
+		sprintf(buffer,"<moduleStatusChanged><moduleName>%s</moduleName><moduleStatus>started</moduleStatus></moduleStatusChanged>",module_name);
+		ncntf_event_new(-1, NCNTF_GENERIC, buffer);
+		break;
+	case MODULE_EVENT_STOPPED:
+		VERBOSE(N_STDOUT,"Notify -stopped-\n");
+		sprintf(buffer,"<moduleStatusChanged><moduleName>%s</moduleName><moduleStatus>stopped</moduleStatus></moduleStatusChanged>",module_name);
+		ncntf_event_new(-1, NCNTF_GENERIC, buffer);
+		break;
+	case MODULE_EVENT_RESTARTED:
+		VERBOSE(N_STDOUT,"Notify -restarted-\n");
+		sprintf(buffer,"<moduleStatusChanged><moduleName>%s</moduleName><moduleStatus>restarted</moduleStatus><reason>Module was not running and restart_counter &lt; MAX/minute.</reason></moduleStatusChanged>",module_name);
+		ncntf_event_new(-1, NCNTF_GENERIC, buffer);
+		break;
+	case MODULE_EVENT_DISABLED:
+		VERBOSE(N_STDOUT,"Notify -disabled-\n");
+		sprintf(buffer,"<moduleStatusChanged><moduleName>%s</moduleName><moduleStatus>disabled</moduleStatus><reason>Restart_counter reached MAX/minute.</reason></moduleStatusChanged>",module_name);
+		ncntf_event_new(-1, NCNTF_GENERIC, buffer);
+		break;
+	default:
+		return;
+	}
+}
