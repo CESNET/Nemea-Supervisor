@@ -59,9 +59,14 @@ module "nemea" {
       }
     }
     container "modules" {
+      key "name";
       leaf "name" {
         type "string";
         description "Name of group of Nemea modules.";
+      }
+      leaf "enabled" {
+        type "boolean";
+        description "Activation of group of Nemea modules.";
       }
       list "module" {
         key "name";
@@ -107,7 +112,7 @@ module "nemea" {
         }
         container "trapinterfaces" {
           list "interface" {
-            key "type params";
+            key "type direction params";
             leaf "note" {
               type "string";
               description
@@ -174,29 +179,39 @@ module "nemea" {
   }
   notification moduleStatusChanged {
     description
-      "Indicates that the toast in progress has completed.";
+      "Indicates that the status of module has changed.";
+
+    leaf moduleName {
+      type "string";
+      description "Module unique name.";
+    }
 
     leaf moduleStatus {
       description
-        "Indicates the final toast status";
+        "Indicates the actual module status";
       type enumeration {
         enum started {
           description
-            "The module started.";
+            "The module was started.";
         }
         enum stopped {
           description
-            "The module stopped.";
+            "The module was stopped.";
         }
         enum restarted {
           description
             "The module was restarted.";
         }
+        enum disabled {
+          description
+            "The module was disabled.";
+        }
       }
     }
-    leaf moduleName {
+
+    leaf reason {
       type "string";
-      description "Module unique name.";
+      description "Reason of changing the status of module.";
     }
   }
 }
