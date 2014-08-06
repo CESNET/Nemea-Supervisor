@@ -48,6 +48,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define TRUE                        1 ///< Bool true
+#define FALSE                       0 ///< Bool false
+
 #define STATISTICS      1
 #define MODULE_EVENT    2
 #define N_STDOUT     	3

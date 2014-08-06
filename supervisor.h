@@ -71,8 +71,6 @@
 #define PERM_LOGFILE    (S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH) ///< Permissions of files with stdout and stderr logs of module
 #endif
 
-#define TRUE                        1 ///< Bool true
-#define FALSE                       0 ///< Bool false
 #define RUNNING_MODULES_ARRAY_START_SIZE  10 ///< Initial size of allocated running_modules array.
 #define IFCES_ARRAY_START_SIZE            5 ///< Initial size of allocated interface_t array of every module.
 
