@@ -2894,3 +2894,78 @@ int nc_supervisor_initialization()
 
    return 0;
 }
+
+xmlDocPtr nc_get_state_data()
+{
+   int x, y, in_ifc_cnt, out_ifc_cnt;
+   char buffer[20];
+   const char *templ = "<?xml version=\"1.0\"?><nemea-supervisor xmlns=\"urn:cesnet:tmc:nemea:1.0\"><modules/></nemea-supervisor>";
+   xmlDocPtr resp = NULL;
+   xmlNodePtr modules = NULL, module = NULL, trapinterfaces = NULL, interface = NULL;
+
+   if (loaded_modules_cnt > 0) {
+      resp = xmlParseMemory(templ, strlen(templ));
+      if (resp == NULL) {
+         return NULL;
+      }
+
+      modules = xmlDocGetRootElement(resp);
+      modules = modules->children;
+
+      for (x = 0; x < loaded_modules_cnt; x++) {
+         memset(buffer,0,20);
+         module = xmlNewChild(modules, NULL, BAD_CAST "module", NULL);
+         xmlNewChild(module, NULL, BAD_CAST "name", running_modules[x].module_name);
+
+         if (running_modules[x].module_status == TRUE) {
+            xmlNewChild(module, NULL, BAD_CAST "running", "true");
+         } else {
+            xmlNewChild(module, NULL, BAD_CAST "running", "false");
+         }
+
+         if (running_modules[x].module_restart_cnt < 0) {
+            sprintf(buffer,"%d",0);
+            xmlNewChild(module, NULL, BAD_CAST "restart-counter", buffer);
+         } else {
+            sprintf(buffer,"%d",running_modules[x].module_restart_cnt);
+            xmlNewChild(module, NULL, BAD_CAST "restart-counter", buffer);
+         }
+
+         if (running_modules[x].module_has_service_ifc && running_modules[x].module_status) {
+            in_ifc_cnt = 0;
+            out_ifc_cnt = 0;
+            trapinterfaces = xmlNewChild(module, NULL, BAD_CAST "trapinterfaces", NULL);
+            for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
+               if (running_modules[x].module_ifces[y].ifc_direction != NULL) {
+                  interface = xmlNewChild(trapinterfaces, NULL, BAD_CAST "interface", NULL);
+                  xmlNewChild(interface, NULL, BAD_CAST "type", running_modules[x].module_ifces[y].ifc_type);
+                  xmlNewChild(interface, NULL, BAD_CAST "params", running_modules[x].module_ifces[y].ifc_params);
+                  if (strcmp(running_modules[x].module_ifces[y].ifc_direction, "IN") == 0) {
+                     memset(buffer,0,20);
+                     sprintf(buffer,"%d",running_modules[x].module_counters_array[in_ifc_cnt]);
+                     xmlNewChild(interface, NULL, BAD_CAST "recv-msg-cnt", buffer);
+                     in_ifc_cnt++;
+                  } else if (strcmp(running_modules[x].module_ifces[y].ifc_direction, "OUT") == 0) {
+                     memset(buffer,0,20);
+                     sprintf(buffer,"%d",running_modules[x].module_counters_array[running_modules[x].module_num_in_ifc + out_ifc_cnt]);
+                     xmlNewChild(interface, NULL, BAD_CAST "sent-msg-cnt", buffer);
+                     memset(buffer,0,20);
+                     sprintf(buffer,"%d",running_modules[x].module_counters_array[running_modules[x].module_num_in_ifc + running_modules[x].module_num_out_ifc + out_ifc_cnt]);
+                     xmlNewChild(interface, NULL, BAD_CAST "sent-buffer-cnt", buffer);
+                     memset(buffer,0,20);
+                     sprintf(buffer,"%d",running_modules[x].module_counters_array[running_modules[x].module_num_in_ifc + 2*running_modules[x].module_num_out_ifc + out_ifc_cnt]);
+                     xmlNewChild(interface, NULL, BAD_CAST "autoflush-cnt", buffer);
+                     in_ifc_cnt++;
+                  }
+               }
+            }
+         }
+
+         /* TODO check and free */
+         if (xmlAddChild(modules, module) == NULL) {
+            xmlFree(module);
+         }
+      }
+   }
+   return resp;
+}

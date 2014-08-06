@@ -45,6 +45,8 @@
 #ifndef SUPERVISOR_API_H
 #define SUPERVISOR_API_H
 
+#include <libxml/tree.h>
+
 int 	supervisor_initialization(const int * argc, char ** argv);
 void 	supervisor_termination();
 
@@ -63,6 +65,7 @@ void 	interactive_run_temp_conf();
 /*NC API*/
 void reload_configuration();
 int nc_supervisor_initialization();
+xmlDocPtr nc_get_state_data();
 
 #endif
 
