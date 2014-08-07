@@ -841,7 +841,7 @@ void re_start_module(const int module_number)
          VERBOSE(N_STDOUT,"Module path == NULL.\n");
          running_modules[module_number].module_enabled = FALSE;
       } else {
-         char **params = make_module_arguments(running_modules[module_number].module_number);
+         char **params = make_module_arguments(module_number);
          fflush(stdout);
          fflush(stderr);
          execvp(running_modules[module_number].module_path, params);
@@ -1350,11 +1350,14 @@ int service_get_data(int sd, int running_module_number)
    char * data_pointer = (char *) running_modules[running_module_number].module_counters_array;
 
    while (total_receved < sizeof_recv) {
-      last_receved = recv(sd, data_pointer + total_receved, sizeof_recv - total_receved, 0);
+      last_receved = recv(sd, data_pointer + total_receved, sizeof_recv - total_receved, MSG_DONTWAIT);
       if (last_receved == 0) {
          VERBOSE(STATISTICS,"! Modules service thread closed its socket, im done !\n");
          return 0;
       } else if (last_receved == -1) {
+         if (errno == EAGAIN  || errno == EWOULDBLOCK) {
+            return 0;
+         }
          VERBOSE(STATISTICS,"! Error while recving from module %d_%s !\n", running_module_number, running_modules[running_module_number].module_name);
          return 0;
       }
