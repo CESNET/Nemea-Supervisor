@@ -55,17 +55,23 @@
 #define MODULE_EVENT    2
 #define N_STDOUT     	3
 
+#define RELOAD_INIT_LOAD_CONFIG 	1
+#define RELOAD_CALLBACK_ROOT_ELEM 	2
+#define RELOAD_INTERACTIVE			3
+#define RELOAD_BACKUP 				4
+
 extern char * statistics_file_path;
 extern char * module_event_file_path;
 extern char * supervisor_log_file_path;
 extern char * graph_picture_file_path;
 extern char * graph_code_file_path;
 
-extern FILE *input_fd;
-extern FILE *output_fd;
+extern FILE * input_fd;
+extern FILE * output_fd;
 
-extern FILE *statistics_fd;
-extern FILE *module_event_fd;
+extern FILE * supervisor_log_fd;
+extern FILE * statistics_fd;
+extern FILE * module_event_fd;
 
 extern char verbose_msg[4096];
 

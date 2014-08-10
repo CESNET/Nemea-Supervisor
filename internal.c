@@ -44,11 +44,12 @@
 
 #include "internal.h"
 
-FILE * input_fd;
-FILE * output_fd;
+FILE * input_fd = NULL;
+FILE * output_fd = NULL;
 
-FILE * statistics_fd;
-FILE * module_event_fd;
+FILE * supervisor_log_fd = NULL;
+FILE * statistics_fd = NULL;
+FILE * module_event_fd = NULL;
 
 char verbose_msg[4096];
 

@@ -107,11 +107,11 @@ char *   config_file = NULL;
 char *   socket_path = NULL;
 char *   logs_path = NULL;
 
-char * statistics_file_path;
-char * module_event_file_path;
-char * supervisor_log_file_path;
-char * graph_picture_file_path;
-char * graph_code_file_path;
+char *   statistics_file_path = NULL;
+char *   module_event_file_path = NULL;
+char *   supervisor_log_file_path = NULL;
+char *   graph_picture_file_path = NULL;
+char *   graph_code_file_path = NULL;
 
 /**************************************/
 
@@ -126,38 +126,63 @@ int parse_arguments(int *argc, char **argv);
 void print_help();
 void daemon_mode();
 char *get_param_by_delimiter(const char *source, char **dest, const char delimiter);
+void free_output_file_strings_and_streams();
 
-void create_output_dir()
+void create_output_dir(int init_creation)
 {
-   char * buffer = NULL;
-   struct stat st = {0};
-
-   if (netconf_flag) { // netconf mode
-      logs_path = (char *) calloc (strlen(NC_DEFAULT_LOGSDIR_PATH)+1, sizeof(char));
-      strcpy(logs_path, NC_DEFAULT_LOGSDIR_PATH);
-   } else { // interactive mode or daemon mode
-      if (logs_path == NULL) {
-         if ((buffer = getenv("HOME")) != 0) {
-            logs_path = (char *) calloc (strlen(buffer)+strlen("/supervisor_logs/")+1, sizeof(char));
-            sprintf(logs_path,"%s/supervisor_logs/", buffer);
-         }
-      } else {
-         if (logs_path[strlen(logs_path)-1] != '/') {
-            buffer = (char *) calloc (strlen(logs_path)+2, sizeof(char));
-            sprintf(buffer, "%s/", logs_path);
-            free(logs_path);
-            logs_path = buffer;
+   if (init_creation) {
+      char * buffer = NULL;
+      if (netconf_flag) { // netconf mode
+         logs_path = (char *) calloc (strlen(NC_DEFAULT_LOGSDIR_PATH)+1, sizeof(char));
+         strcpy(logs_path, NC_DEFAULT_LOGSDIR_PATH);
+      } else { // interactive mode or daemon mode
+         if (logs_path == NULL) {
+            if ((buffer = getenv("HOME")) != NULL) {
+               logs_path = (char *) calloc (strlen(buffer)+strlen("/supervisor_logs/")+1, sizeof(char));
+               sprintf(logs_path,"%s/supervisor_logs/", buffer);
+            }
+         } else {
+            if (logs_path[strlen(logs_path)-1] != '/') {
+               buffer = (char *) calloc (strlen(logs_path)+2, sizeof(char));
+               sprintf(buffer, "%s/", logs_path);
+               free(logs_path);
+               logs_path = buffer;
+            }
          }
       }
+   }
 
-      if (stat(logs_path, &st) == -1) {
+
+   struct stat st = {0};
+   /* check and create output directiory */
+   if (stat(logs_path, &st) == -1) {
+      if (errno == EACCES) {
+         if (logs_path != NULL) {
+            free(logs_path);
+            logs_path = NULL;
+         }
+         logs_path = (char *) calloc (strlen(NC_DEFAULT_LOGSDIR_PATH)+1, sizeof(char));
+         strcpy(logs_path, NC_DEFAULT_LOGSDIR_PATH);
          mkdir(logs_path, PERM_LOGSDIR);
+      }
+      if (mkdir(logs_path, PERM_LOGSDIR) == -1) {
+         if (errno == EACCES) {
+            if (logs_path != NULL) {
+               free(logs_path);
+               logs_path = NULL;
+            }
+            logs_path = (char *) calloc (strlen(NC_DEFAULT_LOGSDIR_PATH)+1, sizeof(char));
+            strcpy(logs_path, NC_DEFAULT_LOGSDIR_PATH);
+            mkdir(logs_path, PERM_LOGSDIR);
+         }
       }
    }
 }
 
-void create_output_files_strings()
+void create_output_files_strings(int init_creation)
 {
+   free_output_file_strings_and_streams();
+
    statistics_file_path = (char *) calloc (strlen(logs_path)+strlen("supervisor_log_statistics")+1, sizeof(char));
    sprintf(statistics_file_path, "%ssupervisor_log_statistics", logs_path);
    module_event_file_path = (char *) calloc (strlen(logs_path)+strlen("supervisor_log_module_event")+1, sizeof(char));
@@ -174,7 +199,10 @@ void create_output_files_strings()
       supervisor_log_file_path = (char *) calloc (strlen(logs_path)+strlen("supervisor_log")+1, sizeof(char));
       sprintf(supervisor_log_file_path, "%ssupervisor_log", logs_path);
 
-      output_fd = fopen (supervisor_log_file_path, "a");
+      supervisor_log_fd = fopen (supervisor_log_file_path, "a");
+      if (init_creation) {
+         output_fd = supervisor_log_fd;
+      }
    }
 }
 
@@ -937,8 +965,8 @@ int supervisor_initialization(int *argc, char **argv)
       daemon_init(&daemon_arg);
    }
 
-   create_output_dir();
-   create_output_files_strings();
+   create_output_dir(TRUE);
+   create_output_files_strings(TRUE);
 
    VERBOSE(N_STDOUT,"--- LOADING CONFIGURATION ---\n");
    loaded_modules_cnt = 0;
@@ -1138,6 +1166,42 @@ void interactive_show_running_modules_status()
    }
 }
 
+void free_output_file_strings_and_streams()
+{
+   if (statistics_file_path != NULL) {
+      free(statistics_file_path);
+      statistics_file_path = NULL;
+   }
+   if (module_event_file_path != NULL) {
+      free(module_event_file_path);
+      module_event_file_path = NULL;
+   }
+   if (supervisor_log_file_path != NULL) {
+      free(supervisor_log_file_path);
+      supervisor_log_file_path = NULL;
+   }
+   if (graph_picture_file_path != NULL) {
+      free(graph_picture_file_path);
+      graph_picture_file_path = NULL;
+   }
+   if (graph_code_file_path != NULL) {
+      free(graph_code_file_path);
+      graph_code_file_path = NULL;
+   }
+
+   if (supervisor_log_fd != NULL) {
+      fclose(supervisor_log_fd);
+      supervisor_log_fd = NULL;
+   }
+   if (statistics_fd != NULL) {
+      fclose(statistics_fd);
+      statistics_fd = NULL;
+   }
+   if (module_event_fd != NULL) {
+      fclose(module_event_fd);
+      module_event_fd = NULL;
+   }
+}
 
 void supervisor_termination()
 {
@@ -1206,39 +1270,7 @@ void supervisor_termination()
       logs_path = NULL;
    }
 
-   if (statistics_file_path != NULL) {
-      free(statistics_file_path);
-      statistics_file_path = NULL;
-   }
-   if (module_event_file_path != NULL) {
-      free(module_event_file_path);
-      module_event_file_path = NULL;
-   }
-   if (supervisor_log_file_path != NULL) {
-      free(supervisor_log_file_path);
-      supervisor_log_file_path = NULL;
-   }
-   if (graph_picture_file_path != NULL) {
-      free(graph_picture_file_path);
-      graph_picture_file_path = NULL;
-   }
-   if (graph_code_file_path != NULL) {
-      free(graph_code_file_path);
-      graph_code_file_path = NULL;
-   }
-
-   if (netconf_flag && output_fd != NULL) {
-      fclose(output_fd);
-      output_fd = NULL;
-   }
-   if (statistics_fd != NULL) {
-      fclose(statistics_fd);
-      statistics_fd = NULL;
-   }
-   if (module_event_fd != NULL) {
-      fclose(module_event_fd);
-      module_event_fd = NULL;
-   }
+   free_output_file_strings_and_streams();
 }
 
 char *get_param_by_delimiter(const char *source, char **dest, const char delimiter)
@@ -1857,7 +1889,6 @@ int daemon_get_client(int * d_sd)
 
 void daemon_mode(int * arg)
 {
-   FILE * supervisor_log_stream_ptr = output_fd;
    int got_code = FALSE;
    int x = 0;
    int daemon_sd = *arg;
@@ -1934,14 +1965,14 @@ void daemon_mode(int * arg)
             connected = FALSE;
             got_code = FALSE;
             input_fd = stdin;
-            output_fd = supervisor_log_stream_ptr;
+            output_fd = supervisor_log_fd;
             break;
          } else if (ret_val != 0) {
             if (FD_ISSET(client_stream_input_fd, &read_fds)) {
                ioctl(client_stream_input_fd, FIONREAD, &x);
                if (x == 0 || x == -1) {
                   input_fd = stdin;
-                  output_fd = supervisor_log_stream_ptr;
+                  output_fd = supervisor_log_fd;
                   VERBOSE(N_STDOUT, "Client has disconnected.\n");
                   connected = FALSE;
                   got_code = FALSE;
@@ -2002,7 +2033,7 @@ void daemon_mode(int * arg)
                      stats_buffer = NULL;
                   }
                   input_fd = stdin;
-                  output_fd = supervisor_log_stream_ptr;
+                  output_fd = supervisor_log_fd;
                   VERBOSE(N_STDOUT, "Client has disconnected.\n");
                   connected = FALSE;
                   got_code = FALSE;
@@ -2030,7 +2061,7 @@ void daemon_mode(int * arg)
          } else {
             if (got_code == FALSE) {
                input_fd = stdin;
-               output_fd = supervisor_log_stream_ptr;
+               output_fd = supervisor_log_fd;
                VERBOSE(N_STDOUT, "Client isn't responding.\n");
                connected = FALSE;
                fclose(client_stream_input);
@@ -2052,10 +2083,6 @@ void daemon_mode(int * arg)
    close(client_sd);
    close(daemon_sd);
    unlink(socket_path);
-   if (supervisor_log_stream_ptr != NULL) {
-      fclose(supervisor_log_stream_ptr);
-      supervisor_log_stream_ptr = NULL;
-   }
    return;
 }
 
@@ -2262,6 +2289,20 @@ int reload_configuration(const int choice, xmlNodePtr node)
                   x = 0;
                   if ((sscanf(key,"%d",&x) == 1) && (x >= 0)) {
                      max_restarts_per_minute_config = x;
+                  }
+               }
+            } else if (!xmlStrcmp(module_ptr->name, BAD_CAST "logs-directory")) {
+               key = xmlNodeListGetString(xml_tree, module_ptr->xmlChildrenNode, 1);
+               if (key != NULL) {
+                  if (strcmp(key, logs_path) != 0) {
+                     if (logs_path != NULL) {
+                        free(logs_path);
+                        logs_path = NULL;
+                     }
+                     logs_path = (char *) calloc (strlen(key)+1, sizeof(char));
+                     strcpy(logs_path, key);
+                     create_output_dir(FALSE);
+                     create_output_files_strings(FALSE);
                   }
                }
             }
@@ -3010,8 +3051,8 @@ int nc_supervisor_initialization()
    input_fd = stdin;
    output_fd = stdout;
 
-   create_output_dir();
-   create_output_files_strings();
+   create_output_dir(TRUE);
+   create_output_files_strings(TRUE);
 
    VERBOSE(N_STDOUT,"--- LOADING CONFIGURATION ---\n");
    loaded_modules_cnt = 0;
