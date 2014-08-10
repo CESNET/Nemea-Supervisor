@@ -2374,11 +2374,11 @@ int reload_configuration(const int choice, xmlNodePtr node)
                      key = xmlNodeListGetString(xml_tree, module_atr->xmlChildrenNode, 1);
                      if (key == NULL) {
                         module_ptr = module_ptr->next;
-                        module_ptr = module_ptr->next;
                         if (module_ptr == NULL) {
                            last_module = TRUE;
                            break;
                         } else {
+                           module_ptr = module_ptr->next;
                            if ((module_index < original_loaded_modules_cnt) && (module_index != -1)) {
                               already_loaded_modules[module_index] = 0;               
                            }
@@ -2405,11 +2405,11 @@ int reload_configuration(const int choice, xmlNodePtr node)
                      key = xmlNodeListGetString(xml_tree, module_atr->xmlChildrenNode, 1);
                      if (key == NULL) {
                         module_ptr = module_ptr->next;
-                        module_ptr = module_ptr->next;
                         if (module_ptr == NULL) {
                            last_module = TRUE;
                            break;
                         } else {
+                           module_ptr = module_ptr->next;
                            if ((module_index < original_loaded_modules_cnt) && (module_index != -1)) {
                               already_loaded_modules[module_index] = 0;               
                            }
@@ -2442,6 +2442,9 @@ int reload_configuration(const int choice, xmlNodePtr node)
                      already_loaded_modules[module_index] = 0;               
                   }
                   module_ptr = module_ptr->next;
+                  if (module_ptr == NULL) {
+                     break;
+                  }
                   module_ptr = module_ptr->next;
                   continue;
                }
