@@ -130,13 +130,6 @@ struct modules_profile_s {
 
 /***********FUNCTIONS***********/
 
-/** Function parses XML file or buffer with XML code and saves modules configuration in running_modules array.
- * @param[in] choice If TRUE -> parse file, else parse buffer.
- * @param[in] buffer If choice TRUE -> file name, else buffer with XML code.
- * @return TRUE if success, else FALSE.
- */
-int load_configuration(const int choice, const char * buffer);
-
 /** Function prints list of loaded modules with their params and all their interfaces with params.
  */
 void interactive_show_available_modules ();

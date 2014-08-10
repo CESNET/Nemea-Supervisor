@@ -229,7 +229,7 @@ int callback_nemea_nemea_supervisor(void **data, XMLDIFF_OP op, xmlNodePtr node,
 				    struct nc_err **error)
 {
 	VERBOSE(N_STDOUT, "Callback supervisor... \n");
-	reload_configuration(TRUE, node);
+	reload_configuration(RELOAD_CALLBACK_ROOT_ELEM, node);
 	interactive_show_available_modules();
 	return EXIT_SUCCESS;
 }
