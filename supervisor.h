@@ -99,6 +99,7 @@ typedef struct running_module_s {
    int            module_num_in_ifc; ///< Number of modules input interfaces.
    int            module_restart_timer;  ///< Timer used for monitoring max number of restarts/minute.
    int            module_restart_cnt; ///< Number of module restarts.
+   int            module_max_restarts_per_minute;
    int            module_has_service_ifc; ///< if module has service interface ~ TRUE, else ~ FALSE
    int            module_service_ifc_isconnected; ///< if supervisor is connected to module ~ TRUE, else ~ FALSE
    int            module_served_by_service_thread; ///< TRUE if module was added to graph struct by sevice thread, FALSE on start.

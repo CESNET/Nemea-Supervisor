@@ -4,17 +4,19 @@
 	<supervisor>
 		<verbose>true</verbose>
 		<module-restarts>4</module-restarts> <!-- Default value in supervisor is 3 -->
+		<logs-directory>./supervisor_logsX/</logs-directory>
 	</supervisor>
 
 	<modules>
 		<name>test_profile</name>
-		<enabled>false</enabled>
+		<enabled>true</enabled>
 
 		<module>
 			<enabled>false</enabled>
 			<params></params>
 			<name>flowcounter1</name>
 			<path>../modules/flowcounter/flowcounter</path>
+			<module-restarts>0</module-restarts> 
 			<trapinterfaces>
 				<interface>
 					<note></note>
@@ -36,6 +38,7 @@
 			<params></params>
 			<name>flowcounter2</name>
 			<path>../modules/flowcounter/flowcounter</path>
+			<module-restarts>0</module-restarts> 
 			<trapinterfaces>
 				<interface>
 					<note></note>
@@ -57,6 +60,7 @@
 			<params></params>
 			<name>flowcounter3</name>
 			<path>../modules/flowcounter/flowcounter</path>
+			<module-restarts>1</module-restarts> 
 			<trapinterfaces>
 				<interface>
 					<note></note>
@@ -78,6 +82,7 @@
 			<params></params>
 			<name>flowcounter4</name>
 			<path>../modules/flowcounter/flowcounter</path>
+			<module-restarts>2</module-restarts> 
 			<trapinterfaces>
 				<interface>
 					<note></note>

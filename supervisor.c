@@ -840,14 +840,21 @@ void interactive_stop_module()
 
 void service_restart_modules()
 {
-   int x = 0;
+   int x = 0, max_restarts = 0;
    for (x=0; x<loaded_modules_cnt; x++) {
       if (++running_modules[x].module_restart_timer == 30) {
          running_modules[x].module_restart_timer = 0;
          running_modules[x].module_restart_cnt = 0;
       }
-      if (running_modules[x].module_enabled == TRUE && running_modules[x].module_status == FALSE && (running_modules[x].module_restart_cnt == max_restarts_per_minute_config)) {
-         VERBOSE(N_STDOUT,"Module: %d_%s was restarted %d times per minute and it is down again. I set it disabled.\n",x, running_modules[x].module_name, max_restarts_per_minute_config);
+
+      if (running_modules[x].module_max_restarts_per_minute > -1) {
+         max_restarts = running_modules[x].module_max_restarts_per_minute;
+      } else {
+         max_restarts = max_restarts_per_minute_config;
+      }
+
+      if (running_modules[x].module_enabled == TRUE && running_modules[x].module_status == FALSE && (running_modules[x].module_restart_cnt == max_restarts)) {
+         VERBOSE(MODULE_EVENT,"Module: %d_%s was restarted %d times per minute and it is down again. I set it disabled.\n",x, running_modules[x].module_name, max_restarts);
          running_modules[x].module_enabled = FALSE;
       } else if (running_modules[x].module_status == FALSE && running_modules[x].module_enabled == TRUE) {
          re_start_module(x);
@@ -2241,6 +2248,16 @@ int reload_configuration(const int choice, xmlNodePtr node)
                            xmlFree(key);
                            key = NULL;
                         }
+                     }
+                  } else if (!xmlStrcmp(module_atr->name, BAD_CAST "module-restarts")) {
+                     key = xmlNodeListGetString(xml_tree, module_atr->xmlChildrenNode, 1);
+                     if (key != NULL) {
+                        x = 0;
+                        if ((sscanf(key,"%d",&x) == 1) && (x >= 0)) {
+                           running_modules[module_index].module_max_restarts_per_minute = x;
+                        }
+                        xmlFree(key);
+                        key = NULL;
                      }
                   } else if ((!xmlStrcmp(module_atr->name,BAD_CAST "params"))) {
                      key = xmlNodeListGetString(xml_tree, module_atr->xmlChildrenNode, 1);
