@@ -2239,10 +2239,14 @@ int reload_configuration(const int choice, xmlNodePtr node)
                         if (strncmp(key, "true", strlen(key)) == 0 && running_modules[module_index].module_enabled == FALSE) {
                            running_modules[module_index].module_enabled = TRUE;
                            running_modules[module_index].module_restart_cnt = -1;
-                           running_modules[module_index].module_modified_by_reload = TRUE;
+                           if (modifying) {
+                              running_modules[module_index].module_modified_by_reload = TRUE;
+                           }
                         } else if (strncmp(key, "false", strlen(key)) == 0 && running_modules[module_index].module_enabled == TRUE){
                            running_modules[module_index].module_enabled = FALSE;
-                           running_modules[module_index].module_modified_by_reload = TRUE;
+                           if (modifying) {
+                              running_modules[module_index].module_modified_by_reload = TRUE;
+                           }
                         }
                         if (key != NULL) {
                            xmlFree(key);
