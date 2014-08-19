@@ -46,7 +46,6 @@
 #include "supervisor.h"
 #include "graph.h"
 #include "internal.h"
-#include "./ncnemea/ncnemea.h"
 
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -98,7 +97,6 @@ pthread_t   service_thread_id; ///< Service thread identificator.
 pthread_t   nc_clients_thread_id;
 
 // supervisor flags
-int      help_flag = FALSE;        // -h 
 int      file_flag = FALSE;        // -f "file" arguments
 int      verbose_flag = FALSE;     // -v messages and cpu_usage stats
 int      daemon_flag = FALSE;      // --daemon
@@ -123,7 +121,6 @@ union tcpip_socket_addr {
 long int get_total_cpu_usage();
 void start_service_thread();
 int parse_arguments(int *argc, char **argv);
-void print_help();
 void daemon_mode();
 char *get_param_by_delimiter(const char *source, char **dest, const char delimiter);
 void free_output_file_strings_and_streams();
@@ -638,7 +635,6 @@ int supervisor_initialization(int *argc, char **argv)
    config_file = NULL;
    socket_path = NULL;
    verbose_flag = FALSE;
-   help_flag = FALSE;
    file_flag = FALSE;
    daemon_flag = FALSE;
    netconf_flag = FALSE;
@@ -650,11 +646,8 @@ int supervisor_initialization(int *argc, char **argv)
    
    ret_val = parse_arguments(argc, argv);
    if (ret_val) {
-      if (help_flag) {
-         print_help();
-         return 1;
-      } else if (file_flag == FALSE) {
-         fprintf(stderr,"Wrong format of arguments.\n %s [-h] [-v] [--show-cpuusage] -f config_file.xml\n", argv[0]);
+      if (file_flag == FALSE) {
+         fprintf(stderr,"Wrong format of arguments.\n supervisor [-d|--daemon] -f|--config-file=path [-h|--help] [-v|--verbose] [-L|--logs-path] [-s|--daemon-socket=path]\n");
          return 1;
       }
    } else {
@@ -684,11 +677,7 @@ int supervisor_initialization(int *argc, char **argv)
    service_thread_continue = TRUE;
 
    //load configuration
-   // if (restore_mode_flag) {
-   //    reload_configuration(RELOAD_BACKUP, NULL);
-   // } else {
-      reload_configuration(RELOAD_INIT_LOAD_CONFIG, NULL);
-   // }
+   reload_configuration(RELOAD_INIT_LOAD_CONFIG, NULL);
 
    VERBOSE(N_STDOUT,"-- Starting service thread --\n");
    start_service_thread();
@@ -1451,58 +1440,6 @@ int parse_arguments(int *argc, char **argv)
    return TRUE;
 }
 
-void print_help() // ?????
-{
-   VERBOSE(N_STDOUT,"--------------------------\n"
-         "NEMEA Supervisor:\n"
-         "Expected arguments to run supervisor are: ./supervisor [-d|--daemon] [-f|--config-file=path] [-h|--help] [-v|--verbose] [-C|--show-cpuusage] [-s|--daemon-socket=path]\n"
-         "Main thread is waiting for input with number of command to execute.\n"
-         "Functions:\n"
-         "\t- 1. RUN CONFIGURATION\n"
-         "\t- 2. STOP CONFIGURATION\n"
-         "\t- 3. SET MODULE ENABLED\n"
-         "\t- 4. STOP MODUL\n"
-         "\t- 5. STARTED MODULES STATUS\n"
-         "\t- 6. AVAILABLE MODULES\n"
-         "\t- 7. SHOW GRAPH\n"
-         "\t- 8. RUN TEMP CONF\n"
-         "\t- 9. QUIT\n"
-         "--------------------\n"
-         // "0 - setter of VERBOSE level of executed modules\n"
-         "1 - command executes every loaded module from configuration\n"
-         "2 - command stops whole configuration\n"
-         // "3 - command starts single module from configuration, expected input is number of module (command num. 7 can show available modules)\n"
-         "3 - setter of \"ENABLE\" flag of selected module - this flag is important for autorestarts\n"
-         "4 - command stops single running module\n"
-         "5 - command prints status of started modules\n"
-         "6 - command prints loaded modules configuration\n"
-         "7 - command generates code for dot program and shows graph of running modules using display program\n"
-         "8 - command parses external configuration of pasted modules, expected input is same xml code as in config_file, first tag is <modules> and last tag </modules>\n"
-         "9 - shut down command\n\n"
-         "Example of input for command num. 8:\n"
-         "<modules>\n"
-            "\t<module>\n"
-               "\t\t<params></params>\n"
-               "\t\t<name>flowcounter</name>\n"
-               "\t\t<path>../modules/flowcounter/flowcounter</path>\n"
-               "\t\t<trapinterfaces>\n"
-                  "\t\t\t<interface>\n"
-                     "\t\t\t\t<note>whatever</note>\n"
-                     "\t\t\t\t<type>TCP</type>\n"
-                     "\t\t\t\t<direction>IN</direction>\n"
-                     "\t\t\t\t<params>localhost,8000</params>\n"
-                  "\t\t\t</interface>\n"
-                  "\t\t\t<interface>\n"
-                     "\t\t\t\t<note>whatever</note>\n"
-                     "\t\t\t\t<type>SERVICE</type>\n"
-                     "\t\t\t\t<direction></direction>\n"
-                     "\t\t\t\t<params>9022,1</params>\n"
-                  "\t\t\t</interface>\n"
-               "\t\t</trapinterfaces>\n"
-            "\t</module>\n"
-         "</modules>\n");
-}
-
 int daemon_init(int * d_sd)
 {
    // create daemon
@@ -1574,11 +1511,9 @@ int daemon_get_client(int * d_sd)
    struct sockaddr_storage remoteaddr; // client address
    socklen_t addrlen;
    int newclient;
-
-   VERBOSE(N_STDOUT, "before accept\n");
-   // handle new connection
    addrlen = sizeof remoteaddr;
 
+   // handle new connection
    while(1) {
       newclient = accept(*d_sd, (struct sockaddr *)&remoteaddr, &addrlen);
       if (newclient == -1) {
@@ -1783,7 +1718,6 @@ void daemon_mode(int * arg)
             }
          }
 
-         printf(".");
          fsync(client_stream_input_fd);
          memset(buffer,0,1000);
          fflush(output_fd);
@@ -1798,28 +1732,14 @@ void daemon_mode(int * arg)
    return;
 }
 
-int get_shorter_string_length(char * first, char * second)
-{
-   int first_len = strlen(first);
-   int second_len = strlen(second);
-
-   if (first_len > second_len) {
-      return second_len;
-   } else {
-      return first_len;
-   }
-}
-
 int find_loaded_module(char * name)
 {
    int x;
-
    for (x=0; x<loaded_modules_cnt; x++) {
       if (strcmp(running_modules[x].module_name, name) == 0) {
          return x;
       }
    }
-
    return -1;
 }
 
@@ -1914,8 +1834,10 @@ int reload_configuration(const int choice, xmlNodePtr node)
    xmlDocPtr xml_tree = NULL;
    xmlNodePtr current_node = NULL;
 
-   for (x=0; x<loaded_modules_cnt; x++) {
+   for (x=0; x<running_modules_array_size; x++) {
       running_modules[x].module_modified_by_reload = FALSE;
+      running_modules[x].modules_profile = NULL;
+      running_modules[x].module_max_restarts_per_minute = -1;
    }
    
    switch (choice) {
@@ -1955,19 +1877,9 @@ int reload_configuration(const int choice, xmlNodePtr node)
          break;
       }
 
-      // case RELOAD_BACKUP:
-      //    xml_tree = xmlParseFile(DEFAULT_BACKUP_FILE);
-      //    if (xml_tree == NULL) {
-      //       fprintf(stderr,"Document not parsed successfully. \n");
-      //       pthread_mutex_unlock(&running_modules_lock);
-      //       return FALSE;
-      //    }
-      //    current_node = xmlDocGetRootElement(xml_tree);
-      //    break;
-
       default:
-
-         break;   
+         pthread_mutex_unlock(&running_modules_lock);
+         return FALSE;
    }
 
    if (current_node == NULL) {
@@ -1992,19 +1904,6 @@ int reload_configuration(const int choice, xmlNodePtr node)
    }
 
    current_node = current_node->xmlChildrenNode;
-
-   // while (1) {
-   //    if (!xmlStrcmp(current_node->name, BAD_CAST "modules")) {
-   //       break;
-   //    }
-   //    current_node = current_node-> next;
-   //    if (current_node == NULL) {
-   //       fprintf(stderr,"Tag \"modules\" wasnt found.\n");
-   //       xmlFreeDoc(xml_tree);
-   //       pthread_mutex_unlock(&running_modules_lock);
-   //       return FALSE;
-   //    }
-   // }
 
    /*****************/
    VERBOSE(N_STDOUT,"- - -\nProcessing new configuration...\n");
@@ -2128,7 +2027,6 @@ int reload_configuration(const int choice, xmlNodePtr node)
                memset(needed_tags,0,2*sizeof(int));
                //check allocated memory, if we dont have enough -> realloc
                if (loaded_modules_cnt == running_modules_array_size) {
-                  // VERBOSE(N_STDOUT,"REALLOCING MODULES ARRAY --->\n");
                   int origin_size = running_modules_array_size;
                   running_modules_array_size += running_modules_array_size/2;
                   running_modules = (running_module_t * ) realloc (running_modules, (running_modules_array_size)*sizeof(running_module_t));
@@ -2171,11 +2069,9 @@ int reload_configuration(const int choice, xmlNodePtr node)
                         needed_tags[0]++;
                         ret_val = find_loaded_module(key);
                         if (ret_val == -1) { // new module
-                           // VERBOSE(N_STDOUT,"------\nLoading new module..\n");
                            module_index = loaded_modules_cnt;
                            modifying = FALSE;
                         } else { // already loaded module -> check vals
-                           // VERBOSE(N_STDOUT,"------\nUploading existing module..\n");
                            module_index = ret_val;
                            already_loaded_modules[module_index] = 1;
                            modifying = TRUE;        
@@ -2784,132 +2680,4 @@ int reload_configuration(const int choice, xmlNodePtr node)
 
    pthread_mutex_unlock(&running_modules_lock);
    return TRUE;
-}
-
-int nc_supervisor_initialization()
-{
-   int y = 0;
-
-   logs_path = NULL;
-   config_file = NULL;
-   socket_path = DEFAULT_DAEMON_UNIXSOCKET_PATH_FILENAME;
-   verbose_flag = FALSE;
-   help_flag = FALSE;
-   file_flag = FALSE;
-   daemon_flag = FALSE;
-   netconf_flag = TRUE;
-   graph_first_node = NULL;
-   graph_last_node = NULL;
-
-   input_fd = stdin;
-   output_fd = stdout;
-
-   create_output_dir(TRUE);
-   create_output_files_strings(TRUE);
-
-   VERBOSE(N_STDOUT,"--- LOADING CONFIGURATION ---\n");
-   loaded_modules_cnt = 0;
-   running_modules_array_size = RUNNING_MODULES_ARRAY_START_SIZE;
-   running_modules = (running_module_t *) calloc (running_modules_array_size,sizeof(running_module_t));
-   for (y=0;y<running_modules_array_size;y++) {
-      running_modules[y].module_ifces = (interface_t *) calloc(IFCES_ARRAY_START_SIZE, sizeof(interface_t));
-      running_modules[y].module_running = FALSE;
-      running_modules[y].module_ifces_array_size = IFCES_ARRAY_START_SIZE;
-      running_modules[y].module_ifces_cnt = 0;
-   }
-
-   pthread_mutex_init(&running_modules_lock,NULL);
-   service_thread_continue = TRUE;
-
-   VERBOSE(N_STDOUT,"-- Starting service thread --\n");
-   start_service_thread();
-
-   /* function prototype to set handler */
-   void sigpipe_handler(int sig);
-   struct sigaction sa;
-
-   sa.sa_handler = sigpipe_handler;
-   sa.sa_flags = 0;
-   sigemptyset(&sa.sa_mask);
-
-   if (sigaction(SIGPIPE,&sa,NULL) == -1) {
-      VERBOSE(N_STDOUT,"ERROR sigaction !!\n");
-   }
-
-   return 0;
-}
-
-xmlDocPtr nc_get_state_data()
-{
-   int x, y, in_ifc_cnt, out_ifc_cnt;
-   char buffer[20];
-   const char *templ = "<?xml version=\"1.0\"?><nemea-supervisor xmlns=\"urn:cesnet:tmc:nemea:1.0\"><modules/></nemea-supervisor>";
-   xmlDocPtr resp = NULL;
-   xmlNodePtr modules = NULL, module = NULL, trapinterfaces = NULL, interface = NULL;
-
-   if (loaded_modules_cnt > 0) {
-      resp = xmlParseMemory(templ, strlen(templ));
-      if (resp == NULL) {
-         return NULL;
-      }
-
-      modules = xmlDocGetRootElement(resp);
-      modules = modules->children;
-
-      for (x = 0; x < loaded_modules_cnt; x++) {
-         memset(buffer,0,20);
-         module = xmlNewChild(modules, NULL, BAD_CAST "module", NULL);
-         xmlNewChild(module, NULL, BAD_CAST "name", running_modules[x].module_name);
-
-         if (running_modules[x].module_status == TRUE) {
-            xmlNewChild(module, NULL, BAD_CAST "running", "true");
-         } else {
-            xmlNewChild(module, NULL, BAD_CAST "running", "false");
-         }
-
-         if (running_modules[x].module_restart_cnt < 0) {
-            sprintf(buffer,"%d",0);
-            xmlNewChild(module, NULL, BAD_CAST "restart-counter", buffer);
-         } else {
-            sprintf(buffer,"%d",running_modules[x].module_restart_cnt);
-            xmlNewChild(module, NULL, BAD_CAST "restart-counter", buffer);
-         }
-
-         if (running_modules[x].module_has_service_ifc && running_modules[x].module_status) {
-            in_ifc_cnt = 0;
-            out_ifc_cnt = 0;
-            trapinterfaces = xmlNewChild(module, NULL, BAD_CAST "trapinterfaces", NULL);
-            for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
-               if (running_modules[x].module_ifces[y].ifc_direction != NULL) {
-                  interface = xmlNewChild(trapinterfaces, NULL, BAD_CAST "interface", NULL);
-                  xmlNewChild(interface, NULL, BAD_CAST "type", running_modules[x].module_ifces[y].ifc_type);
-                  xmlNewChild(interface, NULL, BAD_CAST "params", running_modules[x].module_ifces[y].ifc_params);
-                  if (strcmp(running_modules[x].module_ifces[y].ifc_direction, "IN") == 0) {
-                     memset(buffer,0,20);
-                     sprintf(buffer,"%d",running_modules[x].module_counters_array[in_ifc_cnt]);
-                     xmlNewChild(interface, NULL, BAD_CAST "recv-msg-cnt", buffer);
-                     in_ifc_cnt++;
-                  } else if (strcmp(running_modules[x].module_ifces[y].ifc_direction, "OUT") == 0) {
-                     memset(buffer,0,20);
-                     sprintf(buffer,"%d",running_modules[x].module_counters_array[running_modules[x].module_num_in_ifc + out_ifc_cnt]);
-                     xmlNewChild(interface, NULL, BAD_CAST "sent-msg-cnt", buffer);
-                     memset(buffer,0,20);
-                     sprintf(buffer,"%d",running_modules[x].module_counters_array[running_modules[x].module_num_in_ifc + running_modules[x].module_num_out_ifc + out_ifc_cnt]);
-                     xmlNewChild(interface, NULL, BAD_CAST "sent-buffer-cnt", buffer);
-                     memset(buffer,0,20);
-                     sprintf(buffer,"%d",running_modules[x].module_counters_array[running_modules[x].module_num_in_ifc + 2*running_modules[x].module_num_out_ifc + out_ifc_cnt]);
-                     xmlNewChild(interface, NULL, BAD_CAST "autoflush-cnt", buffer);
-                     in_ifc_cnt++;
-                  }
-               }
-            }
-         }
-
-         /* TODO check and free */
-         if (xmlAddChild(modules, module) == NULL) {
-            xmlFree(module);
-         }
-      }
-   }
-   return resp;
 }
