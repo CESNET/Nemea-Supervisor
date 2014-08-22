@@ -80,7 +80,6 @@
 #define DEFAULT_DAEMON_UNIXSOCKET_PATH_FILENAME  "/tmp/supervisor_daemon.sock"  ///<  Daemon socket.
 
 #define NC_DEFAULT_LOGSDIR_PATH "/tmp/supervisor_logs/"
-#define DEFAULT_BACKUP_FILE "/tmp/supervisor_backup_file.xml"
 
 /*******GLOBAL VARIABLES*******/
 running_module_t *   running_modules = NULL;  ///< Information about running modules
@@ -95,14 +94,10 @@ int         max_restarts_per_minute_config = DEFAULT_MAX_RESTARTS_PER_MINUTE;
 graph_node_t *    graph_first_node = NULL; ///< First node of graph nodes list.
 graph_node_t *    graph_last_node = NULL; ///< Last node of graph nodes list.
 
-modules_profile_t * first_profile_ptr = NULL;
-modules_profile_t * actual_profile_ptr = NULL;
-
 pthread_t   service_thread_id; ///< Service thread identificator.
 pthread_t   nc_clients_thread_id;
 
 // supervisor flags
-int      restore_mode_flag = FALSE;
 int      help_flag = FALSE;        // -h 
 int      file_flag = FALSE;        // -f "file" arguments
 int      verbose_flag = FALSE;     // -v messages and cpu_usage stats
@@ -525,19 +520,14 @@ int interactive_get_option()
    return get_number_from_input();
 }
 
+
 void re_start_module(const int module_number)
 {
    if (running_modules[module_number].module_running == FALSE) {
       VERBOSE(MODULE_EVENT,"Starting module %d_%s.\n", module_number, running_modules[module_number].module_name);
-      //#if netconf_flag == 1
-      // nc_notify(MODULE_EVENT_STARTED,running_modules[module_number].module_name);
-      //#endif
       running_modules[module_number].module_counters_array = (int *) calloc (3*running_modules[module_number].module_num_out_ifc + running_modules[module_number].module_num_in_ifc,sizeof(int));
       running_modules[module_number].module_running = TRUE;
    } else {
-      //#if netconf_flag == 1
-      // nc_notify(MODULE_EVENT_RESTARTED,running_modules[module_number].module_name);
-      //#endif
       VERBOSE(MODULE_EVENT,"Restarting module %d_%s\n", module_number, running_modules[module_number].module_name);
    }
 
@@ -609,28 +599,26 @@ void service_update_module_status()
 
    for (x=0; x<loaded_modules_cnt; x++) {
       if (running_modules[x].module_pid > 0) {
-         // if (kill(running_modules[x].module_pid, 0) == -1) {
-            // if (errno == ESRCH) {
-               result = waitpid(running_modules[x].module_pid , &status, WNOHANG);
-               if (result == 0) {
-                 // Child still alive
-               } else if (result == -1) {
-                 // Error
-                  running_modules[x].module_status = FALSE;
-                  running_modules[x].module_service_ifc_isconnected = FALSE;
-               } else {
-                 // Child exited
-                  if (running_modules[x].module_service_sd != -1) {
-                     close(running_modules[x].module_service_sd);
-                     running_modules[x].module_service_sd = -1;
-                  }
-                  running_modules[x].module_status = FALSE;
-                  running_modules[x].module_service_ifc_isconnected = FALSE;
-               }
-         //    }
-         // } else {
-         //    running_modules[x].module_status = TRUE;
-         // }
+         result = waitpid(running_modules[x].module_pid , &status, WNOHANG);
+         if (result == 0) {
+           // Child still alive
+         } else if (result == -1) {
+           // Error
+            if (running_modules[x].module_service_sd != -1) {
+               close(running_modules[x].module_service_sd);
+               running_modules[x].module_service_sd = -1;
+            }
+            running_modules[x].module_status = FALSE;
+            running_modules[x].module_service_ifc_isconnected = FALSE;
+         } else {
+           // Child exited
+            if (running_modules[x].module_service_sd != -1) {
+               close(running_modules[x].module_service_sd);
+               running_modules[x].module_service_sd = -1;
+            }
+            running_modules[x].module_status = FALSE;
+            running_modules[x].module_service_ifc_isconnected = FALSE;
+         }
       }
    }
 }
@@ -646,7 +634,6 @@ int supervisor_initialization(int *argc, char **argv)
 {
    int y = 0, ret_val = 0;
 
-   restore_mode_flag = FALSE;
    logs_path = NULL;
    config_file = NULL;
    socket_path = NULL;
@@ -782,9 +769,6 @@ void service_stop_modules_sigint()
    int x;
    for (x=0; x<loaded_modules_cnt; x++) {
       if (running_modules[x].module_status && running_modules[x].module_enabled == FALSE && running_modules[x].sent_sigint == FALSE) {
-         //#if netconf_flag == 1
-         // nc_notify(MODULE_EVENT_STOPPED,running_modules[x].module_name);
-         //#endif
          VERBOSE(MODULE_EVENT, "Stopping module %d_%s... sending SIGINT\n", x, running_modules[x].module_name);
          kill(running_modules[x].module_pid,2);
          running_modules[x].sent_sigint = TRUE;
@@ -872,7 +856,6 @@ void service_restart_modules()
       if (running_modules[x].module_enabled == TRUE && running_modules[x].module_status == FALSE && (running_modules[x].module_restart_cnt == max_restarts)) {
          VERBOSE(MODULE_EVENT,"Module: %d_%s was restarted %d times per minute and it is down again. I set it disabled.\n",x, running_modules[x].module_name, max_restarts);
          running_modules[x].module_enabled = FALSE;
-         // nc_notify(MODULE_EVENT_DISABLED,running_modules[x].module_name);
       } else if (running_modules[x].module_status == FALSE && running_modules[x].module_enabled == TRUE) {
          re_start_module(x);
       }
@@ -1224,7 +1207,6 @@ void print_statistics_legend()
 
 void *service_thread_routine(void* arg)
 {
-   int period_counter = 0;
    long int last_total_cpu_usage = 0;
    int sizeof_intptr = 4;
    int x,y;
@@ -1330,12 +1312,6 @@ void *service_thread_routine(void* arg)
       }
 
       usleep(500000);
-
-      period_counter++;
-      if (period_counter == 5) {
-         // generate_backup_config_file();
-         period_counter = 0;
-      }
    }
 
    for (x=0;x<loaded_modules_cnt;x++) {
@@ -1425,11 +1401,10 @@ int parse_arguments(int *argc, char **argv)
          {"verbose",  no_argument,       0,  'v' },
          {"daemon-socket",  required_argument,  0, 's'},
          {"logs-path",  required_argument,  0, 'L'},
-         {"restore",  no_argument,       0,  'r' },
          {0, 0, 0, 0}
       };
 
-      c = getopt_long(*argc, argv, "rdf:hvs:L:", long_options, &option_index);
+      c = getopt_long(*argc, argv, "df:hvs:L:", long_options, &option_index);
       if (c == -1) {
          break;
       }
@@ -1453,9 +1428,6 @@ int parse_arguments(int *argc, char **argv)
          break;
       case 'L':
          logs_path = strdup(optarg);
-         break;
-      case 'r':
-         restore_mode_flag = TRUE;
          break;
       }
    }
@@ -1811,6 +1783,7 @@ void daemon_mode(int * arg)
             }
          }
 
+         printf(".");
          fsync(client_stream_input_fd);
          memset(buffer,0,1000);
          fflush(output_fd);
@@ -1917,6 +1890,8 @@ int reload_configuration(const int choice, xmlNodePtr node)
    pthread_mutex_lock(&running_modules_lock);
 
    int modules_got_profile;
+   modules_profile_t * first_profile_ptr = NULL;
+   modules_profile_t * actual_profile_ptr = NULL;
    int needed_tags[2];
    int inserted_modules = 0, removed_modules = 0, modified_modules = 0;
    int x = 0, y = 0;
@@ -1939,26 +1914,9 @@ int reload_configuration(const int choice, xmlNodePtr node)
    xmlDocPtr xml_tree = NULL;
    xmlNodePtr current_node = NULL;
 
-   for (x=0; x<running_modules_array_size; x++) {
+   for (x=0; x<loaded_modules_cnt; x++) {
       running_modules[x].module_modified_by_reload = FALSE;
-      running_modules[x].modules_profile = NULL;
-      running_modules[x].module_max_restarts_per_minute = -1;
    }
-
-   modules_profile_t * ptr = first_profile_ptr;
-   modules_profile_t * p = NULL;
-   while (ptr != NULL) {
-      p = ptr;
-      ptr = ptr->next;
-      if (p->profile_name != NULL) {
-         free(p->profile_name);
-      }
-      if (p != NULL) {
-         free(p);
-      }
-   }
-   first_profile_ptr = NULL;
-   actual_profile_ptr = NULL;
    
    switch (choice) {
       case RELOAD_INIT_LOAD_CONFIG:
@@ -2269,16 +2227,6 @@ int reload_configuration(const int choice, xmlNodePtr node)
                   }
                   module_ptr = module_ptr->next;
                   continue;
-               }
-
-               if (restore_mode_flag) {
-                  key = xmlGetProp(module_ptr, "module_pid");
-                  if (key != NULL) {
-                     running_modules[module_index].module_pid = atoi((char *) key);
-                     printf("pid--%d\n", running_modules[module_index].module_pid);
-                     xmlFree(key);
-                     key = NULL;
-                  }
                }
 
                module_atr = module_ptr->xmlChildrenNode;
@@ -2811,16 +2759,22 @@ int reload_configuration(const int choice, xmlNodePtr node)
    }
 
    /* update module_enabled according to profile enabled */
-   ptr = first_profile_ptr;
+   modules_profile_t * ptr = first_profile_ptr;
+   modules_profile_t * p = NULL;
    while (ptr != NULL) {
       for (x=0; x<loaded_modules_cnt; x++) {
-         if (running_modules[x].modules_profile != NULL && ptr->profile_name != NULL) {
-            if (running_modules[x].modules_profile == ptr->profile_name) {
-               running_modules[x].module_enabled = (running_modules[x].module_enabled && ptr->profile_enabled);
-            }
+         if (running_modules[x].modules_profile == ptr->profile_name) {
+            running_modules[x].module_enabled = (running_modules[x].module_enabled && ptr->profile_enabled);
          }
       }
+      p = ptr;
       ptr = ptr->next;
+      if (p->profile_name != NULL) {
+         free(p->profile_name);
+      }
+      if (p != NULL) {
+         free(p);
+      }
    }
 
    VERBOSE(N_STDOUT,"Inserted modules:\t%d\n", inserted_modules);
@@ -2836,7 +2790,6 @@ int nc_supervisor_initialization()
 {
    int y = 0;
 
-   restore_mode_flag = FALSE;
    logs_path = NULL;
    config_file = NULL;
    socket_path = DEFAULT_DAEMON_UNIXSOCKET_PATH_FILENAME;
@@ -2870,7 +2823,6 @@ int nc_supervisor_initialization()
 
    VERBOSE(N_STDOUT,"-- Starting service thread --\n");
    start_service_thread();
-   // pthread_create(&nc_clients_thread_id, NULL, nc_clients_thread_routine, NULL);
 
    /* function prototype to set handler */
    void sigpipe_handler(int sig);
@@ -2885,41 +2837,6 @@ int nc_supervisor_initialization()
    }
 
    return 0;
-}
-
-void * nc_clients_thread_routine(void* arg)
-{
-   union tcpip_socket_addr addr;
-   struct addrinfo *p;
-   memset(&addr, 0, sizeof(addr));
-   addr.unix_addr.sun_family = AF_UNIX;
-   snprintf(addr.unix_addr.sun_path, sizeof(addr.unix_addr.sun_path) - 1, "%s", socket_path);
-
-   /* if socket file exists, it could be hard to create new socket and bind */
-   unlink(socket_path); /* error when file does not exist is not a problem */
-   int socket_sd = socket(AF_UNIX, SOCK_STREAM, 0);
-   if (bind(socket_sd, (struct sockaddr *) &addr.unix_addr, sizeof(addr.unix_addr)) != -1) {
-      p = (struct addrinfo *) &addr.unix_addr;
-      chmod(socket_path, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
-   } else {
-      /* error bind() failed */
-      p = NULL;
-   }
-   if (p == NULL) {
-      // if we got here, it means we didn't get bound
-      VERBOSE(N_STDOUT,"selectserver: failed to bind");
-      return;
-   }
-   // listen
-   if (listen(socket_sd, 0) == -1) {
-      //perror("listen");
-      VERBOSE(N_STDOUT,"Listen failed");
-      return;
-   }
-
-
-   daemon_mode(&socket_sd);
-   pthread_exit(NULL);
 }
 
 xmlDocPtr nc_get_state_data()
@@ -2995,119 +2912,4 @@ xmlDocPtr nc_get_state_data()
       }
    }
    return resp;
-}
-
-
-// xmlBufferPtr nodeBuffer = xmlBufferCreate();
-// xmlNodeDump(nodeBuffer, current_node->doc, current_node, 0, 1);
-// VERBOSE(N_STDOUT,"---> xml>\n%s\n",nodeBuffer->content);
-// xmlBufferFree(nodeBuffer);
-
-// xmlNodePtr   xmlNewTextChild      (xmlNodePtr parent, xmlNsPtr ns, const xmlChar * name, const xmlChar * content)
-// xmlAttrPtr  xmlNewProp     (xmlNodePtr node, const xmlChar * name, const xmlChar * value)
-// int   xmlSaveFile       (const char * filename, xmlDocPtr cur)
-
-
-void generate_backup_config_file()
-{
-   modules_profile_t * ptr = first_profile_ptr;
-   int x, y, in_ifc_cnt, out_ifc_cnt;
-   char buffer[20];
-   const char * templ = "<?xml version=\"1.0\"?><nemea-supervisor xmlns=\"urn:cesnet:tmc:nemea:1.0\"></nemea-supervisor>";
-   xmlDocPtr document_ptr = NULL;
-   xmlNodePtr root_elem = NULL, modules = NULL, module = NULL, trapinterfaces = NULL, interface = NULL;
-
-   document_ptr = xmlParseMemory(templ, strlen(templ));
-   if (document_ptr == NULL) {
-      return;
-   }
-   root_elem = xmlDocGetRootElement(document_ptr);
-   xmlNewProp (root_elem, "lock", NULL);
-   if (daemon_flag) {
-      xmlNewProp (root_elem, "daemon", "true");
-      xmlNewProp (root_elem, "socket_path", socket_path);
-   } else {
-      xmlNewProp (root_elem, "daemon", "false");
-      xmlNewProp (root_elem, "socket_path", NULL);
-   }
-
-   modules = xmlNewChild(root_elem, NULL, BAD_CAST "supervisor", NULL);
-   if (verbose_flag) {
-      xmlNewChild(modules, NULL, BAD_CAST "verbose", "true");
-   } else {
-      xmlNewChild(modules, NULL, BAD_CAST "verbose", "false");
-   }
-   memset(buffer,0,20);
-   sprintf(buffer, "%d", max_restarts_per_minute_config);
-   xmlNewChild(modules, NULL, BAD_CAST "module-restarts", buffer);
-   xmlNewChild(modules, NULL, BAD_CAST "logs-directory", logs_path);
-
-   if (xmlAddChild(root_elem, modules) == NULL) {
-      xmlFree(modules);
-   }
-
-   while (ptr != NULL) {
-      if (ptr->profile_name != NULL) {
-         modules = xmlNewChild(root_elem, NULL, BAD_CAST "modules", NULL);
-         xmlNewChild(modules, NULL, BAD_CAST "name", ptr->profile_name);
-         if (ptr->profile_enabled) {
-            xmlNewChild(modules, NULL, BAD_CAST "enabled", "true");            
-         } else {
-            xmlNewChild(modules, NULL, BAD_CAST "enabled", "false"); 
-         }
-         for (x=0; x<loaded_modules_cnt; x++) {
-            if (running_modules[x].modules_profile != NULL) {
-               if (strcmp(running_modules[x].modules_profile, ptr->profile_name) == 0) {
-                  module = xmlNewChild(modules, NULL, BAD_CAST "module", NULL);
-
-                  memset(buffer,0,20);
-                  sprintf(buffer, "%d", running_modules[x].module_pid);
-                  xmlNewProp (module, "module_pid", buffer);
-
-                  xmlNewChild(module, NULL, BAD_CAST "name", running_modules[x].module_name);
-                  xmlNewChild(module, NULL, BAD_CAST "path", running_modules[x].module_path);
-                  xmlNewChild(module, NULL, BAD_CAST "params", running_modules[x].module_params);
-                  if (running_modules[x].module_enabled) {
-                     xmlNewChild(module, NULL, BAD_CAST "enabled", "true");
-                  } else {
-                     xmlNewChild(module, NULL, BAD_CAST "enabled", "false");
-                  }
-                  trapinterfaces = xmlNewChild(module, NULL, BAD_CAST "trapinterfaces", NULL);
-
-                  for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
-                     interface = xmlNewChild(trapinterfaces, NULL, BAD_CAST "interface", NULL);
-                     xmlNewChild(interface, NULL, BAD_CAST "note", running_modules[x].module_ifces[y].ifc_note);
-                     xmlNewChild(interface, NULL, BAD_CAST "params", running_modules[x].module_ifces[y].ifc_params);
-                     xmlNewChild(interface, NULL, BAD_CAST "direction", running_modules[x].module_ifces[y].ifc_direction);
-                     xmlNewChild(interface, NULL, BAD_CAST "type", running_modules[x].module_ifces[y].ifc_type);
-
-                     if (xmlAddChild(trapinterfaces, interface) == NULL) {
-                        xmlFree(interface);
-                     }
-                  }
-
-
-                  if (xmlAddChild(modules, module) == NULL) {
-                     xmlFree(module);
-                  }
-               }
-            }
-         }
-
-         if (xmlAddChild(root_elem, modules) == NULL) {
-            xmlFree(modules);
-         }
-      }
-      ptr = ptr->next;
-   }
-
-
-   if (xmlSaveFile(DEFAULT_BACKUP_FILE, document_ptr) == -1) {
-      VERBOSE(N_STDOUT, "--> Error while saving backup file\n");
-   } else {
-      VERBOSE(N_STDOUT, "--> Backup file saved !!\n");
-   }
-
-   xmlFreeDoc(document_ptr);
-   xmlCleanupParser();
 }
