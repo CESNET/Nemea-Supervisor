@@ -111,6 +111,8 @@ char *   supervisor_log_file_path = NULL;
 char *   graph_picture_file_path = NULL;
 char *   graph_code_file_path = NULL;
 
+ int client_connected = FALSE;      // if supervisor_cli is connected to supervisor_daemon
+
 /**************************************/
 
 union tcpip_socket_addr {
@@ -197,7 +199,7 @@ void create_output_files_strings(int init_creation)
       sprintf(supervisor_log_file_path, "%ssupervisor_log", logs_path);
 
       supervisor_log_fd = fopen (supervisor_log_file_path, "a");
-      if (init_creation) {
+      if (!client_connected) {
          output_fd = supervisor_log_fd;
       }
    }
@@ -1553,13 +1555,13 @@ void daemon_mode(int * arg)
    fd_set read_fds;
    struct timeval tv;
 
-   int connected = FALSE;
+   client_connected = FALSE;
 
    while (terminated == FALSE) {
       // get client
       client_sd = daemon_get_client(&daemon_sd);
       if (client_sd == -1) {
-         connected = FALSE;
+         client_connected = FALSE;
          /* Bind was probably unsuccessful. */
          continue;
       }
@@ -1590,12 +1592,12 @@ void daemon_mode(int * arg)
          continue;
       }
 
-      connected = TRUE;
+      client_connected = TRUE;
 
       input_fd = client_stream_input;
       output_fd = client_stream_output;
 
-      while (connected != 0) {
+      while (client_connected != 0) {
          request = -1;
          FD_ZERO(&read_fds);
          FD_SET(client_stream_input_fd, &read_fds);
@@ -1609,7 +1611,7 @@ void daemon_mode(int * arg)
             fclose(client_stream_input);
             fclose(client_stream_output);
             close(client_sd);
-            connected = FALSE;
+            client_connected = FALSE;
             got_code = FALSE;
             input_fd = stdin;
             output_fd = supervisor_log_fd;
@@ -1621,7 +1623,7 @@ void daemon_mode(int * arg)
                   input_fd = stdin;
                   output_fd = supervisor_log_fd;
                   VERBOSE(N_STDOUT, "Client has disconnected.\n");
-                  connected = FALSE;
+                  client_connected = FALSE;
                   got_code = FALSE;
                   fclose(client_stream_input);
                   fclose(client_stream_output);
@@ -1629,7 +1631,7 @@ void daemon_mode(int * arg)
                   break;
                }
                if (fscanf(input_fd,"%s",buffer) != 1) {
-                  connected = FALSE;
+                  client_connected = FALSE;
                }
                sscanf(buffer,"%d", &request);
 
@@ -1660,7 +1662,7 @@ void daemon_mode(int * arg)
                   break;
                case DAEMON_STOP_CODE:
                   supervisor_termination();
-                  connected = FALSE;
+                  client_connected = FALSE;
                   terminated = TRUE;
                   break;
                case DAEMON_CONFIG_MODE_CODE:
@@ -1682,7 +1684,7 @@ void daemon_mode(int * arg)
                   input_fd = stdin;
                   output_fd = supervisor_log_fd;
                   VERBOSE(N_STDOUT, "Client has disconnected.\n");
-                  connected = FALSE;
+                  client_connected = FALSE;
                   got_code = FALSE;
                   fclose(client_stream_input);
                   fclose(client_stream_output);
@@ -1710,7 +1712,7 @@ void daemon_mode(int * arg)
                input_fd = stdin;
                output_fd = supervisor_log_fd;
                VERBOSE(N_STDOUT, "Client isn't responding.\n");
-               connected = FALSE;
+               client_connected = FALSE;
                fclose(client_stream_input);
                fclose(client_stream_output);
                close(client_sd);
