@@ -937,7 +937,20 @@ void supervisor_termination()
    VERBOSE(N_STDOUT,"-- Aborting service thread --\n");
    sleep(2);
    service_thread_continue = 0;
-   sleep(2);
+   x = pthread_join(service_thread_id, NULL);
+
+   if (x == 0) {
+      VERBOSE(N_STDOUT, "! pthread_join success: Service thread finished !\n")
+   } else if (x == -1) {
+      if (errno == EINVAL) {
+         VERBOSE(N_STDOUT, "! pthread_join error: Not joinable thread !\n");
+      } else if (errno == ESRCH) {
+         VERBOSE(N_STDOUT, "! pthread_join error: No thread with this ID found !\n");
+      } else if ( errno == EDEADLK) {
+         VERBOSE(N_STDOUT, "! pthread_join error: Deadlock in service thread detected !\n");
+      }
+   }
+
    for (x=0;x<loaded_modules_cnt;x++) {
       if (running_modules[x].module_running && running_modules[x].module_counters_array != NULL) {
          free(running_modules[x].module_counters_array);
@@ -1328,7 +1341,7 @@ void *service_thread_routine(void* arg)
          print_statistics_and_cpu_usage(timeinfo);
       }
 
-      usleep(500000);
+      sleep(1);
    }
 
    for (x=0;x<loaded_modules_cnt;x++) {
@@ -1341,7 +1354,7 @@ void *service_thread_routine(void* arg)
       }
    }
 
-   pthread_exit(NULL);
+   pthread_exit(EXIT_SUCCESS);
 }
 
 char * make_formated_statistics()
@@ -1402,7 +1415,11 @@ char * make_formated_statistics()
 
 void start_service_thread()
 {
-   pthread_create(&service_thread_id, NULL, service_thread_routine, NULL);
+   pthread_attr_t attr;
+   pthread_attr_init(&attr);
+   pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+
+   pthread_create(&service_thread_id,  &attr, service_thread_routine, NULL);
 }
 
 int parse_arguments(int *argc, char **argv)
