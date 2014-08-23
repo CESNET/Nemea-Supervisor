@@ -119,6 +119,7 @@ typedef struct running_module_s {
    int            overall_percent_module_cpu_usage_kernel_mode;
    int            overall_percent_module_cpu_usage_user_mode;
    char *         modules_profile;
+   int            module_is_my_child;
 } running_module_t;
 
 typedef struct modules_profile_s modules_profile_t;

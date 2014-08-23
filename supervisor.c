@@ -582,6 +582,7 @@ void re_start_module(const int module_number)
       running_modules[module_number].module_restart_cnt++;
       VERBOSE(N_STDOUT,"Err Fork()\n");
    } else {
+      running_modules[module_number].module_is_my_child = TRUE;
       running_modules[module_number].module_status = TRUE;
       running_modules[module_number].module_restart_cnt++;
       if (running_modules[module_number].module_restart_cnt == 1) {
@@ -593,30 +594,52 @@ void re_start_module(const int module_number)
 void service_update_module_status()
 {
    int x;
-   int status;
-   pid_t result;
 
    for (x=0; x<loaded_modules_cnt; x++) {
       if (running_modules[x].module_pid > 0) {
+         if (kill(running_modules[x].module_pid, 0) == -1) {
+            if (errno == EINVAL) {
+               VERBOSE(MODULE_EVENT,"kill -0: ernno EINVAL\n");
+            }
+            if (errno == EPERM) {
+               VERBOSE(MODULE_EVENT,"kill -0: errno EPERM\n");
+            }
+            if (errno == ESRCH) {
+               VERBOSE(MODULE_EVENT,"kill -0: module with pid %d is not running !\n");
+            }
+            if (running_modules[x].module_service_sd != -1) {
+                  close(running_modules[x].module_service_sd);
+                  running_modules[x].module_service_sd = -1;
+            }
+            running_modules[x].module_status = FALSE;
+            running_modules[x].module_service_ifc_isconnected = FALSE;
+            running_modules[x].module_pid = 0;
+         } else {
+            running_modules[x].module_status = TRUE;
+         }
+      }
+   }
+}
+
+void service_clean_after_children()
+{
+   pid_t result;
+   int x, status;
+
+   for (x=0; x<loaded_modules_cnt; x++) {
+      if (running_modules[x].module_pid > 0 && running_modules[x].module_is_my_child) {   
          result = waitpid(running_modules[x].module_pid , &status, WNOHANG);
          if (result == 0) {
-           // Child still alive
+           // Child still alive, nothing to do here!
          } else if (result == -1) {
            // Error
-            if (running_modules[x].module_service_sd != -1) {
-               close(running_modules[x].module_service_sd);
-               running_modules[x].module_service_sd = -1;
+            if (errno == ECHILD) {
+               VERBOSE(MODULE_EVENT, "waitpid: module with pid %d is not my child, I'm not gonna clean after him !!\n", running_modules[x].module_pid);
+               running_modules[x].module_is_my_child = FALSE;
             }
-            running_modules[x].module_status = FALSE;
-            running_modules[x].module_service_ifc_isconnected = FALSE;
          } else {
            // Child exited
-            if (running_modules[x].module_service_sd != -1) {
-               close(running_modules[x].module_service_sd);
-               running_modules[x].module_service_sd = -1;
-            }
-            running_modules[x].module_status = FALSE;
-            running_modules[x].module_service_ifc_isconnected = FALSE;
+            VERBOSE(MODULE_EVENT, "waitpid: module with pid %d is my child and is not alive anymore, I'm gonna clean after him !!\n", running_modules[x].module_pid);
          }
       }
    }
@@ -1220,8 +1243,10 @@ void *service_thread_routine(void* arg)
       sleep(1);
       pthread_mutex_lock(&running_modules_lock);
 
+      service_clean_after_children();
       service_update_module_status();
       service_stop_modules_sigkill();
+      service_clean_after_children();
 
       for (y=0; y<loaded_modules_cnt; y++) {
          if (running_modules[y].module_served_by_service_thread == FALSE) {
@@ -1253,6 +1278,7 @@ void *service_thread_routine(void* arg)
          }
       }
       
+      service_update_module_status();
       int request[1];
       memset(request,0, sizeof(int));
       request[0] = 1;
@@ -1842,6 +1868,7 @@ int reload_configuration(const int choice, xmlNodePtr node)
       running_modules[x].module_modified_by_reload = FALSE;
       running_modules[x].modules_profile = NULL;
       running_modules[x].module_max_restarts_per_minute = -1;
+      running_modules[x].module_is_my_child = TRUE;
    }
    
    switch (choice) {
