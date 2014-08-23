@@ -1695,17 +1695,19 @@ void daemon_mode(int * arg)
                   VERBOSE(N_STDOUT, "Error input\n");
                   break;
                }
-               VERBOSE(N_STDOUT,"--------OPTIONS--------\n");
-               VERBOSE(N_STDOUT,"1. START ALL MODULES\n");
-               VERBOSE(N_STDOUT,"2. STOP ALL MODULES\n");
-               VERBOSE(N_STDOUT,"3. START MODULE\n");
-               VERBOSE(N_STDOUT,"4. STOP MODULE\n");
-               VERBOSE(N_STDOUT,"5. STARTED MODULES STATUS\n");
-               VERBOSE(N_STDOUT,"6. AVAILABLE MODULES\n");
-               VERBOSE(N_STDOUT,"7. SHOW GRAPH\n");
-               VERBOSE(N_STDOUT,"8. RELOAD CONFIGURATION\n");
-               VERBOSE(N_STDOUT,"-- Type \"Cquit\" to exit client --\n");
-               VERBOSE(N_STDOUT,"-- Type \"Dstop\" to stop daemon --\n");
+               if (!terminated && client_connected) {
+                  VERBOSE(N_STDOUT,"--------OPTIONS--------\n");
+                  VERBOSE(N_STDOUT,"1. START ALL MODULES\n");
+                  VERBOSE(N_STDOUT,"2. STOP ALL MODULES\n");
+                  VERBOSE(N_STDOUT,"3. START MODULE\n");
+                  VERBOSE(N_STDOUT,"4. STOP MODULE\n");
+                  VERBOSE(N_STDOUT,"5. STARTED MODULES STATUS\n");
+                  VERBOSE(N_STDOUT,"6. AVAILABLE MODULES\n");
+                  VERBOSE(N_STDOUT,"7. SHOW GRAPH\n");
+                  VERBOSE(N_STDOUT,"8. RELOAD CONFIGURATION\n");
+                  VERBOSE(N_STDOUT,"-- Type \"Cquit\" to exit client --\n");
+                  VERBOSE(N_STDOUT,"-- Type \"Dstop\" to stop daemon --\n");
+               }
             }
          } else {
             if (got_code == FALSE) {
