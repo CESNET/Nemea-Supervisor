@@ -79,6 +79,7 @@
 #define DEFAULT_DAEMON_UNIXSOCKET_PATH_FILENAME  "/tmp/supervisor_daemon.sock"  ///<  Daemon socket.
 
 #define NC_DEFAULT_LOGSDIR_PATH "/tmp/supervisor_logs/"
+#define DEFAULT_BACKUP_FILE_PATH "/tmp/supervisor_backup_file"
 
 /*******GLOBAL VARIABLES*******/
 running_module_t *   running_modules = NULL;  ///< Information about running modules
@@ -93,10 +94,17 @@ int         max_restarts_per_minute_config = DEFAULT_MAX_RESTARTS_PER_MINUTE;
 graph_node_t *    graph_first_node = NULL; ///< First node of graph nodes list.
 graph_node_t *    graph_last_node = NULL; ///< Last node of graph nodes list.
 
+modules_profile_t * first_profile_ptr = NULL;
+modules_profile_t * actual_profile_ptr = NULL;
+
 pthread_t   service_thread_id; ///< Service thread identificator.
 pthread_t   nc_clients_thread_id;
 
+char * loaded_backup_file_id = NULL;
+struct tm * init_time_info = NULL;
+
 // supervisor flags
+int      restore_mode_flag = FALSE;
 int      file_flag = FALSE;        // -f "file" arguments
 int      verbose_flag = FALSE;     // -v messages and cpu_usage stats
 int      daemon_flag = FALSE;      // --daemon
@@ -126,6 +134,7 @@ int parse_arguments(int *argc, char **argv);
 void daemon_mode();
 char *get_param_by_delimiter(const char *source, char **dest, const char delimiter);
 void free_output_file_strings_and_streams();
+void generate_backup_config_file();
 
 void create_output_dir(int init_creation)
 {
@@ -203,6 +212,27 @@ void create_output_files_strings(int init_creation)
          output_fd = supervisor_log_fd;
       }
    }
+}
+
+struct tm * get_sys_time()
+{
+   time_t rawtime;
+   time(&rawtime);
+   return localtime(&rawtime);
+}
+
+char * generate_backup_file_id()
+{
+   char * buffer = (char *) calloc (DEFAULT_SIZE_OF_BUFFER, sizeof(char));
+   sprintf(buffer,"%d%d%d%d", init_time_info->tm_mday, init_time_info->tm_mon+1, init_time_info->tm_hour, init_time_info->tm_min);
+   return buffer;
+}
+
+char * generate_backup_file_name(char * file_id)
+{
+   char * buffer = (char *) calloc (DEFAULT_SIZE_OF_BUFFER, sizeof(char));
+   sprintf(buffer, "%s%s.xml",DEFAULT_BACKUP_FILE_PATH, file_id);
+   return buffer;
 }
 
 void interactive_show_available_modules ()
@@ -519,6 +549,23 @@ int interactive_get_option()
    return get_number_from_input();
 }
 
+void init_module_variables(int module_number)
+{
+   if (running_modules[module_number].module_counters_array == NULL) {
+      running_modules[module_number].module_counters_array = (int *) calloc (3*running_modules[module_number].module_num_out_ifc + running_modules[module_number].module_num_in_ifc,sizeof(int));
+      running_modules[module_number].module_running = TRUE;
+   }
+   memset(running_modules[module_number].module_counters_array, 0, (running_modules[module_number].module_num_in_ifc + (3*running_modules[module_number].module_num_out_ifc)) * sizeof(int));
+   running_modules[module_number].total_cpu_usage_during_module_startup = get_total_cpu_usage();
+   running_modules[module_number].last_period_cpu_usage_kernel_mode = 0;
+   running_modules[module_number].last_period_cpu_usage_user_mode = 0;
+   running_modules[module_number].last_period_percent_cpu_usage_kernel_mode = 0;
+   running_modules[module_number].last_period_percent_cpu_usage_user_mode = 0;
+   running_modules[module_number].overall_percent_module_cpu_usage_kernel_mode = 0;
+   running_modules[module_number].overall_percent_module_cpu_usage_user_mode = 0;
+   running_modules[module_number].module_service_sd = -1;
+   running_modules[module_number].sent_sigint = FALSE;
+}
 
 void re_start_module(const int module_number)
 {
@@ -538,16 +585,7 @@ void re_start_module(const int module_number)
    sprintf(log_path_stdout,"%s%d_%s_stdout",logs_path, module_number, running_modules[module_number].module_name);
    sprintf(log_path_stderr,"%s%d_%s_stderr",logs_path, module_number, running_modules[module_number].module_name);
 
-   memset(running_modules[module_number].module_counters_array, 0, (running_modules[module_number].module_num_in_ifc + (3*running_modules[module_number].module_num_out_ifc)) * sizeof(int));
-   running_modules[module_number].total_cpu_usage_during_module_startup = get_total_cpu_usage();
-   running_modules[module_number].last_period_cpu_usage_kernel_mode = 0;
-   running_modules[module_number].last_period_cpu_usage_user_mode = 0;
-   running_modules[module_number].last_period_percent_cpu_usage_kernel_mode = 0;
-   running_modules[module_number].last_period_percent_cpu_usage_user_mode = 0;
-   running_modules[module_number].overall_percent_module_cpu_usage_kernel_mode = 0;
-   running_modules[module_number].overall_percent_module_cpu_usage_user_mode = 0;
-   running_modules[module_number].module_service_sd = -1;
-   running_modules[module_number].sent_sigint = FALSE;
+   init_module_variables(module_number);
 
    time_t rawtime;
    struct tm * timeinfo;
@@ -563,6 +601,7 @@ void re_start_module(const int module_number)
       dup2(fd_stderr,2); //stderr
       close(fd_stdout);
       close(fd_stderr);
+      setsid(); // important for sending SIGINT to supervisor.. modules can't receive the signal too !!!
       fprintf(stdout,"---> %s", asctime (timeinfo));
       fprintf(stderr,"---> %s", asctime (timeinfo));
       if (running_modules[module_number].module_path == NULL) {
@@ -645,10 +684,33 @@ void service_clean_after_children()
    }
 }
 
-void sigpipe_handler(int sig)
+void supervisor_signal_handler(int catched_signal)
 {
-   if (sig == SIGPIPE) {
+   switch (catched_signal) {
+   case SIGPIPE:
       VERBOSE(MODULE_EVENT,"SIGPIPE catched..\n");
+      break;
+
+   case SIGTERM:
+      VERBOSE(N_STDOUT,"SIGTERM catched -> I'm going to terminate my self !\n");
+      generate_backup_config_file();
+      supervisor_termination();
+      exit(EXIT_FAILURE);
+      break;
+
+   case SIGINT:
+      VERBOSE(N_STDOUT,"SIGINT catched -> I'm going to terminate my self !\n");
+      generate_backup_config_file();
+      supervisor_termination();
+      exit(EXIT_SUCCESS);
+      break;
+
+   case SIGSEGV:
+      VERBOSE(N_STDOUT,"Ouch, SIGSEGV catched -> I'm going to terminate my self !\n");
+      generate_backup_config_file();
+      supervisor_termination();
+      exit(EXIT_FAILURE);
+      break;
    }
 }
 
@@ -656,6 +718,8 @@ int supervisor_initialization(int *argc, char **argv)
 {
    int y = 0, ret_val = 0;
 
+   init_time_info = get_sys_time();
+   restore_mode_flag = FALSE;
    logs_path = NULL;
    config_file = NULL;
    socket_path = NULL;
@@ -702,22 +766,37 @@ int supervisor_initialization(int *argc, char **argv)
    service_thread_continue = TRUE;
 
    //load configuration
-   reload_configuration(RELOAD_INIT_LOAD_CONFIG, NULL);
+   if (restore_mode_flag) {
+      reload_configuration(RELOAD_BACKUP, NULL);
+   } else {
+      reload_configuration(RELOAD_INIT_LOAD_CONFIG, NULL);
+   }
 
    VERBOSE(N_STDOUT,"-- Starting service thread --\n");
    start_service_thread();
 
+   /************ SIGNAL HANDLING *************/
    /* function prototype to set handler */
-   void sigpipe_handler(int sig);
-   struct sigaction sa;
+   void supervisor_signal_handler(int catched_signal);
 
-   sa.sa_handler = sigpipe_handler;
-   sa.sa_flags = 0;
-   sigemptyset(&sa.sa_mask);
+   struct sigaction sig_action;
+   sig_action.sa_handler = supervisor_signal_handler;
+   sig_action.sa_flags = 0;
+   sigemptyset(&sig_action.sa_mask);
 
-   if (sigaction(SIGPIPE,&sa,NULL) == -1) {
-      VERBOSE(N_STDOUT,"ERROR sigaction !!\n");
+   if (sigaction(SIGPIPE,&sig_action,NULL) == -1) {
+      VERBOSE(N_STDOUT,"Sigaction error - signal SIGPIPE !\n");
    }
+   if (sigaction(SIGINT,&sig_action,NULL) == -1) {
+      VERBOSE(N_STDOUT,"Sigaction error - signal SIGINT !\n");
+   }
+   if (sigaction(SIGTERM,&sig_action,NULL) == -1) {
+      VERBOSE(N_STDOUT,"Sigaction error - signal SIGTERM !\n");
+   }
+   if (sigaction(SIGSEGV,&sig_action,NULL) == -1) {
+      VERBOSE(N_STDOUT,"Sigaction error - signal SIGSEGV !\n");
+   }
+   /****************************************/
 
    if (daemon_flag) {
       daemon_mode(&daemon_arg);
@@ -932,10 +1011,7 @@ void free_output_file_strings_and_streams()
 void supervisor_termination()
 {
    int x, y;
-   VERBOSE(N_STDOUT,"-- Stopping modules --\n");
-   interactive_stop_configuration();
    VERBOSE(N_STDOUT,"-- Aborting service thread --\n");
-   sleep(2);
    service_thread_continue = 0;
    x = pthread_join(service_thread_id, NULL);
 
@@ -1007,6 +1083,19 @@ void supervisor_termination()
    if (logs_path != NULL) {
       free(logs_path);
       logs_path = NULL;
+   }
+
+   modules_profile_t * ptr = first_profile_ptr;
+   modules_profile_t * p = NULL;
+   while (ptr != NULL) {
+      p = ptr;
+      ptr = ptr->next;
+      if (p->profile_name != NULL) {
+         free(p->profile_name);
+      }
+      if (p != NULL) {
+         free(p);
+      }
    }
 
    free_output_file_strings_and_streams();
@@ -1435,10 +1524,11 @@ int parse_arguments(int *argc, char **argv)
          {"verbose",  no_argument,       0,  'v' },
          {"daemon-socket",  required_argument,  0, 's'},
          {"logs-path",  required_argument,  0, 'L'},
+         {"restore",  required_argument,       0,  'r' },
          {0, 0, 0, 0}
       };
 
-      c = getopt_long(*argc, argv, "df:hvs:L:", long_options, &option_index);
+      c = getopt_long(*argc, argv, "r:df:hvs:L:", long_options, &option_index);
       if (c == -1) {
          break;
       }
@@ -1462,6 +1552,12 @@ int parse_arguments(int *argc, char **argv)
          break;
       case 'L':
          logs_path = strdup(optarg);
+         break;
+      case 'r':
+         restore_mode_flag = TRUE;
+         if (optarg != NULL) {
+            loaded_backup_file_id = optarg;
+         }
          break;
       }
    }
@@ -1857,8 +1953,6 @@ int reload_configuration(const int choice, xmlNodePtr node)
    pthread_mutex_lock(&running_modules_lock);
 
    int modules_got_profile;
-   modules_profile_t * first_profile_ptr = NULL;
-   modules_profile_t * actual_profile_ptr = NULL;
    int needed_tags[2];
    int inserted_modules = 0, removed_modules = 0, modified_modules = 0;
    int x = 0, y = 0;
@@ -1887,6 +1981,21 @@ int reload_configuration(const int choice, xmlNodePtr node)
       running_modules[x].module_max_restarts_per_minute = -1;
       running_modules[x].module_is_my_child = TRUE;
    }
+
+   modules_profile_t * ptr = first_profile_ptr;
+   modules_profile_t * p = NULL;
+   while (ptr != NULL) {
+      p = ptr;
+      ptr = ptr->next;
+      if (p->profile_name != NULL) {
+         free(p->profile_name);
+      }
+      if (p != NULL) {
+         free(p);
+      }
+   }
+   first_profile_ptr = NULL;
+   actual_profile_ptr = NULL;
    
    switch (choice) {
       case RELOAD_INIT_LOAD_CONFIG:
@@ -1915,6 +2024,22 @@ int reload_configuration(const int choice, xmlNodePtr node)
             xml_tree = xmlParseFile(config_file);
          } else {
             xml_tree = xmlParseFile(buffer);
+         }
+         if (xml_tree == NULL) {
+            fprintf(stderr,"Document not parsed successfully. \n");
+            pthread_mutex_unlock(&running_modules_lock);
+            return FALSE;
+         }
+         current_node = xmlDocGetRootElement(xml_tree);
+         break;
+      }
+
+      case RELOAD_BACKUP: {
+         char * file_name = generate_backup_file_name(loaded_backup_file_id);
+         xml_tree = xmlParseFile(file_name);
+         if (file_name != NULL) {
+            free(file_name);
+            file_name = NULL;
          }
          if (xml_tree == NULL) {
             fprintf(stderr,"Document not parsed successfully. \n");
@@ -2171,6 +2296,16 @@ int reload_configuration(const int choice, xmlNodePtr node)
                   }
                   module_ptr = module_ptr->next;
                   continue;
+               }
+
+               if (restore_mode_flag) {
+                  key = xmlGetProp(module_ptr, "module_pid");
+                  if (key != NULL) {
+                     running_modules[module_index].module_pid = atoi((char *) key);
+                     printf("pid--%d\n", running_modules[module_index].module_pid);
+                     xmlFree(key);
+                     key = NULL;
+                  }
                }
 
                module_atr = module_ptr->xmlChildrenNode;
@@ -2703,21 +2838,23 @@ int reload_configuration(const int choice, xmlNodePtr node)
    }
 
    /* update module_enabled according to profile enabled */
-   modules_profile_t * ptr = first_profile_ptr;
-   modules_profile_t * p = NULL;
+   ptr = first_profile_ptr;
    while (ptr != NULL) {
       for (x=0; x<loaded_modules_cnt; x++) {
-         if (running_modules[x].modules_profile == ptr->profile_name) {
-            running_modules[x].module_enabled = (running_modules[x].module_enabled && ptr->profile_enabled);
+         if (running_modules[x].modules_profile != NULL && ptr->profile_name != NULL) {
+            if (running_modules[x].modules_profile == ptr->profile_name) {
+               running_modules[x].module_enabled = (running_modules[x].module_enabled && ptr->profile_enabled);
+            }
          }
       }
-      p = ptr;
       ptr = ptr->next;
-      if (p->profile_name != NULL) {
-         free(p->profile_name);
-      }
-      if (p != NULL) {
-         free(p);
+   }
+
+   if (restore_mode_flag) {
+      for (x=0; x<loaded_modules_cnt; x++) {
+         if (running_modules[x].module_pid > 0) {
+            init_module_variables(x);
+         }
       }
    }
 
@@ -2728,4 +2865,127 @@ int reload_configuration(const int choice, xmlNodePtr node)
 
    pthread_mutex_unlock(&running_modules_lock);
    return TRUE;
+}
+
+void generate_backup_config_file()
+{
+   // generate backup file ID !!
+   char * file_id = generate_backup_file_id();
+   char * file_name = generate_backup_file_name(file_id);
+
+   modules_profile_t * ptr = first_profile_ptr;
+   int x, y, in_ifc_cnt, out_ifc_cnt;
+   char buffer[20];
+   const char * templ = "<?xml version=\"1.0\"?><nemea-supervisor xmlns=\"urn:cesnet:tmc:nemea:1.0\"></nemea-supervisor>";
+   xmlDocPtr document_ptr = NULL;
+   xmlNodePtr root_elem = NULL, modules = NULL, module = NULL, trapinterfaces = NULL, interface = NULL;
+
+   document_ptr = xmlParseMemory(templ, strlen(templ));
+   if (document_ptr == NULL) {
+      return;
+   }
+   root_elem = xmlDocGetRootElement(document_ptr);
+   xmlNewProp (root_elem, "lock", NULL);
+   xmlNewProp (root_elem, "id", file_id);
+   if (daemon_flag) {
+      xmlNewProp (root_elem, "daemon", "true");
+      xmlNewProp (root_elem, "socket_path", socket_path);
+   } else {
+      xmlNewProp (root_elem, "daemon", "false");
+      xmlNewProp (root_elem, "socket_path", NULL);
+   }
+
+   modules = xmlNewChild(root_elem, NULL, BAD_CAST "supervisor", NULL);
+   if (verbose_flag) {
+      xmlNewChild(modules, NULL, BAD_CAST "verbose", "true");
+   } else {
+      xmlNewChild(modules, NULL, BAD_CAST "verbose", "false");
+   }
+   memset(buffer,0,20);
+   sprintf(buffer, "%d", max_restarts_per_minute_config);
+   xmlNewChild(modules, NULL, BAD_CAST "module-restarts", buffer);
+   xmlNewChild(modules, NULL, BAD_CAST "logs-directory", logs_path);
+
+   if (xmlAddChild(root_elem, modules) == NULL) {
+      xmlFree(modules);
+   }
+
+   while (ptr != NULL) {
+      if (ptr->profile_name != NULL) {
+         modules = xmlNewChild(root_elem, NULL, BAD_CAST "modules", NULL);
+         xmlNewChild(modules, NULL, BAD_CAST "name", ptr->profile_name);
+         if (ptr->profile_enabled) {
+            xmlNewChild(modules, NULL, BAD_CAST "enabled", "true");
+         } else {
+            xmlNewChild(modules, NULL, BAD_CAST "enabled", "false");
+         }
+         for (x=0; x<loaded_modules_cnt; x++) {
+            if (running_modules[x].modules_profile != NULL) {
+               if (strcmp(running_modules[x].modules_profile, ptr->profile_name) == 0) {
+                  module = xmlNewChild(modules, NULL, BAD_CAST "module", NULL);
+
+                  memset(buffer,0,20);
+                  sprintf(buffer, "%d", running_modules[x].module_pid);
+                  xmlNewProp (module, "module_pid", buffer);
+
+                  xmlNewChild(module, NULL, BAD_CAST "name", running_modules[x].module_name);
+                  xmlNewChild(module, NULL, BAD_CAST "path", running_modules[x].module_path);
+                  xmlNewChild(module, NULL, BAD_CAST "params", running_modules[x].module_params);
+                  if (running_modules[x].module_enabled) {
+                     xmlNewChild(module, NULL, BAD_CAST "enabled", "true");
+                  } else {
+                     xmlNewChild(module, NULL, BAD_CAST "enabled", "false");
+                  }
+                  trapinterfaces = xmlNewChild(module, NULL, BAD_CAST "trapinterfaces", NULL);
+
+                  for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
+                     interface = xmlNewChild(trapinterfaces, NULL, BAD_CAST "interface", NULL);
+                     xmlNewChild(interface, NULL, BAD_CAST "note", running_modules[x].module_ifces[y].ifc_note);
+                     xmlNewChild(interface, NULL, BAD_CAST "params", running_modules[x].module_ifces[y].ifc_params);
+                     xmlNewChild(interface, NULL, BAD_CAST "direction", running_modules[x].module_ifces[y].ifc_direction);
+                     xmlNewChild(interface, NULL, BAD_CAST "type", running_modules[x].module_ifces[y].ifc_type);
+
+                     if (xmlAddChild(trapinterfaces, interface) == NULL) {
+                        xmlFree(interface);
+                     }
+                  }
+
+
+                  if (xmlAddChild(modules, module) == NULL) {
+                     xmlFree(module);
+                  }
+               }
+            }
+         }
+
+         if (xmlAddChild(root_elem, modules) == NULL) {
+            xmlFree(modules);
+         }
+      }
+      ptr = ptr->next;
+   }
+
+   FILE * file_fd = fopen(file_name,"w");
+
+   if (file_fd != NULL) {
+      if (xmlDocFormatDump(file_fd, document_ptr, 1) == -1) {
+         VERBOSE(N_STDOUT, "--> Error while saving backup file\n");
+      } else {
+         VERBOSE(N_STDOUT, "--> Phew, backup file saved !! (file ID: %s)\n", file_id);
+      }
+      fclose(file_fd);
+   } else {
+      VERBOSE(N_STDOUT, "--> Error while opening backup file\n");
+   }
+
+   if (file_name != NULL) {
+      free(file_name);
+      file_name = NULL;
+   }
+   if (file_id != NULL) {
+      free(file_id);
+      file_id = NULL;
+   }
+   xmlFreeDoc(document_ptr);
+   xmlCleanupParser();
 }
