@@ -130,6 +130,16 @@ struct modules_profile_s {
    modules_profile_t * next;
 };
 
+typedef struct daemon_internals_s {
+   FILE *   client_input_stream;
+   FILE *   client_output_stream;
+   int         client_input_stream_fd;
+   int         client_sd;
+   int         daemon_sd;
+   int         client_connected;
+   int         daemon_terminated;
+} daemon_internals_t;
+
 /***********FUNCTIONS***********/
 
 /** Function prints list of loaded modules with their params and all their interfaces with params.
@@ -258,18 +268,18 @@ void print_help();
  * @param[out] d_sd Socket descriptor of the created socket.
  * @return 0 if success, else error;
  */
-int daemon_init(int * d_sd);
+int daemon_init();
 
 /** Function accepts new connection from supervisor_cli.
  * @param[in] d_sd Daemon socket descriptor.
  * @return Returns clients socket descriptor, -1 if error.
  */
-int daemon_get_client (int * d_sd);
+int daemon_get_client ();
 
 /** Function creates input and output filestream via supervisor_cli socket. After that it represents main loop function.
  * @param[in] arg Daemon socket descriptor.
  */
-void daemon_mode(int * arg);
+void daemon_mode();
 
 int get_shorter_string_length(char * first, char * second);
 

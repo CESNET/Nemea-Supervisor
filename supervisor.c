@@ -119,7 +119,7 @@ char *   supervisor_log_file_path = NULL;
 char *   graph_picture_file_path = NULL;
 char *   graph_code_file_path = NULL;
 
- int client_connected = FALSE;      // if supervisor_cli is connected to supervisor_daemon
+daemon_internals_t * daemon_internals = NULL;
 
 /**************************************/
 
@@ -208,7 +208,7 @@ void create_output_files_strings(int init_creation)
       sprintf(supervisor_log_file_path, "%ssupervisor_log", logs_path);
 
       supervisor_log_fd = fopen (supervisor_log_file_path, "a");
-      if (!client_connected) {
+      if (!(daemon_internals->client_connected)) {
          output_fd = supervisor_log_fd;
       }
    }
@@ -743,9 +743,8 @@ int supervisor_initialization(int *argc, char **argv)
       return 1;
    }
 
-   int daemon_arg;
    if (daemon_flag) {
-      daemon_init(&daemon_arg);
+      daemon_init();
    }
 
    create_output_dir(TRUE);
@@ -799,7 +798,7 @@ int supervisor_initialization(int *argc, char **argv)
    /****************************************/
 
    if (daemon_flag) {
-      daemon_mode(&daemon_arg);
+      daemon_mode();
       return 2;
    }
 
@@ -1099,6 +1098,31 @@ void supervisor_termination()
    }
 
    free_output_file_strings_and_streams();
+
+   if (daemon_mode && daemon_internals != NULL) {
+      if (daemon_internals->client_input_stream_fd != NULL) {
+         close(daemon_internals->client_input_stream_fd);
+      }
+      if (daemon_internals->client_input_stream != NULL) {
+         fclose(daemon_internals->client_input_stream);
+         daemon_internals->client_input_stream = NULL;
+      }
+      if (daemon_internals->client_output_stream != NULL) {
+         fclose(daemon_internals->client_output_stream);
+         daemon_internals->client_output_stream = NULL;
+      }
+      if (daemon_internals->client_sd != NULL) {
+         close(daemon_internals->client_sd);
+      }
+      if (daemon_internals->daemon_sd != NULL) {
+         close(daemon_internals->daemon_sd);
+      }
+      if (daemon_internals != NULL) {
+         free(daemon_internals);
+         daemon_internals = NULL;
+      }
+      unlink(socket_path);
+   }
 }
 
 char *get_param_by_delimiter(const char *source, char **dest, const char delimiter)
@@ -1581,7 +1605,7 @@ int parse_arguments(int *argc, char **argv)
    return TRUE;
 }
 
-int daemon_init(int * d_sd)
+int daemon_init()
 {
    // create daemon
    pid_t process_id = 0;
@@ -1612,6 +1636,13 @@ int daemon_init(int * d_sd)
       exit(1);
    }
 
+   // allocate daemon_internals
+   daemon_internals = (daemon_internals_t *) calloc (1, sizeof(daemon_internals_t));
+   if (daemon_internals == NULL) {
+      fprintf(stderr, "Error: Could not allocate dameon_internals, cannot proceed without it !!!\n");
+      exit(EXIT_FAILURE);
+   }
+
    // create socket
    union tcpip_socket_addr addr;
    struct addrinfo *p;
@@ -1621,8 +1652,8 @@ int daemon_init(int * d_sd)
 
    /* if socket file exists, it could be hard to create new socket and bind */
    unlink(socket_path); /* error when file does not exist is not a problem */
-   *d_sd = socket(AF_UNIX, SOCK_STREAM, 0);
-   if (bind(*d_sd, (struct sockaddr *) &addr.unix_addr, sizeof(addr.unix_addr)) != -1) {
+   daemon_internals->daemon_sd = socket(AF_UNIX, SOCK_STREAM, 0);
+   if (bind(daemon_internals->daemon_sd, (struct sockaddr *) &addr.unix_addr, sizeof(addr.unix_addr)) != -1) {
       p = (struct addrinfo *) &addr.unix_addr;
       chmod(socket_path, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
    } else {
@@ -1635,7 +1666,7 @@ int daemon_init(int * d_sd)
       return 10;
    }
    // listen
-   if (listen(*d_sd, 0) == -1) {
+   if (listen(daemon_internals->daemon_sd, 0) == -1) {
       //perror("listen");
       VERBOSE(N_STDOUT,"Listen failed");
       return 10;
@@ -1645,7 +1676,7 @@ int daemon_init(int * d_sd)
 }
 
 
-int daemon_get_client(int * d_sd)
+int daemon_get_client()
 {
    int error, ret_val;
    socklen_t len;
@@ -1656,7 +1687,7 @@ int daemon_get_client(int * d_sd)
 
    // handle new connection
    while(1) {
-      newclient = accept(*d_sd, (struct sockaddr *)&remoteaddr, &addrlen);
+      newclient = accept(daemon_internals->daemon_sd, (struct sockaddr *)&remoteaddr, &addrlen);
       if (newclient == -1) {
          VERBOSE(N_STDOUT,"Accepting new client failed.");
          return newclient;
@@ -1674,103 +1705,95 @@ int daemon_get_client(int * d_sd)
    return newclient;
 }
 
-
-void daemon_mode(int * arg)
+void daemon_mode()
 {
    int got_code = FALSE;
    int x = 0;
-   int daemon_sd = *arg;
-   int client_sd = -1;
-   FILE * client_stream_input = NULL;
-   FILE * client_stream_output = NULL;
-
-   int terminated = FALSE;
-
    int ret_val = 0;
    int request = -1;
    char buffer[1000];
    memset(buffer,0,1000);
-
    fd_set read_fds;
    struct timeval tv;
 
-   client_connected = FALSE;
+   daemon_internals->daemon_terminated = FALSE;
+   daemon_internals->client_connected = FALSE;
 
-   while (terminated == FALSE) {
+   while (daemon_internals->daemon_terminated == FALSE) {
       // get client
-      client_sd = daemon_get_client(&daemon_sd);
-      if (client_sd == -1) {
-         client_connected = FALSE;
+      daemon_internals->client_sd = daemon_get_client();
+      if (daemon_internals->client_sd == -1) {
+         daemon_internals->client_connected = FALSE;
          /* Bind was probably unsuccessful. */
          continue;
       }
 
-      client_stream_input = fdopen(client_sd, "r");
-      if (client_stream_input == NULL) {
+      daemon_internals->client_input_stream = fdopen(daemon_internals->client_sd, "r");
+      if (daemon_internals->client_input_stream == NULL) {
          VERBOSE(N_STDOUT,"Fdopen error\n");
-         close(client_sd);
+         close(daemon_internals->client_sd);
          continue;
       }
 
-      client_stream_output = fdopen(client_sd, "w");
-      if (client_stream_output == NULL) {
+      daemon_internals->client_output_stream = fdopen(daemon_internals->client_sd, "w");
+      if (daemon_internals->client_output_stream == NULL) {
          VERBOSE(N_STDOUT,"Fdopen error\n");
-         fclose(client_stream_input);
-         close(client_sd);
+         fclose(daemon_internals->client_input_stream);
+         close(daemon_internals->client_sd);
          continue;
       }
 
 
 
-      int client_stream_input_fd = fileno(client_stream_input);
-      if (client_stream_input_fd < 0) {
+      daemon_internals->client_input_stream_fd = fileno(daemon_internals->client_input_stream);
+      if (daemon_internals->client_input_stream_fd < 0) {
          VERBOSE(N_STDOUT,"Fdopen error\n");
-         fclose(client_stream_input);
-         fclose(client_stream_output);
-         close(client_sd);
+         fclose(daemon_internals->client_input_stream);
+         fclose(daemon_internals->client_output_stream);
+         close(daemon_internals->client_sd);
          continue;
       }
 
-      client_connected = TRUE;
+      daemon_internals->client_connected = TRUE;
 
-      input_fd = client_stream_input;
-      output_fd = client_stream_output;
+      input_fd = daemon_internals->client_input_stream;
+      output_fd = daemon_internals->client_output_stream;
 
-      while (client_connected != 0) {
+      while (daemon_internals->client_connected) {
          request = -1;
          FD_ZERO(&read_fds);
-         FD_SET(client_stream_input_fd, &read_fds);
+         FD_SET(daemon_internals->client_input_stream_fd, &read_fds);
 
          tv.tv_sec = 2;
          tv.tv_usec = 0;
 
-         ret_val = select(client_stream_input_fd+1, &read_fds, NULL, NULL, &tv);
+         ret_val = select(daemon_internals->client_input_stream_fd+1, &read_fds, NULL, NULL, &tv);
          if (ret_val == -1) {
             perror("select()");
-            fclose(client_stream_input);
-            fclose(client_stream_output);
-            close(client_sd);
-            client_connected = FALSE;
+            fclose(daemon_internals->client_input_stream);
+            fclose(daemon_internals->client_output_stream);
+            close(daemon_internals->client_sd);
+            daemon_internals->client_connected = FALSE;
             got_code = FALSE;
             input_fd = stdin;
             output_fd = supervisor_log_fd;
             break;
          } else if (ret_val != 0) {
-            if (FD_ISSET(client_stream_input_fd, &read_fds)) {
-               ioctl(client_stream_input_fd, FIONREAD, &x);
+            if (FD_ISSET(daemon_internals->client_input_stream_fd, &read_fds)) {
+               ioctl(daemon_internals->client_input_stream_fd, FIONREAD, &x);
                if (x == 0 || x == -1) {
                   input_fd = stdin;
                   output_fd = supervisor_log_fd;
                   VERBOSE(N_STDOUT, "Client has disconnected.\n");
-                  client_connected = FALSE;
+                  daemon_internals->client_connected = FALSE;
                   got_code = FALSE;
-                  fclose(client_stream_input);
-                  fclose(client_stream_output);
-                  close(client_sd);
+                  fclose(daemon_internals->client_input_stream);
+                  fclose(daemon_internals->client_output_stream);
+                  close(daemon_internals->client_sd);
                   break;
                }
                if (fscanf(input_fd,"%s",buffer) != 1) {
-                  client_connected = FALSE;
+                  daemon_internals->client_connected = FALSE;
                }
                sscanf(buffer,"%d", &request);
 
@@ -1800,9 +1823,8 @@ void daemon_mode(int * arg)
                   reload_configuration(RELOAD_INTERACTIVE, NULL);
                   break;
                case DAEMON_STOP_CODE:
-                  supervisor_termination();
-                  client_connected = FALSE;
-                  terminated = TRUE;
+                  daemon_internals->client_connected = FALSE;
+                  daemon_internals->daemon_terminated = TRUE;
                   break;
                case DAEMON_CONFIG_MODE_CODE:
                   got_code = TRUE;
@@ -1823,18 +1845,18 @@ void daemon_mode(int * arg)
                   input_fd = stdin;
                   output_fd = supervisor_log_fd;
                   VERBOSE(N_STDOUT, "Client has disconnected.\n");
-                  client_connected = FALSE;
+                  daemon_internals->client_connected = FALSE;
                   got_code = FALSE;
-                  fclose(client_stream_input);
-                  fclose(client_stream_output);
-                  close(client_sd);
+                  fclose(daemon_internals->client_input_stream);
+                  fclose(daemon_internals->client_output_stream);
+                  close(daemon_internals->client_sd);
                   break;
                }
                default:
                   VERBOSE(N_STDOUT, "Error input\n");
                   break;
                }
-               if (!terminated && client_connected) {
+               if (!(daemon_internals->daemon_terminated) && daemon_internals->client_connected) {
                   VERBOSE(N_STDOUT,"--------OPTIONS--------\n");
                   VERBOSE(N_STDOUT,"1. START ALL MODULES\n");
                   VERBOSE(N_STDOUT,"2. STOP ALL MODULES\n");
@@ -1846,6 +1868,10 @@ void daemon_mode(int * arg)
                   VERBOSE(N_STDOUT,"8. RELOAD CONFIGURATION\n");
                   VERBOSE(N_STDOUT,"-- Type \"Cquit\" to exit client --\n");
                   VERBOSE(N_STDOUT,"-- Type \"Dstop\" to stop daemon --\n");
+
+                  fsync(daemon_internals->client_input_stream_fd);
+                  memset(buffer,0,1000);
+                  fflush(output_fd);
                }
             }
          } else {
@@ -1853,25 +1879,17 @@ void daemon_mode(int * arg)
                input_fd = stdin;
                output_fd = supervisor_log_fd;
                VERBOSE(N_STDOUT, "Client isn't responding.\n");
-               client_connected = FALSE;
-               fclose(client_stream_input);
-               fclose(client_stream_output);
-               close(client_sd);
+               daemon_internals->client_connected = FALSE;
+               fclose(daemon_internals->client_input_stream);
+               fclose(daemon_internals->client_output_stream);
+               close(daemon_internals->client_sd);
                break;
             }
          }
-
-         fsync(client_stream_input_fd);
-         memset(buffer,0,1000);
-         fflush(output_fd);
       }
    }
 
-   fclose(client_stream_input);
-   fclose(client_stream_output);
-   close(client_sd);
-   close(daemon_sd);
-   unlink(socket_path);
+   supervisor_termination();
    return;
 }
 
