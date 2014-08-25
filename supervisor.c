@@ -1007,6 +1007,27 @@ void free_output_file_strings_and_streams()
    }
 }
 
+void free_daemon_internals_variables()
+{
+   daemon_internals->client_connected = FALSE;
+   if (daemon_internals->client_input_stream_fd > 0) {
+      close(daemon_internals->client_input_stream_fd);
+      daemon_internals->client_input_stream_fd = 0;
+   }
+   if (daemon_internals->client_input_stream != NULL) {
+      fclose(daemon_internals->client_input_stream);
+      daemon_internals->client_input_stream = NULL;
+   }
+   if (daemon_internals->client_output_stream != NULL) {
+      fclose(daemon_internals->client_output_stream);
+      daemon_internals->client_output_stream = NULL;
+   }
+   if (daemon_internals->client_sd > 0) {
+      close(daemon_internals->client_sd);
+      daemon_internals->client_sd = 0;
+   }
+}
+
 void supervisor_termination()
 {
    int x, y;
@@ -1100,22 +1121,10 @@ void supervisor_termination()
    free_output_file_strings_and_streams();
 
    if (daemon_mode && daemon_internals != NULL) {
-      if (daemon_internals->client_input_stream_fd != NULL) {
-         close(daemon_internals->client_input_stream_fd);
-      }
-      if (daemon_internals->client_input_stream != NULL) {
-         fclose(daemon_internals->client_input_stream);
-         daemon_internals->client_input_stream = NULL;
-      }
-      if (daemon_internals->client_output_stream != NULL) {
-         fclose(daemon_internals->client_output_stream);
-         daemon_internals->client_output_stream = NULL;
-      }
-      if (daemon_internals->client_sd != NULL) {
-         close(daemon_internals->client_sd);
-      }
-      if (daemon_internals->daemon_sd != NULL) {
+      free_daemon_internals_variables();
+      if (daemon_internals->daemon_sd > 0) {
          close(daemon_internals->daemon_sd);
+         daemon_internals->daemon_sd = 0;
       }
       if (daemon_internals != NULL) {
          free(daemon_internals);
@@ -1730,16 +1739,15 @@ void daemon_mode()
 
       daemon_internals->client_input_stream = fdopen(daemon_internals->client_sd, "r");
       if (daemon_internals->client_input_stream == NULL) {
-         VERBOSE(N_STDOUT,"Fdopen error\n");
-         close(daemon_internals->client_sd);
+         VERBOSE(N_STDOUT,"%s [ERROR] Fdopen: could not open client input stream!\n", get_stats_formated_time());
+         free_daemon_internals_variables();
          continue;
       }
 
       daemon_internals->client_output_stream = fdopen(daemon_internals->client_sd, "w");
       if (daemon_internals->client_output_stream == NULL) {
-         VERBOSE(N_STDOUT,"Fdopen error\n");
-         fclose(daemon_internals->client_input_stream);
-         close(daemon_internals->client_sd);
+         VERBOSE(N_STDOUT,"%s [ERROR] Fdopen: could not open client output stream!\n", get_stats_formated_time());
+         free_daemon_internals_variables();
          continue;
       }
 
@@ -1747,10 +1755,8 @@ void daemon_mode()
 
       daemon_internals->client_input_stream_fd = fileno(daemon_internals->client_input_stream);
       if (daemon_internals->client_input_stream_fd < 0) {
-         VERBOSE(N_STDOUT,"Fdopen error\n");
-         fclose(daemon_internals->client_input_stream);
-         fclose(daemon_internals->client_output_stream);
-         close(daemon_internals->client_sd);
+         VERBOSE(N_STDOUT,"%s [ERROR] Fileno: could not get client input stream descriptor!\n", get_stats_formated_time());
+         free_daemon_internals_variables();
          continue;
       }
 
@@ -1769,11 +1775,8 @@ void daemon_mode()
 
          ret_val = select(daemon_internals->client_input_stream_fd+1, &read_fds, NULL, NULL, &tv);
          if (ret_val == -1) {
-            perror("select()");
-            fclose(daemon_internals->client_input_stream);
-            fclose(daemon_internals->client_output_stream);
-            close(daemon_internals->client_sd);
-            daemon_internals->client_connected = FALSE;
+            VERBOSE(N_STDOUT,"%s [ERROR] Select: error\n", get_stats_formated_time());
+            free_daemon_internals_variables();
             got_code = FALSE;
             input_fd = stdin;
             output_fd = supervisor_log_fd;
@@ -1787,9 +1790,7 @@ void daemon_mode()
                   VERBOSE(N_STDOUT, "Client has disconnected.\n");
                   daemon_internals->client_connected = FALSE;
                   got_code = FALSE;
-                  fclose(daemon_internals->client_input_stream);
-                  fclose(daemon_internals->client_output_stream);
-                  close(daemon_internals->client_sd);
+                  free_daemon_internals_variables();
                   break;
                }
                if (fscanf(input_fd,"%s",buffer) != 1) {
@@ -1847,9 +1848,7 @@ void daemon_mode()
                   VERBOSE(N_STDOUT, "Client has disconnected.\n");
                   daemon_internals->client_connected = FALSE;
                   got_code = FALSE;
-                  fclose(daemon_internals->client_input_stream);
-                  fclose(daemon_internals->client_output_stream);
-                  close(daemon_internals->client_sd);
+                  free_daemon_internals_variables();
                   break;
                }
                default:
@@ -1878,11 +1877,8 @@ void daemon_mode()
             if (got_code == FALSE) {
                input_fd = stdin;
                output_fd = supervisor_log_fd;
-               VERBOSE(N_STDOUT, "Client isn't responding.\n");
-               daemon_internals->client_connected = FALSE;
-               fclose(daemon_internals->client_input_stream);
-               fclose(daemon_internals->client_output_stream);
-               close(daemon_internals->client_sd);
+               VERBOSE(N_STDOUT, "%s [WARNING] Client isn't responding!\n", get_stats_formated_time());
+               free_daemon_internals_variables();
                break;
             }
          }
