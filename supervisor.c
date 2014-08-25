@@ -135,6 +135,7 @@ void daemon_mode();
 char *get_param_by_delimiter(const char *source, char **dest, const char delimiter);
 void free_output_file_strings_and_streams();
 void generate_backup_config_file();
+char * get_stats_formated_time();
 
 void create_output_dir(int init_creation)
 {
@@ -201,13 +202,29 @@ void create_output_files_strings(int init_creation)
    sprintf(graph_code_file_path, "%sgraph_code", logs_path);
 
    statistics_fd = fopen(statistics_file_path, "a");
+   if (statistics_fd == NULL) {
+      fprintf(stderr, "%s [ERROR] Could not open supervisor_log_statistics file stream!\n",get_stats_formated_time());
+   } else {
+      VERBOSE(STATISTICS,"-------------------- %s --------------------\n", get_stats_formated_time());
+      print_statistics_legend();
+   }
    module_event_fd = fopen(module_event_file_path, "a");
+   if (module_event_fd == NULL) {
+      fprintf(stderr, "%s [ERROR] Could not open supervisor_log_module_event file stream!\n",get_stats_formated_time());
+   } else {
+      VERBOSE(MODULE_EVENT,"-------------------- %s --------------------\n", get_stats_formated_time());
+   }
 
    if (netconf_flag || daemon_flag) {
       supervisor_log_file_path = (char *) calloc (strlen(logs_path)+strlen("supervisor_log")+1, sizeof(char));
       sprintf(supervisor_log_file_path, "%ssupervisor_log", logs_path);
 
       supervisor_log_fd = fopen (supervisor_log_file_path, "a");
+      if (supervisor_log_fd == NULL) {
+         fprintf(stderr, "%s [ERROR] Could not open supervisor_log file stream!\n",get_stats_formated_time());
+      } else {
+         fprintf(supervisor_log_fd,"-------------------- %s --------------------\n", get_stats_formated_time());
+      }
       if (!(daemon_internals->client_connected)) {
          output_fd = supervisor_log_fd;
       }
@@ -235,10 +252,21 @@ char * generate_backup_file_name(char * file_id)
    return buffer;
 }
 
+char * get_stats_formated_time()
+{
+   static char formated_time_buffer[DEFAULT_SIZE_OF_BUFFER];
+   memset(formated_time_buffer,0,DEFAULT_SIZE_OF_BUFFER);
+   struct tm * act_time = get_sys_time();
+
+   sprintf(formated_time_buffer,"%d.%d %d:%d:%d",  act_time->tm_mday, act_time->tm_mon+1, act_time->tm_hour, act_time->tm_min, act_time->tm_sec);
+
+   return formated_time_buffer;
+}
+
 void interactive_show_available_modules ()
 {
    int x,y = 0;
-   VERBOSE(N_STDOUT,"---PRINTING CONFIGURATION---\n");
+   VERBOSE(N_STDOUT,"[PRINTING CONFIGURATION]\n");
 
    for (x=0; x < loaded_modules_cnt; x++) {
       VERBOSE(N_STDOUT,"%c%d_%s:  PATH:%s  PARAMS:%s\n", (running_modules[x].module_enabled == 0 ? ' ' : '*'), x, running_modules[x].module_name, running_modules[x].module_path, running_modules[x].module_params);
@@ -314,8 +342,8 @@ char **make_module_arguments(const int number_of_module)
          params[params_counter] = NULL;
       }
 
-      fprintf(stdout,"Supervisor - executed command: %s", running_modules[number_of_module].module_path);
-      fprintf(stderr,"Supervisor - executed command: %s", running_modules[number_of_module].module_path);
+      fprintf(stdout,"%s [INFO] Supervisor - executed command: %s", get_stats_formated_time(), running_modules[number_of_module].module_path);
+      fprintf(stderr,"%s [INFO] Supervisor - executed command: %s", get_stats_formated_time(), running_modules[number_of_module].module_path);
       
       if (params_counter > 0) {
          for (x=1; x<params_counter; x++) {
@@ -495,8 +523,8 @@ char **make_module_arguments(const int number_of_module)
       params[params_counter] = NULL;
    }
    
-   fprintf(stdout,"Supervisor - executed command: %s   %s   %s", running_modules[number_of_module].module_path, params[1], params[2]);
-   fprintf(stderr,"Supervisor - executed command: %s   %s   %s", running_modules[number_of_module].module_path, params[1], params[2]);
+   fprintf(stdout,"%s [INFO] Supervisor - executed command: %s   %s   %s", get_stats_formated_time(), running_modules[number_of_module].module_path, params[1], params[2]);
+   fprintf(stderr,"%s [INFO] Supervisor - executed command: %s   %s   %s", get_stats_formated_time(), running_modules[number_of_module].module_path, params[1], params[2]);
    
    if (params_counter > 0) {
       for (x=3; x<params_counter; x++) {
@@ -545,6 +573,7 @@ int interactive_get_option()
    VERBOSE(N_STDOUT,"7. SHOW GRAPH\n");
    VERBOSE(N_STDOUT,"8. RELOAD CONFIGURATION\n");
    VERBOSE(N_STDOUT,"9. STOP SUPERVISOR\n");
+   VERBOSE(N_STDOUT,"[INTERACTIVE] Your choice: ");
 
    return get_number_from_input();
 }
@@ -570,11 +599,11 @@ void init_module_variables(int module_number)
 void re_start_module(const int module_number)
 {
    if (running_modules[module_number].module_running == FALSE) {
-      VERBOSE(MODULE_EVENT,"Starting module %d_%s.\n", module_number, running_modules[module_number].module_name);
+      VERBOSE(MODULE_EVENT,"%s [START] Starting module %s.\n", get_stats_formated_time(), running_modules[module_number].module_name);
       running_modules[module_number].module_counters_array = (int *) calloc (3*running_modules[module_number].module_num_out_ifc + running_modules[module_number].module_num_in_ifc,sizeof(int));
       running_modules[module_number].module_running = TRUE;
    } else {
-      VERBOSE(MODULE_EVENT,"Restarting module %d_%s\n", module_number, running_modules[module_number].module_name);
+      VERBOSE(MODULE_EVENT,"%s [RESTART] Restarting module %s\n", get_stats_formated_time(), running_modules[module_number].module_name);
    }
 
    char log_path_stdout[200];
@@ -605,7 +634,7 @@ void re_start_module(const int module_number)
       fprintf(stdout,"---> %s", asctime (timeinfo));
       fprintf(stderr,"---> %s", asctime (timeinfo));
       if (running_modules[module_number].module_path == NULL) {
-         VERBOSE(N_STDOUT,"Module path == NULL.\n");
+         VERBOSE(N_STDOUT,"%s [ERROR] Starting module: module path is missing!\n", get_stats_formated_time());
          running_modules[module_number].module_enabled = FALSE;
       } else {
          char **params = make_module_arguments(module_number);
@@ -613,13 +642,13 @@ void re_start_module(const int module_number)
          fflush(stderr);
          execvp(running_modules[module_number].module_path, params);
       }
-      VERBOSE(N_STDOUT,"Error while executing module binary.\n");
+      VERBOSE(N_STDOUT,"%s [ERROR] Module execution: could not execute module binary! (possible reason - wrong module binary path)\n", get_stats_formated_time());
       running_modules[module_number].module_enabled = FALSE;
-      exit(1);
+      exit(EXIT_FAILURE);
    } else if (running_modules[module_number].module_pid == -1) {
       running_modules[module_number].module_status = FALSE;
       running_modules[module_number].module_restart_cnt++;
-      VERBOSE(N_STDOUT,"Err Fork()\n");
+      VERBOSE(N_STDOUT,"%s [ERROR] Fork: could not fork supervisor process!\n", get_stats_formated_time());
    } else {
       running_modules[module_number].module_is_my_child = TRUE;
       running_modules[module_number].module_status = TRUE;
@@ -638,13 +667,13 @@ void service_update_module_status()
       if (running_modules[x].module_pid > 0) {
          if (kill(running_modules[x].module_pid, 0) == -1) {
             if (errno == EINVAL) {
-               VERBOSE(MODULE_EVENT,"kill -0: ernno EINVAL\n");
+               VERBOSE(MODULE_EVENT,"%s [STOP] kill -0: ernno EINVAL\n", get_stats_formated_time());
             }
             if (errno == EPERM) {
-               VERBOSE(MODULE_EVENT,"kill -0: errno EPERM\n");
+               VERBOSE(MODULE_EVENT,"%s [STOP] kill -0: errno EPERM\n", get_stats_formated_time());
             }
             if (errno == ESRCH) {
-               VERBOSE(MODULE_EVENT,"kill -0: module with pid %d is not running !\n");
+               VERBOSE(MODULE_EVENT,"%s [STOP] kill -0: module %s with pid %d is not running !\n", get_stats_formated_time(), running_modules[x].module_name, running_modules[x].module_pid);
             }
             if (running_modules[x].module_service_sd != -1) {
                   close(running_modules[x].module_service_sd);
@@ -673,12 +702,12 @@ void service_clean_after_children()
          } else if (result == -1) {
            // Error
             if (errno == ECHILD) {
-               VERBOSE(MODULE_EVENT, "waitpid: module with pid %d is not my child, I'm not gonna clean after him !!\n", running_modules[x].module_pid);
+               VERBOSE(MODULE_EVENT, "%s [CLEAN] waitpid: module %s with pid %d is not my child, I'm not gonna clean after him !!\n", get_stats_formated_time(), running_modules[x].module_name, running_modules[x].module_pid);
                running_modules[x].module_is_my_child = FALSE;
             }
          } else {
            // Child exited
-            VERBOSE(MODULE_EVENT, "waitpid: module with pid %d is my child and is not alive anymore, I'm gonna clean after him !!\n", running_modules[x].module_pid);
+            VERBOSE(MODULE_EVENT, "%s [CLEAN] waitpid: module %s with pid %d is my child and is not alive anymore, I'm gonna clean after him !!\n", get_stats_formated_time(), running_modules[x].module_name, running_modules[x].module_pid);
          }
       }
    }
@@ -688,25 +717,25 @@ void supervisor_signal_handler(int catched_signal)
 {
    switch (catched_signal) {
    case SIGPIPE:
-      VERBOSE(MODULE_EVENT,"SIGPIPE catched..\n");
+      VERBOSE(MODULE_EVENT,"%s [WARNING] SIGPIPE catched!\n", get_stats_formated_time());
       break;
 
    case SIGTERM:
-      VERBOSE(N_STDOUT,"SIGTERM catched -> I'm going to terminate my self !\n");
+      VERBOSE(N_STDOUT,"%s [SIGNAL HANDLER] SIGTERM catched -> I'm going to terminate my self !\n", get_stats_formated_time());
       generate_backup_config_file();
       supervisor_termination();
       exit(EXIT_FAILURE);
       break;
 
    case SIGINT:
-      VERBOSE(N_STDOUT,"SIGINT catched -> I'm going to terminate my self !\n");
+      VERBOSE(N_STDOUT,"%s [SIGNAL HANDLER] SIGINT catched -> I'm going to terminate my self !\n", get_stats_formated_time());
       generate_backup_config_file();
       supervisor_termination();
       exit(EXIT_SUCCESS);
       break;
 
    case SIGSEGV:
-      VERBOSE(N_STDOUT,"Ouch, SIGSEGV catched -> I'm going to terminate my self !\n");
+      VERBOSE(N_STDOUT,"%s [SIGNAL HANDLER] Ouch, SIGSEGV catched -> I'm going to terminate my self !\n", get_stats_formated_time());
       generate_backup_config_file();
       supervisor_termination();
       exit(EXIT_FAILURE);
@@ -750,7 +779,7 @@ int supervisor_initialization(int *argc, char **argv)
    create_output_dir(TRUE);
    create_output_files_strings(TRUE);
 
-   VERBOSE(N_STDOUT,"--- LOADING CONFIGURATION ---\n");
+   VERBOSE(N_STDOUT,"[INIT LOADING CONFIGURATION]\n");
    loaded_modules_cnt = 0;
    running_modules_array_size = RUNNING_MODULES_ARRAY_START_SIZE;
    running_modules = (running_module_t *) calloc (running_modules_array_size,sizeof(running_module_t));
@@ -771,7 +800,7 @@ int supervisor_initialization(int *argc, char **argv)
       reload_configuration(RELOAD_INIT_LOAD_CONFIG, NULL);
    }
 
-   VERBOSE(N_STDOUT,"-- Starting service thread --\n");
+   VERBOSE(N_STDOUT,"[SERVICE] Starting service thread.\n");
    start_service_thread();
 
    /************ SIGNAL HANDLING *************/
@@ -784,16 +813,16 @@ int supervisor_initialization(int *argc, char **argv)
    sigemptyset(&sig_action.sa_mask);
 
    if (sigaction(SIGPIPE,&sig_action,NULL) == -1) {
-      VERBOSE(N_STDOUT,"Sigaction error - signal SIGPIPE !\n");
+      VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGPIPE !\n", get_stats_formated_time());
    }
    if (sigaction(SIGINT,&sig_action,NULL) == -1) {
-      VERBOSE(N_STDOUT,"Sigaction error - signal SIGINT !\n");
+      VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGINT !\n", get_stats_formated_time());
    }
    if (sigaction(SIGTERM,&sig_action,NULL) == -1) {
-      VERBOSE(N_STDOUT,"Sigaction error - signal SIGTERM !\n");
+      VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGTERM !\n", get_stats_formated_time());
    }
    if (sigaction(SIGSEGV,&sig_action,NULL) == -1) {
-      VERBOSE(N_STDOUT,"Sigaction error - signal SIGSEGV !\n");
+      VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGSEGV !\n", get_stats_formated_time());
    }
    /****************************************/
 
@@ -809,7 +838,7 @@ int supervisor_initialization(int *argc, char **argv)
 void interactive_start_configuration()
 {
    pthread_mutex_lock(&running_modules_lock);
-   VERBOSE(MODULE_EVENT,"Starting configuration...\n");
+   VERBOSE(MODULE_EVENT,"%s [START] Starting configuration...\n", get_stats_formated_time());
    int x = 0;
    for (x=0; x<loaded_modules_cnt; x++) {
       if (running_modules[x].module_enabled == FALSE) {
@@ -825,7 +854,7 @@ void interactive_stop_configuration()
 {
    int x = 0;
    pthread_mutex_lock(&running_modules_lock);
-   VERBOSE(MODULE_EVENT,"Stopping configuration...\n");
+   VERBOSE(MODULE_EVENT,"%s [STOP] Stopping configuration...\n", get_stats_formated_time());
    for (x=0; x<loaded_modules_cnt; x++) {
       if (running_modules[x].module_enabled) {
          running_modules[x].module_enabled = FALSE;
@@ -838,20 +867,21 @@ void interactive_stop_configuration()
 void interactive_set_module_enabled()
 {
    pthread_mutex_lock(&running_modules_lock);
-   VERBOSE(N_STDOUT,"Type in module number\n");
+   VERBOSE(N_STDOUT,"[INTERACTIVE] Type in module number: ");
    int x = get_number_from_input();
 
    if (x>=loaded_modules_cnt || x<0) {
-      VERBOSE(N_STDOUT,"Wrong input, type in 0 - %d.\n", loaded_modules_cnt-1);
+      VERBOSE(N_STDOUT,"[WARNING] Wrong input, type in 0 - %d.\n", loaded_modules_cnt-1);
       pthread_mutex_unlock(&running_modules_lock);
       return;
    }
 
    if (running_modules[x].module_enabled) {
-      VERBOSE(N_STDOUT,"Module %d%s is already enabled.\n", x, running_modules[x].module_name);
+      VERBOSE(N_STDOUT,"[WARNING] Module %s is already enabled.\n", running_modules[x].module_name);
    } else {
       running_modules[x].module_enabled = TRUE;
       running_modules[x].module_restart_cnt = -1;
+      VERBOSE(MODULE_EVENT, "%s [ENABLED] Module %s set to enabled.\n", get_stats_formated_time(), running_modules[x].module_name);
    }
    pthread_mutex_unlock(&running_modules_lock);
 }
@@ -861,7 +891,7 @@ void service_stop_modules_sigint()
    int x;
    for (x=0; x<loaded_modules_cnt; x++) {
       if (running_modules[x].module_status && running_modules[x].module_enabled == FALSE && running_modules[x].sent_sigint == FALSE) {
-         VERBOSE(MODULE_EVENT, "Stopping module %d_%s... sending SIGINT\n", x, running_modules[x].module_name);
+         VERBOSE(MODULE_EVENT, "%s [STOP] Stopping module %s... sending SIGINT\n", get_stats_formated_time(), running_modules[x].module_name);
          kill(running_modules[x].module_pid,2);
          running_modules[x].sent_sigint = TRUE;
       }
@@ -875,7 +905,7 @@ void service_stop_modules_sigkill()
    int x, y;
    for (x=0; x<loaded_modules_cnt; x++) {
       if (running_modules[x].module_status && running_modules[x].module_enabled == FALSE && running_modules[x].sent_sigint == TRUE) {
-         VERBOSE(MODULE_EVENT, "Stopping module %d_%s... sending SIGKILL\n", x, running_modules[x].module_name);
+         VERBOSE(MODULE_EVENT, "%s [STOP] Stopping module %s... sending SIGKILL\n", get_stats_formated_time(), running_modules[x].module_name);
          kill(running_modules[x].module_pid,9);
          for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
             if (running_modules[x].module_ifces[y].ifc_type != NULL) {
@@ -888,7 +918,7 @@ void service_stop_modules_sigkill()
                   }
                   get_param_by_delimiter(running_modules[x].module_ifces[y].ifc_params, &dest_port, ',');
                   sprintf(buffer,MODULES_UNIXSOCKET_PATH_FILENAME_FORMAT,dest_port);
-                  VERBOSE(MODULE_EVENT, "Deleting socket %s... module %d_%s\n", buffer, x, running_modules[x].module_name);
+                  VERBOSE(MODULE_EVENT, "%s [CLEAN] Deleting socket %s - module %s\n", get_stats_formated_time(), buffer, running_modules[x].module_name);
                   unlink(buffer);
                   if (dest_port != NULL) {
                      free(dest_port);
@@ -913,18 +943,19 @@ void interactive_stop_module()
       }
    }
    if (running_modules_counter == 0) {
-      VERBOSE(N_STDOUT,"All modules are stopped.\n");
+      VERBOSE(N_STDOUT,"[WARNING] All modules are stopped.\n");
       pthread_mutex_unlock(&running_modules_lock);
       return;
    }
-   VERBOSE(N_STDOUT,"Type in number of module to kill:\n");
+   VERBOSE(N_STDOUT,"[INTERACTIVE] Type in number of module to kill: ");
    x = get_number_from_input();
    if (x>=loaded_modules_cnt || x<0) {
-      VERBOSE(N_STDOUT,"Wrong input, type in 0 - %d.\n", loaded_modules_cnt-1);
+      VERBOSE(N_STDOUT,"[WARNING] Wrong input, type in 0 - %d.\n", loaded_modules_cnt-1);
       pthread_mutex_unlock(&running_modules_lock);
       return;
    } else {
       running_modules[x].module_enabled = FALSE;
+      VERBOSE(MODULE_EVENT, "%s [DISABLED] Module %s set to disabled.\n", get_stats_formated_time(), running_modules[x].module_name);
    }
    pthread_mutex_unlock(&running_modules_lock);
 }
@@ -946,7 +977,7 @@ void service_restart_modules()
       }
 
       if (running_modules[x].module_enabled == TRUE && running_modules[x].module_status == FALSE && (running_modules[x].module_restart_cnt == max_restarts)) {
-         VERBOSE(MODULE_EVENT,"Module: %d_%s was restarted %d times per minute and it is down again. I set it disabled.\n",x, running_modules[x].module_name, max_restarts);
+         VERBOSE(MODULE_EVENT,"%s [RESTART] Module: %s was restarted %d times per minute and it is down again. I set it disabled.\n", get_stats_formated_time(), running_modules[x].module_name, max_restarts);
          running_modules[x].module_enabled = FALSE;
       } else if (running_modules[x].module_status == FALSE && running_modules[x].module_enabled == TRUE) {
          re_start_module(x);
@@ -958,7 +989,7 @@ void interactive_show_running_modules_status()
 {
    int x = 0;
    if (loaded_modules_cnt == 0) {
-      VERBOSE(N_STDOUT,"No module is loaded.\n");
+      VERBOSE(N_STDOUT,"[WARNING] No module is loaded.\n");
       return;
    }
    for (x=0; x<loaded_modules_cnt; x++) {
@@ -1031,19 +1062,19 @@ void free_daemon_internals_variables()
 void supervisor_termination()
 {
    int x, y;
-   VERBOSE(N_STDOUT,"-- Aborting service thread --\n");
+   VERBOSE(N_STDOUT,"%s [SERVICE] Aborting service thread!\n", get_stats_formated_time());
    service_thread_continue = 0;
    x = pthread_join(service_thread_id, NULL);
 
    if (x == 0) {
-      VERBOSE(N_STDOUT, "! pthread_join success: Service thread finished !\n")
+      VERBOSE(N_STDOUT, "%s [SERVICE] pthread_join success: Service thread finished!\n", get_stats_formated_time())
    } else if (x == -1) {
       if (errno == EINVAL) {
-         VERBOSE(N_STDOUT, "! pthread_join error: Not joinable thread !\n");
+         VERBOSE(N_STDOUT, "%s [ERROR] pthread_join: Not joinable thread!\n", get_stats_formated_time());
       } else if (errno == ESRCH) {
-         VERBOSE(N_STDOUT, "! pthread_join error: No thread with this ID found !\n");
+         VERBOSE(N_STDOUT, "%s [ERROR] pthread_join: No thread with this ID found!\n", get_stats_formated_time());
       } else if ( errno == EDEADLK) {
-         VERBOSE(N_STDOUT, "! pthread_join error: Deadlock in service thread detected !\n");
+         VERBOSE(N_STDOUT, "%s [ERROR] pthread_join: Deadlock in service thread detected!\n", get_stats_formated_time());
       }
    }
 
@@ -1229,7 +1260,7 @@ void generate_periodic_picture()
 void interactive_show_graph()
 {
    if (graph_first_node == NULL) {
-      VERBOSE(N_STDOUT,"No module with service ifc running.\n");
+      VERBOSE(N_STDOUT,"[WARNING] No module loaded.\n");
       return;
    }
    show_picture();
@@ -1270,7 +1301,7 @@ void connect_to_module_service_ifc(int module, int num_ifc)
       return;
    }
    get_param_by_delimiter(running_modules[module].module_ifces[num_ifc].ifc_params, &dest_port, ',');
-   VERBOSE(MODULE_EVENT,"-- Connecting to module %d_%s on port %s\n",module,running_modules[module].module_name, dest_port);
+   VERBOSE(MODULE_EVENT,"%s [SERVICE] Connecting to module %s on port %s\n", get_stats_formated_time(), running_modules[module].module_name, dest_port);
 
    memset(&addr, 0, sizeof(addr));
 
@@ -1278,7 +1309,7 @@ void connect_to_module_service_ifc(int module, int num_ifc)
    snprintf(addr.unix_addr.sun_path, sizeof(addr.unix_addr.sun_path) - 1, MODULES_UNIXSOCKET_PATH_FILENAME_FORMAT, dest_port);
    sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
    if (sockfd == -1) {
-      VERBOSE(MODULE_EVENT,"Error while opening socket.\n");
+      VERBOSE(MODULE_EVENT,"%s [SERVICE] Error while opening socket.\n", get_stats_formated_time());
       running_modules[module].module_service_ifc_isconnected = FALSE;
       if (dest_port != NULL) {
          free(dest_port);
@@ -1287,7 +1318,7 @@ void connect_to_module_service_ifc(int module, int num_ifc)
       return;
    }
    if (connect(sockfd, (struct sockaddr *) &addr.unix_addr, sizeof(addr.unix_addr)) == -1) {
-      VERBOSE(MODULE_EVENT,"Error while connecting to module %d_%s on port %s\n",module,running_modules[module].module_name, dest_port);
+      VERBOSE(MODULE_EVENT,"%s [SERVICE] Error while connecting to module %s on port %s\n", get_stats_formated_time(), running_modules[module].module_name, dest_port);
       running_modules[module].module_service_ifc_isconnected = FALSE;
       if (dest_port != NULL) {
          free(dest_port);
@@ -1362,8 +1393,6 @@ void *service_thread_routine(void* arg)
 
    time_t rawtime;
    struct tm * timeinfo;
-
-   print_statistics_legend();
 
    while (service_thread_continue == TRUE) {
       pthread_mutex_lock(&running_modules_lock);
@@ -1468,8 +1497,7 @@ void *service_thread_routine(void* arg)
 
    for (x=0;x<loaded_modules_cnt;x++) {
       if ((running_modules[x].module_has_service_ifc == TRUE) && (running_modules[x].module_service_ifc_isconnected == TRUE)) {
-         VERBOSE(MODULE_EVENT,"------> %s", asctime(timeinfo));
-         VERBOSE(MODULE_EVENT,"-- disconnecting from module %d_%s\n",x, running_modules[x].module_name);
+         VERBOSE(MODULE_EVENT,"%s [SERVICE] Disconnecting from module %s\n", get_stats_formated_time(), running_modules[x].module_name);
          if (running_modules[x].module_service_sd != -1) {
             close(running_modules[x].module_service_sd);
          }
@@ -1623,8 +1651,8 @@ int daemon_init()
    fflush(stdout);
    process_id = fork();
    if (process_id < 0)  {
-      VERBOSE(N_STDOUT,"fork failed!\n");
-      exit(1);
+      VERBOSE(N_STDOUT,"%s [ERROR] Fork: could not initialize daemon process!\n", get_stats_formated_time());
+      exit(EXIT_FAILURE);
    } else if (process_id > 0) {
       if (config_file != NULL) {
          free(config_file);
@@ -1634,27 +1662,26 @@ int daemon_init()
          free(logs_path);
          logs_path = NULL;
       }
-      VERBOSE(N_STDOUT,"process_id of child process %d \n", process_id);
-      exit(0);
+      VERBOSE(N_STDOUT,"%s [INFO] PID of daemon process: %d.\n", get_stats_formated_time(), process_id);
+      exit(EXIT_SUCCESS);
    }
 
    umask(0);
    sid = setsid();
    if (sid < 0) {
-      // Return failure
-      exit(1);
+      VERBOSE(N_STDOUT,"%s [ERROR] Setsid: calling process is process group leader!\n");
+      exit(EXIT_FAILURE);
    }
 
    // allocate daemon_internals
-   daemon_internals = (daemon_internals_t *) calloc (1, sizeof(daemon_internals_t));
+   daemon_internals = (daemon_internals_t *) calloc (1, sizeof(daemon_internals_t)); 
    if (daemon_internals == NULL) {
-      fprintf(stderr, "Error: Could not allocate dameon_internals, cannot proceed without it !!!\n");
+      fprintf(stderr, "%s [ERROR] Could not allocate dameon_internals, cannot proceed without it!\n", get_stats_formated_time());
       exit(EXIT_FAILURE);
    }
 
    // create socket
    union tcpip_socket_addr addr;
-   struct addrinfo *p;
    memset(&addr, 0, sizeof(addr));
    addr.unix_addr.sun_family = AF_UNIX;
    snprintf(addr.unix_addr.sun_path, sizeof(addr.unix_addr.sun_path) - 1, "%s", socket_path);
@@ -1663,22 +1690,15 @@ int daemon_init()
    unlink(socket_path); /* error when file does not exist is not a problem */
    daemon_internals->daemon_sd = socket(AF_UNIX, SOCK_STREAM, 0);
    if (bind(daemon_internals->daemon_sd, (struct sockaddr *) &addr.unix_addr, sizeof(addr.unix_addr)) != -1) {
-      p = (struct addrinfo *) &addr.unix_addr;
       chmod(socket_path, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
    } else {
-      /* error bind() failed */
-      p = NULL;
+      VERBOSE(N_STDOUT,"%s [ERROR] Bind: could not bind the daemon socket!\n", get_stats_formated_time());
+      exit(EXIT_FAILURE);
    }
-   if (p == NULL) {
-      // if we got here, it means we didn't get bound
-      VERBOSE(N_STDOUT,"selectserver: failed to bind");
-      return 10;
-   }
-   // listen
+
    if (listen(daemon_internals->daemon_sd, 0) == -1) {
-      //perror("listen");
-      VERBOSE(N_STDOUT,"Listen failed");
-      return 10;
+      VERBOSE(N_STDOUT,"%s [ERROR] Listen: could not listen on the daemon socket!\n", get_stats_formated_time());
+      exit(EXIT_FAILURE);
    }
 
    return 0;
@@ -1698,7 +1718,7 @@ int daemon_get_client()
    while(1) {
       newclient = accept(daemon_internals->daemon_sd, (struct sockaddr *)&remoteaddr, &addrlen);
       if (newclient == -1) {
-         VERBOSE(N_STDOUT,"Accepting new client failed.");
+         VERBOSE(N_STDOUT,"%s [ERROR] Accept: could not accept a new client!\n", get_stats_formated_time());
          return newclient;
       }
 
@@ -1710,7 +1730,7 @@ int daemon_get_client()
          break;
       }
    }
-   VERBOSE(N_STDOUT,"Client has connected.\n");
+   VERBOSE(N_STDOUT,"%s [WARNING] New client has connected!\n", get_stats_formated_time());
    return newclient;
 }
 
@@ -1733,7 +1753,6 @@ void daemon_mode()
       daemon_internals->client_sd = daemon_get_client();
       if (daemon_internals->client_sd == -1) {
          daemon_internals->client_connected = FALSE;
-         /* Bind was probably unsuccessful. */
          continue;
       }
 
@@ -1787,8 +1806,7 @@ void daemon_mode()
                if (x == 0 || x == -1) {
                   input_fd = stdin;
                   output_fd = supervisor_log_fd;
-                  VERBOSE(N_STDOUT, "Client has disconnected.\n");
-                  daemon_internals->client_connected = FALSE;
+                  VERBOSE(N_STDOUT, "%s [WARNING] Client has disconnected!\n", get_stats_formated_time());
                   got_code = FALSE;
                   free_daemon_internals_variables();
                   break;
@@ -1845,14 +1863,13 @@ void daemon_mode()
                   }
                   input_fd = stdin;
                   output_fd = supervisor_log_fd;
-                  VERBOSE(N_STDOUT, "Client has disconnected.\n");
-                  daemon_internals->client_connected = FALSE;
+                  VERBOSE(N_STDOUT, "%s [WARNING] Client has disconnected!\n", get_stats_formated_time());
                   got_code = FALSE;
                   free_daemon_internals_variables();
                   break;
                }
                default:
-                  VERBOSE(N_STDOUT, "Error input\n");
+                  VERBOSE(N_STDOUT, "[WARNING] Wrong input!\n");
                   break;
                }
                if (!(daemon_internals->daemon_terminated) && daemon_internals->client_connected) {
@@ -1867,6 +1884,7 @@ void daemon_mode()
                   VERBOSE(N_STDOUT,"8. RELOAD CONFIGURATION\n");
                   VERBOSE(N_STDOUT,"-- Type \"Cquit\" to exit client --\n");
                   VERBOSE(N_STDOUT,"-- Type \"Dstop\" to stop daemon --\n");
+                  VERBOSE(N_STDOUT,"[INTERACTIVE] Your choice: ");
 
                   fsync(daemon_internals->client_input_stream_fd);
                   memset(buffer,0,1000);
@@ -2028,7 +2046,7 @@ int reload_configuration(const int choice, xmlNodePtr node)
 
       case RELOAD_INTERACTIVE: {
          /*Get the name of a new config file */
-         VERBOSE(N_STDOUT, "Type in a name of the xml file to be loaded including \".xml\"; (to reload same config file type \"default\" or to cancel reloading type \"cancel\"):\n");
+         VERBOSE(N_STDOUT, "[INTERACTIVE] Type in a name of the xml file to be loaded including \".xml\"; (to reload same config file type \"default\" or to cancel reloading type \"cancel\"):\n");
          if (fscanf(input_fd,"%s",buffer) == 0) {
             xml_tree = xmlParseFile(config_file);
          } else if (strcmp(buffer, "cancel") == 0) {
@@ -2093,7 +2111,7 @@ int reload_configuration(const int choice, xmlNodePtr node)
    current_node = current_node->xmlChildrenNode;
 
    /*****************/
-   VERBOSE(N_STDOUT,"- - -\nProcessing new configuration...\n");
+   VERBOSE(N_STDOUT,"- - -\n[RELOAD] Processing new configuration...\n");
 
    while (current_node != NULL) {
       if (!xmlStrcmp(current_node->name, BAD_CAST "supervisor")) {
@@ -2316,7 +2334,6 @@ int reload_configuration(const int choice, xmlNodePtr node)
                   key = xmlGetProp(module_ptr, "module_pid");
                   if (key != NULL) {
                      running_modules[module_index].module_pid = atoi((char *) key);
-                     printf("pid--%d\n", running_modules[module_index].module_pid);
                      xmlFree(key);
                      key = NULL;
                   }
@@ -2983,13 +3000,13 @@ void generate_backup_config_file()
 
    if (file_fd != NULL) {
       if (xmlDocFormatDump(file_fd, document_ptr, 1) == -1) {
-         VERBOSE(N_STDOUT, "--> Error while saving backup file\n");
+         VERBOSE(N_STDOUT, "%s [ERROR] Could not save backup file!\n", get_stats_formated_time());
       } else {
-         VERBOSE(N_STDOUT, "--> Phew, backup file saved !! (file ID: %s)\n", file_id);
+         VERBOSE(N_STDOUT, "%s [WARNING] Phew, backup file saved !! (file ID: %s)\n", get_stats_formated_time(), file_id);
       }
       fclose(file_fd);
    } else {
-      VERBOSE(N_STDOUT, "--> Error while opening backup file\n");
+      VERBOSE(N_STDOUT, "%s [ERROR] Could not open backup file!\n", get_stats_formated_time());
    }
 
    if (file_name != NULL) {
