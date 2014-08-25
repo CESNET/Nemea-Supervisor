@@ -57,18 +57,24 @@ void print_msg(int level, char *string)
 {
    switch (level) {
    case STATISTICS:
-      fprintf(statistics_fd, "%s", string);
-      fflush(statistics_fd);
+      if (statistics_fd != NULL) {
+         fprintf(statistics_fd, "%s", string);
+         fflush(statistics_fd);
+      }
       break;
 
    case MODULE_EVENT:
-      fprintf(module_event_fd, "%s", string);
-      fflush(module_event_fd);
+      if (module_event_fd != NULL) {
+         fprintf(module_event_fd, "%s", string);
+         fflush(module_event_fd);
+      }
       break;
 
    case N_STDOUT:
-      fprintf(output_fd, "%s", string);
-      fflush(output_fd);
+      if (output_fd != NULL) {
+         fprintf(output_fd, "%s", string);
+         fflush(output_fd);
+      }
       break;
    }
 }
