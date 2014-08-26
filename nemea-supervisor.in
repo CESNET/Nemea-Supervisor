@@ -55,7 +55,6 @@ function logerror()
   $2; echo $1;
 }
 
-set -x
 case "$1" in
 start )
         test -e "$LOGDIR" || mkdir -p "$LOGDIR" || { echo "Log dir could not be created."; exit 1; }
@@ -89,13 +88,11 @@ start )
 		exit 1;
 	fi
 
-	success; echo "== nemea-supervisor start ==";
-	echo "Success: nemea-supervisor started ==" >> $LOGFILE;
+       logerror "Starting nemea-supervisor" "success"
+       exit 0;
 	;;
 
 stop )
-	echo "== Stopping nemea-supervisor ==" >> $LOGFILE
-
 	if ! daemon_status; then
 		logerror "Failure: nemea-supervisor is not running." "failure"
 		exit 1;
@@ -103,12 +100,11 @@ stop )
 
 	kill -2 $(get_pid)
 
-	sleep 5;
+	sleep 3;
 
 	if daemon_status; then
 		kill -9 $(get_pid)
 		sleep 1;
-
 
 		if daemon_status; then
 			logerror "Failure: nemea-supervisor is still running." "failure"
@@ -116,7 +112,10 @@ stop )
 		fi
 	fi
 
-        logerror "Success: nemea-supervisor stopped ==" "success"
+        # clean up PID file
+        rm "$PID_FILE"
+
+        logerror "Success: nemea-supervisor stopped" "success"
 	;;
 
 restart )
