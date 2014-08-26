@@ -1,9 +1,10 @@
 <?xml version="1.0"?>
 <nemea-supervisor>
 
+        <!--
 	<supervisor>
 		<verbose>true</verbose>
-		<module-restarts>4</module-restarts> <!-- Default value in supervisor is 3 -->
+		<module-restarts>4</module-restarts>
 		<logs-directory>./supervisor_logsX/</logs-directory>
 	</supervisor>
 
@@ -195,4 +196,5 @@
 			</trapinterfaces>
 		</module>
 	</modules>
+        -->
 </nemea-supervisor>

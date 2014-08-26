@@ -3,8 +3,10 @@ supervisor_SOURCES= graph.c graph.h supervisor.c supervisor.h supervisor_api.h s
 supervisor_LDADD = -lpthread
 supervisor_cli_SOURCES= supervisor_cli.c
 doc_DATA=README
-EXTRA_DIST = supervisor_config.xml
+EXTRA_DIST = supervisor_config.xml nemea-supervisor
 sysconf_DATA = supervisor_config.xml
+initdir=${sysconfdir}/../init.d
+init_SCRIPTS=nemea-supervisor
 
 if MAKE_RPMS
 RPMDIR = RPMBUILD
