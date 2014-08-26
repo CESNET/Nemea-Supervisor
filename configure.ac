@@ -55,7 +55,7 @@ AC_TYPE_PID_T
 AC_FUNC_FORK
 AC_CHECK_FUNCS([dup2 memset mkdir])
 
-AC_CONFIG_FILES([Makefile nemea-supervisor.spec])
+AC_CONFIG_FILES([Makefile nemea-supervisor.spec nemea-supervisor])
 AC_OUTPUT
 echo
 echo
