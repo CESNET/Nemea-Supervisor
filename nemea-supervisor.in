@@ -27,12 +27,13 @@
 prefix="@prefix@"
 exec_prefix="@exec_prefix@"
 BINDIR="@bindir@"
-CONFIG_FILE="@sysconfdir@/nemea/supervisor.xml"
+CONFIG_FILE="@sysconfdir@/supervisor_config.xml"
 LOGDIR="/var/log/nemea-supervisor"
 LOGFILE="/var/log/nemea-supervisor/init.log"
 DAEMON_SOCKET="/var/run/nemea-supervisor.sock"
 PID_FILE="/var/run/nemea-supervisor.pid"
 SUPERVISOR="$BINDIR/supervisor"
+SUPERVISOR_CLI="$BINDIR/supervisor_cli"
 
 #include functions
 . /etc/init.d/functions
@@ -126,8 +127,7 @@ restart )
 
 reload )
         # TODO complete reload config
-	$0 stop
-	$0 start
+	$SUPERVISOR_CLI -r -s "$DAEMON_SOCKET"
         ;;
 
 status )
