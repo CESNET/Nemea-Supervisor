@@ -43,6 +43,7 @@
  *
  */
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -63,166 +64,205 @@
 #define DAEMON_STOP_CODE 951753
 #define DAEMON_CONFIG_MODE_CODE 789123
 #define DAEMON_STATS_MODE_CODE 456987
+#define DAEMON_RELOAD_MODE_CODE 115599
+
+typedef struct client_internals_s {
+   FILE *   supervisor_input_stream;
+   FILE *   supervisor_output_stream;
+   int         supervisor_input_stream_fd;
+   int         supervisor_sd;
+   int         connected;
+} client_internals_t;
+
+/***** GLOBAL VARIABLES *****/
+
+client_internals_t * client_internals = NULL;
+
+/***** ************************** *****/
 
 union tcpip_socket_addr {
    struct addrinfo tcpip_addr; ///< used for TCPIP socket
    struct sockaddr_un unix_addr; ///< used for path of UNIX socket
 };
 
+void free_client_internals_variables()
+{
+   client_internals->connected = FALSE;
+   if (client_internals->supervisor_input_stream_fd > 0) {
+      close(client_internals->supervisor_input_stream_fd);
+      client_internals->supervisor_input_stream_fd = 0;
+   }
+   if (client_internals->supervisor_input_stream != NULL) {
+      fclose(client_internals->supervisor_input_stream);
+      client_internals->supervisor_input_stream = NULL;
+   }
+   if (client_internals->supervisor_output_stream != NULL) {
+      fclose(client_internals->supervisor_output_stream);
+      client_internals->supervisor_output_stream = NULL;
+   }
+   if (client_internals->supervisor_sd > 0) {
+      close(client_internals->supervisor_sd);
+      client_internals->supervisor_sd = 0;
+   }
+   free(client_internals);
+   client_internals = NULL;
+}
+
 int connect_to_supervisor(char *socket_path)
 {
-   int sockfd;
    union tcpip_socket_addr addr;
    memset(&addr, 0, sizeof(addr));
 
    addr.unix_addr.sun_family = AF_UNIX;
    snprintf(addr.unix_addr.sun_path, sizeof(addr.unix_addr.sun_path) - 1, "%s", socket_path);
 
-   sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
-   if (sockfd < 0) {
-      fprintf(stderr, "Could not create socket.\n");
-      return -1;
+   client_internals->supervisor_sd = socket(AF_UNIX, SOCK_STREAM, 0);
+   if (client_internals->supervisor_sd < 0) {
+      printf("[ERROR] Could not create socket!\n");
+      return EXIT_FAILURE;
    }
 
-   if (connect(sockfd, (struct sockaddr *) &addr.unix_addr, sizeof(addr.unix_addr)) < 0) {
-      close(sockfd);
-      return -1;
-   }   
-   return sockfd;
+   if (connect(client_internals->supervisor_sd, (struct sockaddr *) &addr.unix_addr, sizeof(addr.unix_addr)) == -1) {
+      return EXIT_FAILURE;
+   }
+
+   return EXIT_SUCCESS;
 }
 
 int main(int argc, char **argv)
 {
+   client_internals = (client_internals_t *) calloc (1, sizeof(client_internals_t));
+   if (client_internals == NULL) {
+      exit(EXIT_FAILURE);
+   }
    int x = 0;
-   int connected = FALSE;
    int ret_val;
-   int supervisor_sd = -1;
-   FILE * supervisor_stream_input = NULL;
-   FILE * supervisor_stream_output = NULL;
    char buffer[1000];
    memset(buffer,0,1000);
-   int command;
-   char testbuffer[100];
-   memset(testbuffer,0,100);
    char *socket_path = NULL;
-   int just_stats = FALSE;
+   int just_stats_flag = FALSE;
+   int reload_command_flag = FALSE;
 
    int opt;
-   while ((opt = getopt(argc, argv, "hs:x")) != -1) {
+   while ((opt = getopt(argc, argv, "rhs:x")) != -1) {
       switch (opt) {
       case 'h':
          printf("Usage: supervisor_cli [-h] [-s <path>]\n"
                "\t-h\tshows this help\n\t-s <path>\tpath to UNIX socket file\n");
-         return 0;
+         exit(EXIT_SUCCESS);
       
       case 's':
          socket_path = optarg;
          break;
 
       case 'x':
-         just_stats = TRUE;
+         just_stats_flag = TRUE;
+         break;
+
+      case 'r':
+         reload_command_flag = TRUE;
          break;
 
       default:
-         fprintf(stderr, "Invalid arguments.\n");
-         return 3;
+         printf("[ERROR] Invalid program arguments! (try to run it with \"-h\" argument)\n");
+         exit(EXIT_FAILURE);
       }
    }
+
+   if (reload_command_flag && just_stats_flag) {
+      printf("[ERROR] Cannot run client with \"-x\" and with \"-r\" arguments at the same time!\n");
+      free_client_internals_variables();
+      exit(EXIT_FAILURE);
+   }
+
    if (socket_path == NULL) {
       /* socket_path was not set by user, use default value. */
       socket_path = DAEMON_UNIX_PATH_FILENAME_FORMAT;
    }
 
-   supervisor_sd = connect_to_supervisor(socket_path);
-   if(supervisor_sd < 0){
-      printf("Could not connect to supervisor.\n");
-      return 0;
+   if(connect_to_supervisor(socket_path) == EXIT_FAILURE){
+      printf("[ERROR] Could not connect to supervisor!\n");
+      free_client_internals_variables();
+      exit(EXIT_FAILURE);
    } else {
-      connected = TRUE;
+      client_internals->connected = TRUE;
    }
 
-   supervisor_stream_input = fdopen(supervisor_sd, "r");
-   if(supervisor_stream_input == NULL) {
-      printf("1Fdopen error\n");
-      close(supervisor_sd);
-      return;
+   client_internals->supervisor_input_stream = fdopen(client_internals->supervisor_sd, "r");
+   if(client_internals->supervisor_input_stream == NULL) {
+      printf("[ERROR] Fdopen: could not open supervisor input stream!\n");
+      free_client_internals_variables();
+      exit(EXIT_FAILURE);
    }
 
-   supervisor_stream_output = fdopen(supervisor_sd, "w");
-   if(supervisor_stream_output == NULL) {
-      printf("1Fdopen error\n");
-      close(supervisor_sd);
-      return;
+   client_internals->supervisor_output_stream = fdopen(client_internals->supervisor_sd, "w");
+   if(client_internals->supervisor_output_stream == NULL) {
+      printf("[ERROR] Fdopen: could not open supervisor output stream!\n");
+      free_client_internals_variables();
+      exit(EXIT_FAILURE);
    }
 
-   int supervisor_stream_input_fd = fileno(supervisor_stream_input);
-   if(supervisor_stream_input_fd < 0) {
-      printf("2Fdopen error\n");
-      close(supervisor_sd);
-      return;
+   client_internals->supervisor_input_stream_fd = fileno(client_internals->supervisor_input_stream);
+   if(client_internals->supervisor_input_stream_fd < 0) {
+      printf("[ERROR] Fileno: could not get supervisor input stream descriptor!\n");
+      free_client_internals_variables();
+      exit(EXIT_FAILURE);
    }
 
    fd_set read_fds;
    struct timeval tv;
 
-   if(just_stats) {
-      fprintf(supervisor_stream_output,"%d\n", DAEMON_STATS_MODE_CODE);
+   if(just_stats_flag) {
+      fprintf(client_internals->supervisor_output_stream,"%d\n", DAEMON_STATS_MODE_CODE);
+   } else if (reload_command_flag) {
+      fprintf(client_internals->supervisor_output_stream,"%d\n", DAEMON_RELOAD_MODE_CODE);
+      fflush(client_internals->supervisor_output_stream);
+      free_client_internals_variables();
+      exit(EXIT_SUCCESS);
    } else {
-      fprintf(supervisor_stream_output,"%d\n", DAEMON_CONFIG_MODE_CODE);
+      fprintf(client_internals->supervisor_output_stream,"%d\n", DAEMON_CONFIG_MODE_CODE);
    }
-   fflush(supervisor_stream_output);
+   fflush(client_internals->supervisor_output_stream);
 
 
-   while (connected) {
+   while (client_internals->connected) {
       FD_ZERO(&read_fds);
-      FD_SET(supervisor_stream_input_fd, &read_fds);
+      FD_SET(client_internals->supervisor_input_stream_fd, &read_fds);
       FD_SET(0, &read_fds);
 
       tv.tv_sec = 1;
       tv.tv_usec = 0;
 
-      ret_val = select(supervisor_stream_input_fd+1, &read_fds, NULL, NULL, &tv);
+      ret_val = select(client_internals->supervisor_input_stream_fd+1, &read_fds, NULL, NULL, &tv);
 
       if (ret_val == -1) {
-         perror("select()");
-         close(supervisor_stream_input_fd);
-         fclose(supervisor_stream_input);
-         fclose(supervisor_stream_output);
-         close(supervisor_sd);
-         connected = FALSE;
-         break;
+         printf("[ERROR] Select: error!\n");
+         free_client_internals_variables();
+         exit(EXIT_FAILURE);
       } else if (ret_val) {
          if (FD_ISSET(0, &read_fds)) {
             if ((scanf("%s", buffer) == 0) || (strcmp(buffer,"Cquit") == 0)) {
-               close(supervisor_stream_input_fd);
-               fclose(supervisor_stream_input);
-               fclose(supervisor_stream_output);
-               close(supervisor_sd);
-               connected = FALSE;
-               break;
+               free_client_internals_variables();
+               exit(EXIT_SUCCESS);
             } else if (strcmp(buffer,"Dstop") == 0) {
-               fprintf(supervisor_stream_output,"%d\n", DAEMON_STOP_CODE);
-               fflush(supervisor_stream_output);
+               fprintf(client_internals->supervisor_output_stream,"%d\n", DAEMON_STOP_CODE);
+               fflush(client_internals->supervisor_output_stream);
             } else {
-               fprintf(supervisor_stream_output,"%s\n",buffer);
-               fflush(supervisor_stream_output);
+               fprintf(client_internals->supervisor_output_stream,"%s\n",buffer);
+               fflush(client_internals->supervisor_output_stream);
             }
          }
-         if (FD_ISSET(supervisor_stream_input_fd, &read_fds)) {
+         if (FD_ISSET(client_internals->supervisor_input_stream_fd, &read_fds)) {
             usleep(200000);
-            ioctl(supervisor_stream_input_fd, FIONREAD, &x);
-            if (x == 0) {
-               printf("Supervisor has disconnected, I'm done.\n");
-               close(supervisor_sd);
-               fclose(supervisor_stream_input);
-               fclose(supervisor_stream_output);
-               close(supervisor_stream_input_fd);
-               connected = FALSE;
-               break;
+            ioctl(client_internals->supervisor_input_stream_fd, FIONREAD, &x);
+            if (x == 0 || x == -1) {
+               printf("[WARNING] Supervisor has disconnected, I'm done!\n");
+               free_client_internals_variables();
+               exit(EXIT_SUCCESS);
             } else {
                int y;
                for(y=0; y<x; y++) {
-                  printf("%c", (char) fgetc(supervisor_stream_input));
+                  printf("%c", (char) fgetc(client_internals->supervisor_input_stream));
                }
             }
          }
@@ -230,16 +270,13 @@ int main(int argc, char **argv)
          // timeout, nothing to do
       }
       memset(buffer,0,1000);
-      fsync(supervisor_stream_input_fd);
-      fflush(supervisor_stream_input);
+      fsync(client_internals->supervisor_input_stream_fd);
+      fflush(client_internals->supervisor_input_stream);
       fflush(stdout);
 
-      if (just_stats) {
-         close(supervisor_sd);
-         fclose(supervisor_stream_input);
-         fclose(supervisor_stream_output);
-         close(supervisor_stream_input_fd);
-         return 0;
+      if (just_stats_flag) {
+         free_client_internals_variables();
+         exit(EXIT_SUCCESS);
       }
    }
 

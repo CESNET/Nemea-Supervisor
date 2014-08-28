@@ -74,6 +74,7 @@
 #define DAEMON_STOP_CODE 951753
 #define DAEMON_CONFIG_MODE_CODE 789123
 #define DAEMON_STATS_MODE_CODE 456987
+#define DAEMON_RELOAD_MODE_CODE 115599
 
 #define MODULES_UNIXSOCKET_PATH_FILENAME_FORMAT   "/tmp/trap-localhost-%s.sock" ///< Modules output interfaces socket, to which connects service thread.
 #define DEFAULT_DAEMON_UNIXSOCKET_PATH_FILENAME  "/tmp/supervisor_daemon.sock"  ///<  Daemon socket.
@@ -1848,6 +1849,14 @@ void daemon_mode()
                case DAEMON_CONFIG_MODE_CODE:
                   got_code = TRUE;
                   //client config mode
+                  break;
+               case DAEMON_RELOAD_MODE_CODE:
+                  input_fd = stdin;
+                  output_fd = supervisor_log_fd;
+                  VERBOSE(N_STDOUT, "%s [RELOAD] Got request from client to reload...\n", get_stats_formated_time());
+                  got_code = FALSE;
+                  free_daemon_internals_variables();
+                  reload_configuration(RELOAD_INIT_LOAD_CONFIG, NULL);
                   break;
                case DAEMON_STATS_MODE_CODE: {
                   //client stats mode
