@@ -99,7 +99,7 @@ stop )
 		exit 1;
 	fi
 
-	kill -2 $(get_pid)
+	kill -15 $(get_pid)
 
 	sleep 3;
 
