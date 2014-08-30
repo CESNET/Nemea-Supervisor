@@ -75,7 +75,7 @@
 #define DEFAULT_DAEMON_UNIXSOCKET_PATH_FILENAME  "/tmp/supervisor_daemon.sock"  ///<  Daemon socket.
 
 #define NC_DEFAULT_LOGSDIR_PATH "/tmp/supervisor_logs/"
-#define DEFAULT_BACKUP_FILE_PATH "/tmp/supervisor_backup_file"
+#define DEFAULT_BACKUP_FILE_PREFIX "sup_backup"
 
 /*******GLOBAL VARIABLES*******/
 running_module_t *   running_modules = NULL;  ///< Information about running modules
@@ -96,11 +96,10 @@ modules_profile_t * actual_profile_ptr = NULL;
 pthread_t   service_thread_id; ///< Service thread identificator.
 pthread_t   nc_clients_thread_id;
 
-char * loaded_backup_file_id = NULL;
 struct tm * init_time_info = NULL;
+int service_stop_all_modules = FALSE;
 
 // supervisor flags
-int      restore_mode_flag = FALSE;
 int      file_flag = FALSE;        // -f "file" arguments
 int      verbose_flag = FALSE;     // -v messages and cpu_usage stats
 int      daemon_flag = FALSE;      // --daemon
@@ -133,30 +132,27 @@ void free_output_file_strings_and_streams();
 void generate_backup_config_file();
 char * get_stats_formated_time();
 
-void create_output_dir(int init_creation)
+void create_output_dir()
 {
-   if (init_creation) {
-      char * buffer = NULL;
-      if (netconf_flag) { // netconf mode
-         logs_path = (char *) calloc (strlen(NC_DEFAULT_LOGSDIR_PATH)+1, sizeof(char));
-         strcpy(logs_path, NC_DEFAULT_LOGSDIR_PATH);
-      } else { // interactive mode or daemon mode
-         if (logs_path == NULL) {
-            if ((buffer = getenv("HOME")) != NULL) {
-               logs_path = (char *) calloc (strlen(buffer)+strlen("/supervisor_logs/")+1, sizeof(char));
-               sprintf(logs_path,"%s/supervisor_logs/", buffer);
-            }
-         } else {
-            if (logs_path[strlen(logs_path)-1] != '/') {
-               buffer = (char *) calloc (strlen(logs_path)+2, sizeof(char));
-               sprintf(buffer, "%s/", logs_path);
-               free(logs_path);
-               logs_path = buffer;
-            }
+   char * buffer = NULL;
+   if (netconf_flag) { // netconf mode
+      logs_path = (char *) calloc (strlen(NC_DEFAULT_LOGSDIR_PATH)+1, sizeof(char));
+      strcpy(logs_path, NC_DEFAULT_LOGSDIR_PATH);
+   } else { // interactive mode or daemon mode
+      if (logs_path == NULL) {
+         if ((buffer = getenv("HOME")) != NULL) {
+            logs_path = (char *) calloc (strlen(buffer)+strlen("/supervisor_logs/")+1, sizeof(char));
+            sprintf(logs_path,"%s/supervisor_logs/", buffer);
+         }
+      } else {
+         if (logs_path[strlen(logs_path)-1] != '/') {
+            buffer = (char *) calloc (strlen(logs_path)+2, sizeof(char));
+            sprintf(buffer, "%s/", logs_path);
+            free(logs_path);
+            logs_path = buffer;
          }
       }
    }
-
 
    struct stat st = {0};
    /* check and create output directiory */
@@ -184,7 +180,7 @@ void create_output_dir(int init_creation)
    }
 }
 
-void create_output_files_strings(int init_creation)
+void create_output_files_strings()
 {
    free_output_file_strings_and_streams();
 
@@ -232,20 +228,6 @@ struct tm * get_sys_time()
    time_t rawtime;
    time(&rawtime);
    return localtime(&rawtime);
-}
-
-char * generate_backup_file_id()
-{
-   char * buffer = (char *) calloc (DEFAULT_SIZE_OF_BUFFER, sizeof(char));
-   sprintf(buffer,"%d%d%d%d", init_time_info->tm_mday, init_time_info->tm_mon+1, init_time_info->tm_hour, init_time_info->tm_min);
-   return buffer;
-}
-
-char * generate_backup_file_name(char * file_id)
-{
-   char * buffer = (char *) calloc (DEFAULT_SIZE_OF_BUFFER, sizeof(char));
-   sprintf(buffer, "%s%s.xml",DEFAULT_BACKUP_FILE_PATH, file_id);
-   return buffer;
 }
 
 char * get_stats_formated_time()
@@ -638,7 +620,7 @@ void re_start_module(const int module_number)
          fflush(stderr);
          execvp(running_modules[module_number].module_path, params);
       }
-      VERBOSE(N_STDOUT,"%s [ERROR] Module execution: could not execute module binary! (possible reason - wrong module binary path)\n", get_stats_formated_time());
+      VERBOSE(MODULE_EVENT,"%s [ERROR] Module execution: could not execute %s binary! (possible reason - wrong module binary path)\n", get_stats_formated_time(), running_modules[module_number].module_name);
       running_modules[module_number].module_enabled = FALSE;
       exit(EXIT_FAILURE);
    } else if (running_modules[module_number].module_pid == -1) {
@@ -655,9 +637,10 @@ void re_start_module(const int module_number)
    }
 }
 
-void service_update_module_status()
+// returns TRUE if some module is running, else FALSE
+int service_update_module_status()
 {
-   int x;
+   int x, some_module_running = FALSE;
 
    for (x=0; x<loaded_modules_cnt; x++) {
       if (running_modules[x].module_pid > 0) {
@@ -680,9 +663,11 @@ void service_update_module_status()
             running_modules[x].module_pid = 0;
          } else {
             running_modules[x].module_status = TRUE;
+            some_module_running = TRUE;
          }
       }
    }
+   return some_module_running;
 }
 
 void service_clean_after_children()
@@ -718,22 +703,25 @@ void supervisor_signal_handler(int catched_signal)
 
    case SIGTERM:
       VERBOSE(N_STDOUT,"%s [SIGNAL HANDLER] SIGTERM catched -> I'm going to terminate my self !\n", get_stats_formated_time());
-      generate_backup_config_file();
-      supervisor_termination();
-      exit(EXIT_FAILURE);
+      supervisor_termination(TRUE, FALSE);
+      exit(EXIT_SUCCESS);
       break;
 
    case SIGINT:
       VERBOSE(N_STDOUT,"%s [SIGNAL HANDLER] SIGINT catched -> I'm going to terminate my self !\n", get_stats_formated_time());
-      generate_backup_config_file();
-      supervisor_termination();
+      supervisor_termination(FALSE, TRUE);
+      exit(EXIT_SUCCESS);
+      break;
+
+   case SIGQUIT:
+      VERBOSE(N_STDOUT,"%s [SIGNAL HANDLER] SIGQUIT catched -> I'm going to terminate my self !\n", get_stats_formated_time());
+      supervisor_termination(FALSE, TRUE);
       exit(EXIT_SUCCESS);
       break;
 
    case SIGSEGV:
       VERBOSE(N_STDOUT,"%s [SIGNAL HANDLER] Ouch, SIGSEGV catched -> I'm going to terminate my self !\n", get_stats_formated_time());
-      generate_backup_config_file();
-      supervisor_termination();
+      supervisor_termination(FALSE, TRUE);
       exit(EXIT_FAILURE);
       break;
    }
@@ -744,7 +732,7 @@ int supervisor_initialization(int *argc, char **argv)
    int y = 0, ret_val = 0;
 
    init_time_info = get_sys_time();
-   restore_mode_flag = FALSE;
+   service_stop_all_modules = FALSE;
    logs_path = NULL;
    config_file = NULL;
    socket_path = NULL;
@@ -772,8 +760,8 @@ int supervisor_initialization(int *argc, char **argv)
       daemon_init();
    }
 
-   create_output_dir(TRUE);
-   create_output_files_strings(TRUE);
+   create_output_dir();
+   create_output_files_strings();
 
    VERBOSE(N_STDOUT,"[INIT LOADING CONFIGURATION]\n");
    loaded_modules_cnt = 0;
@@ -790,11 +778,7 @@ int supervisor_initialization(int *argc, char **argv)
    service_thread_continue = TRUE;
 
    //load configuration
-   if (restore_mode_flag) {
-      reload_configuration(RELOAD_BACKUP, NULL);
-   } else {
-      reload_configuration(RELOAD_INIT_LOAD_CONFIG, NULL);
-   }
+   reload_configuration(RELOAD_INIT_LOAD_CONFIG, NULL);
 
    VERBOSE(N_STDOUT,"[SERVICE] Starting service thread.\n");
    start_service_thread();
@@ -819,6 +803,9 @@ int supervisor_initialization(int *argc, char **argv)
    }
    if (sigaction(SIGSEGV,&sig_action,NULL) == -1) {
       VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGSEGV !\n", get_stats_formated_time());
+   }
+   if (sigaction(SIGQUIT,&sig_action,NULL) == -1) {
+      VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGQUIT !\n", get_stats_formated_time());
    }
    /****************************************/
 
@@ -1055,11 +1042,20 @@ void free_daemon_internals_variables()
    }
 }
 
-void supervisor_termination()
+void supervisor_termination(int stop_all_modules, int generate_backup)
 {
    int x, y;
+
+   if (stop_all_modules == TRUE) {
+      interactive_stop_configuration();
+      service_stop_all_modules = TRUE;
+   } else {
+      service_stop_all_modules = FALSE;
+   }
+
    VERBOSE(N_STDOUT,"%s [SERVICE] Aborting service thread!\n", get_stats_formated_time());
    service_thread_continue = 0;
+   
    x = pthread_join(service_thread_id, NULL);
 
    if (x == 0) {
@@ -1071,6 +1067,18 @@ void supervisor_termination()
          VERBOSE(N_STDOUT, "%s [ERROR] pthread_join: No thread with this ID found!\n", get_stats_formated_time());
       } else if ( errno == EDEADLK) {
          VERBOSE(N_STDOUT, "%s [ERROR] pthread_join: Deadlock in service thread detected!\n", get_stats_formated_time());
+      }
+   }
+
+   if (generate_backup == TRUE) {
+      generate_backup_config_file();
+   } else {
+      for (x=0; x<loaded_modules_cnt; x++) {
+         if (running_modules[x].module_status == TRUE) {
+            VERBOSE(N_STDOUT, "%s [WARNING] Some modules are still running, gonna generate backup anyway!\n", get_stats_formated_time());
+            generate_backup_config_file();
+            break;
+         }
       }
    }
 
@@ -1145,8 +1153,6 @@ void supervisor_termination()
       }
    }
 
-   free_output_file_strings_and_streams();
-
    if (daemon_mode && daemon_internals != NULL) {
       free_daemon_internals_variables();
       if (daemon_internals->daemon_sd > 0) {
@@ -1159,6 +1165,8 @@ void supervisor_termination()
       }
       unlink(socket_path);
    }
+
+   free_output_file_strings_and_streams();
 }
 
 char *get_param_by_delimiter(const char *source, char **dest, const char delimiter)
@@ -1383,6 +1391,7 @@ void print_statistics_legend()
 
 void *service_thread_routine(void* arg)
 {
+   int some_module_running = FALSE;
    long int last_total_cpu_usage = 0;
    int sizeof_intptr = 4;
    int x,y;
@@ -1390,12 +1399,21 @@ void *service_thread_routine(void* arg)
    time_t rawtime;
    struct tm * timeinfo;
 
-   while (service_thread_continue == TRUE) {
+   while (TRUE) {
       pthread_mutex_lock(&running_modules_lock);
       time(&rawtime);
       timeinfo = localtime(&rawtime);
 
-      service_update_module_status();
+      some_module_running = service_update_module_status();
+      if (service_thread_continue == FALSE) {
+         if (service_stop_all_modules == FALSE) {
+            VERBOSE(N_STDOUT, "%s [WARNING] I let modules continue running!\n", get_stats_formated_time());
+            break;
+         } else if (some_module_running == FALSE) {
+            VERBOSE(N_STDOUT, "%s [WARNING] I stopped all modules!\n", get_stats_formated_time());
+            break;
+         }
+      }
       service_restart_modules();
       service_stop_modules_sigint();
 
@@ -1404,7 +1422,7 @@ void *service_thread_routine(void* arg)
       pthread_mutex_lock(&running_modules_lock);
 
       service_clean_after_children();
-      service_update_module_status();
+      some_module_running = service_update_module_status();
       service_stop_modules_sigkill();
       service_clean_after_children();
 
@@ -1438,7 +1456,7 @@ void *service_thread_routine(void* arg)
          }
       }
       
-      service_update_module_status();
+      some_module_running = service_update_module_status();
       int request[1];
       memset(request,0, sizeof(int));
       request[0] = 1;
@@ -1468,7 +1486,7 @@ void *service_thread_routine(void* arg)
             }
          }
       }
-      service_update_module_status();
+      some_module_running = service_update_module_status();
       for (x=0;x<loaded_modules_cnt;x++) {
          if (running_modules[x].module_has_service_ifc == TRUE && running_modules[x].module_status == TRUE) {
             if (running_modules[x].module_service_ifc_isconnected == TRUE) {
@@ -1488,7 +1506,9 @@ void *service_thread_routine(void* arg)
          print_statistics_and_cpu_usage(timeinfo);
       }
 
-      sleep(1);
+      if (service_thread_continue == TRUE) {
+         sleep(1);
+      }
    }
 
    for (x=0;x<loaded_modules_cnt;x++) {
@@ -1581,11 +1601,10 @@ int parse_arguments(int *argc, char **argv)
          {"verbose",  no_argument,       0,  'v' },
          {"daemon-socket",  required_argument,  0, 's'},
          {"logs-path",  required_argument,  0, 'L'},
-         {"restore",  required_argument,       0,  'r' },
          {0, 0, 0, 0}
       };
 
-      c = getopt_long(*argc, argv, "r:df:hvs:L:", long_options, &option_index);
+      c = getopt_long(*argc, argv, "df:hvs:L:", long_options, &option_index);
       if (c == -1) {
          break;
       }
@@ -1609,12 +1628,6 @@ int parse_arguments(int *argc, char **argv)
          break;
       case 'L':
          logs_path = strdup(optarg);
-         break;
-      case 'r':
-         restore_mode_flag = TRUE;
-         if (optarg != NULL) {
-            loaded_backup_file_id = optarg;
-         }
          break;
       }
    }
@@ -1851,7 +1864,7 @@ void daemon_mode()
                   VERBOSE(N_STDOUT, "%s [RELOAD] Got request from client to reload...\n", get_stats_formated_time());
                   got_code = FALSE;
                   free_daemon_internals_variables();
-                  reload_configuration(RELOAD_INIT_LOAD_CONFIG, NULL);
+                  reload_configuration(RELOAD_DEFAULT_CONFIG_FILE, NULL);
                   break;
                case DAEMON_STATS_MODE_CODE: {
                   //client stats mode
@@ -1907,7 +1920,7 @@ void daemon_mode()
       }
    }
 
-   supervisor_termination();
+   supervisor_termination(FALSE, FALSE);
    return;
 }
 
@@ -2034,7 +2047,45 @@ int reload_configuration(const int choice, xmlNodePtr node)
    actual_profile_ptr = NULL;
    
    switch (choice) {
-      case RELOAD_INIT_LOAD_CONFIG:
+      case RELOAD_INIT_LOAD_CONFIG: {
+            char file_name[100];
+            memset(file_name,0,100);
+            if (socket_path == NULL) {
+               sprintf(file_name, "%s%s.xml", logs_path, DEFAULT_BACKUP_FILE_PREFIX); // TODO backup file path, what if logs dir path is changed after restart.. wont find backup file
+            } else {
+               char socket_path_without_s[100];
+               memset(socket_path_without_s,0,100);
+               int socket_path_without_s_length = 0;
+               for (x=0; x<strlen(socket_path); x++) {
+                  if (socket_path[x] != '/') {
+                     socket_path_without_s[socket_path_without_s_length] = socket_path[x];
+                     socket_path_without_s_length++;
+                  }
+               }
+               sprintf(file_name, "%s%s_%s.xml", logs_path, DEFAULT_BACKUP_FILE_PREFIX, socket_path_without_s);
+            }
+            if (access(file_name, F_OK) != -1) {
+               xml_tree = xmlParseFile(file_name);
+               unlink(file_name); // delete backup file after parsing, it wont be needed anymore
+               VERBOSE(N_STDOUT, "%s [WARNING] I found backup file with my socket on path \"%s\" and i just loaded it!\n", get_stats_formated_time(), file_name);
+            } else {
+               if (errno == EACCES) {
+                  VERBOSE(N_STDOUT, "%s [WARNING] I don't have permissions to access backup file path \"%s\", gonna load default config file!\n", get_stats_formated_time(), file_name);
+               } else if (errno == ENOENT) {
+                  VERBOSE(N_STDOUT, "%s [WARNING] Backup file with path \"%s\" does not exist, gonna load default config file!\n", get_stats_formated_time(), file_name);
+               }
+               xml_tree = xmlParseFile(config_file);
+            }
+            if (xml_tree == NULL) {
+               fprintf(stderr,"Document not parsed successfully. \n");
+               pthread_mutex_unlock(&running_modules_lock);
+               return FALSE;
+            }
+            current_node = xmlDocGetRootElement(xml_tree);
+         }
+         break;
+
+      case RELOAD_DEFAULT_CONFIG_FILE:
          xml_tree = xmlParseFile(config_file);
          if (xml_tree == NULL) {
             fprintf(stderr,"Document not parsed successfully. \n");
@@ -2060,22 +2111,6 @@ int reload_configuration(const int choice, xmlNodePtr node)
             xml_tree = xmlParseFile(config_file);
          } else {
             xml_tree = xmlParseFile(buffer);
-         }
-         if (xml_tree == NULL) {
-            fprintf(stderr,"Document not parsed successfully. \n");
-            pthread_mutex_unlock(&running_modules_lock);
-            return FALSE;
-         }
-         current_node = xmlDocGetRootElement(xml_tree);
-         break;
-      }
-
-      case RELOAD_BACKUP: {
-         char * file_name = generate_backup_file_name(loaded_backup_file_id);
-         xml_tree = xmlParseFile(file_name);
-         if (file_name != NULL) {
-            free(file_name);
-            file_name = NULL;
          }
          if (xml_tree == NULL) {
             fprintf(stderr,"Document not parsed successfully. \n");
@@ -2148,8 +2183,8 @@ int reload_configuration(const int choice, xmlNodePtr node)
                      }
                      logs_path = (char *) calloc (strlen(key)+1, sizeof(char));
                      strcpy(logs_path, key);
-                     create_output_dir(FALSE);
-                     create_output_files_strings(FALSE);
+                     create_output_dir();
+                     create_output_files_strings();
                   }
                }
             }
@@ -2334,13 +2369,12 @@ int reload_configuration(const int choice, xmlNodePtr node)
                   continue;
                }
 
-               if (restore_mode_flag) {
-                  key = xmlGetProp(module_ptr, "module_pid");
-                  if (key != NULL) {
-                     running_modules[module_index].module_pid = atoi((char *) key);
-                     xmlFree(key);
-                     key = NULL;
-                  }
+               // get modules pid from <module> element if it exists
+               key = xmlGetProp(module_ptr, "module_pid");
+               if (key != NULL) {
+                  running_modules[module_index].module_pid = atoi((char *) key);
+                  xmlFree(key);
+                  key = NULL;
                }
 
                module_atr = module_ptr->xmlChildrenNode;
@@ -2826,7 +2860,6 @@ int reload_configuration(const int choice, xmlNodePtr node)
 
 
    int deleted_modules_cnt = -1;
-   // VERBOSE(N_STDOUT,"-- Finishing --\n");
    for (x=0; x<original_loaded_modules_cnt; x++) {
       if (already_loaded_modules[x] == 0) {
          removed_modules++;
@@ -2834,14 +2867,12 @@ int reload_configuration(const int choice, xmlNodePtr node)
          if (running_modules[x].module_status) {
             kill(running_modules[x].module_pid, 2);
          }
-         // VERBOSE(N_STDOUT,"Deleting module %d\n",x);
          free_module_on_index(x-deleted_modules_cnt);
          running_modules[x-deleted_modules_cnt].module_ifces_cnt = 0;
          running_modules[x-deleted_modules_cnt].module_num_out_ifc = 0;
          running_modules[x-deleted_modules_cnt].module_num_in_ifc = 0;
          running_modules[x-deleted_modules_cnt].module_ifces_array_size = 0;
          for (y=(x-deleted_modules_cnt); y<(loaded_modules_cnt-1); y++) {
-            // VERBOSE(N_STDOUT,"posouvam %d<-%d\n",y,y+1);
             memcpy(&running_modules[y], &running_modules[y+1], sizeof(running_module_t));
          }
          loaded_modules_cnt--;
@@ -2885,11 +2916,10 @@ int reload_configuration(const int choice, xmlNodePtr node)
       ptr = ptr->next;
    }
 
-   if (restore_mode_flag) {
-      for (x=0; x<loaded_modules_cnt; x++) {
-         if (running_modules[x].module_pid > 0) {
-            init_module_variables(x);
-         }
+   // if modules pid > 0, init its variables because its already running so there wont be re_start function call
+   for (x=0; x<loaded_modules_cnt; x++) {
+      if (running_modules[x].module_pid > 0) {
+         init_module_variables(x);
       }
    }
 
@@ -2904,10 +2934,6 @@ int reload_configuration(const int choice, xmlNodePtr node)
 
 void generate_backup_config_file()
 {
-   // generate backup file ID !!
-   char * file_id = generate_backup_file_id();
-   char * file_name = generate_backup_file_name(file_id);
-
    modules_profile_t * ptr = first_profile_ptr;
    int x, y, in_ifc_cnt, out_ifc_cnt;
    char buffer[20];
@@ -2921,7 +2947,6 @@ void generate_backup_config_file()
    }
    root_elem = xmlDocGetRootElement(document_ptr);
    xmlNewProp (root_elem, "lock", NULL);
-   xmlNewProp (root_elem, "id", file_id);
    if (daemon_flag) {
       xmlNewProp (root_elem, "daemon", "true");
       xmlNewProp (root_elem, "socket_path", socket_path);
@@ -3000,27 +3025,36 @@ void generate_backup_config_file()
       ptr = ptr->next;
    }
 
+   char file_name[100];
+   memset(file_name,0,100);
+   if (socket_path == NULL) {
+      sprintf(file_name, "%s%s.xml", logs_path, DEFAULT_BACKUP_FILE_PREFIX); // TODO backup file path, what if logs dir path is changed after restart.. wont find backup file
+   } else {
+      char socket_path_without_s[100];
+      memset(socket_path_without_s,0,100);
+      int socket_path_without_s_length = 0;
+      for (x=0; x<strlen(socket_path); x++) {
+         if (socket_path[x] != '/') {
+            socket_path_without_s[socket_path_without_s_length] = socket_path[x];
+            socket_path_without_s_length++;
+         }
+      }
+      sprintf(file_name, "%s%s_%s.xml", logs_path, DEFAULT_BACKUP_FILE_PREFIX, socket_path_without_s);
+   }
+
    FILE * file_fd = fopen(file_name,"w");
 
    if (file_fd != NULL) {
       if (xmlDocFormatDump(file_fd, document_ptr, 1) == -1) {
          VERBOSE(N_STDOUT, "%s [ERROR] Could not save backup file!\n", get_stats_formated_time());
       } else {
-         VERBOSE(N_STDOUT, "%s [WARNING] Phew, backup file saved !! (file ID: %s)\n", get_stats_formated_time(), file_id);
+         VERBOSE(N_STDOUT, "%s [WARNING] Phew, backup file saved !!\n", get_stats_formated_time());
       }
       fclose(file_fd);
    } else {
       VERBOSE(N_STDOUT, "%s [ERROR] Could not open backup file!\n", get_stats_formated_time());
    }
 
-   if (file_name != NULL) {
-      free(file_name);
-      file_name = NULL;
-   }
-   if (file_id != NULL) {
-      free(file_id);
-      file_id = NULL;
-   }
    xmlFreeDoc(document_ptr);
    xmlCleanupParser();
 }

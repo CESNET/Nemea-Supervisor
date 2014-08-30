@@ -92,6 +92,6 @@ int main (int argc, char * argv [])
          break;
       }
    }
-   supervisor_termination();
+   supervisor_termination(FALSE, FALSE);
    return 0;
 }

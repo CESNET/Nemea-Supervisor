@@ -171,7 +171,7 @@ void stop_module(const int module_number);
 
 /** Function updates running modules processes status.
  */
-void service_update_module_status();
+int service_update_module_status();
 
 /** SIGPIPE handler.
  */
