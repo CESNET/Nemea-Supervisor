@@ -271,7 +271,7 @@ void generate_picture()
 
 void show_picture()
 {
-#if HAVE_DOT == 1
+#if (HAVE_DOT == 1 && HAVE_DISPLAY == 1)
    int result = 0, status = 0;
    int pid_dot, pid_display;
    int pipe2[2];
@@ -313,6 +313,8 @@ void show_picture()
       waitpid(pid_dot, &status, WUNTRACED);
       // waitpid(pid_display, &status, WUNTRACED);
    }
+#else
+   VERBOSE(N_STDOUT, "[WARNING] Dot or display is not installed!\n");
 #endif
 }
 

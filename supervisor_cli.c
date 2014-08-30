@@ -42,6 +42,9 @@
  * if advised of the possibility of such damage.
  *
  */
+
+#include "internal.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
@@ -61,10 +64,6 @@
 #define TRUE            1 ///< Bool true
 #define FALSE           0 ///< Bool false
 #define DAEMON_UNIX_PATH_FILENAME_FORMAT  "/tmp/supervisor_daemon.sock"
-#define DAEMON_STOP_CODE 951753
-#define DAEMON_CONFIG_MODE_CODE 789123
-#define DAEMON_STATS_MODE_CODE 456987
-#define DAEMON_RELOAD_MODE_CODE 115599
 
 typedef struct client_internals_s {
    FILE *   supervisor_input_stream;

@@ -71,11 +71,6 @@
 #define DEFAULT_MAX_RESTARTS_PER_MINUTE  3  ///< Maximum number of module restarts per minute
 #define DEFAULT_SIZE_OF_BUFFER   100
 
-#define DAEMON_STOP_CODE 951753
-#define DAEMON_CONFIG_MODE_CODE 789123
-#define DAEMON_STATS_MODE_CODE 456987
-#define DAEMON_RELOAD_MODE_CODE 115599
-
 #define MODULES_UNIXSOCKET_PATH_FILENAME_FORMAT   "/tmp/trap-localhost-%s.sock" ///< Modules output interfaces socket, to which connects service thread.
 #define DEFAULT_DAEMON_UNIXSOCKET_PATH_FILENAME  "/tmp/supervisor_daemon.sock"  ///<  Daemon socket.
 

@@ -51,14 +51,19 @@
 #define TRUE                        1 ///< Bool true
 #define FALSE                       0 ///< Bool false
 
-#define STATISTICS      1
-#define MODULE_EVENT    2
-#define N_STDOUT     	3
+#define STATISTICS      		1
+#define MODULE_EVENT    	2
+#define N_STDOUT     		3
 
-#define RELOAD_INIT_LOAD_CONFIG 	1
+#define RELOAD_INIT_LOAD_CONFIG 		1
 #define RELOAD_CALLBACK_ROOT_ELEM 	2
 #define RELOAD_INTERACTIVE			3
-#define RELOAD_BACKUP 				4
+#define RELOAD_DEFAULT_CONFIG_FILE	4
+
+#define DAEMON_STOP_CODE 			951753
+#define DAEMON_CONFIG_MODE_CODE 	789123
+#define DAEMON_STATS_MODE_CODE 		456987
+#define DAEMON_RELOAD_MODE_CODE 	115599
 
 extern char * statistics_file_path;
 extern char * module_event_file_path;
