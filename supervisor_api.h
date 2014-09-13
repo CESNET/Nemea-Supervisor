@@ -62,6 +62,10 @@ void 	interactive_run_temp_conf();
 
 /*NC API*/
 void reload_configuration();
+#ifdef nemea_plugin
+int nc_supervisor_initialization();
+xmlDocPtr nc_get_state_data();
+#endif
 
 #endif
 

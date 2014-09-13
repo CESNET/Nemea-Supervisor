@@ -46,6 +46,7 @@
 #include "supervisor.h"
 #include "graph.h"
 #include "internal.h"
+#include "./ncnemea/ncnemea.h"
 
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -217,7 +218,9 @@ void create_output_files_strings()
       } else {
          fprintf(supervisor_log_fd,"-------------------- %s --------------------\n", get_stats_formated_time());
       }
-      if (!(daemon_internals->client_connected)) {
+      if (netconf_flag) {
+         output_fd = supervisor_log_fd;
+      } else if (!(daemon_internals->client_connected)) {
          output_fd = supervisor_log_fd;
       }
    }
@@ -578,9 +581,15 @@ void re_start_module(const int module_number)
 {
    if (running_modules[module_number].module_running == FALSE) {
       VERBOSE(MODULE_EVENT,"%s [START] Starting module %s.\n", get_stats_formated_time(), running_modules[module_number].module_name);
+      #ifdef nemea_plugin
+         nc_notify(MODULE_EVENT_STARTED,running_modules[module_number].module_name);
+      #endif
       running_modules[module_number].module_counters_array = (int *) calloc (3*running_modules[module_number].module_num_out_ifc + running_modules[module_number].module_num_in_ifc,sizeof(int));
       running_modules[module_number].module_running = TRUE;
    } else {
+      #ifdef nemea_plugin
+         nc_notify(MODULE_EVENT_RESTARTED,running_modules[module_number].module_name);
+      #endif
       VERBOSE(MODULE_EVENT,"%s [RESTART] Restarting module %s\n", get_stats_formated_time(), running_modules[module_number].module_name);
    }
 
@@ -874,6 +883,9 @@ void service_stop_modules_sigint()
    int x;
    for (x=0; x<loaded_modules_cnt; x++) {
       if (running_modules[x].module_status && running_modules[x].module_enabled == FALSE && running_modules[x].sent_sigint == FALSE) {
+         #ifdef nemea_plugin
+            nc_notify(MODULE_EVENT_STOPPED,running_modules[x].module_name);
+         #endif
          VERBOSE(MODULE_EVENT, "%s [STOP] Stopping module %s... sending SIGINT\n", get_stats_formated_time(), running_modules[x].module_name);
          kill(running_modules[x].module_pid,2);
          running_modules[x].sent_sigint = TRUE;
@@ -962,6 +974,9 @@ void service_restart_modules()
       if (running_modules[x].module_enabled == TRUE && running_modules[x].module_status == FALSE && (running_modules[x].module_restart_cnt == max_restarts)) {
          VERBOSE(MODULE_EVENT,"%s [RESTART] Module: %s was restarted %d times per minute and it is down again. I set it disabled.\n", get_stats_formated_time(), running_modules[x].module_name, max_restarts);
          running_modules[x].module_enabled = FALSE;
+         #ifdef nemea_plugin
+            nc_notify(MODULE_EVENT_DISABLED,running_modules[x].module_name);
+         #endif
       } else if (running_modules[x].module_status == FALSE && running_modules[x].module_enabled == TRUE) {
          re_start_module(x);
       }
@@ -3058,3 +3073,187 @@ void generate_backup_config_file()
    xmlFreeDoc(document_ptr);
    xmlCleanupParser();
 }
+
+#ifdef nemea_plugin
+int nc_supervisor_initialization()
+{
+   int y = 0;
+
+   init_time_info = get_sys_time();
+   service_stop_all_modules = FALSE;
+   logs_path = NULL;
+   config_file = NULL;
+   socket_path = DEFAULT_DAEMON_UNIXSOCKET_PATH_FILENAME;
+   verbose_flag = FALSE;
+   file_flag = FALSE;
+   daemon_flag = FALSE;
+   netconf_flag = TRUE;
+   graph_first_node = NULL;
+   graph_last_node = NULL;
+
+   input_fd = stdin;
+   output_fd = stdout;
+
+   create_output_dir();
+   create_output_files_strings();
+
+   VERBOSE(N_STDOUT,"[INIT LOADING CONFIGURATION]\n");
+   loaded_modules_cnt = 0;
+   running_modules_array_size = RUNNING_MODULES_ARRAY_START_SIZE;
+   running_modules = (running_module_t *) calloc (running_modules_array_size,sizeof(running_module_t));
+   for (y=0;y<running_modules_array_size;y++) {
+      running_modules[y].module_ifces = (interface_t *) calloc(IFCES_ARRAY_START_SIZE, sizeof(interface_t));
+      running_modules[y].module_running = FALSE;
+      running_modules[y].module_ifces_array_size = IFCES_ARRAY_START_SIZE;
+      running_modules[y].module_ifces_cnt = 0;
+   }
+
+   pthread_mutex_init(&running_modules_lock,NULL);
+   service_thread_continue = TRUE;
+
+   //load configuration
+   // reload_configuration(RELOAD_INIT_LOAD_CONFIG, NULL);
+
+   VERBOSE(N_STDOUT,"[SERVICE] Starting service thread.\n");
+   start_service_thread();
+   // pthread_create(&nc_clients_thread_id, NULL, nc_clients_thread_routine, NULL);
+
+   /************ SIGNAL HANDLING *************/
+   /* function prototype to set handler */
+   // void supervisor_signal_handler(int catched_signal);
+
+   // struct sigaction sig_action;
+   // sig_action.sa_handler = supervisor_signal_handler;
+   // sig_action.sa_flags = 0;
+   // sigemptyset(&sig_action.sa_mask);
+
+   // if (sigaction(SIGPIPE,&sig_action,NULL) == -1) {
+   //    VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGPIPE !\n", get_stats_formated_time());
+   // }
+   // if (sigaction(SIGINT,&sig_action,NULL) == -1) {
+   //    VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGINT !\n", get_stats_formated_time());
+   // }
+   // if (sigaction(SIGTERM,&sig_action,NULL) == -1) {
+   //    VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGTERM !\n", get_stats_formated_time());
+   // }
+   // if (sigaction(SIGSEGV,&sig_action,NULL) == -1) {
+   //    VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGSEGV !\n", get_stats_formated_time());
+   // }
+   // if (sigaction(SIGQUIT,&sig_action,NULL) == -1) {
+   //    VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGQUIT !\n", get_stats_formated_time());
+   // }
+   /****************************************/
+
+   return 0;
+}
+
+void * nc_clients_thread_routine(void* arg)
+{
+   union tcpip_socket_addr addr;
+   struct addrinfo *p;
+   memset(&addr, 0, sizeof(addr));
+   addr.unix_addr.sun_family = AF_UNIX;
+   snprintf(addr.unix_addr.sun_path, sizeof(addr.unix_addr.sun_path) - 1, "%s", socket_path);
+
+   /* if socket file exists, it could be hard to create new socket and bind */
+   unlink(socket_path); /* error when file does not exist is not a problem */
+   int socket_sd = socket(AF_UNIX, SOCK_STREAM, 0);
+   if (bind(socket_sd, (struct sockaddr *) &addr.unix_addr, sizeof(addr.unix_addr)) != -1) {
+      p = (struct addrinfo *) &addr.unix_addr;
+      chmod(socket_path, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+   } else {
+      /* error bind() failed */
+      p = NULL;
+   }
+   if (p == NULL) {
+      // if we got here, it means we didn't get bound
+      VERBOSE(N_STDOUT,"selectserver: failed to bind");
+      return;
+   }
+   // listen
+   if (listen(socket_sd, 0) == -1) {
+      //perror("listen");
+      VERBOSE(N_STDOUT,"Listen failed");
+      return;
+   }
+
+
+   daemon_mode(&socket_sd);
+   pthread_exit(NULL);
+}
+
+xmlDocPtr nc_get_state_data()
+{
+   int x, y, in_ifc_cnt, out_ifc_cnt;
+   char buffer[20];
+   const char *templ = "<?xml version=\"1.0\"?><nemea-supervisor xmlns=\"urn:cesnet:tmc:nemea:1.0\"><modules/></nemea-supervisor>";
+   xmlDocPtr resp = NULL;
+   xmlNodePtr modules = NULL, module = NULL, trapinterfaces = NULL, interface = NULL;
+
+   if (loaded_modules_cnt > 0) {
+      resp = xmlParseMemory(templ, strlen(templ));
+      if (resp == NULL) {
+         return NULL;
+      }
+
+      modules = xmlDocGetRootElement(resp);
+      modules = modules->children;
+
+      for (x = 0; x < loaded_modules_cnt; x++) {
+         memset(buffer,0,20);
+         module = xmlNewChild(modules, NULL, BAD_CAST "module", NULL);
+         xmlNewChild(module, NULL, BAD_CAST "name", running_modules[x].module_name);
+
+         if (running_modules[x].module_status == TRUE) {
+            xmlNewChild(module, NULL, BAD_CAST "running", "true");
+         } else {
+            xmlNewChild(module, NULL, BAD_CAST "running", "false");
+         }
+
+         if (running_modules[x].module_restart_cnt < 0) {
+            sprintf(buffer,"%d",0);
+            xmlNewChild(module, NULL, BAD_CAST "restart-counter", buffer);
+         } else {
+            sprintf(buffer,"%d",running_modules[x].module_restart_cnt);
+            xmlNewChild(module, NULL, BAD_CAST "restart-counter", buffer);
+         }
+
+         if (running_modules[x].module_has_service_ifc && running_modules[x].module_status) {
+            in_ifc_cnt = 0;
+            out_ifc_cnt = 0;
+            trapinterfaces = xmlNewChild(module, NULL, BAD_CAST "trapinterfaces", NULL);
+            for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
+               if (running_modules[x].module_ifces[y].ifc_direction != NULL) {
+                  interface = xmlNewChild(trapinterfaces, NULL, BAD_CAST "interface", NULL);
+                  xmlNewChild(interface, NULL, BAD_CAST "type", running_modules[x].module_ifces[y].ifc_type);
+                  xmlNewChild(interface, NULL, BAD_CAST "params", running_modules[x].module_ifces[y].ifc_params);
+                  if (strcmp(running_modules[x].module_ifces[y].ifc_direction, "IN") == 0) {
+                     memset(buffer,0,20);
+                     sprintf(buffer,"%d",running_modules[x].module_counters_array[in_ifc_cnt]);
+                     xmlNewChild(interface, NULL, BAD_CAST "recv-msg-cnt", buffer);
+                     in_ifc_cnt++;
+                  } else if (strcmp(running_modules[x].module_ifces[y].ifc_direction, "OUT") == 0) {
+                     memset(buffer,0,20);
+                     sprintf(buffer,"%d",running_modules[x].module_counters_array[running_modules[x].module_num_in_ifc + out_ifc_cnt]);
+                     xmlNewChild(interface, NULL, BAD_CAST "sent-msg-cnt", buffer);
+                     memset(buffer,0,20);
+                     sprintf(buffer,"%d",running_modules[x].module_counters_array[running_modules[x].module_num_in_ifc + running_modules[x].module_num_out_ifc + out_ifc_cnt]);
+                     xmlNewChild(interface, NULL, BAD_CAST "sent-buffer-cnt", buffer);
+                     memset(buffer,0,20);
+                     sprintf(buffer,"%d",running_modules[x].module_counters_array[running_modules[x].module_num_in_ifc + 2*running_modules[x].module_num_out_ifc + out_ifc_cnt]);
+                     xmlNewChild(interface, NULL, BAD_CAST "autoflush-cnt", buffer);
+                     in_ifc_cnt++;
+                  }
+               }
+            }
+         }
+
+         /* TODO check and free */
+         if (xmlAddChild(modules, module) == NULL) {
+            xmlFree(module);
+         }
+      }
+   }
+   return resp;
+}
+#endif
