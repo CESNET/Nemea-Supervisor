@@ -210,7 +210,7 @@ void interactive_show_running_modules_status();
 
 /** Function stops service thread and acceptor thread and frees allocated memory.
  */
-void supervisor_termination();
+void  supervisor_termination(int stop_all_modules, int generate_backup);
 
 char *get_param_by_delimiter(const char *source, char **dest, const char delimiter);
 

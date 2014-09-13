@@ -72,7 +72,7 @@ int transapi_init(xmlDocPtr * running)
 void transapi_close(void)
 {
 	VERBOSE(N_STDOUT,"-- Transapi close --\n");
-	supervisor_termination();
+	supervisor_termination(TRUE,FALSE);
 	return;
 }
 

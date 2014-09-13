@@ -46,7 +46,7 @@
 #define SUPERVISOR_API_H
 
 int 	supervisor_initialization(const int * argc, char ** argv);
-void 	supervisor_termination();
+void 	supervisor_termination(int stop_all_modules, int generate_backup);
 
 /*Interactive mode*/
 int 	interactive_get_option();
