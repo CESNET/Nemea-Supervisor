@@ -50,6 +50,12 @@
 
 
 	<!--RULE -->
+<axsl:template match="/nc:data/nemea:nemea-supervisor/nemea:modules" priority="1002" mode="M4"><svrl:fired-rule xmlns:svrl="http://purl.oclc.org/dsdl/svrl" context="/nc:data/nemea:nemea-supervisor/nemea:modules"/>
+
+		<!--REPORT -->
+<axsl:if test="preceding-sibling::nemea:modules[nemea:name=current()/nemea:name]"><svrl:successful-report xmlns:svrl="http://purl.oclc.org/dsdl/svrl" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:schold="http://www.ascc.net/xml/schematron" test="preceding-sibling::nemea:modules[nemea:name=current()/nemea:name]"><axsl:attribute name="location"><axsl:apply-templates select="." mode="schematron-get-full-path"/></axsl:attribute><svrl:text>Duplicate key "nemea:name"</svrl:text></svrl:successful-report></axsl:if><axsl:apply-templates select="*|comment()|processing-instruction()" mode="M4"/></axsl:template>
+
+	<!--RULE -->
 <axsl:template match="/nc:data/nemea:nemea-supervisor/nemea:modules/nemea:module" priority="1001" mode="M4"><svrl:fired-rule xmlns:svrl="http://purl.oclc.org/dsdl/svrl" context="/nc:data/nemea:nemea-supervisor/nemea:modules/nemea:module"/>
 
 		<!--REPORT -->
