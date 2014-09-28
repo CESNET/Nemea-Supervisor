@@ -562,10 +562,10 @@ int interactive_get_option()
 void init_module_variables(int module_number)
 {
    if (running_modules[module_number].module_counters_array == NULL) {
-      running_modules[module_number].module_counters_array = (int *) calloc (3*running_modules[module_number].module_num_out_ifc + running_modules[module_number].module_num_in_ifc,sizeof(int));
+      running_modules[module_number].module_counters_array = (uint64_t *) calloc (3*running_modules[module_number].module_num_out_ifc + running_modules[module_number].module_num_in_ifc,sizeof(uint64_t));
       running_modules[module_number].module_running = TRUE;
    }
-   memset(running_modules[module_number].module_counters_array, 0, (running_modules[module_number].module_num_in_ifc + (3*running_modules[module_number].module_num_out_ifc)) * sizeof(int));
+   memset(running_modules[module_number].module_counters_array, 0, (running_modules[module_number].module_num_in_ifc + (3*running_modules[module_number].module_num_out_ifc)) * sizeof(uint64_t));
    running_modules[module_number].total_cpu_usage_during_module_startup = get_total_cpu_usage();
    running_modules[module_number].last_period_cpu_usage_kernel_mode = 0;
    running_modules[module_number].last_period_cpu_usage_user_mode = 0;
@@ -584,7 +584,7 @@ void re_start_module(const int module_number)
       #ifdef nemea_plugin
          nc_notify(MODULE_EVENT_STARTED,running_modules[module_number].module_name);
       #endif
-      running_modules[module_number].module_counters_array = (int *) calloc (3*running_modules[module_number].module_num_out_ifc + running_modules[module_number].module_num_in_ifc,sizeof(int));
+      running_modules[module_number].module_counters_array = (uint64_t *) calloc (3*running_modules[module_number].module_num_out_ifc + running_modules[module_number].module_num_in_ifc,sizeof(uint64_t));
       running_modules[module_number].module_running = TRUE;
    } else {
       #ifdef nemea_plugin
@@ -1287,7 +1287,7 @@ void interactive_show_graph()
 
 int service_get_data(int sd, int running_module_number)
 {
-   int sizeof_recv = (running_modules[running_module_number].module_num_in_ifc + 3*running_modules[running_module_number].module_num_out_ifc) * sizeof(int);
+   int sizeof_recv = (running_modules[running_module_number].module_num_in_ifc + 3*running_modules[running_module_number].module_num_out_ifc) * sizeof(uint64_t);
    int total_receved = 0;
    int last_receved = 0;
    char * data_pointer = (char *) running_modules[running_module_number].module_counters_array;
@@ -1370,19 +1370,19 @@ void print_statistics_and_cpu_usage(struct tm * timeinfo)
          if (running_modules[x].module_has_service_ifc && running_modules[x].module_service_ifc_isconnected) {
             VERBOSE(STATISTICS,"CNT_RM:  ");
             for (y=0; y<running_modules[x].module_num_in_ifc; y++) {
-               VERBOSE(STATISTICS,"%d  ", running_modules[x].module_counters_array[y]);
+               VERBOSE(STATISTICS,"%llu  ", running_modules[x].module_counters_array[y]);
             }
             VERBOSE(STATISTICS,"CNT_SM:  ");
             for (y=0; y<running_modules[x].module_num_out_ifc; y++) {
-               VERBOSE(STATISTICS,"%d  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc]);
+               VERBOSE(STATISTICS,"%llu  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc]);
             }
             VERBOSE(STATISTICS,"CNT_SB:  ");
             for (y=0; y<running_modules[x].module_num_out_ifc; y++) {
-               VERBOSE(STATISTICS,"%d  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc + running_modules[x].module_num_out_ifc]);
+               VERBOSE(STATISTICS,"%llu  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc + running_modules[x].module_num_out_ifc]);
             }
             VERBOSE(STATISTICS,"CNT_AF:  ");
             for (y=0; y<running_modules[x].module_num_out_ifc; y++) {
-               VERBOSE(STATISTICS,"%d  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc + 2*running_modules[x].module_num_out_ifc]);
+               VERBOSE(STATISTICS,"%llu  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc + 2*running_modules[x].module_num_out_ifc]);
             }
          }
          VERBOSE(STATISTICS,"\n");
@@ -1551,7 +1551,7 @@ char * make_formated_statistics()
          for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
             if(running_modules[x].module_ifces[y].ifc_direction != NULL) {
                if(strcmp(running_modules[x].module_ifces[y].ifc_direction, "IN") == 0) {
-                  ptr += sprintf(buffer + ptr, "%s,in,%d,%d\n", running_modules[x].module_name, counter, running_modules[x].module_counters_array[counter]);
+                  ptr += sprintf(buffer + ptr, "%s,in,%d,%llu\n", running_modules[x].module_name, counter, running_modules[x].module_counters_array[counter]);
                   counter++;
                   if (strlen(buffer) >= (3*size_of_buffer)/5) {
                      size_of_buffer += size_of_buffer/2;
@@ -1565,7 +1565,7 @@ char * make_formated_statistics()
          for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
             if(running_modules[x].module_ifces[y].ifc_direction != NULL) {
                if(strcmp(running_modules[x].module_ifces[y].ifc_direction, "OUT") == 0) {
-                  ptr += sprintf(buffer + ptr, "%s,out,%d,%d,%d,%d\n", running_modules[x].module_name, counter, running_modules[x].module_counters_array[counter + running_modules[x].module_num_in_ifc],
+                  ptr += sprintf(buffer + ptr, "%s,out,%d,%llu,%llu,%llu\n", running_modules[x].module_name, counter, running_modules[x].module_counters_array[counter + running_modules[x].module_num_in_ifc],
                                                                            running_modules[x].module_counters_array[counter + running_modules[x].module_num_in_ifc + running_modules[x].module_num_out_ifc],
                                                                            running_modules[x].module_counters_array[counter + running_modules[x].module_num_in_ifc + 2*running_modules[x].module_num_out_ifc]);
                   counter++;  
@@ -3229,18 +3229,18 @@ xmlDocPtr nc_get_state_data()
                   xmlNewChild(interface, NULL, BAD_CAST "params", running_modules[x].module_ifces[y].ifc_params);
                   if (strcmp(running_modules[x].module_ifces[y].ifc_direction, "IN") == 0) {
                      memset(buffer,0,20);
-                     sprintf(buffer,"%d",running_modules[x].module_counters_array[in_ifc_cnt]);
+                     sprintf(buffer,"%llu",running_modules[x].module_counters_array[in_ifc_cnt]);
                      xmlNewChild(interface, NULL, BAD_CAST "recv-msg-cnt", buffer);
                      in_ifc_cnt++;
                   } else if (strcmp(running_modules[x].module_ifces[y].ifc_direction, "OUT") == 0) {
                      memset(buffer,0,20);
-                     sprintf(buffer,"%d",running_modules[x].module_counters_array[running_modules[x].module_num_in_ifc + out_ifc_cnt]);
+                     sprintf(buffer,"%llu",running_modules[x].module_counters_array[running_modules[x].module_num_in_ifc + out_ifc_cnt]);
                      xmlNewChild(interface, NULL, BAD_CAST "sent-msg-cnt", buffer);
                      memset(buffer,0,20);
-                     sprintf(buffer,"%d",running_modules[x].module_counters_array[running_modules[x].module_num_in_ifc + running_modules[x].module_num_out_ifc + out_ifc_cnt]);
+                     sprintf(buffer,"%llu",running_modules[x].module_counters_array[running_modules[x].module_num_in_ifc + running_modules[x].module_num_out_ifc + out_ifc_cnt]);
                      xmlNewChild(interface, NULL, BAD_CAST "sent-buffer-cnt", buffer);
                      memset(buffer,0,20);
-                     sprintf(buffer,"%d",running_modules[x].module_counters_array[running_modules[x].module_num_in_ifc + 2*running_modules[x].module_num_out_ifc + out_ifc_cnt]);
+                     sprintf(buffer,"%llu",running_modules[x].module_counters_array[running_modules[x].module_num_in_ifc + 2*running_modules[x].module_num_out_ifc + out_ifc_cnt]);
                      xmlNewChild(interface, NULL, BAD_CAST "autoflush-cnt", buffer);
                      in_ifc_cnt++;
                   }

@@ -45,6 +45,7 @@
 #ifndef SUPERVISOR_H
 #define SUPERVISOR_H
 
+#include <inttypes.h>
 #include <time.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -107,7 +108,7 @@ typedef struct running_module_s {
    int            module_status; ///< Module status (TRUE ~ running, FALSE ~ stopped)
    int            sent_sigint;
    pid_t          module_pid; ///< Modules process PID.
-   int           *module_counters_array; ///< Array of statistics with counters.
+   uint64_t           *module_counters_array; ///< Array of statistics with counters.
    int            module_service_sd; ///< Socket descriptor of the service connection.
    int            module_number; ///< Index to running_modules array.
    int            module_modified_by_reload;
