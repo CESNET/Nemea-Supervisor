@@ -239,7 +239,7 @@ int service_get_data(int sd, int running_module_number);
  */
 void connect_to_module_service_ifc(int module, int num_ifc);
 
-void print_statistics_and_cpu_usage(struct tm * timeinfo);
+void print_statistics(struct tm * timeinfo);
 
 void print_statistics_legend();
 

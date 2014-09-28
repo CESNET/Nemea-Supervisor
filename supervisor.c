@@ -1354,19 +1354,15 @@ void connect_to_module_service_ifc(int module, int num_ifc)
    }
 }
 
-void print_statistics_and_cpu_usage(struct tm * timeinfo)
+void print_statistics(struct tm * timeinfo)
 {
    int x = 0, y = 0;
    VERBOSE(STATISTICS,"------> %s", asctime(timeinfo));
    for (x=0;x<loaded_modules_cnt;x++) {
       if (running_modules[x].module_status) {
-         VERBOSE(STATISTICS,"NAME:  %s; PID: %d; | CPU: O_S %d%%; O_U %d%%; P_S %d%%; P_U %d%%; | ",
+         VERBOSE(STATISTICS,"NAME:  %s; PID: %d; | ",
             running_modules[x].module_name,
-            running_modules[x].module_pid,
-            running_modules[x].overall_percent_module_cpu_usage_kernel_mode,
-            running_modules[x].overall_percent_module_cpu_usage_user_mode,
-            running_modules[x].last_period_percent_cpu_usage_kernel_mode,
-            running_modules[x].last_period_percent_cpu_usage_user_mode);
+            running_modules[x].module_pid);
          if (running_modules[x].module_has_service_ifc && running_modules[x].module_service_ifc_isconnected) {
             VERBOSE(STATISTICS,"CNT_RM:  ");
             for (y=0; y<running_modules[x].module_num_in_ifc; y++) {
@@ -1407,7 +1403,6 @@ void print_statistics_legend()
 void *service_thread_routine(void* arg)
 {
    int some_module_running = FALSE;
-   long int last_total_cpu_usage = 0;
    int sizeof_intptr = 4;
    int x,y;
 
@@ -1511,14 +1506,13 @@ void *service_thread_routine(void* arg)
             }
          }
       }
-      update_module_cpu_usage(&last_total_cpu_usage);
       update_graph_values(graph_first_node);
       generate_periodic_picture();
 
       pthread_mutex_unlock(&running_modules_lock);
 
       if (verbose_flag) {
-         print_statistics_and_cpu_usage(timeinfo);
+         print_statistics(timeinfo);
       }
 
       if (service_thread_continue == TRUE) {
@@ -1760,6 +1754,7 @@ int daemon_get_client()
 
 void daemon_mode()
 {
+   long int last_total_cpu_usage = get_total_cpu_usage();
    int got_code = FALSE;
    int x = 0;
    int ret_val = 0;
@@ -1883,6 +1878,7 @@ void daemon_mode()
                   break;
                case DAEMON_STATS_MODE_CODE: {
                   //client stats mode
+                  update_module_cpu_usage(&last_total_cpu_usage);
                   char * stats_buffer = make_formated_statistics();
                   int buffer_len = strlen(stats_buffer);
                   char stats_buffer2[buffer_len+1];
