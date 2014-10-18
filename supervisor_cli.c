@@ -117,7 +117,7 @@ int connect_to_supervisor(char *socket_path)
 
    client_internals->supervisor_sd = socket(AF_UNIX, SOCK_STREAM, 0);
    if (client_internals->supervisor_sd < 0) {
-      printf("[ERROR] Could not create socket!\n");
+      fprintf(stderr, "[ERROR] Could not create socket!\n");
       return EXIT_FAILURE;
    }
 
@@ -163,13 +163,13 @@ int main(int argc, char **argv)
          break;
 
       default:
-         printf("[ERROR] Invalid program arguments! (try to run it with \"-h\" argument)\n");
+         fprintf(stderr, "[ERROR] Invalid program arguments! (try to run it with \"-h\" argument)\n");
          exit(EXIT_FAILURE);
       }
    }
 
    if (reload_command_flag && just_stats_flag) {
-      printf("[ERROR] Cannot run client with \"-x\" and with \"-r\" arguments at the same time!\n");
+      fprintf(stderr, "[ERROR] Cannot run client with \"-x\" and with \"-r\" arguments at the same time!\n");
       free_client_internals_variables();
       exit(EXIT_FAILURE);
    }
@@ -180,7 +180,7 @@ int main(int argc, char **argv)
    }
 
    if(connect_to_supervisor(socket_path) == EXIT_FAILURE){
-      printf("[ERROR] Could not connect to supervisor!\n");
+      fprintf(stderr, "[ERROR] Could not connect to supervisor!\n");
       free_client_internals_variables();
       exit(EXIT_FAILURE);
    } else {
@@ -189,21 +189,21 @@ int main(int argc, char **argv)
 
    client_internals->supervisor_input_stream = fdopen(client_internals->supervisor_sd, "r");
    if(client_internals->supervisor_input_stream == NULL) {
-      printf("[ERROR] Fdopen: could not open supervisor input stream!\n");
+      fprintf(stderr, "[ERROR] Fdopen: could not open supervisor input stream!\n");
       free_client_internals_variables();
       exit(EXIT_FAILURE);
    }
 
    client_internals->supervisor_output_stream = fdopen(client_internals->supervisor_sd, "w");
    if(client_internals->supervisor_output_stream == NULL) {
-      printf("[ERROR] Fdopen: could not open supervisor output stream!\n");
+      fprintf(stderr, "[ERROR] Fdopen: could not open supervisor output stream!\n");
       free_client_internals_variables();
       exit(EXIT_FAILURE);
    }
 
    client_internals->supervisor_input_stream_fd = fileno(client_internals->supervisor_input_stream);
    if(client_internals->supervisor_input_stream_fd < 0) {
-      printf("[ERROR] Fileno: could not get supervisor input stream descriptor!\n");
+      fprintf(stderr, "[ERROR] Fileno: could not get supervisor input stream descriptor!\n");
       free_client_internals_variables();
       exit(EXIT_FAILURE);
    }
@@ -235,7 +235,7 @@ int main(int argc, char **argv)
       ret_val = select(client_internals->supervisor_input_stream_fd+1, &read_fds, NULL, NULL, &tv);
 
       if (ret_val == -1) {
-         printf("[ERROR] Select: error!\n");
+         fprintf(stderr, "[ERROR] Select: error!\n");
          free_client_internals_variables();
          exit(EXIT_FAILURE);
       } else if (ret_val) {
@@ -255,7 +255,7 @@ int main(int argc, char **argv)
             usleep(200000);
             ioctl(client_internals->supervisor_input_stream_fd, FIONREAD, &x);
             if (x == 0 || x == -1) {
-               printf("[WARNING] Supervisor has disconnected, I'm done!\n");
+               fprintf(stderr, "[WARNING] Supervisor has disconnected, I'm done!\n");
                free_client_internals_variables();
                exit(EXIT_SUCCESS);
             } else {

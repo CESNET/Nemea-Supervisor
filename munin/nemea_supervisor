@@ -1,0 +1,280 @@
+#!/usr/bin/python
+# \file nemea_supervisor
+# \brief Export script for the Munin system to translate date from supervisor.
+# \author Tomas Cejka <cejkat@cesnet.cz>
+# \date 2014
+#
+# Copyright (C) 2014 CESNET
+#
+# LICENSE TERMS
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in
+#    the documentation and/or other materials provided with the
+#    distribution.
+# 3. Neither the name of the Company nor the names of its contributors
+#    may be used to endorse or promote products derived from this
+#    software without specific prior written permission.
+#
+# ALTERNATIVELY, provided that this notice is retained in full, this
+# product may be distributed under the terms of the GNU General Public
+# License (GPL) version 2 or later, in which case the provisions
+# of the GPL apply INSTEAD OF those given above.
+#
+# This software is provided ``as is'', and any express or implied
+# warranties, including, but not limited to, the implied warranties of
+# merchantability and fitness for a particular purpose are disclaimed.
+# In no event shall the company or contributors be liable for any
+# direct, indirect, incidental, special, exemplary, or consequential
+# damages (including, but not limited to, procurement of substitute
+# goods or services; loss of use, data, or profits; or business
+# interruption) however caused and on any theory of liability, whether
+# in contract, strict liability, or tort (including negligence or
+# otherwise) arising in any way out of the use of this software, even
+# if advised of the possibility of such damage.
+#
+# set to false to call supervisor_cli to get data
+
+import logging
+LOG_FILENAME = '/tmp/nemea_supervisor_munin.log'
+LOG_LEVEL = logging.DEBUG
+#LOG_LEVEL = logging.ERROR
+
+# test set to True disables reading new current data
+#test = True
+test = False
+
+# path to supervisor socket
+supervisor_socket = "/tmp/MAIN_sup.sock"
+
+# temporary file with downloaded data
+data_temp_file = "/tmp/munin_nemea_data.txt"
+
+# munin interval, typically 5mins (-5 seconds tolerance)
+munin_interval = 5*60-5
+
+# path to supervisor_cli
+supervisor_cli = "/usr/bin/nemea/supervisor_cli"
+
+# labels of counters in graphs
+labels = {
+	"in": ["received messages"],
+	"out": ["sent messages", "sent buffers", "autoflush"],
+	"cpu": ["kernel mode", "user mode"],
+}
+
+# data types of counters in graphs
+datatypes = {
+	"in": ["DERIVE"],
+	"out": ["DERIVE", "DERIVE", "DERIVE"],
+	"cpu": ["GAUGE", "GAUGE"],
+}
+
+# vertical axis labels
+vlabels = {
+	"in": "count",
+	"out": "count",
+	"cpu": "%"
+}
+
+# graph titles
+graph_title = {
+	"in": "input IFC",
+	"out": "output IFC",
+	"cpu": "CPU usage"
+}
+
+#==============================
+# end of configuration        #
+#==============================
+
+logging.basicConfig(filename=LOG_FILENAME,
+		level=LOG_LEVEL,
+		format='%(asctime)s %(levelname)s %(message)s',
+		filemod='a')
+global child_pid
+
+def handler_function(signum, stackframe):
+	os.unlink(data_temp_file)
+	os.kill(child_pid, signal.SIGTERM)
+	logging.error("Timouted... Exiting.")
+	exit(1)
+
+import signal
+#Sets an handler function, you can comment it if you don't need it.
+signal.signal(signal.SIGALRM,handler_function)
+
+#Sets an alarm in 10 seconds
+#If uncaught will terminate your process.
+signal.alarm(2)
+
+# get data
+if test:
+	data = """MAIN_Anonymizer,in,0,-792698113
+MAIN_Anonymizer,out,0,-792698114,74068444,13382
+MAIN_Anonymizer,out,1,698114,74068444,13382
+MAIN_ipv6stats,in,0,-170390356
+MAIN_dns_amplification,in,0,-1398852332
+MAIN_dns_amplification,out,0,125580,72686,2774847
+MAIN_Anonymizer,cpu,0,3
+MAIN_ipv6stats,cpu,0,0
+MAIN_dns_amplification,cpu,0,24
+MAIN_dns_amp_report_handler,cpu,0,0
+"""
+else:
+	import os
+	import time
+	current_time = time.time()
+	last_time = 0
+	try:
+		last_time = os.stat(data_temp_file).st_mtime
+	except:
+		logging.debug("%s not found or cannot read info." % data_temp_file)
+		pass
+	if (current_time - last_time) > munin_interval:
+		logging.debug("Download new data.")
+		import subprocess
+		sup = ""
+		try:
+			sup = subprocess.Popen([supervisor_cli, "-x", "-s", supervisor_socket], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+			global child_pid
+			child_pid = sup.pid
+			(data, errdata) = sup.communicate()
+			sup.wait()
+			if "ERROR" in data or "WARNING" in data:
+				logging.error(data)
+				exit(1)
+			if errdata:
+				logging.error(errdata)
+				exit(1)
+			with open(data_temp_file, "w") as f:
+				f.write(data)
+		except Exception as e:
+			logging.critical("Download failed. (%s)" % e)
+			os.kill(child_pid, signal.SIGTERM)
+			exit(1)
+	else:
+		logging.debug("Use existing data.")
+		data = ""
+		with open(data_temp_file, "r") as f:
+			for line in f.readlines():
+				data = data + line
+
+
+counters = []
+modules = {}
+
+def parseData(data):
+	try:
+		for line in data.split('\n'):
+			if not line:
+				continue
+			parsed_line = line.split(',')
+			counters.append(parsed_line)
+			if not modules.has_key(parsed_line[0]):
+				modules[parsed_line[0]] = {}
+			if not modules[parsed_line[0]].has_key(parsed_line[1]):
+				modules[parsed_line[0]][parsed_line[1]] = []
+			modules[parsed_line[0]][parsed_line[1]].append(parsed_line[2:])
+	except Exception as e:
+		logging.error("Cannot parse data. (%s)" % e)
+
+def genModuleGraph(name, data):
+	for i in "cpu", "in", "out":
+		if data.has_key(i):
+			for graphid in range(0, data[i].__len__()):
+				print "multigraph %s_%s%d" % (name, i, graphid)
+				if i == "cpu":
+					print 'graph_title %s %s' % (name, graph_title[i])
+				else:
+					print 'graph_title %s %s %d' % (name, graph_title[i], graphid)
+				print 'graph_vlabel %s' % vlabels[i]
+				print "graph_category nemea_supervisor"
+				graph = data[i][graphid]
+				if i == "cpu":
+					r = range(0, graph.__len__())
+				else:
+					r = range(0, graph.__len__()-1)
+				for statid in r:
+					print "stat%d.label %s" % (statid, labels[i][statid])
+					print "stat%d.type %s" % (statid, datatypes[i][statid])
+					if i == "cpu":
+						print "stat%d.min 0" % statid
+						print "stat%d.max 100" % statid
+
+				print ""
+
+
+def getTotalCPUConfiguration(modules):
+	sel_modules = []
+	for i in modules:
+		if modules[i].has_key("cpu"):
+			sel_modules.append(i)
+	if sel_modules:
+		print "multigraph nemea_modules_cpu"
+		print "graph_title CPU usage of Nemea modules"
+		print "graph_category nemea_supervisor"
+		print 'graph_vlabel %s' % vlabels["cpu"]
+		print "graph_info User CPU usage of all running and monitored modules."
+		for i in sel_modules:
+			print "%s.label %s" % (i, i.replace("_", " "))
+			print "%s.min 0" % i
+			print "%s.type GAUGE" % i
+			print "%s.draw AREASTACK" % i
+
+def getTotalCPUValues(modules):
+	sel_modules = []
+	for i in modules:
+		if modules[i].has_key("cpu"):
+			sel_modules.append(i)
+	if sel_modules:
+		print "multigraph nemea_modules_cpu"
+		for i in sel_modules:
+			print "%s.value %s" % (i, modules[i]["cpu"][0][1])
+
+def getConfiguration(modules):
+	getTotalCPUConfiguration(modules)
+	for module in modules:
+		genModuleGraph(module, modules[module])
+
+def getValues(modules):
+	getTotalCPUValues(modules)
+	for module in modules:
+		# iterate over Nemea modules
+		for cat in modules[module]:
+			# each Nemea module supplies some graphs, iterate over graphs
+			graphs = modules[module][cat]
+			for graphid in range(0, graphs.__len__()):
+				graph = graphs[graphid]
+				print "multigraph %s_%s%d" % (module, cat, graphid)
+				if cat == "cpu":
+					r = range(0, graph.__len__())
+					for val in r:
+						print "stat%s.value %d" % (val, abs(int(graph[val])))
+				else:
+					r = range(1, graph.__len__())
+					for val in r:
+						print "stat%s.value %d" % (val-1, abs(int(graph[val])))
+
+import sys
+if not data:
+	logging.error("Have no data.")
+	os.unlink(data_temp_file)
+	exit(1)
+
+parseData(data)
+if len(sys.argv) == 2 and sys.argv[1] == "autoconf":
+        print "yes"
+elif len(sys.argv) == 2 and sys.argv[1] == "config":
+	getConfiguration(modules)
+elif len(sys.argv) == 2 and sys.argv[1] == "suggest":
+	print ""
+else:
+	#values
+	getValues(modules)
+

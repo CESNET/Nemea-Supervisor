@@ -45,6 +45,7 @@
 #ifndef SUPERVISOR_H
 #define SUPERVISOR_H
 
+#include <inttypes.h>
 #include <time.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -107,7 +108,7 @@ typedef struct running_module_s {
    int            module_status; ///< Module status (TRUE ~ running, FALSE ~ stopped)
    int            sent_sigint;
    pid_t          module_pid; ///< Modules process PID.
-   int           *module_counters_array; ///< Array of statistics with counters.
+   uint64_t           *module_counters_array; ///< Array of statistics with counters.
    int            module_service_sd; ///< Socket descriptor of the service connection.
    int            module_number; ///< Index to running_modules array.
    int            module_modified_by_reload;
@@ -210,7 +211,7 @@ void interactive_show_running_modules_status();
 
 /** Function stops service thread and acceptor thread and frees allocated memory.
  */
-void supervisor_termination();
+void  supervisor_termination(int stop_all_modules, int generate_backup);
 
 char *get_param_by_delimiter(const char *source, char **dest, const char delimiter);
 
@@ -238,7 +239,7 @@ int service_get_data(int sd, int running_module_number);
  */
 void connect_to_module_service_ifc(int module, int num_ifc);
 
-void print_statistics_and_cpu_usage(struct tm * timeinfo);
+void print_statistics(struct tm * timeinfo);
 
 void print_statistics_legend();
 

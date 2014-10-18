@@ -46,7 +46,7 @@
 #define SUPERVISOR_API_H
 
 int 	supervisor_initialization(const int * argc, char ** argv);
-void 	supervisor_termination();
+void 	supervisor_termination(int stop_all_modules, int generate_backup);
 
 /*Interactive mode*/
 int 	interactive_get_option();
@@ -62,6 +62,10 @@ void 	interactive_run_temp_conf();
 
 /*NC API*/
 void reload_configuration();
+#ifdef nemea_plugin
+int nc_supervisor_initialization();
+xmlDocPtr nc_get_state_data();
+#endif
 
 #endif
 
