@@ -24,4 +24,4 @@ rpm-clean:
 else
 endif
 
-EXTRA_DIST=ncnemea/nemea-data.rng ncnemea/libtool ncnemea/nemea.c ncnemea/config.guess ncnemea/nemea.yang ncnemea/Makefile.in ncnemea/nemea-gdefs.rng ncnemea/config.sub ncnemea/paths_file ncnemea/aclocal.m4 ncnemea/ncnemea.h ncnemea/ltmain.sh ncnemea/nemea-schematron.xsl ncnemea/configure ncnemea/install-sh ncnemea/configure.in
+EXTRA_DIST += ncnemea/nemea-data.rng ncnemea/libtool ncnemea/nemea.c ncnemea/config.guess ncnemea/nemea.yang ncnemea/Makefile.in ncnemea/nemea-gdefs.rng ncnemea/config.sub ncnemea/paths_file ncnemea/aclocal.m4 ncnemea/ncnemea.h ncnemea/ltmain.sh ncnemea/nemea-schematron.xsl ncnemea/configure ncnemea/install-sh ncnemea/configure.in
