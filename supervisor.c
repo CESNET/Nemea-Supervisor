@@ -67,6 +67,7 @@
 #include <sys/ioctl.h>
 #include <net/if.h>
 #include <ifaddrs.h>
+#include <stdio_ext.h> // because of __fpurge(FILE * stream)
 
 #define TRAP_PARAM               "-i" ///< Interface parameter for libtrap
 #define DEFAULT_MAX_RESTARTS_PER_MINUTE  3  ///< Maximum number of module restarts per minute
@@ -77,6 +78,8 @@
 
 #define NC_DEFAULT_LOGSDIR_PATH "/tmp/supervisor_logs/"
 #define DEFAULT_BACKUP_FILE_PREFIX "sup_backup"
+
+#define RET_ERROR    -1
 
 /*******GLOBAL VARIABLES*******/
 running_module_t *   running_modules = NULL;  ///< Information about running modules
@@ -519,28 +522,106 @@ char **make_module_arguments(const int number_of_module)
    return params;
 }
 
-
-int get_number_from_input()
+char * get_input ()
 {
-   char buffer[1000];
-   memset(buffer,0,1000);
-   int ret_val = 0;
+   char * buffer = NULL,  * ret_val = NULL;
+   int buffer_len = 0;
 
-   if (fscanf(input_fd, "%s", buffer) == 0) {
-      return -1;
+   buffer = (char *) calloc (DEFAULT_SIZE_OF_BUFFER, sizeof(char));
+   ret_val = fgets(buffer, DEFAULT_SIZE_OF_BUFFER, input_fd);
+   if (ret_val == NULL) {
+      VERBOSE(N_STDOUT, "[WARNING] There is no input!\n");
+      free(buffer);
+      buffer = NULL;
+      return NULL;
    }
-   
-   if (strlen(buffer) > 2) {
-      return -1;
-   } else if ((strlen(buffer) == 2) && ((buffer[0] > '9' || buffer[0] < '1') || (buffer[1] > '9' || buffer[1] < '0'))) {
-      return -1;
-   } else if (!sscanf(buffer,"%d",&ret_val)) {
-      return -1;
+
+   buffer_len = strlen(buffer);
+   if (buffer_len >= 99) {
+      VERBOSE(N_STDOUT, "[WARNING] Too long and wrong input!\n");
+      free(buffer);
+      buffer = NULL;
+      __fpurge(input_fd);
+      return NULL;
+   } else {
+      if (buffer[buffer_len-1] == '\n') {
+         buffer[buffer_len-1] = 0;
+      }
+      return buffer;
    }
-   
-   return ret_val;
 }
 
+int get_number_from_input_choosing_option ()
+{
+   int option = 0;
+   char * input_p = NULL;
+
+   input_p = get_input();
+   if (input_p == NULL) {
+      return RET_ERROR;
+   } else if (strlen(input_p) == 1 && sscanf(input_p, "%d", &option) == 1 && option >= 0) {
+      free(input_p);
+      input_p = NULL;
+      return option;
+   } else {
+      free(input_p);
+      input_p = NULL;
+      return RET_ERROR;
+   }
+}
+
+/* Returns count of numbers in input (separated by commas) or -1 */
+int get_numbers_from_input_dis_enable_module(int ** array)
+{
+   int x = 0, module_nums_cnt = 0, is_num = FALSE;
+   int * module_nums = NULL;
+   char * input_p = NULL;
+
+   module_nums = (int *) calloc (50, sizeof(int));
+   input_p = get_input();
+
+   if (input_p == NULL) {
+      free(module_nums);
+      module_nums = NULL;
+      array = NULL;
+      return RET_ERROR;
+   } else {
+      for (x=0; x<strlen(input_p); x++) {
+         if (input_p[x] <= '9' && input_p[x] >= '0') {
+            is_num = TRUE;
+            module_nums[module_nums_cnt] *= 10;
+            module_nums[module_nums_cnt] += (input_p[x] - '0');
+         } else if (input_p[x] == ',') {
+            if (is_num == TRUE) {
+               is_num = FALSE;
+               module_nums_cnt++;
+            }
+            if (x == (strlen(input_p) -1)) {
+               VERBOSE(N_STDOUT, "[WARNING] Wrong input - comma at the end.\n");
+               free(module_nums);
+               module_nums = NULL;
+               array = NULL;
+               free(input_p);
+               input_p = NULL;
+               return RET_ERROR;
+            }
+         } else {
+            VERBOSE(N_STDOUT, "[WARNING] Wrong input - acceptable characters are digits and comma.\n");
+            free(module_nums);
+            module_nums = NULL;
+            array = NULL;
+            free(input_p);
+            input_p = NULL;
+            return RET_ERROR;
+         }
+      }
+
+      free(input_p);
+      input_p = NULL;
+      *array = module_nums;
+      return ++module_nums_cnt;
+   }
+}
 
 int interactive_get_option()
 {
@@ -556,7 +637,7 @@ int interactive_get_option()
    VERBOSE(N_STDOUT,"9. STOP SUPERVISOR\n");
    VERBOSE(N_STDOUT,"[INTERACTIVE] Your choice: ");
 
-   return get_number_from_input();
+   return get_number_from_input_choosing_option();
 }
 
 void init_module_variables(int module_number)
@@ -858,23 +939,31 @@ void interactive_stop_configuration()
 
 void interactive_set_module_enabled()
 {
+   int * modules_to_enable = NULL;
+   int x = 0, y = 0, modules_to_enable_cnt = 0;
+
    pthread_mutex_lock(&running_modules_lock);
-   VERBOSE(N_STDOUT,"[INTERACTIVE] Type in module number: ");
-   int x = get_number_from_input();
+   VERBOSE(N_STDOUT,"[INTERACTIVE] Type in module numbers (one number or more separated by comma): ");
+   modules_to_enable_cnt = get_numbers_from_input_dis_enable_module(&modules_to_enable);
 
-   if (x>=loaded_modules_cnt || x<0) {
-      VERBOSE(N_STDOUT,"[WARNING] Wrong input, type in 0 - %d.\n", loaded_modules_cnt-1);
-      pthread_mutex_unlock(&running_modules_lock);
-      return;
+   if (modules_to_enable_cnt != RET_ERROR) {
+      for (y=0; y<modules_to_enable_cnt; y++) {
+         x = modules_to_enable[y];
+         if (x>=loaded_modules_cnt || x<0) {
+            VERBOSE(N_STDOUT,"[WARNING] Number %d is not valid module number!\n", x);
+            continue;
+         } else if (running_modules[x].module_enabled == TRUE) {
+            VERBOSE(N_STDOUT,"[WARNING] Module %s is already enabled.\n", running_modules[x].module_name);
+         } else {
+            running_modules[x].module_enabled = TRUE;
+            running_modules[x].module_restart_cnt = -1;
+            VERBOSE(MODULE_EVENT, "%s [ENABLED] Module %s set to enabled.\n", get_stats_formated_time(), running_modules[x].module_name);
+         }
+      }
+      free(modules_to_enable);
+      modules_to_enable = NULL;
    }
 
-   if (running_modules[x].module_enabled) {
-      VERBOSE(N_STDOUT,"[WARNING] Module %s is already enabled.\n", running_modules[x].module_name);
-   } else {
-      running_modules[x].module_enabled = TRUE;
-      running_modules[x].module_restart_cnt = -1;
-      VERBOSE(MODULE_EVENT, "%s [ENABLED] Module %s set to enabled.\n", get_stats_formated_time(), running_modules[x].module_name);
-   }
    pthread_mutex_unlock(&running_modules_lock);
 }
 
@@ -928,7 +1017,8 @@ void service_stop_modules_sigkill()
 
 void interactive_stop_module()
 {
-   int x = 0, running_modules_counter = 0;
+   int x = 0, y = 0, running_modules_counter = 0, modules_to_stop_cnt = 0;
+   int * modules_to_stop = NULL;
    
    pthread_mutex_lock(&running_modules_lock);
    for (x=0;x<loaded_modules_cnt;x++) {
@@ -942,15 +1032,25 @@ void interactive_stop_module()
       pthread_mutex_unlock(&running_modules_lock);
       return;
    }
-   VERBOSE(N_STDOUT,"[INTERACTIVE] Type in number of module to kill: ");
-   x = get_number_from_input();
-   if (x>=loaded_modules_cnt || x<0) {
-      VERBOSE(N_STDOUT,"[WARNING] Wrong input, type in 0 - %d.\n", loaded_modules_cnt-1);
-      pthread_mutex_unlock(&running_modules_lock);
-      return;
-   } else {
-      running_modules[x].module_enabled = FALSE;
-      VERBOSE(MODULE_EVENT, "%s [DISABLED] Module %s set to disabled.\n", get_stats_formated_time(), running_modules[x].module_name);
+
+   VERBOSE(N_STDOUT,"[INTERACTIVE] Type in module numbers (one number or more separated by comma): ");
+   modules_to_stop_cnt = get_numbers_from_input_dis_enable_module(&modules_to_stop);
+
+   if (modules_to_stop_cnt != RET_ERROR) {
+      for (y=0; y<modules_to_stop_cnt; y++) {
+         x = modules_to_stop[y];
+         if (x>=loaded_modules_cnt || x<0) {
+            VERBOSE(N_STDOUT,"[WARNING] Number %d is not valid module number!\n", x);
+            continue;
+         } else if (running_modules[x].module_enabled == FALSE) {
+            VERBOSE(N_STDOUT,"[WARNING] Module %s is already disabled.\n", running_modules[x].module_name);
+         } else {
+            running_modules[x].module_enabled = FALSE;
+            VERBOSE(MODULE_EVENT, "%s [DISABLED] Module %s set to disabled.\n", get_stats_formated_time(), running_modules[x].module_name);
+         }
+      }
+      free(modules_to_stop);
+      modules_to_stop = NULL;
    }
    pthread_mutex_unlock(&running_modules_lock);
 }
@@ -1834,6 +1934,7 @@ void daemon_mode()
                   daemon_internals->client_connected = FALSE;
                }
                sscanf(buffer,"%d", &request);
+               __fpurge(input_fd);
 
                switch (request) {
                case 1:
