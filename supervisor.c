@@ -2946,7 +2946,7 @@ int reload_configuration(const int choice, xmlNodePtr node)
 void generate_backup_config_file()
 {
    modules_profile_t * ptr = first_profile_ptr;
-   int x, y, in_ifc_cnt, out_ifc_cnt;
+   int x, y, backuped_modules = 0;
    char buffer[20];
    const char * templ = "<?xml version=\"1.0\"?><nemea-supervisor xmlns=\"urn:cesnet:tmc:nemea:1.0\"></nemea-supervisor>";
    xmlDocPtr document_ptr = NULL;
@@ -2981,6 +2981,7 @@ void generate_backup_config_file()
       xmlFree(modules);
    }
 
+   // backup modules with profile name
    while (ptr != NULL) {
       if (ptr->profile_name != NULL) {
          modules = xmlNewChild(root_elem, NULL, BAD_CAST "modules", NULL);
@@ -3025,6 +3026,7 @@ void generate_backup_config_file()
                   if (xmlAddChild(modules, module) == NULL) {
                      xmlFree(module);
                   }
+                  backuped_modules++;
                }
             }
          }
@@ -3034,6 +3036,50 @@ void generate_backup_config_file()
          }
       }
       ptr = ptr->next;
+   }
+
+   //backup modules without profile name
+   if (backuped_modules < loaded_modules_cnt) {
+      modules = xmlNewChild(root_elem, NULL, BAD_CAST "modules", NULL);
+      for (x=0; x<loaded_modules_cnt; x++) {
+         if (running_modules[x].modules_profile == NULL) {
+            module = xmlNewChild(modules, NULL, BAD_CAST "module", NULL);
+
+            memset(buffer,0,20);
+            sprintf(buffer, "%d", running_modules[x].module_pid);
+            xmlNewProp (module, "module_pid", buffer);
+
+            xmlNewChild(module, NULL, BAD_CAST "name", running_modules[x].module_name);
+            xmlNewChild(module, NULL, BAD_CAST "path", running_modules[x].module_path);
+            xmlNewChild(module, NULL, BAD_CAST "params", running_modules[x].module_params);
+            if (running_modules[x].module_enabled) {
+               xmlNewChild(module, NULL, BAD_CAST "enabled", "true");
+            } else {
+               xmlNewChild(module, NULL, BAD_CAST "enabled", "false");
+            }
+            trapinterfaces = xmlNewChild(module, NULL, BAD_CAST "trapinterfaces", NULL);
+
+            for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
+               interface = xmlNewChild(trapinterfaces, NULL, BAD_CAST "interface", NULL);
+               xmlNewChild(interface, NULL, BAD_CAST "note", running_modules[x].module_ifces[y].ifc_note);
+               xmlNewChild(interface, NULL, BAD_CAST "params", running_modules[x].module_ifces[y].ifc_params);
+               xmlNewChild(interface, NULL, BAD_CAST "direction", running_modules[x].module_ifces[y].ifc_direction);
+               xmlNewChild(interface, NULL, BAD_CAST "type", running_modules[x].module_ifces[y].ifc_type);
+
+               if (xmlAddChild(trapinterfaces, interface) == NULL) {
+                  xmlFree(interface);
+               }
+            }
+
+            if (xmlAddChild(modules, module) == NULL) {
+               xmlFree(module);
+            }
+         }
+      }
+
+      if (xmlAddChild(root_elem, modules) == NULL) {
+         xmlFree(modules);
+      }
    }
 
    char file_name[100];
