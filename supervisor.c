@@ -1175,7 +1175,7 @@ void supervisor_termination(int stop_all_modules, int generate_backup)
       }
    }
 
-   if (daemon_mode && daemon_internals != NULL) {
+   if (daemon_flag && (daemon_internals != NULL)) {
       free_daemon_internals_variables();
       if (daemon_internals->daemon_sd > 0) {
          close(daemon_internals->daemon_sd);
