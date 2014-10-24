@@ -2178,9 +2178,9 @@ int reload_configuration(const int choice, xmlNodePtr node)
             if (!xmlStrcmp(module_ptr->name, BAD_CAST "verbose")) {
                key = xmlNodeListGetString(xml_tree, module_ptr->xmlChildrenNode, 1);
                if (key != NULL) {
-                  if (strcmp(key, "true") == 0) {
+                  if (xmlStrcmp(key, BAD_CAST "true") == 0) {
                      verbose_flag = TRUE;
-                  } else if (strcmp(key, "false") == 0) {
+                  } else if (xmlStrcmp(key, BAD_CAST "false") == 0) {
                      verbose_flag = FALSE;
                   }
                }
@@ -2196,13 +2196,12 @@ int reload_configuration(const int choice, xmlNodePtr node)
             } else if (!xmlStrcmp(module_ptr->name, BAD_CAST "logs-directory")) {
                key = xmlNodeListGetString(xml_tree, module_ptr->xmlChildrenNode, 1);
                if (key != NULL) {
-                  if (strcmp(key, logs_path) != 0) {
+                  if (xmlStrcmp(key, BAD_CAST logs_path) != 0) {
                      if (logs_path != NULL) {
                         free(logs_path);
                         logs_path = NULL;
                      }
-                     logs_path = (char *) calloc (strlen(key)+1, sizeof(char));
-                     strcpy(logs_path, key);
+                     logs_path = (char *) xmlStrdup(key);
                      create_output_dir();
                      create_output_files_strings();
                   }
@@ -2226,20 +2225,17 @@ int reload_configuration(const int choice, xmlNodePtr node)
                key = xmlNodeListGetString(xml_tree, module_ptr->xmlChildrenNode, 1);
                if (key != NULL) {
                   if (modules_got_profile) {
-                     actual_profile_ptr->profile_name = (char *) calloc (strlen(key)+1, sizeof(char));
-                     strcpy(actual_profile_ptr->profile_name, key);
+                     actual_profile_ptr->profile_name = (char *) xmlStrdup(key);
                   } else {
                      if (first_profile_ptr == NULL) {
                         first_profile_ptr = (modules_profile_t *) calloc (1, sizeof(modules_profile_t));
-                        first_profile_ptr->profile_name = (char *) calloc (strlen(key)+1, sizeof(char));
-                        strcpy(first_profile_ptr->profile_name, key);
+                        first_profile_ptr->profile_name = (char *) xmlStrdup(key);
                         first_profile_ptr->profile_enabled = TRUE;
                         first_profile_ptr->next = NULL;
                         actual_profile_ptr = first_profile_ptr;
                      } else {
                         modules_profile_t * ptr = (modules_profile_t *) calloc (1, sizeof(modules_profile_t));
-                        ptr->profile_name = (char *) calloc (strlen(key)+1, sizeof(char));
-                        strcpy(ptr->profile_name, key);
+                        ptr->profile_name = (char *) xmlStrdup(key);
                         ptr->profile_enabled = TRUE;
                         ptr->next = NULL;
                         actual_profile_ptr->next = ptr;
@@ -2256,7 +2252,7 @@ int reload_configuration(const int choice, xmlNodePtr node)
                key = xmlNodeListGetString(xml_tree, module_ptr->xmlChildrenNode, 1);
                if (key != NULL) {
                   if (modules_got_profile) {
-                     if (strcmp(key,"true") == 0) {
+                     if (xmlStrcmp(key, BAD_CAST "true") == 0) {
                         actual_profile_ptr->profile_enabled = TRUE;
                      } else {
                         actual_profile_ptr->profile_enabled = FALSE;
@@ -2274,7 +2270,7 @@ int reload_configuration(const int choice, xmlNodePtr node)
                         actual_profile_ptr->next = ptr;
                         actual_profile_ptr = ptr;
                      }
-                     if (strcmp(key,"true") == 0) {
+                     if (xmlStrcmp(key, BAD_CAST "true") == 0) {
                         actual_profile_ptr->profile_enabled = TRUE;
                      } else {
                         actual_profile_ptr->profile_enabled = FALSE;
@@ -2286,7 +2282,7 @@ int reload_configuration(const int choice, xmlNodePtr node)
                      key = NULL;
                   }
                }
-            } else if (!xmlStrcmp(module_ptr->name,BAD_CAST "module")) {
+            } else if (!xmlStrcmp(module_ptr->name, BAD_CAST "module")) {
                module_index = -1;
                memset(needed_tags,0,2*sizeof(int));
                //check allocated memory, if we dont have enough -> realloc
@@ -2312,7 +2308,7 @@ int reload_configuration(const int choice, xmlNodePtr node)
                module_atr = module_ptr->xmlChildrenNode;
                
                while (module_atr != NULL) {
-                  if ((!xmlStrcmp(module_atr->name,BAD_CAST "name"))) {
+                  if ((!xmlStrcmp(module_atr->name, BAD_CAST "name"))) {
                      key = xmlNodeListGetString(xml_tree, module_atr->xmlChildrenNode, 1);
                      if (key == NULL) {
                         module_ptr = module_ptr->next;
@@ -2331,7 +2327,7 @@ int reload_configuration(const int choice, xmlNodePtr node)
                         }
                      } else {
                         needed_tags[0]++;
-                        ret_val = find_loaded_module(key);
+                        ret_val = find_loaded_module((char *) key);
                         if (ret_val == -1) { // new module
                            module_index = loaded_modules_cnt;
                            modifying = FALSE;
@@ -2436,7 +2432,7 @@ int reload_configuration(const int choice, xmlNodePtr node)
                      key = xmlNodeListGetString(xml_tree, module_atr->xmlChildrenNode, 1);
                      if (modifying) {
                         if (running_modules[module_index].module_params != NULL && key != NULL) {
-                           if (strcmp(key, running_modules[module_index].module_params) != 0) {
+                           if (xmlStrcmp(key, BAD_CAST running_modules[module_index].module_params) != 0) {
                               running_modules[module_index].module_modified_by_reload = TRUE;
                               if (running_modules[module_index].module_params != NULL) {
                                  free(running_modules[module_index].module_params);
@@ -2485,15 +2481,14 @@ int reload_configuration(const int choice, xmlNodePtr node)
                      key = xmlNodeListGetString(xml_tree, module_atr->xmlChildrenNode, 1);
                      if (modifying) {
                         if (running_modules[module_index].module_name != NULL && key != NULL) {
-                           if (strcmp(key, running_modules[module_index].module_name) != 0) {
+                           if (xmlStrcmp(key, BAD_CAST running_modules[module_index].module_name) != 0) {
                               running_modules[module_index].module_modified_by_reload = TRUE;
                               if (running_modules[module_index].module_name != NULL) {
                                  free(running_modules[module_index].module_name);
                                  running_modules[module_index].module_name = NULL;
                               }
                               str_len = strlen((char *) key);
-                              running_modules[module_index].module_name = (char *) calloc (str_len+1, sizeof(char));
-                              strncpy(running_modules[module_index].module_name, (char *) key, str_len+1);
+                              running_modules[module_index].module_name = (char *) xmlStrdup(key);
                            }
                            if (key != NULL) {
                               xmlFree(key);
@@ -2504,8 +2499,7 @@ int reload_configuration(const int choice, xmlNodePtr node)
                         } else if (running_modules[module_index].module_name == NULL) {
                            running_modules[module_index].module_modified_by_reload = TRUE;
                            str_len = strlen((char *) key);
-                           running_modules[module_index].module_name = (char *) calloc (str_len+1, sizeof(char));
-                           strncpy(running_modules[module_index].module_name, (char *) key, str_len+1);
+                           running_modules[module_index].module_name = (char *) xmlStrdup(key);
                            if (key != NULL) {
                               xmlFree(key);
                               key = NULL;
@@ -2522,8 +2516,7 @@ int reload_configuration(const int choice, xmlNodePtr node)
                         running_modules[module_index].module_name = NULL;
                         } else {
                            str_len = strlen((char *) key);
-                           running_modules[module_index].module_name = (char *) calloc (str_len+1, sizeof(char));
-                           strncpy(running_modules[module_index].module_name, (char *) key, str_len+1);
+                           running_modules[module_index].module_name = (char *) xmlStrdup(key);
                            if (key != NULL) {
                               xmlFree(key);
                               key = NULL;
@@ -2534,15 +2527,14 @@ int reload_configuration(const int choice, xmlNodePtr node)
                      key = xmlNodeListGetString(xml_tree, module_atr->xmlChildrenNode, 1);
                      if (modifying) {
                         if (running_modules[module_index].module_path != NULL && key != NULL) {
-                           if (strcmp(key, running_modules[module_index].module_path) != 0) {
+                           if (xmlStrcmp(key, BAD_CAST running_modules[module_index].module_path) != 0) {
                               running_modules[module_index].module_modified_by_reload = TRUE;
                               if (running_modules[module_index].module_path != NULL) {
                                  free(running_modules[module_index].module_path);
                                  running_modules[module_index].module_path = NULL;
                               }
                               str_len = strlen((char *) key);
-                              running_modules[module_index].module_path = (char *) calloc (str_len+1, sizeof(char));
-                              strncpy(running_modules[module_index].module_path, (char *) key, str_len+1);
+                              running_modules[module_index].module_path = (char *) xmlStrdup(key);
                            }
                            if (key != NULL) {
                               xmlFree(key);
@@ -2553,8 +2545,7 @@ int reload_configuration(const int choice, xmlNodePtr node)
                         } else if (running_modules[module_index].module_path == NULL) {
                            running_modules[module_index].module_modified_by_reload = TRUE;
                            str_len = strlen((char *) key);
-                           running_modules[module_index].module_path = (char *) calloc (str_len+1, sizeof(char));
-                           strncpy(running_modules[module_index].module_path, (char *) key, str_len+1);
+                           running_modules[module_index].module_path = (char *) xmlStrdup(key);
                            if (key != NULL) {
                               xmlFree(key);
                               key = NULL;
@@ -2571,8 +2562,7 @@ int reload_configuration(const int choice, xmlNodePtr node)
                         running_modules[module_index].module_path = NULL;
                         } else {
                            str_len = strlen((char *) key);
-                           running_modules[module_index].module_path = (char *) calloc (str_len+1, sizeof(char));
-                           strncpy(running_modules[module_index].module_path, (char *) key, str_len+1);
+                           running_modules[module_index].module_path = (char *) xmlStrdup(key);
                            if (key != NULL) {
                               xmlFree(key);
                               key = NULL;
@@ -2625,7 +2615,7 @@ int reload_configuration(const int choice, xmlNodePtr node)
                                  key =xmlNodeListGetString(xml_tree, ifc_atr->xmlChildrenNode, 1);
                                  if (modifying) {
                                     if (running_modules[module_index].module_ifces[ifc_cnt].ifc_note != NULL && key != NULL) {
-                                       if (strcmp(key, running_modules[module_index].module_ifces[ifc_cnt].ifc_note) != 0) {
+                                       if (xmlStrcmp(key, BAD_CAST running_modules[module_index].module_ifces[ifc_cnt].ifc_note) != 0) {
                                           running_modules[module_index].module_modified_by_reload = TRUE;
                                           free_module_interfaces_on_index(module_index);
                                           ifc_cnt = -1;
@@ -2678,7 +2668,7 @@ int reload_configuration(const int choice, xmlNodePtr node)
                                  key =xmlNodeListGetString(xml_tree, ifc_atr->xmlChildrenNode, 1);
                                  if (modifying) {
                                     if (running_modules[module_index].module_ifces[ifc_cnt].ifc_type != NULL && key != NULL) {
-                                       if (strcmp(key, running_modules[module_index].module_ifces[ifc_cnt].ifc_type) != 0) {
+                                       if (xmlStrcmp(key, BAD_CAST running_modules[module_index].module_ifces[ifc_cnt].ifc_type) != 0) {
                                           running_modules[module_index].module_modified_by_reload = TRUE;
                                           free_module_interfaces_on_index(module_index);
                                           ifc_cnt = -1;
@@ -2731,7 +2721,7 @@ int reload_configuration(const int choice, xmlNodePtr node)
                                  key =xmlNodeListGetString(xml_tree, ifc_atr->xmlChildrenNode, 1);
                                  if (modifying) {
                                     if (running_modules[module_index].module_ifces[ifc_cnt].ifc_direction != NULL && key != NULL) {
-                                       if (strcmp(key, running_modules[module_index].module_ifces[ifc_cnt].ifc_direction) != 0) {
+                                       if (xmlStrcmp(key, BAD_CAST running_modules[module_index].module_ifces[ifc_cnt].ifc_direction) != 0) {
                                           running_modules[module_index].module_modified_by_reload = TRUE;
                                           free_module_interfaces_on_index(module_index);
                                           ifc_cnt = -1;
@@ -2784,7 +2774,7 @@ int reload_configuration(const int choice, xmlNodePtr node)
                                  key =xmlNodeListGetString(xml_tree, ifc_atr->xmlChildrenNode, 1);
                                  if (modifying) {
                                     if (running_modules[module_index].module_ifces[ifc_cnt].ifc_params != NULL && key != NULL) {
-                                       if (strcmp(key, running_modules[module_index].module_ifces[ifc_cnt].ifc_params) != 0) {
+                                       if (xmlStrcmp(key, BAD_CAST running_modules[module_index].module_ifces[ifc_cnt].ifc_params) != 0) {
                                           running_modules[module_index].module_modified_by_reload = TRUE;
                                           free_module_interfaces_on_index(module_index);
                                           ifc_cnt = -1;
