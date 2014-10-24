@@ -2316,11 +2316,12 @@ int reload_configuration(const int choice, xmlNodePtr node)
                            last_module = TRUE;
                            break;
                         } else {
+                           /* TODO revisit signess of module_index */
                            module_ptr = module_ptr->next;
-                           if ((module_index < original_loaded_modules_cnt) && (module_index != -1)) {
+                           if ((module_index < original_loaded_modules_cnt) && ((int) module_index != -1)) {
                               already_loaded_modules[module_index] = 0;               
                            }
-                           module_index = -1;
+                           module_index = (unsigned int) -1;
                            memset(needed_tags,0,2*sizeof(int));
                            module_atr = module_ptr->xmlChildrenNode;
                            continue;
