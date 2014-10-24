@@ -95,9 +95,9 @@ typedef struct running_module_s {
    char          *module_path; ///< Path to module from current directory
    interface_t   *module_ifces; ///< Array of interface_t structures with information about every loaded interface of module
    int            module_ifces_array_size; ///< Number of allocated interface_t structures by module.
-   int            module_ifces_cnt; ///< Number of modules loaded interfaces.
-   int            module_num_out_ifc; ///< Number of modules output interfaces.
-   int            module_num_in_ifc; ///< Number of modules input interfaces.
+   unsigned int   module_ifces_cnt; ///< Number of modules loaded interfaces.
+   unsigned int   module_num_out_ifc; ///< Number of modules output interfaces.
+   unsigned int   module_num_in_ifc; ///< Number of modules input interfaces.
    int            module_restart_timer;  ///< Timer used for monitoring max number of restarts/minute.
    int            module_restart_cnt; ///< Number of module restarts.
    int            module_max_restarts_per_minute;

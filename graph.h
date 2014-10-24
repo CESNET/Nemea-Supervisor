@@ -71,8 +71,8 @@ struct graph_node_input_interface_s {
 struct graph_node_output_interface_s {
    interface_t            *ifc_struct; ///< Pointer to interface_t structure of running_module_t struct.
    graph_node_t           *parent_node; ///< Pointer to parent node.
-   int                     message_counter; ///< Sent messages counter of this node output interface.
-   int                     node_children_counter; ///< Node children counter.
+   unsigned int                   message_counter; ///< Sent messages counter of this node output interface.
+   unsigned int                   node_children_counter; ///< Node children counter.
    graph_node_input_interface_t **node_children; ///< Array of connected node input interfaces of another nodes (node children).
    int                     node_interface_port; ///< Port of this node interface.
    char *                  unix_sock_interface_port;
@@ -82,12 +82,12 @@ struct graph_node_output_interface_s {
 /** Structure representing one module in graph structure. */
 struct graph_node_s {
    void                          *module_data; ///< Pointer to running_module_t structure of module represented by this node.
-   int                            module_number; ///< Index to running_modules array.
+   unsigned int                   module_number; ///< Index to running_modules array.
    graph_node_t *                 next_node; ///< Pointer to next node.
-   graph_node_input_interface_t   *node_input_interfaces; ///< Array of node input interfaces structures.
-   graph_node_output_interface_t  *node_output_interfaces; ///< Array of node output interfaces structures.
-   int                     num_node_input_interfaces; ///< Number of node input interfaces structures.
-   int                     num_node_output_interfaces; ///< Number of node output interface structures.
+   graph_node_input_interface_t  *node_input_interfaces; ///< Array of node input interfaces structures.
+   graph_node_output_interface_t *node_output_interfaces; ///< Array of node output interfaces structures.
+   unsigned int                   num_node_input_interfaces; ///< Number of node input interfaces structures.
+   unsigned int                   num_node_output_interfaces; ///< Number of node output interface structures.
 };
 
 /***********FUNCTIONS***********/

@@ -59,7 +59,7 @@ NC_EDIT_ERROPT_TYPE erropt = NC_EDIT_ERROPT_NOTSET;
 
  * @return EXIT_SUCCESS or EXIT_FAILURE
  */
-int transapi_init(xmlDocPtr * running)
+int transapi_init(xmlDocPtr * running __attribute__ ((unused)))
 {
 	nc_supervisor_initialization();
 	VERBOSE(N_STDOUT,"-- Transapi init --\n");
@@ -84,8 +84,8 @@ void transapi_close(void)
  * @param[out] err  Double pointer to error structure. Fill error when some occurs.
  * @return State data as libxml2 xmlDocPtr or NULL in case of error.
  */
-xmlDocPtr get_state_data(xmlDocPtr model, xmlDocPtr running,
-			 struct nc_err ** err)
+xmlDocPtr get_state_data(xmlDocPtr model __attribute__ ((unused)), xmlDocPtr running __attribute__ ((unused)),
+			 struct nc_err ** err __attribute__ ((unused)))
 {
 	return nc_get_state_data();
 }
@@ -115,14 +115,14 @@ char *namespace_mapping[] = { "nemea", "urn:cesnet:tmc:nemea:1.0", NULL, NULL };
 /* !DO NOT ALTER FUNCTION SIGNATURE! */
 int
 callback_nemea_nemea_supervisor_nemea_modules_nemea_module_nemea_enabled(void
-									 **data,
+									 **data __attribute__ ((unused)),
 									 XMLDIFF_OP
-									 op,
+									 op __attribute__ ((unused)),
 									 xmlNodePtr
-									 node,
+									 node __attribute__ ((unused)),
 									 struct
 									 nc_err
-									 **error)
+									 **error __attribute__ ((unused)))
 {
 	// if (output_file_stream != NULL) {
 	// 	fprintf(output_file_stream, "Nemea plugin callback> callback_nemea_nemea_supervisor_nemea_modules_nemea_module_nemea_enabled\n");
@@ -187,11 +187,11 @@ callback_nemea_nemea_supervisor_nemea_modules_nemea_module_nemea_enabled(void
  * @return EXIT_SUCCESS or EXIT_FAILURE
  */
 /* !DO NOT ALTER FUNCTION SIGNATURE! */
-int callback_nemea_nemea_supervisor_nemea_modules_nemea_module(void **data,
-							       XMLDIFF_OP op,
-							       xmlNodePtr node,
+int callback_nemea_nemea_supervisor_nemea_modules_nemea_module(void **data __attribute__ ((unused)),
+							       XMLDIFF_OP op __attribute__ ((unused)),
+							       xmlNodePtr node __attribute__ ((unused)),
 							       struct nc_err
-							       **error)
+							       **error __attribute__ ((unused)))
 {
 	return EXIT_SUCCESS;
 }
@@ -207,9 +207,9 @@ int callback_nemea_nemea_supervisor_nemea_modules_nemea_module(void **data,
  * @return EXIT_SUCCESS or EXIT_FAILURE
  */
 /* !DO NOT ALTER FUNCTION SIGNATURE! */
-int callback_nemea_nemea_supervisor_nemea_modules(void **data, XMLDIFF_OP op,
-						  xmlNodePtr node,
-						  struct nc_err **error)
+int callback_nemea_nemea_supervisor_nemea_modules(void **data __attribute__ ((unused)), XMLDIFF_OP op __attribute__ ((unused)),
+						  xmlNodePtr node __attribute__ ((unused)),
+						  struct nc_err **error __attribute__ ((unused)))
 {
 	return EXIT_SUCCESS;
 }
@@ -225,8 +225,8 @@ int callback_nemea_nemea_supervisor_nemea_modules(void **data, XMLDIFF_OP op,
  * @return EXIT_SUCCESS or EXIT_FAILURE
  */
 /* !DO NOT ALTER FUNCTION SIGNATURE! */
-int callback_nemea_nemea_supervisor(void **data, XMLDIFF_OP op, xmlNodePtr node,
-				    struct nc_err **error)
+int callback_nemea_nemea_supervisor(void **data __attribute__ ((unused)), XMLDIFF_OP op __attribute__ ((unused)), xmlNodePtr node,
+				    struct nc_err **error __attribute__ ((unused)))
 {
 	VERBOSE(N_STDOUT, "Callback supervisor... \n");
 	reload_configuration(RELOAD_CALLBACK_ROOT_ELEM, node);
