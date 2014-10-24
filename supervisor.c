@@ -1374,19 +1374,19 @@ void print_statistics(struct tm * timeinfo)
          if (running_modules[x].module_has_service_ifc && running_modules[x].module_service_ifc_isconnected) {
             VERBOSE(STATISTICS,"CNT_RM:  ");
             for (y=0; y<running_modules[x].module_num_in_ifc; y++) {
-               VERBOSE(STATISTICS,"%llu  ", running_modules[x].module_counters_array[y]);
+               VERBOSE(STATISTICS,"%"PRIu64"  ", running_modules[x].module_counters_array[y]);
             }
             VERBOSE(STATISTICS,"CNT_SM:  ");
             for (y=0; y<running_modules[x].module_num_out_ifc; y++) {
-               VERBOSE(STATISTICS,"%llu  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc]);
+               VERBOSE(STATISTICS,"%"PRIu64"  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc]);
             }
             VERBOSE(STATISTICS,"CNT_SB:  ");
             for (y=0; y<running_modules[x].module_num_out_ifc; y++) {
-               VERBOSE(STATISTICS,"%llu  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc + running_modules[x].module_num_out_ifc]);
+               VERBOSE(STATISTICS,"%"PRIu64"  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc + running_modules[x].module_num_out_ifc]);
             }
             VERBOSE(STATISTICS,"CNT_AF:  ");
             for (y=0; y<running_modules[x].module_num_out_ifc; y++) {
-               VERBOSE(STATISTICS,"%llu  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc + 2*running_modules[x].module_num_out_ifc]);
+               VERBOSE(STATISTICS,"%"PRIu64"  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc + 2*running_modules[x].module_num_out_ifc]);
             }
          }
          VERBOSE(STATISTICS,"\n");
@@ -1553,7 +1553,7 @@ char * make_formated_statistics()
          for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
             if(running_modules[x].module_ifces[y].ifc_direction != NULL) {
                if(strcmp(running_modules[x].module_ifces[y].ifc_direction, "IN") == 0) {
-                  ptr += sprintf(buffer + ptr, "%s,in,%d,%llu\n", running_modules[x].module_name, counter, running_modules[x].module_counters_array[counter]);
+                  ptr += sprintf(buffer + ptr, "%s,in,%d,%"PRIu64"\n", running_modules[x].module_name, counter, running_modules[x].module_counters_array[counter]);
                   counter++;
                   if (strlen(buffer) >= (3*size_of_buffer)/5) {
                      size_of_buffer += size_of_buffer/2;
@@ -1567,7 +1567,7 @@ char * make_formated_statistics()
          for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
             if(running_modules[x].module_ifces[y].ifc_direction != NULL) {
                if(strcmp(running_modules[x].module_ifces[y].ifc_direction, "OUT") == 0) {
-                  ptr += sprintf(buffer + ptr, "%s,out,%d,%llu,%llu,%llu\n", running_modules[x].module_name, counter, running_modules[x].module_counters_array[counter + running_modules[x].module_num_in_ifc],
+                  ptr += sprintf(buffer + ptr, "%s,out,%d,%"PRIu64",%"PRIu64",%"PRIu64"\n", running_modules[x].module_name, counter, running_modules[x].module_counters_array[counter + running_modules[x].module_num_in_ifc],
                                                                            running_modules[x].module_counters_array[counter + running_modules[x].module_num_in_ifc + running_modules[x].module_num_out_ifc],
                                                                            running_modules[x].module_counters_array[counter + running_modules[x].module_num_in_ifc + 2*running_modules[x].module_num_out_ifc]);
                   counter++;  
