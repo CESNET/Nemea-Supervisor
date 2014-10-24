@@ -45,10 +45,10 @@
 #include "graph.h"
 #include "internal.h"
 
-graph_node_t * add_graph_node (graph_node_t * first, graph_node_t * last, void * data)
+graph_node_t * add_graph_node (graph_node_t * first, graph_node_t * last __attribute__ ((unused)), void * data)
 {
    graph_node_t * node_ptr = NULL;
-   int x = 0, y = 0, z = 0;
+   unsigned int x = 0, y = 0, z = 0;
    char buffer[100];
    memset(buffer,0,100);
    int num_clients = 0;
@@ -148,7 +148,7 @@ void update_graph_values(graph_node_t * first)
       return;
    }
 
-   int x;
+   unsigned int x;
    graph_node_t * node_ptr = first;
    running_module_t * running_module = NULL;
 
@@ -175,7 +175,7 @@ void generate_graph_code(graph_node_t * first)
    }
 
    running_module_t * running_module = NULL;
-   int x,y;
+   unsigned int x, y;
    graph_node_t * node_ptr = first;
    FILE * fd = fopen(graph_code_file_path, "w");
 
@@ -272,7 +272,7 @@ void generate_picture()
 void show_picture()
 {
 #if (HAVE_DOT == 1 && HAVE_DISPLAY == 1)
-   int result = 0, status = 0;
+   int status = 0;
    int pid_dot, pid_display;
    int pipe2[2];
 
@@ -340,7 +340,7 @@ void destroy_graph(graph_node_t * first)
       return;
    }
 
-   int x;
+   unsigned int x;
    graph_node_t * node_ptr = first;
 
    while (node_ptr != NULL) {
@@ -376,7 +376,7 @@ void destroy_graph(graph_node_t * first)
 
 void check_port_duplicates(graph_node_t * first)
 {
-   int x, y;
+   unsigned int x, y;
    graph_node_t * node_ptr = first;
    graph_node_t * iter_node_ptr = NULL;
 

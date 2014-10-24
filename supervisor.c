@@ -81,8 +81,8 @@
 /*******GLOBAL VARIABLES*******/
 running_module_t *   running_modules = NULL;  ///< Information about running modules
 
-int         running_modules_array_size = 0;  ///< Current size of running_modules array.
-int         loaded_modules_cnt = 0; ///< Current number of loaded modules.
+unsigned int         running_modules_array_size = 0;  ///< Current size of running_modules array.
+unsigned int         loaded_modules_cnt = 0; ///< Current number of loaded modules.
 
 pthread_mutex_t running_modules_lock; ///< mutex for locking counters
 int         service_thread_continue = FALSE; ///< condition variable of main loop of the service_thread
@@ -246,7 +246,7 @@ char * get_stats_formated_time()
 
 void interactive_show_available_modules ()
 {
-   int x,y = 0;
+   unsigned int x,y = 0;
    VERBOSE(N_STDOUT,"[PRINTING CONFIGURATION]\n");
 
    for (x=0; x < loaded_modules_cnt; x++) {
@@ -261,12 +261,12 @@ void interactive_show_available_modules ()
 
 char **make_module_arguments(const int number_of_module)
 {
-   int size_of_atr = DEFAULT_SIZE_OF_BUFFER;
+   unsigned int size_of_atr = DEFAULT_SIZE_OF_BUFFER;
    char * atr = (char *) calloc (size_of_atr, sizeof(char));
-   int x = 0, y = 0;
+   unsigned int x = 0, y = 0;
    int ptr = 0;
    int str_len = 0;
-   int params_counter = 0;
+   unsigned int params_counter = 0;
    char ** params = NULL;
 
    //binary without libtrap interfaces
@@ -279,10 +279,10 @@ char **make_module_arguments(const int number_of_module)
          strncpy(params[0],running_modules[number_of_module].module_name, str_len+1);
          params[1] = NULL;
       } else {
-         int size_of_buffer = DEFAULT_SIZE_OF_BUFFER;
+         unsigned int size_of_buffer = DEFAULT_SIZE_OF_BUFFER;
          char * buffer = (char *) calloc (size_of_buffer, sizeof(char));
          int num_module_params = 0;
-         int module_params_length = strlen(running_modules[number_of_module].module_params);
+         unsigned int module_params_length = strlen(running_modules[number_of_module].module_params);
          
          for (x=0; x<module_params_length; x++) {
             if (running_modules[number_of_module].module_params[x] == 32) {
@@ -453,10 +453,10 @@ char **make_module_arguments(const int number_of_module)
 
       params[3] = NULL;
    } else {
-      int size_of_buffer = DEFAULT_SIZE_OF_BUFFER;
+      unsigned int size_of_buffer = DEFAULT_SIZE_OF_BUFFER;
       char * buffer = (char *) calloc (size_of_buffer, sizeof(char));
       int num_module_params = 0;
-      int module_params_length = strlen(running_modules[number_of_module].module_params);
+      unsigned int module_params_length = strlen(running_modules[number_of_module].module_params);
       
       for (x=0; x<module_params_length; x++) {
          if (running_modules[number_of_module].module_params[x] == 32) {
@@ -649,7 +649,7 @@ void re_start_module(const int module_number)
 // returns TRUE if some module is running, else FALSE
 int service_update_module_status()
 {
-   int x, some_module_running = FALSE;
+   unsigned int x, some_module_running = FALSE;
 
    for (x=0; x<loaded_modules_cnt; x++) {
       if (running_modules[x].module_pid > 0) {
@@ -682,7 +682,8 @@ int service_update_module_status()
 void service_clean_after_children()
 {
    pid_t result;
-   int x, status;
+   unsigned int x;
+   int status;
 
    for (x=0; x<loaded_modules_cnt; x++) {
       if (running_modules[x].module_pid > 0 && running_modules[x].module_is_my_child) {   
@@ -738,7 +739,8 @@ void supervisor_signal_handler(int catched_signal)
 
 int supervisor_initialization(int *argc, char **argv)
 {
-   int y = 0, ret_val = 0;
+   unsigned int y = 0;
+   int ret_val = 0;
 
    init_time_info = get_sys_time();
    service_stop_all_modules = FALSE;
@@ -776,7 +778,7 @@ int supervisor_initialization(int *argc, char **argv)
    loaded_modules_cnt = 0;
    running_modules_array_size = RUNNING_MODULES_ARRAY_START_SIZE;
    running_modules = (running_module_t *) calloc (running_modules_array_size,sizeof(running_module_t));
-   for (y=0;y<running_modules_array_size;y++) {
+   for (y=0; y<running_modules_array_size; y++) {
       running_modules[y].module_ifces = (interface_t *) calloc(IFCES_ARRAY_START_SIZE, sizeof(interface_t));
       running_modules[y].module_running = FALSE;
       running_modules[y].module_ifces_array_size = IFCES_ARRAY_START_SIZE;
@@ -831,7 +833,7 @@ void interactive_start_configuration()
 {
    pthread_mutex_lock(&running_modules_lock);
    VERBOSE(MODULE_EVENT,"%s [START] Starting configuration...\n", get_stats_formated_time());
-   int x = 0;
+   unsigned int x = 0;
    for (x=0; x<loaded_modules_cnt; x++) {
       if (running_modules[x].module_enabled == FALSE) {
          running_modules[x].module_restart_cnt = -1;
@@ -844,7 +846,7 @@ void interactive_start_configuration()
 
 void interactive_stop_configuration()
 {
-   int x = 0;
+   unsigned int x = 0;
    pthread_mutex_lock(&running_modules_lock);
    VERBOSE(MODULE_EVENT,"%s [STOP] Stopping configuration...\n", get_stats_formated_time());
    for (x=0; x<loaded_modules_cnt; x++) {
@@ -858,11 +860,13 @@ void interactive_stop_configuration()
 
 void interactive_set_module_enabled()
 {
+   int number;
    pthread_mutex_lock(&running_modules_lock);
    VERBOSE(N_STDOUT,"[INTERACTIVE] Type in module number: ");
-   int x = get_number_from_input();
+   number = get_number_from_input();
+   unsigned int x = (unsigned int) number;
 
-   if (x>=loaded_modules_cnt || x<0) {
+   if ((x >= loaded_modules_cnt) || (number < 0)) {
       VERBOSE(N_STDOUT,"[WARNING] Wrong input, type in 0 - %d.\n", loaded_modules_cnt-1);
       pthread_mutex_unlock(&running_modules_lock);
       return;
@@ -880,7 +884,7 @@ void interactive_set_module_enabled()
 
 void service_stop_modules_sigint()
 {
-   int x;
+   unsigned int x;
    for (x=0; x<loaded_modules_cnt; x++) {
       if (running_modules[x].module_status && running_modules[x].module_enabled == FALSE && running_modules[x].sent_sigint == FALSE) {
          #ifdef nemea_plugin
@@ -897,7 +901,7 @@ void service_stop_modules_sigkill()
 {
    char * dest_port = NULL;
    char buffer[DEFAULT_SIZE_OF_BUFFER];
-   int x, y;
+   unsigned int x, y;
    for (x=0; x<loaded_modules_cnt; x++) {
       if (running_modules[x].module_status && running_modules[x].module_enabled == FALSE && running_modules[x].sent_sigint == TRUE) {
          VERBOSE(MODULE_EVENT, "%s [STOP] Stopping module %s... sending SIGKILL\n", get_stats_formated_time(), running_modules[x].module_name);
@@ -928,7 +932,8 @@ void service_stop_modules_sigkill()
 
 void interactive_stop_module()
 {
-   int x = 0, running_modules_counter = 0;
+   unsigned int x = 0, running_modules_counter = 0;
+   int number;
    
    pthread_mutex_lock(&running_modules_lock);
    for (x=0;x<loaded_modules_cnt;x++) {
@@ -943,8 +948,9 @@ void interactive_stop_module()
       return;
    }
    VERBOSE(N_STDOUT,"[INTERACTIVE] Type in number of module to kill: ");
-   x = get_number_from_input();
-   if (x>=loaded_modules_cnt || x<0) {
+   number = get_number_from_input();
+   x = (unsigned int) number;
+   if ((x>=loaded_modules_cnt) || (number<0)) {
       VERBOSE(N_STDOUT,"[WARNING] Wrong input, type in 0 - %d.\n", loaded_modules_cnt-1);
       pthread_mutex_unlock(&running_modules_lock);
       return;
@@ -958,7 +964,8 @@ void interactive_stop_module()
 
 void service_restart_modules()
 {
-   int x = 0, max_restarts = 0;
+   unsigned int x = 0;
+   int max_restarts = 0;
    for (x=0; x<loaded_modules_cnt; x++) {
       if (++running_modules[x].module_restart_timer == 30) {
          running_modules[x].module_restart_timer = 0;
@@ -985,7 +992,7 @@ void service_restart_modules()
 
 void interactive_show_running_modules_status()
 {
-   int x = 0;
+   unsigned int x = 0;
    if (loaded_modules_cnt == 0) {
       VERBOSE(N_STDOUT,"[WARNING] No module is loaded.\n");
       return;
@@ -1059,7 +1066,7 @@ void free_daemon_internals_variables()
 
 void supervisor_termination(int stop_all_modules, int generate_backup)
 {
-   int x, y;
+   unsigned int x, y;
 
    if (stop_all_modules == TRUE) {
       interactive_stop_configuration();
@@ -1075,7 +1082,7 @@ void supervisor_termination(int stop_all_modules, int generate_backup)
 
    if (x == 0) {
       VERBOSE(N_STDOUT, "%s [SERVICE] pthread_join success: Service thread finished!\n", get_stats_formated_time())
-   } else if (x == -1) {
+   } else if (((int) x) == -1) {
       if (errno == EINVAL) {
          VERBOSE(N_STDOUT, "%s [ERROR] pthread_join: Not joinable thread!\n", get_stats_formated_time());
       } else if (errno == ESRCH) {
@@ -1088,7 +1095,7 @@ void supervisor_termination(int stop_all_modules, int generate_backup)
    if (generate_backup == TRUE) {
       generate_backup_config_file();
    } else {
-      for (x=0; x<loaded_modules_cnt; x++) {
+      for (x=0; ((unsigned int) x)<loaded_modules_cnt; x++) {
          if (running_modules[x].module_status == TRUE) {
             VERBOSE(N_STDOUT, "%s [WARNING] Some modules are still running, gonna generate backup anyway!\n", get_stats_formated_time());
             generate_backup_config_file();
@@ -1097,7 +1104,7 @@ void supervisor_termination(int stop_all_modules, int generate_backup)
       }
    }
 
-   for (x=0;x<loaded_modules_cnt;x++) {
+   for (x=0; ((unsigned int) x)<loaded_modules_cnt;x++) {
       if (running_modules[x].module_running && running_modules[x].module_counters_array != NULL) {
          free(running_modules[x].module_counters_array);
          running_modules[x].module_counters_array = NULL;
@@ -1235,7 +1242,8 @@ long int get_total_cpu_usage()
 
 void update_module_cpu_usage(long int * last_total_cpu_usage)
 {
-   int utime = 0, stime = 0, x = 0;
+   int utime = 0, stime = 0;
+   unsigned int x = 0;
    FILE * proc_stat_fd = NULL;
    char path[20];
    memset(path,0,20);
@@ -1244,7 +1252,7 @@ void update_module_cpu_usage(long int * last_total_cpu_usage)
 
    *last_total_cpu_usage = new_total_cpu_usage;
 
-   for (x=0;x<loaded_modules_cnt;x++) {
+   for (x=0; x<loaded_modules_cnt; x++) {
       if (running_modules[x].module_status) {
          sprintf(path,"/proc/%d/stat",running_modules[x].module_pid);
          proc_stat_fd = fopen(path,"r");
@@ -1356,7 +1364,7 @@ void connect_to_module_service_ifc(int module, int num_ifc)
 
 void print_statistics(struct tm * timeinfo)
 {
-   int x = 0, y = 0;
+   unsigned int x = 0, y = 0;
    VERBOSE(STATISTICS,"------> %s", asctime(timeinfo));
    for (x=0;x<loaded_modules_cnt;x++) {
       if (running_modules[x].module_status) {
@@ -1400,11 +1408,11 @@ void print_statistics_legend()
                         "\tCNT_AF - autoflush counter of one trap interface (OUTPUT IFC)\n");
 }
 
-void *service_thread_routine(void* arg)
+void *service_thread_routine(void *arg __attribute__ ((unused)))
 {
    int some_module_running = FALSE;
    int sizeof_intptr = 4;
-   int x,y;
+   unsigned int x,y;
 
    time_t rawtime;
    struct tm * timeinfo;
@@ -1534,9 +1542,9 @@ void *service_thread_routine(void* arg)
 
 char * make_formated_statistics()
 {
-   int size_of_buffer = 5*DEFAULT_SIZE_OF_BUFFER;
+   unsigned int size_of_buffer = 5*DEFAULT_SIZE_OF_BUFFER;
    char * buffer = (char *) calloc (size_of_buffer, sizeof(char));
-   int x, y, counter = 0;
+   unsigned int x, y, counter = 0;
    int ptr = 0;
 
    for (x=0; x<loaded_modules_cnt; x++) {
@@ -1601,7 +1609,6 @@ int parse_arguments(int *argc, char **argv)
 {
    char c;
    while (1) {
-      int this_option_optind = optind ? optind : 1;
       int option_index = 0;
       static struct option long_options[] = {
          {"daemon", no_argument, 0, 'd'},
@@ -1937,7 +1944,7 @@ void daemon_mode()
 
 int find_loaded_module(char * name)
 {
-   int x;
+   unsigned int x;
    for (x=0; x<loaded_modules_cnt; x++) {
       if (strcmp(running_modules[x].module_name, name) == 0) {
          return x;
@@ -1948,7 +1955,7 @@ int find_loaded_module(char * name)
 
 void free_module_on_index(int index)
 {
-   int y;
+   unsigned int y;
    for (y=0; y<running_modules[index].module_ifces_cnt; y++) {
          if (running_modules[index].module_ifces[y].ifc_note != NULL) {
             free(running_modules[index].module_ifces[y].ifc_note);
@@ -1987,7 +1994,7 @@ void free_module_on_index(int index)
 
 void free_module_interfaces_on_index(int index)
 {
-   int y;
+   unsigned int y;
    for (y=0; y<running_modules[index].module_ifces_cnt; y++) {
       if (running_modules[index].module_ifces[y].ifc_note != NULL) {
          free(running_modules[index].module_ifces[y].ifc_note);
@@ -2015,12 +2022,13 @@ int reload_configuration(const int choice, xmlNodePtr node)
    int modules_got_profile;
    int needed_tags[2];
    int inserted_modules = 0, removed_modules = 0, modified_modules = 0;
-   int x = 0, y = 0;
+   unsigned int x = 0, y = 0;
+   int number = 0;
    int ret_val = 0;
-   int module_index = 0;
+   unsigned int module_index = 0;
    int modifying = 0;
    int original_module_ifc_cnt = 0, new_module_ifc_cnt = 0;
-   int original_loaded_modules_cnt = loaded_modules_cnt;
+   unsigned int original_loaded_modules_cnt = loaded_modules_cnt;
    int already_loaded_modules[loaded_modules_cnt];
    memset(already_loaded_modules, 0, loaded_modules_cnt*sizeof(int));
    int str_len = 0;
@@ -2180,7 +2188,8 @@ int reload_configuration(const int choice, xmlNodePtr node)
                key = xmlNodeListGetString(xml_tree, module_ptr->xmlChildrenNode, 1);
                if (key != NULL) {
                   x = 0;
-                  if ((sscanf(key,"%d",&x) == 1) && (x >= 0)) {
+                  if ((sscanf((const char *) key,"%d",&number) == 1) && (number >= 0)) {
+                     x = (unsigned int) number;
                      max_restarts_per_minute_config = x;
                   }
                }
@@ -2341,10 +2350,10 @@ int reload_configuration(const int choice, xmlNodePtr node)
                            break;
                         } else {
                            module_ptr = module_ptr->next;
-                           if ((module_index < original_loaded_modules_cnt) && (module_index != -1)) {
+                           if ((module_index < original_loaded_modules_cnt) && ((int) module_index != -1)) {
                               already_loaded_modules[module_index] = 0;               
                            }
-                           module_index = -1;
+                           module_index = (unsigned int) -1;
                            memset(needed_tags,0,2*sizeof(int));
                            module_atr = module_ptr->xmlChildrenNode;
                            continue;
@@ -2369,7 +2378,7 @@ int reload_configuration(const int choice, xmlNodePtr node)
                   key = NULL;
                }
                if ((needed_tags[0] != 1) || (needed_tags[1] != 1)) {
-                  if ((module_index < original_loaded_modules_cnt) && (module_index != -1)) {
+                  if ((module_index < original_loaded_modules_cnt) && ((int) module_index != -1)) {
                      already_loaded_modules[module_index] = 0;               
                   }
                   module_ptr = module_ptr->next;
@@ -2381,7 +2390,7 @@ int reload_configuration(const int choice, xmlNodePtr node)
                }
 
                // get modules pid from <module> element if it exists
-               key = xmlGetProp(module_ptr, "module_pid");
+               key = xmlGetProp(module_ptr, BAD_CAST "module_pid");
                if (key != NULL) {
                   running_modules[module_index].module_pid = atoi((char *) key);
                   xmlFree(key);
@@ -2395,13 +2404,13 @@ int reload_configuration(const int choice, xmlNodePtr node)
                      if (key == NULL) {
                         running_modules[module_index].module_enabled = FALSE;
                      } else {
-                        if (strncmp(key, "true", strlen(key)) == 0 && running_modules[module_index].module_enabled == FALSE) {
+                        if (xmlStrncmp(key, BAD_CAST "true", xmlStrlen(key)) == 0 && running_modules[module_index].module_enabled == FALSE) {
                            running_modules[module_index].module_enabled = TRUE;
                            running_modules[module_index].module_restart_cnt = -1;
                            if (modifying) {
                               running_modules[module_index].module_modified_by_reload = TRUE;
                            }
-                        } else if (strncmp(key, "false", strlen(key)) == 0 && running_modules[module_index].module_enabled == TRUE){
+                        } else if (xmlStrncmp(key, BAD_CAST "false", xmlStrlen(key)) == 0 && running_modules[module_index].module_enabled == TRUE){
                            running_modules[module_index].module_enabled = FALSE;
                            if (modifying) {
                               running_modules[module_index].module_modified_by_reload = TRUE;
@@ -2416,7 +2425,8 @@ int reload_configuration(const int choice, xmlNodePtr node)
                      key = xmlNodeListGetString(xml_tree, module_atr->xmlChildrenNode, 1);
                      if (key != NULL) {
                         x = 0;
-                        if ((sscanf(key,"%d",&x) == 1) && (x >= 0)) {
+                        if ((sscanf((char *) key,"%d",&number) == 1) && (number >= 0)) {
+                           x = (unsigned int) number;
                            running_modules[module_index].module_max_restarts_per_minute = x;
                         }
                         xmlFree(key);
@@ -2946,7 +2956,7 @@ int reload_configuration(const int choice, xmlNodePtr node)
 void generate_backup_config_file()
 {
    modules_profile_t * ptr = first_profile_ptr;
-   int x, y, in_ifc_cnt, out_ifc_cnt;
+   unsigned int x, y;
    char buffer[20];
    const char * templ = "<?xml version=\"1.0\"?><nemea-supervisor xmlns=\"urn:cesnet:tmc:nemea:1.0\"></nemea-supervisor>";
    xmlDocPtr document_ptr = NULL;
@@ -2957,25 +2967,25 @@ void generate_backup_config_file()
       return;
    }
    root_elem = xmlDocGetRootElement(document_ptr);
-   xmlNewProp (root_elem, "lock", NULL);
+   xmlNewProp (root_elem, BAD_CAST "lock", NULL);
    if (daemon_flag) {
-      xmlNewProp (root_elem, "daemon", "true");
-      xmlNewProp (root_elem, "socket_path", socket_path);
+      xmlNewProp (root_elem, BAD_CAST "daemon", BAD_CAST "true");
+      xmlNewProp (root_elem, BAD_CAST "socket_path", BAD_CAST socket_path);
    } else {
-      xmlNewProp (root_elem, "daemon", "false");
-      xmlNewProp (root_elem, "socket_path", NULL);
+      xmlNewProp (root_elem, BAD_CAST "daemon", BAD_CAST "false");
+      xmlNewProp (root_elem, BAD_CAST "socket_path", BAD_CAST NULL);
    }
 
-   modules = xmlNewChild(root_elem, NULL, BAD_CAST "supervisor", NULL);
+   modules = xmlNewChild(root_elem, NULL, BAD_CAST "supervisor", BAD_CAST NULL);
    if (verbose_flag) {
-      xmlNewChild(modules, NULL, BAD_CAST "verbose", "true");
+      xmlNewChild(modules, NULL, BAD_CAST "verbose", BAD_CAST "true");
    } else {
-      xmlNewChild(modules, NULL, BAD_CAST "verbose", "false");
+      xmlNewChild(modules, NULL, BAD_CAST "verbose", BAD_CAST "false");
    }
    memset(buffer,0,20);
    sprintf(buffer, "%d", max_restarts_per_minute_config);
-   xmlNewChild(modules, NULL, BAD_CAST "module-restarts", buffer);
-   xmlNewChild(modules, NULL, BAD_CAST "logs-directory", logs_path);
+   xmlNewChild(modules, NULL, BAD_CAST "module-restarts", BAD_CAST buffer);
+   xmlNewChild(modules, NULL, BAD_CAST "logs-directory", BAD_CAST logs_path);
 
    if (xmlAddChild(root_elem, modules) == NULL) {
       xmlFree(modules);
@@ -2984,11 +2994,11 @@ void generate_backup_config_file()
    while (ptr != NULL) {
       if (ptr->profile_name != NULL) {
          modules = xmlNewChild(root_elem, NULL, BAD_CAST "modules", NULL);
-         xmlNewChild(modules, NULL, BAD_CAST "name", ptr->profile_name);
+         xmlNewChild(modules, NULL, BAD_CAST "name", BAD_CAST ptr->profile_name);
          if (ptr->profile_enabled) {
-            xmlNewChild(modules, NULL, BAD_CAST "enabled", "true");
+            xmlNewChild(modules, NULL, BAD_CAST "enabled", BAD_CAST "true");
          } else {
-            xmlNewChild(modules, NULL, BAD_CAST "enabled", "false");
+            xmlNewChild(modules, NULL, BAD_CAST "enabled", BAD_CAST "false");
          }
          for (x=0; x<loaded_modules_cnt; x++) {
             if (running_modules[x].modules_profile != NULL) {
@@ -2997,24 +3007,24 @@ void generate_backup_config_file()
 
                   memset(buffer,0,20);
                   sprintf(buffer, "%d", running_modules[x].module_pid);
-                  xmlNewProp (module, "module_pid", buffer);
+                  xmlNewProp (module, BAD_CAST "module_pid", BAD_CAST buffer);
 
-                  xmlNewChild(module, NULL, BAD_CAST "name", running_modules[x].module_name);
-                  xmlNewChild(module, NULL, BAD_CAST "path", running_modules[x].module_path);
-                  xmlNewChild(module, NULL, BAD_CAST "params", running_modules[x].module_params);
+                  xmlNewChild(module, NULL, BAD_CAST "name", BAD_CAST running_modules[x].module_name);
+                  xmlNewChild(module, NULL, BAD_CAST "path", BAD_CAST running_modules[x].module_path);
+                  xmlNewChild(module, NULL, BAD_CAST "params", BAD_CAST running_modules[x].module_params);
                   if (running_modules[x].module_enabled) {
-                     xmlNewChild(module, NULL, BAD_CAST "enabled", "true");
+                     xmlNewChild(module, NULL, BAD_CAST "enabled", BAD_CAST "true");
                   } else {
-                     xmlNewChild(module, NULL, BAD_CAST "enabled", "false");
+                     xmlNewChild(module, NULL, BAD_CAST "enabled", BAD_CAST "false");
                   }
                   trapinterfaces = xmlNewChild(module, NULL, BAD_CAST "trapinterfaces", NULL);
 
                   for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
                      interface = xmlNewChild(trapinterfaces, NULL, BAD_CAST "interface", NULL);
-                     xmlNewChild(interface, NULL, BAD_CAST "note", running_modules[x].module_ifces[y].ifc_note);
-                     xmlNewChild(interface, NULL, BAD_CAST "params", running_modules[x].module_ifces[y].ifc_params);
-                     xmlNewChild(interface, NULL, BAD_CAST "direction", running_modules[x].module_ifces[y].ifc_direction);
-                     xmlNewChild(interface, NULL, BAD_CAST "type", running_modules[x].module_ifces[y].ifc_type);
+                     xmlNewChild(interface, NULL, BAD_CAST "note", BAD_CAST running_modules[x].module_ifces[y].ifc_note);
+                     xmlNewChild(interface, NULL, BAD_CAST "params", BAD_CAST running_modules[x].module_ifces[y].ifc_params);
+                     xmlNewChild(interface, NULL, BAD_CAST "direction", BAD_CAST running_modules[x].module_ifces[y].ifc_direction);
+                     xmlNewChild(interface, NULL, BAD_CAST "type", BAD_CAST running_modules[x].module_ifces[y].ifc_type);
 
                      if (xmlAddChild(trapinterfaces, interface) == NULL) {
                         xmlFree(interface);
@@ -3073,7 +3083,7 @@ void generate_backup_config_file()
 #ifdef nemea_plugin
 int nc_supervisor_initialization()
 {
-   int y = 0;
+   unsigned int y = 0;
 
    init_time_info = get_sys_time();
    service_stop_all_modules = FALSE;
@@ -3143,7 +3153,7 @@ int nc_supervisor_initialization()
    return 0;
 }
 
-void * nc_clients_thread_routine(void* arg)
+void * nc_clients_thread_routine(void *arg __attribute__((unused)))
 {
    union tcpip_socket_addr addr;
    struct addrinfo *p;
@@ -3164,13 +3174,13 @@ void * nc_clients_thread_routine(void* arg)
    if (p == NULL) {
       // if we got here, it means we didn't get bound
       VERBOSE(N_STDOUT,"selectserver: failed to bind");
-      return;
+      pthread_exit(NULL);
    }
    // listen
    if (listen(socket_sd, 0) == -1) {
       //perror("listen");
       VERBOSE(N_STDOUT,"Listen failed");
-      return;
+      pthread_exit(NULL);
    }
 
 
@@ -3180,7 +3190,7 @@ void * nc_clients_thread_routine(void* arg)
 
 xmlDocPtr nc_get_state_data()
 {
-   int x, y, in_ifc_cnt, out_ifc_cnt;
+   unsigned int x, y, in_ifc_cnt, out_ifc_cnt;
    char buffer[20];
    const char *templ = "<?xml version=\"1.0\"?><nemea-supervisor xmlns=\"urn:cesnet:tmc:nemea:1.0\"><modules/></nemea-supervisor>";
    xmlDocPtr resp = NULL;
@@ -3198,20 +3208,20 @@ xmlDocPtr nc_get_state_data()
       for (x = 0; x < loaded_modules_cnt; x++) {
          memset(buffer,0,20);
          module = xmlNewChild(modules, NULL, BAD_CAST "module", NULL);
-         xmlNewChild(module, NULL, BAD_CAST "name", running_modules[x].module_name);
+         xmlNewChild(module, NULL, BAD_CAST "name", BAD_CAST running_modules[x].module_name);
 
          if (running_modules[x].module_status == TRUE) {
-            xmlNewChild(module, NULL, BAD_CAST "running", "true");
+            xmlNewChild(module, NULL, BAD_CAST "running", BAD_CAST "true");
          } else {
-            xmlNewChild(module, NULL, BAD_CAST "running", "false");
+            xmlNewChild(module, NULL, BAD_CAST "running", BAD_CAST "false");
          }
 
          if (running_modules[x].module_restart_cnt < 0) {
             sprintf(buffer,"%d",0);
-            xmlNewChild(module, NULL, BAD_CAST "restart-counter", buffer);
+            xmlNewChild(module, NULL, BAD_CAST "restart-counter", BAD_CAST buffer);
          } else {
             sprintf(buffer,"%d",running_modules[x].module_restart_cnt);
-            xmlNewChild(module, NULL, BAD_CAST "restart-counter", buffer);
+            xmlNewChild(module, NULL, BAD_CAST "restart-counter", BAD_CAST buffer);
          }
 
          if (running_modules[x].module_has_service_ifc && running_modules[x].module_status) {
@@ -3221,23 +3231,23 @@ xmlDocPtr nc_get_state_data()
             for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
                if (running_modules[x].module_ifces[y].ifc_direction != NULL) {
                   interface = xmlNewChild(trapinterfaces, NULL, BAD_CAST "interface", NULL);
-                  xmlNewChild(interface, NULL, BAD_CAST "type", running_modules[x].module_ifces[y].ifc_type);
-                  xmlNewChild(interface, NULL, BAD_CAST "params", running_modules[x].module_ifces[y].ifc_params);
+                  xmlNewChild(interface, NULL, BAD_CAST "type", BAD_CAST running_modules[x].module_ifces[y].ifc_type);
+                  xmlNewChild(interface, NULL, BAD_CAST "params", BAD_CAST running_modules[x].module_ifces[y].ifc_params);
                   if (strcmp(running_modules[x].module_ifces[y].ifc_direction, "IN") == 0) {
                      memset(buffer,0,20);
-                     sprintf(buffer,"%llu",running_modules[x].module_counters_array[in_ifc_cnt]);
-                     xmlNewChild(interface, NULL, BAD_CAST "recv-msg-cnt", buffer);
+                     snprintf(buffer, 20, "%"PRIu64,running_modules[x].module_counters_array[in_ifc_cnt]);
+                     xmlNewChild(interface, NULL, BAD_CAST "recv-msg-cnt", BAD_CAST buffer);
                      in_ifc_cnt++;
-                  } else if (strcmp(running_modules[x].module_ifces[y].ifc_direction, "OUT") == 0) {
+                  } else if (xmlStrcmp(BAD_CAST running_modules[x].module_ifces[y].ifc_direction, BAD_CAST "OUT") == 0) {
                      memset(buffer,0,20);
-                     sprintf(buffer,"%llu",running_modules[x].module_counters_array[running_modules[x].module_num_in_ifc + out_ifc_cnt]);
-                     xmlNewChild(interface, NULL, BAD_CAST "sent-msg-cnt", buffer);
+                     sprintf(buffer,"%"PRIu64,running_modules[x].module_counters_array[running_modules[x].module_num_in_ifc + out_ifc_cnt]);
+                     xmlNewChild(interface, NULL, BAD_CAST "sent-msg-cnt", BAD_CAST buffer);
                      memset(buffer,0,20);
-                     sprintf(buffer,"%llu",running_modules[x].module_counters_array[running_modules[x].module_num_in_ifc + running_modules[x].module_num_out_ifc + out_ifc_cnt]);
-                     xmlNewChild(interface, NULL, BAD_CAST "sent-buffer-cnt", buffer);
+                     sprintf(buffer,"%"PRIu64,running_modules[x].module_counters_array[running_modules[x].module_num_in_ifc + running_modules[x].module_num_out_ifc + out_ifc_cnt]);
+                     xmlNewChild(interface, NULL, BAD_CAST "sent-buffer-cnt", BAD_CAST buffer);
                      memset(buffer,0,20);
-                     sprintf(buffer,"%llu",running_modules[x].module_counters_array[running_modules[x].module_num_in_ifc + 2*running_modules[x].module_num_out_ifc + out_ifc_cnt]);
-                     xmlNewChild(interface, NULL, BAD_CAST "autoflush-cnt", buffer);
+                     sprintf(buffer,"%"PRIu64,running_modules[x].module_counters_array[running_modules[x].module_num_in_ifc + 2*running_modules[x].module_num_out_ifc + out_ifc_cnt]);
+                     xmlNewChild(interface, NULL, BAD_CAST "autoflush-cnt", BAD_CAST buffer);
                      in_ifc_cnt++;
                   }
                }
