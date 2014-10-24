@@ -621,8 +621,6 @@ int get_numbers_from_input_dis_enable_module(int ** array)
       *array = module_nums;
       return ++module_nums_cnt;
    }
-   
-   return ret_val;
 }
 
 
@@ -969,13 +967,6 @@ void interactive_set_module_enabled()
       modules_to_enable = NULL;
    }
 
-   if (running_modules[x].module_enabled) {
-      VERBOSE(N_STDOUT,"[WARNING] Module %s is already enabled.\n", running_modules[x].module_name);
-   } else {
-      running_modules[x].module_enabled = TRUE;
-      running_modules[x].module_restart_cnt = -1;
-      VERBOSE(MODULE_EVENT, "%s [ENABLED] Module %s set to enabled.\n", get_stats_formated_time(), running_modules[x].module_name);
-   }
    pthread_mutex_unlock(&running_modules_lock);
 }
 
@@ -2133,7 +2124,7 @@ int reload_configuration(const int choice, xmlNodePtr node)
    unsigned int x = 0, y = 0;
    int number = 0;
    int ret_val = 0;
-   unsigned int module_index = 0;
+   int module_index = 0;
    int modifying = 0;
    int original_module_ifc_cnt = 0, new_module_ifc_cnt = 0;
    unsigned int original_loaded_modules_cnt = loaded_modules_cnt;
@@ -2426,10 +2417,10 @@ int reload_configuration(const int choice, xmlNodePtr node)
                         } else {
                            /* TODO revisit signess of module_index */
                            module_ptr = module_ptr->next;
-                           if ((module_index < original_loaded_modules_cnt) && ((int) module_index != -1)) {
+                           if ((module_index < original_loaded_modules_cnt) && ( module_index != -1)) {
                               already_loaded_modules[module_index] = 0;               
                            }
-                           module_index = (unsigned int) -1;
+                           module_index = -1;
                            memset(needed_tags,0,2*sizeof(int));
                            module_atr = module_ptr->xmlChildrenNode;
                            continue;
@@ -2455,10 +2446,10 @@ int reload_configuration(const int choice, xmlNodePtr node)
                            break;
                         } else {
                            module_ptr = module_ptr->next;
-                           if ((module_index < original_loaded_modules_cnt) && ((int) module_index != -1)) {
+                           if ((module_index < original_loaded_modules_cnt) && ( module_index != -1)) {
                               already_loaded_modules[module_index] = 0;               
                            }
-                           module_index = (unsigned int) -1;
+                           module_index = -1;
                            memset(needed_tags,0,2*sizeof(int));
                            module_atr = module_ptr->xmlChildrenNode;
                            continue;
@@ -2483,7 +2474,7 @@ int reload_configuration(const int choice, xmlNodePtr node)
                   key = NULL;
                }
                if ((needed_tags[0] != 1) || (needed_tags[1] != 1)) {
-                  if ((module_index < original_loaded_modules_cnt) && ((int) module_index != -1)) {
+                  if ((module_index < original_loaded_modules_cnt) && (module_index != -1)) {
                      already_loaded_modules[module_index] = 0;               
                   }
                   module_ptr = module_ptr->next;
@@ -3055,7 +3046,7 @@ int reload_configuration(const int choice, xmlNodePtr node)
 void generate_backup_config_file()
 {
    modules_profile_t * ptr = first_profile_ptr;
-   int x, y, backuped_modules = 0;
+   unsigned int x, y, backuped_modules = 0;
    char buffer[20];
    const char * templ = "<?xml version=\"1.0\"?><nemea-supervisor xmlns=\"urn:cesnet:tmc:nemea:1.0\"></nemea-supervisor>";
    xmlDocPtr document_ptr = NULL;
