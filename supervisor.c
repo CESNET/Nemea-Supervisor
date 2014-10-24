@@ -1694,7 +1694,7 @@ int daemon_init()
    umask(0);
    sid = setsid();
    if (sid < 0) {
-      VERBOSE(N_STDOUT,"%s [ERROR] Setsid: calling process is process group leader!\n");
+      VERBOSE(N_STDOUT,"[ERROR] Setsid: calling process is process group leader!\n");
       exit(EXIT_FAILURE);
    }
 
