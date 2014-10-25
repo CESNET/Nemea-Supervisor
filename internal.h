@@ -65,6 +65,14 @@
 #define DAEMON_STATS_MODE_CODE 		456987
 #define DAEMON_RELOAD_MODE_CODE 	115599
 
+#define ANSI_RED     		"\x1b[31m"
+#define ANSI_RED_BOLD     	"\x1b[31;1m"
+#define ANSI_CYAN 		"\x1b[36m"
+#define ANSI_CYAN_BOLD    	"\x1b[36;1m"
+#define ANSI_YELLOW  	"\x1b[33m"
+#define ANSI_YELLOW_BOLD  	"\x1b[33;1m"
+#define ANSI_ATTR_RESET   	"\x1b[0m"
+
 extern char * statistics_file_path;
 extern char * module_event_file_path;
 extern char * supervisor_log_file_path;

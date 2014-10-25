@@ -88,7 +88,7 @@ int main (int argc, char * argv [])
          break;
 
       default:
-         VERBOSE(N_STDOUT,"[WARNING] Wrong input.\n");
+         VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Wrong input.\n" ANSI_ATTR_RESET);
          break;
       }
    }

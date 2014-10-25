@@ -253,10 +253,16 @@ void interactive_show_available_modules ()
    VERBOSE(N_STDOUT,"[PRINTING CONFIGURATION]\n");
 
    for (x=0; x < loaded_modules_cnt; x++) {
-      VERBOSE(N_STDOUT,"%c%d_%s:  PATH:%s  PARAMS:%s\n", (running_modules[x].module_enabled == 0 ? ' ' : '*'), x, running_modules[x].module_name, running_modules[x].module_path, running_modules[x].module_params);
+      VERBOSE(N_STDOUT,"%c%d_%s:  PATH:%s  PARAMS:%s  PROFILE:%s\n", (running_modules[x].module_enabled == 0 ? ' ' : '*'), x, running_modules[x].module_name,
+                                                                                                                                    (running_modules[x].module_path == NULL ? "none" : running_modules[x].module_path),
+                                                                                                                                    (running_modules[x].module_params == NULL ? "none" : running_modules[x].module_params),
+                                                                                                                                    (running_modules[x].modules_profile == NULL ? "none" : running_modules[x].modules_profile));
       
       for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
-         VERBOSE(N_STDOUT,"\tIFC%d:  %s;%s;%s;%s\n", y, running_modules[x].module_ifces[y].ifc_direction, running_modules[x].module_ifces[y].ifc_type, running_modules[x].module_ifces[y].ifc_params, running_modules[x].module_ifces[y].ifc_note);
+         VERBOSE(N_STDOUT,"\tIFC%d:  %s;%s;%s;%s\n", y, (running_modules[x].module_ifces[y].ifc_direction == NULL ? "none" : running_modules[x].module_ifces[y].ifc_direction),
+                                                                                                (running_modules[x].module_ifces[y].ifc_type == NULL ? "none" : running_modules[x].module_ifces[y].ifc_type),
+                                                                                                (running_modules[x].module_ifces[y].ifc_params == NULL ? "none" : running_modules[x].module_ifces[y].ifc_params),
+                                                                                                (running_modules[x].module_ifces[y].ifc_note == NULL ? "none" : running_modules[x].module_ifces[y].ifc_note));
       }
    }
 }
@@ -530,7 +536,7 @@ char * get_input ()
    buffer = (char *) calloc (DEFAULT_SIZE_OF_BUFFER, sizeof(char));
    ret_val = fgets(buffer, DEFAULT_SIZE_OF_BUFFER, input_fd);
    if (ret_val == NULL) {
-      VERBOSE(N_STDOUT, "[WARNING] There is no input!\n");
+      VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] There is no input!\n" ANSI_ATTR_RESET);
       free(buffer);
       buffer = NULL;
       return NULL;
@@ -538,7 +544,7 @@ char * get_input ()
 
    buffer_len = strlen(buffer);
    if (buffer_len >= 99) {
-      VERBOSE(N_STDOUT, "[WARNING] Too long and wrong input!\n");
+      VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Too long and wrong input!\n" ANSI_ATTR_RESET);
       free(buffer);
       buffer = NULL;
       __fpurge(input_fd);
@@ -597,7 +603,7 @@ int get_numbers_from_input_dis_enable_module(int ** array)
                module_nums_cnt++;
             }
             if (x == (strlen(input_p) -1)) {
-               VERBOSE(N_STDOUT, "[WARNING] Wrong input - comma at the end.\n");
+               VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Wrong input - comma at the end.\n" ANSI_ATTR_RESET);
                free(module_nums);
                module_nums = NULL;
                array = NULL;
@@ -606,7 +612,7 @@ int get_numbers_from_input_dis_enable_module(int ** array)
                return RET_ERROR;
             }
          } else {
-            VERBOSE(N_STDOUT, "[WARNING] Wrong input - acceptable characters are digits and comma.\n");
+            VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Wrong input - acceptable characters are digits and comma.\n" ANSI_ATTR_RESET);
             free(module_nums);
             module_nums = NULL;
             array = NULL;
@@ -626,17 +632,17 @@ int get_numbers_from_input_dis_enable_module(int ** array)
 
 int interactive_get_option()
 {
-   VERBOSE(N_STDOUT,"--------OPTIONS--------\n");
-   VERBOSE(N_STDOUT,"1. START ALL MODULES\n");
-   VERBOSE(N_STDOUT,"2. STOP ALL MODULES\n");
-   VERBOSE(N_STDOUT,"3. START MODULE\n");
-   VERBOSE(N_STDOUT,"4. STOP MODULE\n");
-   VERBOSE(N_STDOUT,"5. STARTED MODULES STATUS\n");
-   VERBOSE(N_STDOUT,"6. AVAILABLE MODULES\n");
-   VERBOSE(N_STDOUT,"7. SHOW GRAPH\n");
-   VERBOSE(N_STDOUT,"8. RELOAD CONFIGURATION\n");
-   VERBOSE(N_STDOUT,"9. STOP SUPERVISOR\n");
-   VERBOSE(N_STDOUT,"[INTERACTIVE] Your choice: ");
+   VERBOSE(N_STDOUT, ANSI_CYAN_BOLD "--------OPTIONS--------\n" ANSI_ATTR_RESET);
+   VERBOSE(N_STDOUT, ANSI_CYAN "1. START ALL MODULES\n");
+   VERBOSE(N_STDOUT, "2. STOP ALL MODULES\n");
+   VERBOSE(N_STDOUT, "3. START MODULE\n");
+   VERBOSE(N_STDOUT, "4. STOP MODULE\n");
+   VERBOSE(N_STDOUT, "5. STARTED MODULES STATUS\n");
+   VERBOSE(N_STDOUT, "6. AVAILABLE MODULES\n");
+   VERBOSE(N_STDOUT, "7. SHOW GRAPH\n");
+   VERBOSE(N_STDOUT, "8. RELOAD CONFIGURATION\n");
+   VERBOSE(N_STDOUT, "9. STOP SUPERVISOR\n" ANSI_ATTR_RESET);
+   VERBOSE(N_STDOUT, ANSI_YELLOW_BOLD "[INTERACTIVE] Your choice: " ANSI_ATTR_RESET);
 
    return get_number_from_input_choosing_option();
 }
@@ -946,17 +952,17 @@ void interactive_set_module_enabled()
    int x = 0, y = 0, modules_to_enable_cnt = 0;
 
    pthread_mutex_lock(&running_modules_lock);
-   VERBOSE(N_STDOUT,"[INTERACTIVE] Type in module numbers (one number or more separated by comma): ");
+   VERBOSE(N_STDOUT, ANSI_YELLOW_BOLD "[INTERACTIVE] Type in module numbers (one number or more separated by comma): " ANSI_ATTR_RESET);
    modules_to_enable_cnt = get_numbers_from_input_dis_enable_module(&modules_to_enable);
 
    if (modules_to_enable_cnt != RET_ERROR) {
       for (y=0; y<modules_to_enable_cnt; y++) {
          x = modules_to_enable[y];
          if (x>=loaded_modules_cnt || x<0) {
-            VERBOSE(N_STDOUT,"[WARNING] Number %d is not valid module number!\n", x);
+            VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Number %d is not valid module number!\n" ANSI_ATTR_RESET, x);
             continue;
          } else if (running_modules[x].module_enabled == TRUE) {
-            VERBOSE(N_STDOUT,"[WARNING] Module %s is already enabled.\n", running_modules[x].module_name);
+            VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Module %s is already enabled.\n" ANSI_ATTR_RESET, running_modules[x].module_name);
          } else {
             running_modules[x].module_enabled = TRUE;
             running_modules[x].module_restart_cnt = -1;
@@ -1031,22 +1037,22 @@ void interactive_stop_module()
       }
    }
    if (running_modules_counter == 0) {
-      VERBOSE(N_STDOUT,"[WARNING] All modules are stopped.\n");
+      VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] All modules are stopped.\n" ANSI_ATTR_RESET);
       pthread_mutex_unlock(&running_modules_lock);
       return;
    }
 
-   VERBOSE(N_STDOUT,"[INTERACTIVE] Type in module numbers (one number or more separated by comma): ");
+   VERBOSE(N_STDOUT, ANSI_YELLOW_BOLD "[INTERACTIVE] Type in module numbers (one number or more separated by comma): " ANSI_ATTR_RESET);
    modules_to_stop_cnt = get_numbers_from_input_dis_enable_module(&modules_to_stop);
 
    if (modules_to_stop_cnt != RET_ERROR) {
       for (y=0; y<modules_to_stop_cnt; y++) {
          x = modules_to_stop[y];
          if (x>=loaded_modules_cnt || x<0) {
-            VERBOSE(N_STDOUT,"[WARNING] Number %d is not valid module number!\n", x);
+            VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Number %d is not valid module number!\n" ANSI_ATTR_RESET, x);
             continue;
          } else if (running_modules[x].module_enabled == FALSE) {
-            VERBOSE(N_STDOUT,"[WARNING] Module %s is already disabled.\n", running_modules[x].module_name);
+            VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Module %s is already disabled.\n" ANSI_ATTR_RESET, running_modules[x].module_name);
          } else {
             running_modules[x].module_enabled = FALSE;
             VERBOSE(MODULE_EVENT, "%s [DISABLED] Module %s set to disabled.\n", get_stats_formated_time(), running_modules[x].module_name);
@@ -1091,7 +1097,7 @@ void interactive_show_running_modules_status()
 {
    unsigned int x = 0;
    if (loaded_modules_cnt == 0) {
-      VERBOSE(N_STDOUT,"[WARNING] No module is loaded.\n");
+      VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] No module is loaded.\n" ANSI_ATTR_RESET);
       return;
    }
    for (x=0; x<loaded_modules_cnt; x++) {
@@ -1384,7 +1390,7 @@ void generate_periodic_picture()
 void interactive_show_graph()
 {
    if (graph_first_node == NULL) {
-      VERBOSE(N_STDOUT,"[WARNING] No module loaded.\n");
+      VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] No module loaded.\n" ANSI_ATTR_RESET);
       return;
    }
    show_picture();
@@ -2003,22 +2009,22 @@ void daemon_mode()
                   break;
                }
                default:
-                  VERBOSE(N_STDOUT, "[WARNING] Wrong input!\n");
+                  VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Wrong input!\n" ANSI_ATTR_RESET);
                   break;
                }
                if (!(daemon_internals->daemon_terminated) && daemon_internals->client_connected) {
-                  VERBOSE(N_STDOUT,"--------OPTIONS--------\n");
-                  VERBOSE(N_STDOUT,"1. START ALL MODULES\n");
-                  VERBOSE(N_STDOUT,"2. STOP ALL MODULES\n");
-                  VERBOSE(N_STDOUT,"3. START MODULE\n");
-                  VERBOSE(N_STDOUT,"4. STOP MODULE\n");
-                  VERBOSE(N_STDOUT,"5. STARTED MODULES STATUS\n");
-                  VERBOSE(N_STDOUT,"6. AVAILABLE MODULES\n");
-                  VERBOSE(N_STDOUT,"7. SHOW GRAPH\n");
-                  VERBOSE(N_STDOUT,"8. RELOAD CONFIGURATION\n");
-                  VERBOSE(N_STDOUT,"-- Type \"Cquit\" to exit client --\n");
-                  VERBOSE(N_STDOUT,"-- Type \"Dstop\" to stop daemon --\n");
-                  VERBOSE(N_STDOUT,"[INTERACTIVE] Your choice: ");
+                  VERBOSE(N_STDOUT, ANSI_CYAN_BOLD "--------OPTIONS--------\n" ANSI_ATTR_RESET);
+                  VERBOSE(N_STDOUT, ANSI_CYAN "1. START ALL MODULES\n");
+                  VERBOSE(N_STDOUT, "2. STOP ALL MODULES\n");
+                  VERBOSE(N_STDOUT, "3. START MODULE\n");
+                  VERBOSE(N_STDOUT, "4. STOP MODULE\n");
+                  VERBOSE(N_STDOUT, "5. STARTED MODULES STATUS\n");
+                  VERBOSE(N_STDOUT, "6. AVAILABLE MODULES\n");
+                  VERBOSE(N_STDOUT, "7. SHOW GRAPH\n");
+                  VERBOSE(N_STDOUT, "8. RELOAD CONFIGURATION\n");
+                  VERBOSE(N_STDOUT, "-- Type \"Cquit\" to exit client --\n");
+                  VERBOSE(N_STDOUT, "-- Type \"Dstop\" to stop daemon --\n" ANSI_ATTR_RESET);
+                  VERBOSE(N_STDOUT, ANSI_YELLOW_BOLD "[INTERACTIVE] Your choice: " ANSI_ATTR_RESET);
 
                   fsync(daemon_internals->client_input_stream_fd);
                   memset(buffer,0,1000);
@@ -2185,12 +2191,12 @@ int reload_configuration(const int choice, xmlNodePtr node)
             if (access(file_name, F_OK) != -1) {
                xml_tree = xmlParseFile(file_name);
                unlink(file_name); // delete backup file after parsing, it wont be needed anymore
-               VERBOSE(N_STDOUT, "%s [WARNING] I found backup file with my socket on path \"%s\" and i just loaded it!\n", get_stats_formated_time(), file_name);
+               VERBOSE(N_STDOUT, "%s [WARNING] I found backup file with my socket on path \"%s\" and I'm gonna load it!\n", get_stats_formated_time(), file_name);
             } else {
                if (errno == EACCES) {
-                  VERBOSE(N_STDOUT, "%s [WARNING] I don't have permissions to access backup file path \"%s\", gonna load default config file!\n", get_stats_formated_time(), file_name);
+                  VERBOSE(N_STDOUT, "%s [WARNING] I don't have permissions to access backup file path \"%s\", I'm gonna load default config file!\n", get_stats_formated_time(), file_name);
                } else if (errno == ENOENT) {
-                  VERBOSE(N_STDOUT, "%s [WARNING] Backup file with path \"%s\" does not exist, gonna load default config file!\n", get_stats_formated_time(), file_name);
+                  VERBOSE(N_STDOUT, "%s [WARNING] Backup file with path \"%s\" does not exist, I'm gonna load default config file!\n", get_stats_formated_time(), file_name);
                }
                xml_tree = xmlParseFile(config_file);
             }
@@ -2219,10 +2225,11 @@ int reload_configuration(const int choice, xmlNodePtr node)
 
       case RELOAD_INTERACTIVE: {
          /*Get the name of a new config file */
-         VERBOSE(N_STDOUT, "[INTERACTIVE] Type in a name of the xml file to be loaded including \".xml\"; (to reload same config file type \"default\" or to cancel reloading type \"cancel\"):\n");
+         VERBOSE(N_STDOUT, ANSI_YELLOW_BOLD "[INTERACTIVE] Type in a name of the xml file to be loaded including \".xml\"; ("  "to reload same config file"  " with path \"%s\" type \"default\" or " "to cancel reloading" " type \"cancel\"): " ANSI_ATTR_RESET, config_file);
          if (fscanf(input_fd,"%s",buffer) == 0) {
             xml_tree = xmlParseFile(config_file);
          } else if (strcmp(buffer, "cancel") == 0) {
+            __fpurge(input_fd);
             pthread_mutex_unlock(&running_modules_lock);
             return FALSE;
          } else if (strcmp(buffer, "default") == 0) {
@@ -2231,10 +2238,12 @@ int reload_configuration(const int choice, xmlNodePtr node)
             xml_tree = xmlParseFile(buffer);
          }
          if (xml_tree == NULL) {
+            __fpurge(input_fd);
             fprintf(stderr,"Document not parsed successfully. \n");
             pthread_mutex_unlock(&running_modules_lock);
             return FALSE;
          }
+         __fpurge(input_fd);
          current_node = xmlDocGetRootElement(xml_tree);
          break;
       }
