@@ -3384,7 +3384,7 @@ xmlDocPtr nc_get_state_data()
                      memset(buffer,0,20);
                      sprintf(buffer,"%"PRIu64,running_modules[x].module_counters_array[running_modules[x].module_num_in_ifc + 2*running_modules[x].module_num_out_ifc + out_ifc_cnt]);
                      xmlNewChild(interface, NULL, BAD_CAST "autoflush-cnt", BAD_CAST buffer);
-                     in_ifc_cnt++;
+                     out_ifc_cnt++;
                   }
                }
             }
