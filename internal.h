@@ -60,7 +60,6 @@
 #define RELOAD_INTERACTIVE			3
 #define RELOAD_DEFAULT_CONFIG_FILE	4
 
-#define DAEMON_STOP_CODE 			951753
 #define DAEMON_CONFIG_MODE_CODE 	789123
 #define DAEMON_STATS_MODE_CODE 		456987
 #define DAEMON_RELOAD_MODE_CODE 	115599
@@ -72,6 +71,8 @@
 #define ANSI_YELLOW  	"\x1b[33m"
 #define ANSI_YELLOW_BOLD  	"\x1b[33;1m"
 #define ANSI_ATTR_RESET   	"\x1b[0m"
+
+#define DEFAULT_SIZE_OF_BUFFER   100
 
 extern char * statistics_file_path;
 extern char * module_event_file_path;
@@ -89,6 +90,7 @@ extern FILE * module_event_fd;
 extern char verbose_msg[4096];
 
 void print_msg(int level, char *string);
+char * get_input_from_stream (FILE * stream);
 
 #define VERBOSE(level, format, args...) if (1) { \
    snprintf(verbose_msg, 4095, format, ##args); \

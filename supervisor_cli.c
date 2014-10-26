@@ -134,10 +134,9 @@ int main(int argc, char **argv)
    if (client_internals == NULL) {
       exit(EXIT_FAILURE);
    }
-   int x = 0;
-   int ret_val;
-   char buffer[1000];
-   memset(buffer,0,1000);
+   int bytes_to_read = 0; // value can be also -1 <=> ioctl error
+   int x = 0, ret_val = 0;
+   char * buffer = NULL;
    char *socket_path = NULL;
    int just_stats_flag = FALSE;
    int reload_command_flag = FALSE;
@@ -233,45 +232,49 @@ int main(int argc, char **argv)
       tv.tv_usec = 0;
 
       ret_val = select(client_internals->supervisor_input_stream_fd+1, &read_fds, NULL, NULL, &tv);
-
       if (ret_val == -1) {
          fprintf(stderr, "[ERROR] Select: error!\n");
          free_client_internals_variables();
          exit(EXIT_FAILURE);
       } else if (ret_val) {
          if (FD_ISSET(0, &read_fds)) {
-            if ((scanf("%s", buffer) == 0) || (strcmp(buffer,"Cquit") == 0)) {
+            buffer = get_input_from_stream(stdin);
+            if (buffer == NULL) {
+               continue;
+            }
+            if ((strcmp(buffer,"Cquit") == 0)) {
                free_client_internals_variables();
+               free(buffer);
                exit(EXIT_SUCCESS);
             } else if (strcmp(buffer,"Dstop") == 0) {
-               fprintf(client_internals->supervisor_output_stream,"%d\n", DAEMON_STOP_CODE);
-               fflush(client_internals->supervisor_output_stream);
+               for (x=0; x<3; x++) {
+                  fprintf(client_internals->supervisor_output_stream,"9\n");
+                  fflush(client_internals->supervisor_output_stream);
+                  usleep(300000);
+               }
             } else {
                fprintf(client_internals->supervisor_output_stream,"%s\n",buffer);
                fflush(client_internals->supervisor_output_stream);
             }
+            free(buffer);
          }
          if (FD_ISSET(client_internals->supervisor_input_stream_fd, &read_fds)) {
             usleep(200000);
-            ioctl(client_internals->supervisor_input_stream_fd, FIONREAD, &x);
-            if (x == 0 || x == -1) {
+            ioctl(client_internals->supervisor_input_stream_fd, FIONREAD, &bytes_to_read);
+            if (bytes_to_read == 0 || bytes_to_read == -1) {
                fprintf(stderr, "[WARNING] Supervisor has disconnected, I'm done!\n");
                free_client_internals_variables();
                exit(EXIT_SUCCESS);
             } else {
-               int y;
-               for(y=0; y<x; y++) {
+               for(x=0; x<bytes_to_read; x++) {
                   printf("%c", (char) fgetc(client_internals->supervisor_input_stream));
                }
+               fflush(stdout);
             }
          }
       } else {
          // timeout, nothing to do
       }
-      memset(buffer,0,1000);
-      fsync(client_internals->supervisor_input_stream_fd);
-      fflush(client_internals->supervisor_input_stream);
-      fflush(stdout);
 
       if (just_stats_flag) {
          free_client_internals_variables();

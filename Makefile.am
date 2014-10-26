@@ -1,7 +1,7 @@
 bin_PROGRAMS=supervisor supervisor_cli
 supervisor_SOURCES= graph.c graph.h supervisor.c supervisor.h supervisor_api.h supervisor_main.c internal.c internal.h
 supervisor_LDADD = -lpthread
-supervisor_cli_SOURCES= supervisor_cli.c internal.h
+supervisor_cli_SOURCES= supervisor_cli.c internal.h internal.c
 doc_DATA=README
 EXTRA_DIST = supervisor_config.xml nemea-supervisor
 sysconf_DATA = supervisor_config.xml
