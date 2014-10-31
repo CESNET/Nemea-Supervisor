@@ -1,3 +1,5 @@
+SUBDIRS=munin
+
 bin_PROGRAMS=supervisor supervisor_cli
 supervisor_SOURCES= graph.c graph.h supervisor.c supervisor.h supervisor_api.h supervisor_main.c internal.c internal.h
 supervisor_LDADD = -lpthread
