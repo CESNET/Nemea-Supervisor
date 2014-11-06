@@ -43,10 +43,13 @@
  *
  */
 
+#ifdef nemea_plugin
+   #include "./ncnemea/ncnemea.h"
+#endif
+
 #include "supervisor.h"
 #include "graph.h"
 #include "internal.h"
-#include "./ncnemea/ncnemea.h"
 
 #include <arpa/inet.h>
 #include <netdb.h>
