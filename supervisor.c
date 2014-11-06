@@ -2329,24 +2329,33 @@ int reload_configuration(const int choice, xmlNodePtr node)
 
    if (current_node == NULL) {
       fprintf(stderr,"empty document\n");
-      xmlFreeDoc(xml_tree);
-      xmlCleanupParser();
+      // do not free libnetconf xml structures or parsers data!!!
+      if (choice != RELOAD_CALLBACK_ROOT_ELEM) {
+         xmlFreeDoc(xml_tree);
+         xmlCleanupParser();
+      }
       pthread_mutex_unlock(&running_modules_lock);
       return FALSE;
    }
 
    if (xmlStrcmp(current_node->name, BAD_CAST "nemea-supervisor")) {
       fprintf(stderr,"document of the wrong type, root node != nemea-supervisor\n");
-      xmlFreeDoc(xml_tree);
-      xmlCleanupParser();
+      // do not free libnetconf xml structures or parsers data!!!
+      if (choice != RELOAD_CALLBACK_ROOT_ELEM) {
+         xmlFreeDoc(xml_tree);
+         xmlCleanupParser();
+      }
       pthread_mutex_unlock(&running_modules_lock);
       return FALSE;
    }
 
    if (current_node->xmlChildrenNode == NULL) {
       fprintf(stderr,"no child of nemea-supervisor tag found\n");
-      xmlFreeDoc(xml_tree);
-      xmlCleanupParser();
+      // do not free libnetconf xml structures or parsers data!!!
+      if (choice != RELOAD_CALLBACK_ROOT_ELEM) {
+         xmlFreeDoc(xml_tree);
+         xmlCleanupParser();
+      }
       pthread_mutex_unlock(&running_modules_lock);
       return FALSE;
    }
@@ -3052,8 +3061,11 @@ int reload_configuration(const int choice, xmlNodePtr node)
       current_node = current_node->next;
    }
 
-   xmlFreeDoc(xml_tree);
-   xmlCleanupParser();
+   // do not free libnetconf xml structures or parsers data!!!
+   if (choice != RELOAD_CALLBACK_ROOT_ELEM) {
+      xmlFreeDoc(xml_tree);
+      xmlCleanupParser();
+   }
 
 
    int deleted_modules_cnt = -1;
