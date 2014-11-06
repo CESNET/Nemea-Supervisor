@@ -1,0 +1,19 @@
+Supervisor as a Munin plugin
+----------------------------
+
+Nemea Supervisor contains Munin plugin (nemea_supervisor) that is
+able to retrieve statistical information from the Nemea system
+(via Supervisor).
+
+It is a python script that calls supervisor_cli and connects to
+running supervisor daemon.
+To modify the default behaviour of the Munin plugin, see variables
+at the beginning of the nemea_supervisor script. It is possible to
+change various variables (up to the "end of configuration" header).
+
+The plugin is installed into ${datadir}/munin/plugins.
+
+To enable the installed Munin plugin, create symbolic link e.g.:
+  ln -s /usr/share/munin/plugins/nemea_supervisor /etc/munin/plugins/
+and restart munin-node.
+
