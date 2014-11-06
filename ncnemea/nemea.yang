@@ -118,11 +118,6 @@ module "nemea" {
         container "trapinterfaces" {
           list "interface" {
             key "type direction params";
-            leaf "note" {
-              type "string";
-              description
-                "Optional note for interface";
-            }
             leaf "type" {
               type "trapifc-type";
               mandatory "true";
@@ -140,6 +135,11 @@ module "nemea" {
               mandatory "true";
               description
                 "Parameters of libtrap interface: hostname,port for input interface; port for output interface.";
+            }
+            leaf "note" {
+              type "string";
+              description
+                "Optional note for interface";
             }
             leaf "sent-msg-cnt" {
               type "uint64";
