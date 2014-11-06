@@ -50,6 +50,7 @@
 FILE * input_fd = NULL;
 FILE * output_fd = NULL;
 
+FILE * supervisor_debug_log_fd = NULL;
 FILE * supervisor_log_fd = NULL;
 FILE * statistics_fd = NULL;
 FILE * module_event_fd = NULL;

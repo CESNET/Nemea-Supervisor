@@ -115,6 +115,7 @@ char *   logs_path = NULL;
 
 char *   statistics_file_path = NULL;
 char *   module_event_file_path = NULL;
+char *   supervisor_debug_log_file_path = NULL;
 char *   supervisor_log_file_path = NULL;
 char *   graph_picture_file_path = NULL;
 char *   graph_code_file_path = NULL;
@@ -136,6 +137,21 @@ char *get_param_by_delimiter(const char *source, char **dest, const char delimit
 void free_output_file_strings_and_streams();
 void generate_backup_config_file();
 char * get_stats_formated_time();
+
+void print_xmlDoc_to_stream(xmlDocPtr doc_ptr, FILE * stream)
+{
+   if (doc_ptr != NULL && stream != NULL) {
+      xmlChar * formated_xml_output = NULL;
+      int size = 0;
+      xmlDocDumpFormatMemory(doc_ptr, &formated_xml_output, &size, 1);
+      if (formated_xml_output == NULL) {
+         return;
+      } else {
+         fprintf(stream, "%s\n", formated_xml_output);
+         xmlFree(formated_xml_output);
+      }
+   }
+}
 
 void create_output_dir()
 {
@@ -189,6 +205,8 @@ void create_output_files_strings()
 {
    free_output_file_strings_and_streams();
 
+   supervisor_debug_log_file_path = (char *) calloc (strlen(logs_path)+strlen("supervisor_debug_log")+1, sizeof(char));
+   sprintf(supervisor_debug_log_file_path, "%ssupervisor_debug_log", logs_path);
    statistics_file_path = (char *) calloc (strlen(logs_path)+strlen("supervisor_log_statistics")+1, sizeof(char));
    sprintf(statistics_file_path, "%ssupervisor_log_statistics", logs_path);
    module_event_file_path = (char *) calloc (strlen(logs_path)+strlen("supervisor_log_module_event")+1, sizeof(char));
@@ -198,6 +216,12 @@ void create_output_files_strings()
    graph_code_file_path = (char *) calloc (strlen(logs_path)+strlen("graph_code")+1, sizeof(char));
    sprintf(graph_code_file_path, "%sgraph_code", logs_path);
 
+   supervisor_debug_log_fd = fopen(supervisor_debug_log_file_path, "a");
+   if (supervisor_debug_log_fd == NULL) {
+      fprintf(stderr, "%s [ERROR] Could not open supervisor_debug_log file stream!\n",get_stats_formated_time());
+   } else {
+      fprintf(supervisor_debug_log_fd,"-------------------- %s --------------------\n", get_stats_formated_time());
+   }
    statistics_fd = fopen(statistics_file_path, "a");
    if (statistics_fd == NULL) {
       fprintf(stderr, "%s [ERROR] Could not open supervisor_log_statistics file stream!\n",get_stats_formated_time());
@@ -1098,6 +1122,10 @@ void free_output_file_strings_and_streams()
       free(module_event_file_path);
       module_event_file_path = NULL;
    }
+   if (supervisor_debug_log_file_path != NULL) {
+      free(supervisor_debug_log_file_path);
+      supervisor_debug_log_file_path = NULL;
+   }
    if (supervisor_log_file_path != NULL) {
       free(supervisor_log_file_path);
       supervisor_log_file_path = NULL;
@@ -1111,6 +1139,10 @@ void free_output_file_strings_and_streams()
       graph_code_file_path = NULL;
    }
 
+   if (supervisor_debug_log_fd != NULL) {
+      fclose(supervisor_debug_log_fd);
+      supervisor_debug_log_fd = NULL;
+   }
    if (supervisor_log_fd != NULL) {
       fclose(supervisor_log_fd);
       supervisor_log_fd = NULL;
@@ -2362,6 +2394,11 @@ int reload_configuration(const int choice, xmlNodePtr node)
       pthread_mutex_unlock(&running_modules_lock);
       return FALSE;
    }
+
+   // print XML configuration to supervisor debug log
+   fprintf(supervisor_debug_log_fd, "\n%s [DEBUG] Request to reload this configuration --->\n\n", get_stats_formated_time());
+   print_xmlDoc_to_stream(current_node->doc, supervisor_debug_log_fd);
+   fflush(supervisor_debug_log_fd);
 
    current_node = current_node->xmlChildrenNode;
 
