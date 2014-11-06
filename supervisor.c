@@ -3339,75 +3339,10 @@ int nc_supervisor_initialization()
    pthread_mutex_init(&running_modules_lock,NULL);
    service_thread_continue = TRUE;
 
-   //load configuration
-   // reload_configuration(RELOAD_INIT_LOAD_CONFIG, NULL);
-
    VERBOSE(N_STDOUT,"[SERVICE] Starting service thread.\n");
    start_service_thread();
-   // pthread_create(&nc_clients_thread_id, NULL, nc_clients_thread_routine, NULL);
-
-   /************ SIGNAL HANDLING *************/
-   /* function prototype to set handler */
-   // void supervisor_signal_handler(int catched_signal);
-
-   // struct sigaction sig_action;
-   // sig_action.sa_handler = supervisor_signal_handler;
-   // sig_action.sa_flags = 0;
-   // sigemptyset(&sig_action.sa_mask);
-
-   // if (sigaction(SIGPIPE,&sig_action,NULL) == -1) {
-   //    VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGPIPE !\n", get_stats_formated_time());
-   // }
-   // if (sigaction(SIGINT,&sig_action,NULL) == -1) {
-   //    VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGINT !\n", get_stats_formated_time());
-   // }
-   // if (sigaction(SIGTERM,&sig_action,NULL) == -1) {
-   //    VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGTERM !\n", get_stats_formated_time());
-   // }
-   // if (sigaction(SIGSEGV,&sig_action,NULL) == -1) {
-   //    VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGSEGV !\n", get_stats_formated_time());
-   // }
-   // if (sigaction(SIGQUIT,&sig_action,NULL) == -1) {
-   //    VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGQUIT !\n", get_stats_formated_time());
-   // }
-   /****************************************/
 
    return 0;
-}
-
-void * nc_clients_thread_routine(void *arg __attribute__((unused)))
-{
-   union tcpip_socket_addr addr;
-   struct addrinfo *p;
-   memset(&addr, 0, sizeof(addr));
-   addr.unix_addr.sun_family = AF_UNIX;
-   snprintf(addr.unix_addr.sun_path, sizeof(addr.unix_addr.sun_path) - 1, "%s", socket_path);
-
-   /* if socket file exists, it could be hard to create new socket and bind */
-   unlink(socket_path); /* error when file does not exist is not a problem */
-   int socket_sd = socket(AF_UNIX, SOCK_STREAM, 0);
-   if (bind(socket_sd, (struct sockaddr *) &addr.unix_addr, sizeof(addr.unix_addr)) != -1) {
-      p = (struct addrinfo *) &addr.unix_addr;
-      chmod(socket_path, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
-   } else {
-      /* error bind() failed */
-      p = NULL;
-   }
-   if (p == NULL) {
-      // if we got here, it means we didn't get bound
-      VERBOSE(N_STDOUT,"selectserver: failed to bind");
-      pthread_exit(NULL);
-   }
-   // listen
-   if (listen(socket_sd, 0) == -1) {
-      //perror("listen");
-      VERBOSE(N_STDOUT,"Listen failed");
-      pthread_exit(NULL);
-   }
-
-
-   daemon_mode(&socket_sd);
-   pthread_exit(NULL);
 }
 
 xmlDocPtr nc_get_state_data()
