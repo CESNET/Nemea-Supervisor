@@ -3359,76 +3359,175 @@ int nc_supervisor_initialization()
 
 xmlDocPtr nc_get_state_data()
 {
-   unsigned int x, y, in_ifc_cnt, out_ifc_cnt;
-   char buffer[20];
-   const char *templ = "<?xml version=\"1.0\"?><nemea-supervisor xmlns=\"urn:cesnet:tmc:nemea:1.0\"><modules/></nemea-supervisor>";
-   xmlDocPtr resp = NULL;
-   xmlNodePtr modules = NULL, module = NULL, trapinterfaces = NULL, interface = NULL;
+   modules_profile_t * ptr = first_profile_ptr;
+   unsigned int x = 0, y = 0, in_ifc_cnt = 0, out_ifc_cnt = 0, modules_with_profile = 0;
+   char buffer[DEFAULT_SIZE_OF_BUFFER];
+   const char * template = "<?xml version=\"1.0\"?><nemea-supervisor xmlns=\"urn:cesnet:tmc:nemea:1.0\"></nemea-supervisor>";
+   xmlDocPtr doc_tree_ptr = NULL;
+   xmlNodePtr root_elem = NULL, modules_elem = NULL, module_elem = NULL, trapinterfaces_elem = NULL, interface_elem = NULL;
 
    if (loaded_modules_cnt > 0) {
-      resp = xmlParseMemory(templ, strlen(templ));
-      if (resp == NULL) {
+      doc_tree_ptr = xmlParseMemory(template, strlen(template));
+      if (doc_tree_ptr == NULL) {
+         return NULL;
+      }
+      root_elem = xmlDocGetRootElement(doc_tree_ptr);
+      if (root_elem == NULL) {
          return NULL;
       }
 
-      modules = xmlDocGetRootElement(resp);
-      modules = modules->children;
+      // get state data about modules with a profile
+      while (ptr != NULL) {
+         if (ptr->profile_name != NULL) {
+            modules_elem = xmlNewChild(root_elem, NULL, BAD_CAST "modules", NULL);
+            xmlNewChild(modules_elem, NULL, BAD_CAST "name", BAD_CAST ptr->profile_name);
+            if (ptr->profile_enabled) {
+               xmlNewChild(modules_elem, NULL, BAD_CAST "enabled", BAD_CAST "true");
+            } else {
+               xmlNewChild(modules_elem, NULL, BAD_CAST "enabled", BAD_CAST "false");
+            }
 
-      for (x = 0; x < loaded_modules_cnt; x++) {
-         memset(buffer,0,20);
-         module = xmlNewChild(modules, NULL, BAD_CAST "module", NULL);
-         xmlNewChild(module, NULL, BAD_CAST "name", BAD_CAST running_modules[x].module_name);
+            for (x = 0; x < loaded_modules_cnt; x++) {
+               if (running_modules[x].modules_profile == NULL) {
+                  continue;
+               }
+               if (strcmp(running_modules[x].modules_profile, ptr->profile_name) != 0) {
+                  continue;
+               }
+               memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
+               module_elem = xmlNewChild(modules_elem, NULL, BAD_CAST "module", NULL);
+               xmlNewChild(module_elem, NULL, BAD_CAST "name", BAD_CAST running_modules[x].module_name);
 
-         if (running_modules[x].module_status == TRUE) {
-            xmlNewChild(module, NULL, BAD_CAST "running", BAD_CAST "true");
-         } else {
-            xmlNewChild(module, NULL, BAD_CAST "running", BAD_CAST "false");
-         }
+               if (running_modules[x].module_status == TRUE) {
+                  xmlNewChild(module_elem, NULL, BAD_CAST "running", BAD_CAST "true");
+               } else {
+                  xmlNewChild(module_elem, NULL, BAD_CAST "running", BAD_CAST "false");
+               }
 
-         if (running_modules[x].module_restart_cnt < 0) {
-            sprintf(buffer,"%d",0);
-            xmlNewChild(module, NULL, BAD_CAST "restart-counter", BAD_CAST buffer);
-         } else {
-            sprintf(buffer,"%d",running_modules[x].module_restart_cnt);
-            xmlNewChild(module, NULL, BAD_CAST "restart-counter", BAD_CAST buffer);
-         }
+               if (running_modules[x].module_restart_cnt < 0) {
+                  snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%d",0);
+                  xmlNewChild(module_elem, NULL, BAD_CAST "restart-counter", BAD_CAST buffer);
+               } else {
+                  snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%d",running_modules[x].module_restart_cnt);
+                  xmlNewChild(module_elem, NULL, BAD_CAST "restart-counter", BAD_CAST buffer);
+               }
 
-         if (running_modules[x].module_has_service_ifc && running_modules[x].module_status) {
-            in_ifc_cnt = 0;
-            out_ifc_cnt = 0;
-            trapinterfaces = xmlNewChild(module, NULL, BAD_CAST "trapinterfaces", NULL);
-            for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
-               if (running_modules[x].module_ifces[y].ifc_direction != NULL) {
-                  interface = xmlNewChild(trapinterfaces, NULL, BAD_CAST "interface", NULL);
-                  xmlNewChild(interface, NULL, BAD_CAST "type", BAD_CAST running_modules[x].module_ifces[y].ifc_type);
-                  xmlNewChild(interface, NULL, BAD_CAST "params", BAD_CAST running_modules[x].module_ifces[y].ifc_params);
-                  if (strcmp(running_modules[x].module_ifces[y].ifc_direction, "IN") == 0) {
-                     memset(buffer,0,20);
-                     snprintf(buffer, 20, "%"PRIu64,running_modules[x].module_counters_array[in_ifc_cnt]);
-                     xmlNewChild(interface, NULL, BAD_CAST "recv-msg-cnt", BAD_CAST buffer);
-                     in_ifc_cnt++;
-                  } else if (xmlStrcmp(BAD_CAST running_modules[x].module_ifces[y].ifc_direction, BAD_CAST "OUT") == 0) {
-                     memset(buffer,0,20);
-                     sprintf(buffer,"%"PRIu64,running_modules[x].module_counters_array[running_modules[x].module_num_in_ifc + out_ifc_cnt]);
-                     xmlNewChild(interface, NULL, BAD_CAST "sent-msg-cnt", BAD_CAST buffer);
-                     memset(buffer,0,20);
-                     sprintf(buffer,"%"PRIu64,running_modules[x].module_counters_array[running_modules[x].module_num_in_ifc + running_modules[x].module_num_out_ifc + out_ifc_cnt]);
-                     xmlNewChild(interface, NULL, BAD_CAST "sent-buffer-cnt", BAD_CAST buffer);
-                     memset(buffer,0,20);
-                     sprintf(buffer,"%"PRIu64,running_modules[x].module_counters_array[running_modules[x].module_num_in_ifc + 2*running_modules[x].module_num_out_ifc + out_ifc_cnt]);
-                     xmlNewChild(interface, NULL, BAD_CAST "autoflush-cnt", BAD_CAST buffer);
-                     out_ifc_cnt++;
+               if (running_modules[x].module_has_service_ifc && running_modules[x].module_status) {
+                  in_ifc_cnt = 0;
+                  out_ifc_cnt = 0;
+                  trapinterfaces_elem = xmlNewChild(module_elem, NULL, BAD_CAST "trapinterfaces", NULL);
+                  for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
+                     if (running_modules[x].module_ifces[y].ifc_direction != NULL) {
+                        interface_elem = xmlNewChild(trapinterfaces_elem, NULL, BAD_CAST "interface", NULL);
+                        xmlNewChild(interface_elem, NULL, BAD_CAST "type", BAD_CAST running_modules[x].module_ifces[y].ifc_type);
+                        xmlNewChild(interface_elem, NULL, BAD_CAST "direction", BAD_CAST running_modules[x].module_ifces[y].ifc_direction);
+                        xmlNewChild(interface_elem, NULL, BAD_CAST "params", BAD_CAST running_modules[x].module_ifces[y].ifc_params);
+                        if (strcmp(running_modules[x].module_ifces[y].ifc_direction, "IN") == 0) {
+                           memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
+                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_counters_array[in_ifc_cnt]);
+                           xmlNewChild(interface_elem, NULL, BAD_CAST "recv-msg-cnt", BAD_CAST buffer);
+                           in_ifc_cnt++;
+                        } else if (xmlStrcmp(BAD_CAST running_modules[x].module_ifces[y].ifc_direction, BAD_CAST "OUT") == 0) {
+                           memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
+                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_counters_array[running_modules[x].module_num_in_ifc + out_ifc_cnt]);
+                           xmlNewChild(interface_elem, NULL, BAD_CAST "sent-msg-cnt", BAD_CAST buffer);
+                           memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
+                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_counters_array[running_modules[x].module_num_in_ifc + running_modules[x].module_num_out_ifc + out_ifc_cnt]);
+                           xmlNewChild(interface_elem, NULL, BAD_CAST "sent-buffer-cnt", BAD_CAST buffer);
+                           memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
+                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_counters_array[running_modules[x].module_num_in_ifc + 2*running_modules[x].module_num_out_ifc + out_ifc_cnt]);
+                           xmlNewChild(interface_elem, NULL, BAD_CAST "autoflush-cnt", BAD_CAST buffer);
+                           out_ifc_cnt++;
+                        }
+                     }
                   }
                }
+
+               /* TODO check and free */
+               if (xmlAddChild(modules_elem, module_elem) == NULL) {
+                  xmlFree(module_elem);
+               }
+               modules_with_profile++;
+            }
+
+            if (xmlAddChild(root_elem, modules_elem) == NULL) {
+               xmlFree(modules_elem);
+            }
+         }
+         ptr = ptr->next;
+      }
+
+
+      //get state data about modules without profile
+      if (modules_with_profile < loaded_modules_cnt) {
+         modules_elem = xmlNewChild(root_elem, NULL, BAD_CAST "modules", NULL);
+         for (x = 0; x < loaded_modules_cnt; x++) {
+               if (running_modules[x].modules_profile != NULL) {
+                  continue;
+               }
+               memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
+               module_elem = xmlNewChild(modules_elem, NULL, BAD_CAST "module", NULL);
+               xmlNewChild(module_elem, NULL, BAD_CAST "name", BAD_CAST running_modules[x].module_name);
+
+               if (running_modules[x].module_status == TRUE) {
+                  xmlNewChild(module_elem, NULL, BAD_CAST "running", BAD_CAST "true");
+               } else {
+                  xmlNewChild(module_elem, NULL, BAD_CAST "running", BAD_CAST "false");
+               }
+
+               if (running_modules[x].module_restart_cnt < 0) {
+                  snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%d",0);
+                  xmlNewChild(module_elem, NULL, BAD_CAST "restart-counter", BAD_CAST buffer);
+               } else {
+                  snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%d",running_modules[x].module_restart_cnt);
+                  xmlNewChild(module_elem, NULL, BAD_CAST "restart-counter", BAD_CAST buffer);
+               }
+
+               if (running_modules[x].module_has_service_ifc && running_modules[x].module_status) {
+                  in_ifc_cnt = 0;
+                  out_ifc_cnt = 0;
+                  trapinterfaces_elem = xmlNewChild(module_elem, NULL, BAD_CAST "trapinterfaces", NULL);
+                  for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
+                     if (running_modules[x].module_ifces[y].ifc_direction != NULL) {
+                        interface_elem = xmlNewChild(trapinterfaces_elem, NULL, BAD_CAST "interface", NULL);
+                        xmlNewChild(interface_elem, NULL, BAD_CAST "type", BAD_CAST running_modules[x].module_ifces[y].ifc_type);
+                        xmlNewChild(interface_elem, NULL, BAD_CAST "direction", BAD_CAST running_modules[x].module_ifces[y].ifc_direction);
+                        xmlNewChild(interface_elem, NULL, BAD_CAST "params", BAD_CAST running_modules[x].module_ifces[y].ifc_params);
+                        if (strcmp(running_modules[x].module_ifces[y].ifc_direction, "IN") == 0) {
+                           memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
+                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_counters_array[in_ifc_cnt]);
+                           xmlNewChild(interface_elem, NULL, BAD_CAST "recv-msg-cnt", BAD_CAST buffer);
+                           in_ifc_cnt++;
+                        } else if (xmlStrcmp(BAD_CAST running_modules[x].module_ifces[y].ifc_direction, BAD_CAST "OUT") == 0) {
+                           memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
+                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_counters_array[running_modules[x].module_num_in_ifc + out_ifc_cnt]);
+                           xmlNewChild(interface_elem, NULL, BAD_CAST "sent-msg-cnt", BAD_CAST buffer);
+                           memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
+                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_counters_array[running_modules[x].module_num_in_ifc + running_modules[x].module_num_out_ifc + out_ifc_cnt]);
+                           xmlNewChild(interface_elem, NULL, BAD_CAST "sent-buffer-cnt", BAD_CAST buffer);
+                           memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
+                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_counters_array[running_modules[x].module_num_in_ifc + 2*running_modules[x].module_num_out_ifc + out_ifc_cnt]);
+                           xmlNewChild(interface_elem, NULL, BAD_CAST "autoflush-cnt", BAD_CAST buffer);
+                           out_ifc_cnt++;
+                        }
+                     }
+                  }
+               }
+
+               /* TODO check and free */
+               if (xmlAddChild(modules_elem, module_elem) == NULL) {
+                  xmlFree(module_elem);
+               }
+            }
+
+            if (xmlAddChild(root_elem, modules_elem) == NULL) {
+               xmlFree(modules_elem);
             }
          }
 
-         /* TODO check and free */
-         if (xmlAddChild(modules, module) == NULL) {
-            xmlFree(module);
-         }
-      }
+
    }
-   return resp;
+
+   return doc_tree_ptr;
 }
 #endif
