@@ -9,7 +9,7 @@ License: BSD
 Vendor: CESNET, z.s.p.o.
 Packager: @USERNAME@ <@USERMAIL@>
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}
-Requires: libtrap graphviz libxml2
+Requires: libtrap libxml2
 BuildRequires: gcc make doxygen pkgconfig libtrap-devel libxml2-devel
 Provides: nemea-supervisor
 
