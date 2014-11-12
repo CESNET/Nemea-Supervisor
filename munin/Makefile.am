@@ -1,5 +1,5 @@
 munindatadir=${datadir}/munin/plugins/
-munindata_DATA=nemea_supervisor
+munindata_SCRIPTS=nemea_supervisor
 
 EXTRA_DIST=nemea_supervisor README.munin
 
