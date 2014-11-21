@@ -103,6 +103,7 @@ typedef struct running_module_s {
    int            module_max_restarts_per_minute;
    int            module_has_service_ifc; ///< if module has service interface ~ TRUE, else ~ FALSE
    int            module_service_ifc_isconnected; ///< if supervisor is connected to module ~ TRUE, else ~ FALSE
+   int            module_service_ifc_conn_attempts; // Count of supervisor's connection attempts to module's service interface
    int            module_served_by_service_thread; ///< TRUE if module was added to graph struct by sevice thread, FALSE on start.
    int            module_running; ///< TRUE after first start of module, else FALSE.
    int            module_status; ///< Module status (TRUE ~ running, FALSE ~ stopped)

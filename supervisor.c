@@ -73,6 +73,7 @@
 
 #define TRAP_PARAM               "-i" ///< Interface parameter for libtrap
 #define DEFAULT_MAX_RESTARTS_PER_MINUTE  3  ///< Maximum number of module restarts per minute
+#define SERVICE_IFC_CONN_ATTEMPTS_LIMIT 3 // Maximum count of connection attempts to service interface
 
 #define MODULES_UNIXSOCKET_PATH_FILENAME_FORMAT   "/tmp/trap-localhost-%s.sock" ///< Modules output interfaces socket, to which connects service thread.
 #define DEFAULT_DAEMON_UNIXSOCKET_PATH_FILENAME  "/tmp/supervisor_daemon.sock"  ///<  Daemon socket.
@@ -665,6 +666,7 @@ void init_module_variables(int module_number)
    running_modules[module_number].overall_percent_module_cpu_usage_kernel_mode = 0;
    running_modules[module_number].overall_percent_module_cpu_usage_user_mode = 0;
    running_modules[module_number].module_service_sd = -1;
+   running_modules[module_number].module_service_ifc_conn_attempts = 0;
    running_modules[module_number].sent_sigint = FALSE;
 }
 
@@ -1437,6 +1439,9 @@ void connect_to_module_service_ifc(int module, int num_ifc)
    int sockfd;
    union tcpip_socket_addr addr;
 
+   // Increase counter of connection attempts to the service interface
+   running_modules[module].module_service_ifc_conn_attempts++;
+
    if (running_modules[module].module_ifces[num_ifc].ifc_params == NULL) {
       running_modules[module].module_service_ifc_isconnected = FALSE;
       return;
@@ -1594,7 +1599,7 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
       request[0] = 1;
       for (x=0;x<loaded_modules_cnt;x++) {
          if (running_modules[x].module_has_service_ifc == TRUE && running_modules[x].module_status == TRUE) {
-            if (running_modules[x].module_service_ifc_isconnected == FALSE) {
+            if (running_modules[x].module_service_ifc_isconnected == FALSE && (running_modules[x].module_service_ifc_conn_attempts < SERVICE_IFC_CONN_ATTEMPTS_LIMIT)) {
                y=0;
                while (1) {
                   if (running_modules[x].module_ifces[y].ifc_type != NULL) {
@@ -1608,6 +1613,9 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
                   close(running_modules[x].module_service_sd);
                }
                connect_to_module_service_ifc(x,y);
+               if (running_modules[x].module_service_ifc_conn_attempts >= SERVICE_IFC_CONN_ATTEMPTS_LIMIT) {
+                  VERBOSE(MODULE_EVENT,"%s [SERVICE] Connection attempts to service interface of module %s reached 3, enough trying!\n", get_stats_formated_time(), running_modules[x].module_name);
+               }
             }
             if (running_modules[x].module_service_ifc_isconnected == TRUE) {
                if (send(running_modules[x].module_service_sd,(void *) request, sizeof_intptr, 0) == -1) {
