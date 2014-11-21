@@ -122,6 +122,8 @@ typedef struct running_module_s {
    int            overall_percent_module_cpu_usage_user_mode;
    char *         modules_profile;
    int            module_is_my_child;
+   int            remove_module;
+   int            init_module;
 } running_module_t;
 
 typedef struct modules_profile_s modules_profile_t;
@@ -141,6 +143,20 @@ typedef struct daemon_internals_s {
    int         client_connected;
    int         daemon_terminated;
 } daemon_internals_t;
+
+typedef struct reload_config_vars_s {
+   xmlDocPtr       doc_tree_ptr;
+   xmlNodePtr     current_node;
+   xmlNodePtr     module_elem;
+   xmlNodePtr     module_atr_elem;
+   xmlNodePtr     ifc_elem;
+   xmlNodePtr     ifc_atr_elem;
+   int                   current_module_idx;
+   int                   module_modifying;
+   int                   inserted_modules;
+   int                   removed_modules;
+   int                   modified_modules;
+} reload_config_vars_t;
 
 /***********FUNCTIONS***********/
 
