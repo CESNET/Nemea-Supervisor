@@ -637,6 +637,7 @@ int get_numbers_from_input_dis_enable_module(int ** array)
 
 int interactive_get_option()
 {
+   usleep(50000); // Solved bugged output - without this sleep, escape codes in output were not sometimes reseted on time and they were applied also on this menu
    VERBOSE(N_STDOUT, ANSI_CYAN_BOLD "--------OPTIONS--------\n" ANSI_ATTR_RESET);
    VERBOSE(N_STDOUT, ANSI_CYAN "1. START ALL MODULES\n");
    VERBOSE(N_STDOUT, "2. STOP ALL MODULES\n");
@@ -1971,6 +1972,7 @@ int daemon_get_code_from_client()
 
 void send_options_to_client()
 {
+   usleep(50000); // Solved bugged output - without this sleep, escape codes in output were not sometimes reseted on time and they were applied also on this menu
    VERBOSE(N_STDOUT, ANSI_CYAN_BOLD "--------OPTIONS--------\n" ANSI_ATTR_RESET);
    VERBOSE(N_STDOUT, ANSI_CYAN "1. START ALL MODULES\n");
    VERBOSE(N_STDOUT, "2. STOP ALL MODULES\n");
