@@ -54,6 +54,7 @@
 #define STATISTICS      		1
 #define MODULE_EVENT    	2
 #define N_STDOUT     		3
+#define DEBUG 			4
 
 #define RELOAD_INIT_LOAD_CONFIG 		1
 #define RELOAD_CALLBACK_ROOT_ELEM 	2
@@ -68,9 +69,10 @@
 #define ANSI_RED_BOLD     	"\x1b[31;1m"
 #define ANSI_CYAN 		"\x1b[36m"
 #define ANSI_CYAN_BOLD    	"\x1b[36;1m"
-#define ANSI_YELLOW  	"\x1b[33m"
+#define ANSI_YELLOW  		"\x1b[33m"
 #define ANSI_YELLOW_BOLD  	"\x1b[33;1m"
 #define ANSI_ATTR_RESET   	"\x1b[0m"
+#define ANSI_BOLD 		"\x1b[1m"
 
 #define DEFAULT_SIZE_OF_BUFFER   100
 

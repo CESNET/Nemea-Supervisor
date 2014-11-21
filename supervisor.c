@@ -279,17 +279,18 @@ void interactive_show_available_modules ()
    VERBOSE(N_STDOUT,"[PRINTING CONFIGURATION]\n");
 
    for (x=0; x < loaded_modules_cnt; x++) {
-      VERBOSE(N_STDOUT,"%c%d_%s:  PATH:%s  PARAMS:%s  PROFILE:%s\n", (running_modules[x].module_enabled == 0 ? ' ' : '*'), x, running_modules[x].module_name,
+      VERBOSE(N_STDOUT, ANSI_RED_BOLD "%c" ANSI_ATTR_RESET ANSI_BOLD "%d_%s:" ANSI_ATTR_RESET "  PATH:%s  PARAMS:%s  PROFILE:%s\n", (running_modules[x].module_enabled == 0 ? ' ' : '*'), x, running_modules[x].module_name,
                                                                                                                                     (running_modules[x].module_path == NULL ? "none" : running_modules[x].module_path),
                                                                                                                                     (running_modules[x].module_params == NULL ? "none" : running_modules[x].module_params),
                                                                                                                                     (running_modules[x].modules_profile == NULL ? "none" : running_modules[x].modules_profile));
       
       for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
-         VERBOSE(N_STDOUT,"\tIFC%d:  %s;%s;%s;%s\n", y, (running_modules[x].module_ifces[y].ifc_direction == NULL ? "none" : running_modules[x].module_ifces[y].ifc_direction),
+         VERBOSE(N_STDOUT,"\t" ANSI_BOLD "IFC%d:" ANSI_ATTR_RESET "  %s;%s;%s;%s\n", y, (running_modules[x].module_ifces[y].ifc_direction == NULL ? "none" : running_modules[x].module_ifces[y].ifc_direction),
                                                                                                 (running_modules[x].module_ifces[y].ifc_type == NULL ? "none" : running_modules[x].module_ifces[y].ifc_type),
                                                                                                 (running_modules[x].module_ifces[y].ifc_params == NULL ? "none" : running_modules[x].module_ifces[y].ifc_params),
                                                                                                 (running_modules[x].module_ifces[y].ifc_note == NULL ? "none" : running_modules[x].module_ifces[y].ifc_note));
       }
+   VERBOSE(N_STDOUT, ANSI_BOLD "- - - - - - - - - -\n" ANSI_ATTR_RESET);
    }
 }
 
@@ -754,7 +755,7 @@ int service_update_module_status()
                VERBOSE(MODULE_EVENT,"%s [STOP] kill -0: errno EPERM\n", get_stats_formated_time());
             }
             if (errno == ESRCH) {
-               VERBOSE(MODULE_EVENT,"%s [STOP] kill -0: module %s with pid %d is not running !\n", get_stats_formated_time(), running_modules[x].module_name, running_modules[x].module_pid);
+               VERBOSE(MODULE_EVENT,"%s [STOP] kill -0: module %s (PID: %d) is not running !\n", get_stats_formated_time(), running_modules[x].module_name, running_modules[x].module_pid);
             }
             if (running_modules[x].module_service_sd != -1) {
                   close(running_modules[x].module_service_sd);
@@ -786,12 +787,12 @@ void service_clean_after_children()
          } else if (result == -1) {
            // Error
             if (errno == ECHILD) {
-               VERBOSE(MODULE_EVENT, "%s [CLEAN] waitpid: module %s with pid %d is not my child, I'm not gonna clean after him !!\n", get_stats_formated_time(), running_modules[x].module_name, running_modules[x].module_pid);
+               VERBOSE(MODULE_EVENT, "%s [CLEAN] waitpid: module %s (PID: %d) is not my child!\n", get_stats_formated_time(), running_modules[x].module_name, running_modules[x].module_pid);
                running_modules[x].module_is_my_child = FALSE;
             }
          } else {
            // Child exited
-            VERBOSE(MODULE_EVENT, "%s [CLEAN] waitpid: module %s with pid %d is my child and is not alive anymore, I'm gonna clean after him !!\n", get_stats_formated_time(), running_modules[x].module_name, running_modules[x].module_pid);
+            VERBOSE(MODULE_EVENT, "%s [CLEAN] waitpid: module %s (PID: %d) is my child and is not alive anymore!\n", get_stats_formated_time(), running_modules[x].module_name, running_modules[x].module_pid);
          }
       }
    }
@@ -801,7 +802,6 @@ void supervisor_signal_handler(int catched_signal)
 {
    switch (catched_signal) {
    case SIGPIPE:
-      VERBOSE(MODULE_EVENT,"%s [WARNING] SIGPIPE catched!\n", get_stats_formated_time());
       break;
 
    case SIGTERM:
@@ -1037,7 +1037,7 @@ void interactive_stop_module()
    pthread_mutex_lock(&running_modules_lock);
    for (x=0;x<loaded_modules_cnt;x++) {
       if (running_modules[x].module_status) {
-         VERBOSE(N_STDOUT,"%d_%s running (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
+         VERBOSE(N_STDOUT,"%d_%s " ANSI_RED_BOLD "running" ANSI_ATTR_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
          running_modules_counter++;
       }
    }
@@ -1100,16 +1100,40 @@ void service_restart_modules()
 
 void interactive_show_running_modules_status()
 {
-   unsigned int x = 0;
+   unsigned int x = 0, already_printed_modules = 0;
+   modules_profile_t * ptr = first_profile_ptr;
+
    if (loaded_modules_cnt == 0) {
       VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] No module is loaded.\n" ANSI_ATTR_RESET);
       return;
    }
-   for (x=0; x<loaded_modules_cnt; x++) {
-      if (running_modules[x].module_status == TRUE) {
-         VERBOSE(N_STDOUT,"%d_%s running (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
-      } else {
-         VERBOSE(N_STDOUT,"%d_%s stopped (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
+
+   while (ptr != NULL) {
+      VERBOSE(N_STDOUT, ANSI_BOLD "Profile: %s\n" ANSI_ATTR_RESET, ptr->profile_name);
+      for (x=0; x<loaded_modules_cnt; x++) {
+         if (running_modules[x].modules_profile != NULL) {
+            if (running_modules[x].modules_profile == ptr->profile_name && running_modules[x].module_status == TRUE) {
+               VERBOSE(N_STDOUT,"\t%d_%s " ANSI_RED_BOLD "running" ANSI_ATTR_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
+               already_printed_modules++;
+            } else if (running_modules[x].modules_profile == ptr->profile_name) {
+               VERBOSE(N_STDOUT,"\t%d_%s " ANSI_RED "stopped" ANSI_ATTR_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
+               already_printed_modules++;
+            }
+         }
+      }
+      ptr = ptr->next;
+   }
+
+   if (already_printed_modules < loaded_modules_cnt) {
+      VERBOSE(N_STDOUT, ANSI_BOLD "Modules without profile:\n" ANSI_ATTR_RESET);
+      for (x=0; x<loaded_modules_cnt; x++) {
+         if (running_modules[x].modules_profile == NULL) {
+            if (running_modules[x].module_status == TRUE) {
+               VERBOSE(N_STDOUT,"\t%d_%s " ANSI_RED_BOLD "running" ANSI_ATTR_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
+            } else {
+               VERBOSE(N_STDOUT,"\t%d_%s " ANSI_RED "stopped" ANSI_ATTR_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
+            }
+         }
       }
    }
 }
@@ -1425,7 +1449,7 @@ int service_get_data(int sd, int running_module_number)
          if (errno == EAGAIN  || errno == EWOULDBLOCK) {
             return 0;
          }
-         VERBOSE(STATISTICS,"! Error while recving from module %d_%s !\n", running_module_number, running_modules[running_module_number].module_name);
+         VERBOSE(MODULE_EVENT,"[SERVICE] Error while receiving from module %d_%s !\n", running_module_number, running_modules[running_module_number].module_name);
          return 0;
       }
       total_receved += last_receved;
@@ -1447,7 +1471,7 @@ void connect_to_module_service_ifc(int module, int num_ifc)
       return;
    }
    get_param_by_delimiter(running_modules[module].module_ifces[num_ifc].ifc_params, &dest_port, ',');
-   VERBOSE(MODULE_EVENT,"%s [SERVICE] Connecting to module %s on port %s\n", get_stats_formated_time(), running_modules[module].module_name, dest_port);
+   VERBOSE(MODULE_EVENT,"%s [SERVICE] Connecting to module %s on port %s...\n", get_stats_formated_time(), running_modules[module].module_name, dest_port);
 
    memset(&addr, 0, sizeof(addr));
 
@@ -1455,7 +1479,7 @@ void connect_to_module_service_ifc(int module, int num_ifc)
    snprintf(addr.unix_addr.sun_path, sizeof(addr.unix_addr.sun_path) - 1, MODULES_UNIXSOCKET_PATH_FILENAME_FORMAT, dest_port);
    sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
    if (sockfd == -1) {
-      VERBOSE(MODULE_EVENT,"%s [SERVICE] Error while opening socket.\n", get_stats_formated_time());
+      VERBOSE(MODULE_EVENT,"%s [SERVICE] Error while opening socket for connection with module %s.\n", get_stats_formated_time(), running_modules[module].module_name);
       running_modules[module].module_service_ifc_isconnected = FALSE;
       if (dest_port != NULL) {
          free(dest_port);
@@ -1475,6 +1499,7 @@ void connect_to_module_service_ifc(int module, int num_ifc)
    }
    running_modules[module].module_service_sd = sockfd;
    running_modules[module].module_service_ifc_isconnected = TRUE;
+   VERBOSE(MODULE_EVENT,"%s [SERVICE] Connected to module %s.\n", get_stats_formated_time(), running_modules[module].module_name);
    if (dest_port != NULL) {
       free(dest_port);
       dest_port = NULL;
@@ -1619,8 +1644,7 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
             }
             if (running_modules[x].module_service_ifc_isconnected == TRUE) {
                if (send(running_modules[x].module_service_sd,(void *) request, sizeof_intptr, 0) == -1) {
-                  VERBOSE(STATISTICS,"------> %s", asctime(timeinfo));
-                  VERBOSE(STATISTICS,"Error while sending request to module %d_%s.\n",x,running_modules[x].module_name);
+                  VERBOSE(MODULE_EVENT,"[SERVICE] Error while sending request to module %d_%s.\n",x,running_modules[x].module_name);
                   running_modules[x].module_service_ifc_isconnected = FALSE;
                }
             }
@@ -1641,7 +1665,7 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
 
       pthread_mutex_unlock(&running_modules_lock);
 
-      if (verbose_flag) {
+      if ((verbose_flag == TRUE) && (some_module_running == TRUE)) {
          print_statistics(timeinfo);
       }
 

@@ -80,6 +80,13 @@ void print_msg(int level, char *string)
          fflush(output_fd);
       }
       break;
+
+   case DEBUG:
+      if (supervisor_debug_log_fd != NULL) {
+         fprintf(supervisor_debug_log_fd, "%s", string);
+         fflush(supervisor_debug_log_fd);
+      }
+      break;
    }
 }
 
