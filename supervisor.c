@@ -570,22 +570,16 @@ int get_numbers_from_input_dis_enable_module(int ** array)
    int x = 0, module_nums_cnt = 0, is_num = FALSE;
    int * module_nums = NULL;
    char * input_p = NULL;
+   int error_input = FALSE;
 
    module_nums = (int *) calloc (50, sizeof(int));
    input_p = get_input_from_stream(input_fd);
 
    if (input_p == NULL) {
-      free(module_nums);
-      module_nums = NULL;
-      array = NULL;
-      return RET_ERROR;
+      error_input = TRUE;
    } else if (strlen(input_p) == 0) {
-      free(input_p);
-      free(module_nums);
-      module_nums = NULL;
-      array = NULL;
       VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Wrong input - empty string.\n" ANSI_ATTR_RESET);
-      return RET_ERROR;
+      error_input = TRUE;
    } else {
       for (x=0; x<strlen(input_p); x++) {
          if (input_p[x] <= '9' && input_p[x] >= '0') {
@@ -596,32 +590,41 @@ int get_numbers_from_input_dis_enable_module(int ** array)
             if (is_num == TRUE) {
                is_num = FALSE;
                module_nums_cnt++;
+            } else {
+               VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Wrong input - comma without a number before it.\n" ANSI_ATTR_RESET);
+               error_input = TRUE;
+               break;
             }
             if (x == (strlen(input_p) -1)) {
                VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Wrong input - comma at the end.\n" ANSI_ATTR_RESET);
-               free(module_nums);
-               module_nums = NULL;
-               array = NULL;
-               free(input_p);
-               input_p = NULL;
-               return RET_ERROR;
+               error_input = TRUE;
+               break;
             }
          } else {
             VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Wrong input - acceptable characters are digits and comma.\n" ANSI_ATTR_RESET);
-            free(module_nums);
-            module_nums = NULL;
-            array = NULL;
-            free(input_p);
-            input_p = NULL;
-            return RET_ERROR;
+            error_input = TRUE;
+            break;
          }
       }
-
-      free(input_p);
-      input_p = NULL;
-      *array = module_nums;
-      return ++module_nums_cnt;
    }
+
+   if (error_input == TRUE) {
+      if (module_nums != NULL) {
+         free(module_nums);
+         module_nums = NULL;
+      }
+      if (input_p != NULL) {
+         free(input_p);
+         input_p = NULL;
+      }
+      array = NULL;
+      return RET_ERROR;
+   }
+
+   free(input_p);
+   input_p = NULL;
+   *array = module_nums;
+   return ++module_nums_cnt;
 }
 
 
