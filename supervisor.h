@@ -165,7 +165,7 @@ void interactive_show_available_modules ();
 
 /** Function creates array of strings for function execvp() before executing new module (its process).
  * @param[in] number_of_module Index to running_modules array.
- * @return Array of strings. 
+ * @return Array of strings.
  */
 char **make_module_arguments(const int number_of_module);
 

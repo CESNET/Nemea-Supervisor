@@ -273,7 +273,7 @@ void interactive_show_available_modules ()
                                                                                                                                     (running_modules[x].module_path == NULL ? "none" : running_modules[x].module_path),
                                                                                                                                     (running_modules[x].module_params == NULL ? "none" : running_modules[x].module_params),
                                                                                                                                     (running_modules[x].modules_profile == NULL ? "none" : running_modules[x].modules_profile));
-      
+
       for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
          VERBOSE(N_STDOUT,"\t" ANSI_BOLD "IFC%d:" ANSI_ATTR_RESET "  %s;%s;%s;%s\n", y, (running_modules[x].module_ifces[y].ifc_direction == NULL ? "none" : running_modules[x].module_ifces[y].ifc_direction),
                                                                                                 (running_modules[x].module_ifces[y].ifc_type == NULL ? "none" : running_modules[x].module_ifces[y].ifc_type),
@@ -309,7 +309,7 @@ char **make_module_arguments(const int number_of_module)
          char * buffer = (char *) calloc (size_of_buffer, sizeof(char));
          int num_module_params = 0;
          unsigned int module_params_length = strlen(running_modules[number_of_module].module_params);
-         
+
          for (x=0; x<module_params_length; x++) {
             if (running_modules[number_of_module].module_params[x] == 32) {
                num_module_params++;
@@ -351,7 +351,7 @@ char **make_module_arguments(const int number_of_module)
 
       fprintf(stdout,"%s [INFO] Supervisor - executed command: %s", get_stats_formated_time(), running_modules[number_of_module].module_path);
       fprintf(stderr,"%s [INFO] Supervisor - executed command: %s", get_stats_formated_time(), running_modules[number_of_module].module_path);
-      
+
       if (params_counter > 0) {
          for (x=1; x<params_counter; x++) {
             fprintf(stdout,"   %s",params[x]);
@@ -483,7 +483,7 @@ char **make_module_arguments(const int number_of_module)
       char * buffer = (char *) calloc (size_of_buffer, sizeof(char));
       int num_module_params = 0;
       unsigned int module_params_length = strlen(running_modules[number_of_module].module_params);
-      
+
       for (x=0; x<module_params_length; x++) {
          if (running_modules[number_of_module].module_params[x] == 32) {
             num_module_params++;
@@ -529,10 +529,10 @@ char **make_module_arguments(const int number_of_module)
 
       params[params_counter] = NULL;
    }
-   
+
    fprintf(stdout,"%s [INFO] Supervisor - executed command: %s   %s   %s", get_stats_formated_time(), running_modules[number_of_module].module_path, params[1], params[2]);
    fprintf(stderr,"%s [INFO] Supervisor - executed command: %s   %s   %s", get_stats_formated_time(), running_modules[number_of_module].module_path, params[1], params[2]);
-   
+
    if (params_counter > 0) {
       for (x=3; x<params_counter; x++) {
          fprintf(stdout,"   %s",params[x]);
@@ -774,7 +774,7 @@ void service_clean_after_children()
    int status;
 
    for (x=0; x<loaded_modules_cnt; x++) {
-      if (running_modules[x].module_pid > 0 && running_modules[x].module_is_my_child) {   
+      if (running_modules[x].module_pid > 0 && running_modules[x].module_is_my_child) {
          result = waitpid(running_modules[x].module_pid , &status, WNOHANG);
          if (result == 0) {
            // Child still alive, nothing to do here!
@@ -841,7 +841,7 @@ int supervisor_initialization(int *argc, char **argv)
 
    input_fd = stdin;
    output_fd = stdout;
-   
+
    ret_val = parse_arguments(argc, argv);
    if (ret_val) {
       if (file_flag == FALSE) {
@@ -1025,7 +1025,7 @@ void interactive_stop_module()
 {
    int x = 0, y = 0, running_modules_counter = 0, modules_to_stop_cnt = 0;
    int * modules_to_stop = NULL;
-   
+
    pthread_mutex_lock(&running_modules_lock);
    for (x=0;x<loaded_modules_cnt;x++) {
       if (running_modules[x].module_status) {
@@ -1217,7 +1217,7 @@ void supervisor_termination(int stop_all_modules, int generate_backup)
 
    VERBOSE(N_STDOUT,"%s [SERVICE] Aborting service thread!\n", get_stats_formated_time());
    service_thread_continue = 0;
-   
+
    x = pthread_join(service_thread_id, NULL);
 
    if (x == 0) {
@@ -1588,7 +1588,7 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
             }
          }
       }
-      
+
       some_module_running = service_update_module_status();
       int request[1];
       request[0] = 1;
@@ -1600,7 +1600,7 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
                   if (running_modules[x].module_ifces[y].ifc_type != NULL) {
                      if ((strncmp(running_modules[x].module_ifces[y].ifc_type, "SERVICE", 7) == 0)) {
                         break;
-                     } 
+                     }
                   }
                   y++;
                }
@@ -1685,12 +1685,12 @@ char * make_formated_statistics()
                   ptr += sprintf(buffer + ptr, "%s,out,%d,%"PRIu64",%"PRIu64",%"PRIu64"\n", running_modules[x].module_name, counter, running_modules[x].module_counters_array[counter + running_modules[x].module_num_in_ifc],
                                                                            running_modules[x].module_counters_array[counter + running_modules[x].module_num_in_ifc + running_modules[x].module_num_out_ifc],
                                                                            running_modules[x].module_counters_array[counter + running_modules[x].module_num_in_ifc + 2*running_modules[x].module_num_out_ifc]);
-                  counter++;  
+                  counter++;
                   if (strlen(buffer) >= (3*size_of_buffer)/5) {
                      size_of_buffer += size_of_buffer/2;
                      buffer = (char *) realloc (buffer, size_of_buffer * sizeof(char));
                      memset(buffer + ptr, 0, size_of_buffer - ptr);
-                  }             
+                  }
                }
             }
          }
@@ -1815,7 +1815,7 @@ int daemon_init()
    }
 
    // allocate daemon_internals
-   daemon_internals = (daemon_internals_t *) calloc (1, sizeof(daemon_internals_t)); 
+   daemon_internals = (daemon_internals_t *) calloc (1, sizeof(daemon_internals_t));
    if (daemon_internals == NULL) {
       fprintf(stderr, "%s [ERROR] Could not allocate dameon_internals, cannot proceed without it!\n", get_stats_formated_time());
       exit(EXIT_FAILURE);
@@ -2285,7 +2285,7 @@ void reload_process_module_atribute(reload_config_vars_t ** config_vars, char **
          if (xmlStrcmp(key, BAD_CAST *module_ifc_atr) != 0) {
             VERBOSE(N_STDOUT, "[WARNING] %s's attribute \"%s\" has been changed (%s -> %s), gonna update it.\n",
                running_modules[(*config_vars)->current_module_idx].module_name, (char *)(*config_vars)->module_atr_elem->name,
-               *module_ifc_atr, (char *)key);   
+               *module_ifc_atr, (char *)key);
             running_modules[(*config_vars)->current_module_idx].module_modified_by_reload = TRUE;
             if (*module_ifc_atr != NULL) {
                free(*module_ifc_atr);
@@ -2348,14 +2348,14 @@ int reload_process_module_interface_atribute(reload_config_vars_t ** config_vars
             running_modules[(*config_vars)->current_module_idx].module_num_out_ifc = 0;
             running_modules[(*config_vars)->current_module_idx].module_num_in_ifc = 0;
             (*config_vars)->module_modifying = FALSE;
-            
+
             if (key != NULL) {
                xmlFree(key);
                key = NULL;
             }
             return -1;
          }
-         
+
          if (key != NULL) {
             xmlFree(key);
             key = NULL;
@@ -2378,7 +2378,7 @@ int reload_process_module_interface_atribute(reload_config_vars_t ** config_vars
          running_modules[(*config_vars)->current_module_idx].module_num_out_ifc = 0;
          running_modules[(*config_vars)->current_module_idx].module_num_in_ifc = 0;
          (*config_vars)->module_modifying = FALSE;
-         
+
          if (key != NULL) {
             xmlFree(key);
             key = NULL;
@@ -2392,7 +2392,7 @@ int reload_process_module_interface_atribute(reload_config_vars_t ** config_vars
          str_len = strlen((char *) key);
          *module_ifc_atr = (char *) calloc (str_len+1, sizeof(char));
          strncpy(*module_ifc_atr , (char *) key, str_len+1);
-         
+
          if (key != NULL) {
             xmlFree(key);
             key = NULL;
@@ -2417,7 +2417,7 @@ void reload_check_modules_interfaces_count(reload_config_vars_t  ** config_vars)
 
    (*config_vars)->ifc_elem = (*config_vars)->module_atr_elem->xmlChildrenNode;
 
-   if (original_module_ifc_cnt != new_module_ifc_cnt) {                    
+   if (original_module_ifc_cnt != new_module_ifc_cnt) {
       running_modules[(*config_vars)->current_module_idx].module_modified_by_reload = TRUE;
       free_module_interfaces_on_index((*config_vars)->current_module_idx);
       running_modules[(*config_vars)->current_module_idx].module_ifces_cnt = 0;
@@ -2564,14 +2564,14 @@ int reload_find_and_check_modules_profile_basic_elements(reload_config_vars_t **
       if (key != NULL) {
          xmlFree(key);
          key = NULL;
-      }      
+      }
       (*config_vars)->module_elem = (*config_vars)->module_elem->next;
    }
 
    if (key != NULL) {
       xmlFree(key);
       key = NULL;
-   }   
+   }
 
    if (basic_elements[name_elem_idx] != 1 || basic_elements[enabled_elem_idx] != 1) {
       // Invalid profile
@@ -2740,7 +2740,7 @@ int reload_configuration(const int choice, xmlNodePtr node)
    int ifc_cnt = 0;
    reload_config_vars_t * config_vars = (reload_config_vars_t *) calloc (1, sizeof(reload_config_vars_t));
    xmlChar * key = NULL;
-   
+
    switch (choice) {
       case RELOAD_INIT_LOAD_CONFIG: {
             char file_name[100];
@@ -2923,7 +2923,7 @@ int reload_configuration(const int choice, xmlNodePtr node)
          config_vars->module_atr_elem = NULL, config_vars->ifc_elem = NULL, config_vars->ifc_atr_elem = NULL;
          ifc_cnt = 0;
 
-         /* if return value equals -1, modules element doesn't have one valid name and enabled element -> it's children (module elements) won't have profile  
+         /* if return value equals -1, modules element doesn't have one valid name and enabled element -> it's children (module elements) won't have profile
          *  return value 0 means success -> modules children will have a profile
          */
          if (reload_find_and_check_modules_profile_basic_elements(&config_vars) == 0) {
@@ -2940,7 +2940,7 @@ int reload_configuration(const int choice, xmlNodePtr node)
             if (!xmlStrcmp(config_vars->module_elem->name, BAD_CAST "module")) {
                // Process modules element "module"
                config_vars->current_module_idx = -1;
-               
+
                // Check and reallocate (if needed) running_modules memory
                reload_check_running_modules_allocated_memory();
 
@@ -3015,7 +3015,7 @@ int reload_configuration(const int choice, xmlNodePtr node)
                      while (config_vars->ifc_elem != NULL) {
                         if (!xmlStrcmp(config_vars->ifc_elem->name,BAD_CAST "interface")) {
                            config_vars->ifc_atr_elem = config_vars->ifc_elem->xmlChildrenNode;
-                           
+
                            // Check and reallocate (if needed) module's interfaces array
                            reload_check_module_allocated_interfaces(&config_vars, ifc_cnt);
 
@@ -3103,7 +3103,7 @@ int reload_configuration(const int choice, xmlNodePtr node)
       // Count modified modules
       if (running_modules[x].module_modified_by_reload == TRUE) {
          config_vars->modified_modules++;
-         // If they were or are running, restart them with new configuration and initialize their variables 
+         // If they were or are running, restart them with new configuration and initialize their variables
          if (running_modules[x].module_running == TRUE) {
             running_modules[x].module_running = FALSE;
             if (running_modules[x].module_enabled == TRUE) {
