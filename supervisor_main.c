@@ -53,7 +53,7 @@ int main (int argc, char * argv [])
    }
    int ret_val = 0;
 
-   while ((ret_val = interactive_get_option()) != 9) {
+   while ((ret_val = interactive_get_option()) != 8) {
       switch (ret_val) {
       case 1:
          interactive_start_configuration();
@@ -80,10 +80,6 @@ int main (int argc, char * argv [])
          break;
 
       case 7:
-         interactive_show_graph();
-         break;
-
-      case 8:
          reload_configuration(RELOAD_INTERACTIVE, NULL);
          break;
 

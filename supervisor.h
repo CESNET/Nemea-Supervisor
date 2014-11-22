@@ -111,7 +111,6 @@ typedef struct running_module_s {
    pid_t          module_pid; ///< Modules process PID.
    uint64_t           *module_counters_array; ///< Array of statistics with counters.
    int            module_service_sd; ///< Socket descriptor of the service connection.
-   int            module_number; ///< Index to running_modules array.
    int            module_modified_by_reload;
    long int       total_cpu_usage_during_module_startup;
    int            last_period_cpu_usage_kernel_mode; ///< Percentage of CPU usage in last period in kernel mode.

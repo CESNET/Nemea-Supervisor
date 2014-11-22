@@ -80,8 +80,6 @@ extern char * supervisor_debug_log_file_path;
 extern char * statistics_file_path;
 extern char * module_event_file_path;
 extern char * supervisor_log_file_path;
-extern char * graph_picture_file_path;
-extern char * graph_code_file_path;
 
 extern FILE * input_fd;
 extern FILE * output_fd;

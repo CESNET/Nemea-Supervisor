@@ -48,7 +48,6 @@
 #endif
 
 #include "supervisor.h"
-#include "graph.h"
 #include "internal.h"
 
 #include <arpa/inet.h>
@@ -93,9 +92,6 @@ pthread_mutex_t running_modules_lock; ///< mutex for locking counters
 int         service_thread_continue = FALSE; ///< condition variable of main loop of the service_thread
 int         max_restarts_per_minute_config = DEFAULT_MAX_RESTARTS_PER_MINUTE;
 
-graph_node_t *    graph_first_node = NULL; ///< First node of graph nodes list.
-graph_node_t *    graph_last_node = NULL; ///< Last node of graph nodes list.
-
 modules_profile_t * first_profile_ptr = NULL;
 modules_profile_t * actual_profile_ptr = NULL;
 
@@ -118,8 +114,6 @@ char *   statistics_file_path = NULL;
 char *   module_event_file_path = NULL;
 char *   supervisor_debug_log_file_path = NULL;
 char *   supervisor_log_file_path = NULL;
-char *   graph_picture_file_path = NULL;
-char *   graph_code_file_path = NULL;
 
 daemon_internals_t * daemon_internals = NULL;
 
@@ -212,10 +206,6 @@ void create_output_files_strings()
    sprintf(statistics_file_path, "%ssupervisor_log_statistics", logs_path);
    module_event_file_path = (char *) calloc (strlen(logs_path)+strlen("supervisor_log_module_event")+1, sizeof(char));
    sprintf(module_event_file_path, "%ssupervisor_log_module_event", logs_path);
-   graph_picture_file_path = (char *) calloc (strlen(logs_path)+strlen("graph_picture.png")+1, sizeof(char));
-   sprintf(graph_picture_file_path, "%sgraph_picture.png", logs_path);
-   graph_code_file_path = (char *) calloc (strlen(logs_path)+strlen("graph_code")+1, sizeof(char));
-   sprintf(graph_code_file_path, "%sgraph_code", logs_path);
 
    supervisor_debug_log_fd = fopen(supervisor_debug_log_file_path, "a");
    if (supervisor_debug_log_fd == NULL) {
@@ -645,9 +635,8 @@ int interactive_get_option()
    VERBOSE(N_STDOUT, "4. STOP MODULE\n");
    VERBOSE(N_STDOUT, "5. STARTED MODULES STATUS\n");
    VERBOSE(N_STDOUT, "6. AVAILABLE MODULES\n");
-   VERBOSE(N_STDOUT, "7. SHOW GRAPH\n");
-   VERBOSE(N_STDOUT, "8. RELOAD CONFIGURATION\n");
-   VERBOSE(N_STDOUT, "9. STOP SUPERVISOR\n" ANSI_ATTR_RESET);
+   VERBOSE(N_STDOUT, "7. RELOAD CONFIGURATION\n");
+   VERBOSE(N_STDOUT, "8. STOP SUPERVISOR\n" ANSI_ATTR_RESET);
    VERBOSE(N_STDOUT, ANSI_YELLOW_BOLD "[INTERACTIVE] Your choice: " ANSI_ATTR_RESET);
 
    return get_number_from_input_choosing_option();
@@ -849,8 +838,6 @@ int supervisor_initialization(int *argc, char **argv)
    file_flag = FALSE;
    daemon_flag = FALSE;
    netconf_flag = FALSE;
-   graph_first_node = NULL;
-   graph_last_node = NULL;
 
    input_fd = stdin;
    output_fd = stdout;
@@ -1161,14 +1148,6 @@ void free_output_file_strings_and_streams()
       free(supervisor_log_file_path);
       supervisor_log_file_path = NULL;
    }
-   if (graph_picture_file_path != NULL) {
-      free(graph_picture_file_path);
-      graph_picture_file_path = NULL;
-   }
-   if (graph_code_file_path != NULL) {
-      free(graph_code_file_path);
-      graph_code_file_path = NULL;
-   }
 
    if (supervisor_debug_log_fd != NULL) {
       fclose(supervisor_debug_log_fd);
@@ -1312,8 +1291,6 @@ void supervisor_termination(int stop_all_modules, int generate_backup)
       running_modules = NULL;
    }
 
-   // destroy_graph(graph_first_node);
-
    if (config_file != NULL) {
       free(config_file);
       config_file = NULL;
@@ -1434,24 +1411,6 @@ void update_module_cpu_usage(long int * last_total_cpu_usage)
          fclose(proc_stat_fd);
       }
    }
-}
-
-void generate_periodic_picture()
-{
-   if (graph_first_node == NULL) {
-      return;
-   }
-   generate_graph_code(graph_first_node);
-   generate_picture();
-}
-
-void interactive_show_graph()
-{
-   if (graph_first_node == NULL) {
-      VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] No module loaded.\n" ANSI_ATTR_RESET);
-      return;
-   }
-   show_picture();
 }
 
 int service_get_data(int sd, int running_module_number)
@@ -1611,8 +1570,6 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
 
       for (y=0; y<loaded_modules_cnt; y++) {
          if (running_modules[y].module_served_by_service_thread == FALSE) {
-
-
             if (running_modules[y].remove_module == TRUE) {
                if (running_modules[y].module_status == FALSE) {
                   VERBOSE(N_STDOUT, "[WARNING] %s is gonna be deleted right now, see ya!\n", running_modules[y].module_name);
@@ -1629,39 +1586,6 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
             } else {
                running_modules[y].module_served_by_service_thread = TRUE;
             }
-
-
-
-
-
-
-
-
-            // running_modules[y].module_number = y;
-            // for (x=0; x<running_modules[y].module_ifces_cnt; x++) {
-            //    if (running_modules[y].module_ifces[x].ifc_type != NULL) {
-            //       if ((strncmp(running_modules[y].module_ifces[x].ifc_type, "SERVICE", 7) == 0)) {
-            //          running_modules[y].module_has_service_ifc = TRUE;
-            //          break;
-            //       }
-            //    }
-            // }
-            // graph_node_t * new_node = add_graph_node (graph_first_node, graph_last_node, (void *) &running_modules[y]);
-
-            // if (graph_first_node == NULL) {
-            //    graph_first_node = new_node;
-            //    graph_last_node = new_node;
-            //    graph_first_node->next_node = NULL;
-            // } else {
-            //    graph_last_node->next_node = new_node;
-            //    graph_last_node = new_node;
-            //    graph_last_node->next_node = NULL;
-            // }
-            // running_modules[y].module_served_by_service_thread = TRUE;
-
-            // if (y==loaded_modules_cnt-1) {
-            //    check_port_duplicates(graph_first_node);
-            // }
          }
       }
       
@@ -1707,8 +1631,6 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
             }
          }
       }
-      // update_graph_values(graph_first_node);
-      // generate_periodic_picture();
 
       pthread_mutex_unlock(&running_modules_lock);
 
@@ -2026,8 +1948,7 @@ void send_options_to_client()
    VERBOSE(N_STDOUT, "4. STOP MODULE\n");
    VERBOSE(N_STDOUT, "5. STARTED MODULES STATUS\n");
    VERBOSE(N_STDOUT, "6. AVAILABLE MODULES\n");
-   VERBOSE(N_STDOUT, "7. SHOW GRAPH\n");
-   VERBOSE(N_STDOUT, "8. RELOAD CONFIGURATION\n");
+   VERBOSE(N_STDOUT, "7. RELOAD CONFIGURATION\n");
    VERBOSE(N_STDOUT, "-- Type \"Cquit\" to exit client --\n");
    VERBOSE(N_STDOUT, "-- Type \"Dstop\" to stop daemon --\n" ANSI_ATTR_RESET);
    VERBOSE(N_STDOUT, ANSI_YELLOW_BOLD "[INTERACTIVE] Your choice: " ANSI_ATTR_RESET);
@@ -2193,9 +2114,6 @@ void daemon_mode()
                   interactive_show_available_modules();
                   break;
                case 7:
-                  interactive_show_graph();
-                  break;
-               case 8:
                   reload_configuration(RELOAD_INTERACTIVE, NULL);
                   break;
                case 9:
@@ -2736,7 +2654,6 @@ void reload_check_module_allocated_interfaces(reload_config_vars_t ** config_var
 void reload_check_running_modules_allocated_memory()
 {
    int origin_size = 0, x = 0;
-   // graph_node_t * node_ptr = NULL;
 
    if (loaded_modules_cnt == running_modules_array_size) {
       VERBOSE(N_STDOUT, "[WARNING] Reload - reallocating running_modules memory.\n");
@@ -2751,13 +2668,6 @@ void reload_check_running_modules_allocated_memory()
          running_modules[x].module_ifces_array_size = IFCES_ARRAY_START_SIZE;
          running_modules[x].module_ifces_cnt = 0;
       }
-
-      // node_ptr = graph_first_node;
-      // while (node_ptr != NULL) {
-      //    node_ptr->module_data = (void *) &running_modules[x];
-      //    node_ptr = node_ptr->next_node;
-      //    x++;
-      // }
    }
 }
 
@@ -3187,11 +3097,6 @@ int reload_configuration(const int choice, xmlNodePtr node)
          config_vars->removed_modules++;
       }
    }
-
-   // destroy_graph(graph_first_node);
-   // graph_first_node = NULL;
-   // graph_last_node = NULL;
-
 
    for (x=0; x<loaded_modules_cnt; x++) {
       running_modules[x].module_served_by_service_thread = FALSE;
