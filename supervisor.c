@@ -691,8 +691,8 @@ void re_start_module(const int module_number)
    memset(log_path_stderr,0,200);
    memset(log_path_stdout,0,200);
 
-   sprintf(log_path_stdout,"%s%d_%s_stdout",logs_path, module_number, running_modules[module_number].module_name);
-   sprintf(log_path_stderr,"%s%d_%s_stderr",logs_path, module_number, running_modules[module_number].module_name);
+   sprintf(log_path_stdout,"%s%s_stdout",logs_path, running_modules[module_number].module_name);
+   sprintf(log_path_stderr,"%s%s_stderr",logs_path, running_modules[module_number].module_name);
 
    init_module_variables(module_number);
 
@@ -706,10 +706,14 @@ void re_start_module(const int module_number)
    if (running_modules[module_number].module_pid == 0) {
       int fd_stdout = open(log_path_stdout, O_RDWR | O_CREAT | O_APPEND, PERM_LOGFILE);
       int fd_stderr = open(log_path_stderr, O_RDWR | O_CREAT | O_APPEND, PERM_LOGFILE);
-      dup2(fd_stdout,1); //stdout
-      dup2(fd_stderr,2); //stderr
-      close(fd_stdout);
-      close(fd_stderr);
+      if (fd_stdout != -1) {
+         dup2(fd_stdout,1); //stdout
+         close(fd_stdout);
+      }
+      if (fd_stderr != -1) {
+         dup2(fd_stderr,2); //stderr
+         close(fd_stderr);
+      }
       setsid(); // important for sending SIGINT to supervisor.. modules can't receive the signal too !!!
       fprintf(stdout,"---> %s", asctime (timeinfo));
       fprintf(stderr,"---> %s", asctime (timeinfo));
