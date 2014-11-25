@@ -265,22 +265,60 @@ char * get_stats_formated_time()
 
 void interactive_show_available_modules ()
 {
-   unsigned int x,y = 0;
+   unsigned int x = 0, y = 0, already_printed_modules = 0;
+   modules_profile_t * ptr = first_profile_ptr;
+
+   if (loaded_modules_cnt == 0) {
+      VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] No module is loaded.\n" ANSI_ATTR_RESET);
+      return;
+   }
+
    VERBOSE(N_STDOUT,"[PRINTING CONFIGURATION]\n");
 
-   for (x=0; x < loaded_modules_cnt; x++) {
-      VERBOSE(N_STDOUT, ANSI_RED_BOLD "%c" ANSI_ATTR_RESET ANSI_BOLD "%d_%s:" ANSI_ATTR_RESET "  PATH:%s  PARAMS:%s  PROFILE:%s\n", (running_modules[x].module_enabled == 0 ? ' ' : '*'), x, running_modules[x].module_name,
-                                                                                                                                    (running_modules[x].module_path == NULL ? "none" : running_modules[x].module_path),
-                                                                                                                                    (running_modules[x].module_params == NULL ? "none" : running_modules[x].module_params),
-                                                                                                                                    (running_modules[x].modules_profile == NULL ? "none" : running_modules[x].modules_profile));
+   while (ptr != NULL) {
+      VERBOSE(N_STDOUT, ANSI_BOLD "Profile: %s\n" ANSI_ATTR_RESET, ptr->profile_name);
+      for (x=0; x<loaded_modules_cnt; x++) {
+         if (running_modules[x].modules_profile != NULL) {
+            if (running_modules[x].modules_profile == ptr->profile_name) {
+               if (running_modules[x].module_enabled == TRUE) {
+                  VERBOSE(N_STDOUT, "   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s (" ANSI_RED_BOLD "enabled" ANSI_ATTR_RESET "):\n", x, running_modules[x].module_name);
+               } else {
+                  VERBOSE(N_STDOUT, "   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s (" ANSI_RED "disabled" ANSI_ATTR_RESET "):\n", x, running_modules[x].module_name);
+               }
+               VERBOSE(N_STDOUT, "      " ANSI_BOLD "PATH:" ANSI_ATTR_RESET " %s\n", (running_modules[x].module_path == NULL ? "none" : running_modules[x].module_path));
+               VERBOSE(N_STDOUT, "      " ANSI_BOLD "PARAMS:" ANSI_ATTR_RESET " %s\n", (running_modules[x].module_params == NULL ? "none" : running_modules[x].module_params));
+               for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
+                  VERBOSE(N_STDOUT,"      " ANSI_BOLD "IFC%d:" ANSI_ATTR_RESET "  %s; %s; %s; %s\n", y, (running_modules[x].module_ifces[y].ifc_direction == NULL ? "none" : running_modules[x].module_ifces[y].ifc_direction),
+                                                                                                   (running_modules[x].module_ifces[y].ifc_type == NULL ? "none" : running_modules[x].module_ifces[y].ifc_type),
+                                                                                                   (running_modules[x].module_ifces[y].ifc_params == NULL ? "none" : running_modules[x].module_ifces[y].ifc_params),
+                                                                                                   (running_modules[x].module_ifces[y].ifc_note == NULL ? "none" : running_modules[x].module_ifces[y].ifc_note));
+               }
+               already_printed_modules++;
+            }
+         }
+      }
+      ptr = ptr->next;
+   }
 
-      for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
-         VERBOSE(N_STDOUT,"\t" ANSI_BOLD "IFC%d:" ANSI_ATTR_RESET "  %s;%s;%s;%s\n", y, (running_modules[x].module_ifces[y].ifc_direction == NULL ? "none" : running_modules[x].module_ifces[y].ifc_direction),
+   if (already_printed_modules < loaded_modules_cnt) {
+      VERBOSE(N_STDOUT, ANSI_BOLD "Modules without profile:\n" ANSI_ATTR_RESET);
+      for (x=0; x<loaded_modules_cnt; x++) {
+         if (running_modules[x].modules_profile == NULL) {
+            if (running_modules[x].module_enabled == TRUE) {
+               VERBOSE(N_STDOUT, "   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s (" ANSI_RED_BOLD "enabled" ANSI_ATTR_RESET "):\n", x, running_modules[x].module_name);
+            } else {
+               VERBOSE(N_STDOUT, "   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s (" ANSI_RED "disabled" ANSI_ATTR_RESET "):\n", x, running_modules[x].module_name);
+            }
+            VERBOSE(N_STDOUT, "      " ANSI_BOLD "PATH:" ANSI_ATTR_RESET " %s\n", (running_modules[x].module_path == NULL ? "none" : running_modules[x].module_path));
+            VERBOSE(N_STDOUT, "      " ANSI_BOLD "PARAMS:" ANSI_ATTR_RESET " %s\n", (running_modules[x].module_params == NULL ? "none" : running_modules[x].module_params));
+            for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
+               VERBOSE(N_STDOUT,"      " ANSI_BOLD "IFC%d:" ANSI_ATTR_RESET "  %s; %s; %s; %s\n", y, (running_modules[x].module_ifces[y].ifc_direction == NULL ? "none" : running_modules[x].module_ifces[y].ifc_direction),
                                                                                                 (running_modules[x].module_ifces[y].ifc_type == NULL ? "none" : running_modules[x].module_ifces[y].ifc_type),
                                                                                                 (running_modules[x].module_ifces[y].ifc_params == NULL ? "none" : running_modules[x].module_ifces[y].ifc_params),
                                                                                                 (running_modules[x].module_ifces[y].ifc_note == NULL ? "none" : running_modules[x].module_ifces[y].ifc_note));
+            }
+         }
       }
-   VERBOSE(N_STDOUT, ANSI_BOLD "- - - - - - - - - -\n" ANSI_ATTR_RESET);
    }
 }
 
@@ -955,9 +993,58 @@ void interactive_stop_configuration()
 void interactive_set_module_enabled()
 {
    int * modules_to_enable = NULL;
-   int x = 0, y = 0, modules_to_enable_cnt = 0;
+   int x = 0, y = 0, modules_to_enable_cnt = 0, stopped_modules_counter = 0, matched_modules = 0, profile_printed = FALSE;
+   modules_profile_t * ptr = first_profile_ptr;
+
+   if (loaded_modules_cnt == 0) {
+      VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] No module is loaded.\n" ANSI_ATTR_RESET);
+      return;
+   }
 
    pthread_mutex_lock(&running_modules_lock);
+   VERBOSE(N_STDOUT, "[LIST OF STOPPED MODULES]\n");
+   while (ptr != NULL) {
+      profile_printed = FALSE;
+      for (x=0; x<loaded_modules_cnt; x++) {
+         if (running_modules[x].modules_profile != NULL) {
+            if (running_modules[x].modules_profile == ptr->profile_name) {
+               if (running_modules[x].module_status == FALSE) {
+                  if (profile_printed == FALSE) {
+                     VERBOSE(N_STDOUT, ANSI_BOLD "Profile: %s\n" ANSI_ATTR_RESET, ptr->profile_name);
+                     profile_printed = TRUE;
+                  }
+                  VERBOSE(N_STDOUT, "   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s " ANSI_RED_BOLD "stopped" ANSI_ATTR_RESET "\n",x, running_modules[x].module_name);
+                  stopped_modules_counter++;
+               }
+               matched_modules++;
+            }
+         }
+      }
+      ptr = ptr->next;
+   }
+
+   if (matched_modules < loaded_modules_cnt) {
+      profile_printed = FALSE;
+      for (x=0; x<loaded_modules_cnt; x++) {
+         if (running_modules[x].modules_profile == NULL) {
+            if (running_modules[x].module_status == FALSE) {
+               if (profile_printed == FALSE) {
+                  VERBOSE(N_STDOUT, ANSI_BOLD "Modules without profile:\n" ANSI_ATTR_RESET);
+                  profile_printed = TRUE;
+               }
+               VERBOSE(N_STDOUT, "   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s " ANSI_RED_BOLD "stopped" ANSI_ATTR_RESET "\n",x, running_modules[x].module_name);
+               stopped_modules_counter++;
+            }
+         }
+      }
+   }
+
+   if (stopped_modules_counter == 0) {
+      VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] All modules are running.\n" ANSI_ATTR_RESET);
+      pthread_mutex_unlock(&running_modules_lock);
+      return;
+   }
+
    VERBOSE(N_STDOUT, ANSI_YELLOW_BOLD "[INTERACTIVE] Type in module numbers (one number or more separated by comma): " ANSI_ATTR_RESET);
    modules_to_enable_cnt = get_numbers_from_input_dis_enable_module(&modules_to_enable);
 
@@ -1032,16 +1119,53 @@ void service_stop_modules_sigkill()
 
 void interactive_stop_module()
 {
-   int x = 0, y = 0, running_modules_counter = 0, modules_to_stop_cnt = 0;
    int * modules_to_stop = NULL;
+   int x = 0, y = 0, running_modules_counter = 0, modules_to_stop_cnt = 0, matched_modules = 0, profile_printed = FALSE;
+   modules_profile_t * ptr = first_profile_ptr;
+
+   if (loaded_modules_cnt == 0) {
+      VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] No module is loaded.\n" ANSI_ATTR_RESET);
+      return;
+   }
 
    pthread_mutex_lock(&running_modules_lock);
-   for (x=0;x<loaded_modules_cnt;x++) {
-      if (running_modules[x].module_status) {
-         VERBOSE(N_STDOUT,"%d_%s " ANSI_RED_BOLD "running" ANSI_ATTR_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
-         running_modules_counter++;
+   VERBOSE(N_STDOUT, "[LIST OF RUNNING MODULES]\n");
+   while (ptr != NULL) {
+      profile_printed = FALSE;
+      for (x=0; x<loaded_modules_cnt; x++) {
+         if (running_modules[x].modules_profile != NULL) {
+            if (running_modules[x].modules_profile == ptr->profile_name) {
+               if (running_modules[x].module_status == TRUE) {
+                  if (profile_printed == FALSE) {
+                     VERBOSE(N_STDOUT, ANSI_BOLD "Profile: %s\n" ANSI_ATTR_RESET, ptr->profile_name);
+                     profile_printed = TRUE;
+                  }
+                  VERBOSE(N_STDOUT, "   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s " ANSI_RED_BOLD "running" ANSI_ATTR_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
+                  running_modules_counter++;
+               }
+               matched_modules++;
+            }
+         }
+      }
+      ptr = ptr->next;
+   }
+
+   if (matched_modules < loaded_modules_cnt) {
+      profile_printed = FALSE;
+      for (x=0; x<loaded_modules_cnt; x++) {
+         if (running_modules[x].modules_profile == NULL) {
+            if (running_modules[x].module_status == TRUE) {
+               if (profile_printed == FALSE) {
+                  VERBOSE(N_STDOUT, ANSI_BOLD "Modules without profile:\n" ANSI_ATTR_RESET);
+                  profile_printed = TRUE;
+               }
+               VERBOSE(N_STDOUT, "   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s " ANSI_RED_BOLD "running" ANSI_ATTR_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
+               running_modules_counter++;
+            }
+         }
       }
    }
+
    if (running_modules_counter == 0) {
       VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] All modules are stopped.\n" ANSI_ATTR_RESET);
       pthread_mutex_unlock(&running_modules_lock);
@@ -1114,10 +1238,10 @@ void interactive_show_running_modules_status()
       for (x=0; x<loaded_modules_cnt; x++) {
          if (running_modules[x].modules_profile != NULL) {
             if (running_modules[x].modules_profile == ptr->profile_name && running_modules[x].module_status == TRUE) {
-               VERBOSE(N_STDOUT,"\t%d_%s " ANSI_RED_BOLD "running" ANSI_ATTR_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
+               VERBOSE(N_STDOUT,"   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s " ANSI_RED_BOLD "running" ANSI_ATTR_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
                already_printed_modules++;
             } else if (running_modules[x].modules_profile == ptr->profile_name) {
-               VERBOSE(N_STDOUT,"\t%d_%s " ANSI_RED "stopped" ANSI_ATTR_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
+               VERBOSE(N_STDOUT,"   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s " ANSI_RED "stopped" ANSI_ATTR_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
                already_printed_modules++;
             }
          }
@@ -1130,9 +1254,9 @@ void interactive_show_running_modules_status()
       for (x=0; x<loaded_modules_cnt; x++) {
          if (running_modules[x].modules_profile == NULL) {
             if (running_modules[x].module_status == TRUE) {
-               VERBOSE(N_STDOUT,"\t%d_%s " ANSI_RED_BOLD "running" ANSI_ATTR_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
+               VERBOSE(N_STDOUT,"   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s " ANSI_RED_BOLD "running" ANSI_ATTR_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
             } else {
-               VERBOSE(N_STDOUT,"\t%d_%s " ANSI_RED "stopped" ANSI_ATTR_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
+               VERBOSE(N_STDOUT,"   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s " ANSI_RED "stopped" ANSI_ATTR_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
             }
          }
       }
@@ -1581,12 +1705,10 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
          if (running_modules[y].module_served_by_service_thread == FALSE) {
             if (running_modules[y].remove_module == TRUE) {
                if (running_modules[y].module_status == FALSE) {
-                  VERBOSE(N_STDOUT, "[WARNING] %s is gonna be deleted right now, see ya!\n", running_modules[y].module_name);
                   free_module_and_shift_array(y);
                }
             } else if (running_modules[y].init_module) {
                if (running_modules[y].module_status == FALSE) {
-                  VERBOSE(N_STDOUT, "[WARNING] %s was stopped and is gonna be started again\n", running_modules[y].module_name);
                   running_modules[y].module_enabled = TRUE;
                   running_modules[y].module_restart_cnt = -1;
                   running_modules[y].init_module = FALSE;
@@ -2656,12 +2778,10 @@ void reload_check_module_allocated_interfaces(reload_config_vars_t ** config_var
    int origin_size = 0;
 
    if (running_modules[(*config_vars)->current_module_idx].module_ifces_array_size == 0) {
-      VERBOSE(N_STDOUT, "[WARNING] Reload - allocating \"%s\" interfaces memory.\n", running_modules[(*config_vars)->current_module_idx].module_name);
       running_modules[(*config_vars)->current_module_idx].module_ifces = (interface_t *) calloc(IFCES_ARRAY_START_SIZE, sizeof(interface_t));
       running_modules[(*config_vars)->current_module_idx].module_ifces_array_size = IFCES_ARRAY_START_SIZE;
       running_modules[(*config_vars)->current_module_idx].module_ifces_cnt = 0;
    } else if (ifc_cnt == running_modules[(*config_vars)->current_module_idx].module_ifces_array_size) {
-      VERBOSE(N_STDOUT, "[WARNING] Reload - reallocating \"%s\" interfaces memory.\n", running_modules[(*config_vars)->current_module_idx].module_name);
       origin_size = running_modules[(*config_vars)->current_module_idx].module_ifces_array_size;
       running_modules[(*config_vars)->current_module_idx].module_ifces_array_size += running_modules[(*config_vars)->current_module_idx].module_ifces_array_size/2;
       running_modules[(*config_vars)->current_module_idx].module_ifces = (interface_t *) realloc (running_modules[(*config_vars)->current_module_idx].module_ifces, (running_modules[(*config_vars)->current_module_idx].module_ifces_array_size) * sizeof(interface_t));
@@ -2927,7 +3047,7 @@ int reload_configuration(const int choice, xmlNodePtr node)
    actual_profile_ptr = NULL;
 
    /*****************/
-   VERBOSE(N_STDOUT,"- - -\n[RELOAD] Processing new configuration...\n[RELOAD] Progress of reloading with reports about every event is logged in \"supervisor_debug_log\" file.\n");
+   VERBOSE(N_STDOUT,"- - -\n[RELOAD] Processing new configuration...\n");
 
    while (config_vars->current_node != NULL) {
       if (!xmlStrcmp(config_vars->current_node->name, BAD_CAST "supervisor")) {
@@ -2948,7 +3068,6 @@ int reload_configuration(const int choice, xmlNodePtr node)
             VERBOSE(N_STDOUT, "[WARNING] Found valid modules profile with name \"%s\" set to %s.\n", actual_profile_ptr->profile_name, (actual_profile_ptr->profile_enabled == TRUE ? "enabled" : "disabled"));
             modules_got_profile = TRUE;
          } else {
-            VERBOSE(N_STDOUT, "[WARNING] Did not find valid modules profile.\n");
             modules_got_profile = FALSE;
          }
 
