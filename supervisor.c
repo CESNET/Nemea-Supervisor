@@ -2414,7 +2414,7 @@ void reload_process_module_atribute(reload_config_vars_t ** config_vars, char **
    xmlChar * key = NULL;
 
    key = xmlNodeListGetString((*config_vars)->doc_tree_ptr, (*config_vars)->module_atr_elem->xmlChildrenNode, 1);
-   if ((*config_vars)->module_modifying) {
+   if ((*config_vars)->new_module == FALSE) {
       if (*module_ifc_atr != NULL && key != NULL) {
          if (xmlStrcmp(key, BAD_CAST *module_ifc_atr) != 0) {
             VERBOSE(N_STDOUT, "[WARNING] %s's attribute \"%s\" has been changed (%s -> %s), gonna update it.\n",
@@ -2468,7 +2468,7 @@ int reload_process_module_interface_atribute(reload_config_vars_t ** config_vars
    xmlChar * key = NULL;
 
    key = xmlNodeListGetString((*config_vars)->doc_tree_ptr, (*config_vars)->ifc_atr_elem->xmlChildrenNode, 1);
-   if ((*config_vars)->module_modifying) {
+   if ((*config_vars)->module_ifc_insert == FALSE) {
       if (*module_ifc_atr != NULL && key != NULL) {
          if (xmlStrcmp(key, BAD_CAST *module_ifc_atr) != 0) {
             VERBOSE(N_STDOUT, "[WARNING] %s's interface attribute \"%s\" has been changed (%s -> %s), gonna update module's interfaces.\n",
@@ -2481,7 +2481,7 @@ int reload_process_module_interface_atribute(reload_config_vars_t ** config_vars
             running_modules[(*config_vars)->current_module_idx].module_ifces_cnt = -1;
             running_modules[(*config_vars)->current_module_idx].module_num_out_ifc = 0;
             running_modules[(*config_vars)->current_module_idx].module_num_in_ifc = 0;
-            (*config_vars)->module_modifying = FALSE;
+            (*config_vars)->module_ifc_insert = TRUE;
 
             if (key != NULL) {
                xmlFree(key);
@@ -2511,7 +2511,7 @@ int reload_process_module_interface_atribute(reload_config_vars_t ** config_vars
          running_modules[(*config_vars)->current_module_idx].module_ifces_cnt = -1;
          running_modules[(*config_vars)->current_module_idx].module_num_out_ifc = 0;
          running_modules[(*config_vars)->current_module_idx].module_num_in_ifc = 0;
-         (*config_vars)->module_modifying = FALSE;
+         (*config_vars)->module_ifc_insert = TRUE;
 
          if (key != NULL) {
             xmlFree(key);
@@ -2557,7 +2557,7 @@ void reload_check_modules_interfaces_count(reload_config_vars_t  ** config_vars)
       running_modules[(*config_vars)->current_module_idx].module_ifces_cnt = 0;
       running_modules[(*config_vars)->current_module_idx].module_num_out_ifc = 0;
       running_modules[(*config_vars)->current_module_idx].module_num_in_ifc = 0;
-      (*config_vars)->module_modifying = FALSE;
+      (*config_vars)->module_ifc_insert = TRUE;
       VERBOSE(N_STDOUT,"[WARNING] Reloading module \"%s\" - original interface cnt:%d, actual interface cnt:%d -> gonna update module's interfaces.\n",
                                              running_modules[(*config_vars)->current_module_idx].module_name, original_module_ifc_cnt, new_module_ifc_cnt);
    }
@@ -2571,8 +2571,8 @@ int reload_find_and_check_module_basic_elements(reload_config_vars_t ** config_v
    int ret_val = 0;
    int last_module = FALSE;
    xmlChar * key = NULL;
-   int basic_elements[2], name_elem_idx = 0, path_elem_idx = 1;
-   memset(basic_elements, 0, 2*sizeof(int));
+   int basic_elements[3], name_elem_idx = 0, path_elem_idx = 1, trapifc_elem_idx = 2;
+   memset(basic_elements, 0, 3*sizeof(int));
 
    while ((*config_vars)->module_atr_elem != NULL) {
       if ((!xmlStrcmp((*config_vars)->module_atr_elem->name, BAD_CAST "name"))) {
@@ -2586,10 +2586,12 @@ int reload_find_and_check_module_basic_elements(reload_config_vars_t ** config_v
                ret_val = find_loaded_module((char *) key);
                if (ret_val == -1) { // Module with this name was not found - gonna insert a new module
                   (*config_vars)->current_module_idx = loaded_modules_cnt;
-                  (*config_vars)->module_modifying = FALSE;
+                  (*config_vars)->new_module = TRUE;
+                  (*config_vars)->module_ifc_insert = TRUE;
                } else { // Found already loaded module with same name -> check it's values
                   (*config_vars)->current_module_idx = ret_val;
-                  (*config_vars)->module_modifying = TRUE;
+                  (*config_vars)->new_module = FALSE;
+                  (*config_vars)->module_ifc_insert = FALSE;
                }
             } else {
                move_to_next_module = TRUE;
@@ -2605,6 +2607,11 @@ int reload_find_and_check_module_basic_elements(reload_config_vars_t ** config_v
             if (basic_elements[path_elem_idx] > 1) {
                move_to_next_module = TRUE;
             }
+         }
+      } else if ((!xmlStrcmp((*config_vars)->module_atr_elem->name,BAD_CAST "trapinterfaces"))) {
+         basic_elements[trapifc_elem_idx]++;
+         if (basic_elements[trapifc_elem_idx] > 1) {
+            move_to_next_module = TRUE;
          }
       }
 
@@ -2631,6 +2638,8 @@ int reload_find_and_check_module_basic_elements(reload_config_vars_t ** config_v
             VERBOSE(N_STDOUT, "[WARNING] Reloading error - didn't find \"path\" element in module -> moving to next module.\n");
          } else if (basic_elements[path_elem_idx] == -1) {
             VERBOSE(N_STDOUT, "[WARNING] Reloading error - found empty \"path\" element in module -> moving to next module.\n");
+         } else if (basic_elements[trapifc_elem_idx] > 1) {
+            VERBOSE(N_STDOUT, "[WARNING] Reloading error - found more \"trapinterfaces\" elements in module -> moving to next module.\n");
          }
 
          (*config_vars)->module_elem = (*config_vars)->module_elem->next;
@@ -2640,7 +2649,7 @@ int reload_find_and_check_module_basic_elements(reload_config_vars_t ** config_v
          } else {
             (*config_vars)->module_elem = (*config_vars)->module_elem->next;
             (*config_vars)->current_module_idx = -1;
-            memset(basic_elements,0,2*sizeof(int));
+            memset(basic_elements,0,3*sizeof(int));
             (*config_vars)->module_atr_elem = (*config_vars)->module_elem->xmlChildrenNode;
          }
          move_to_next_module = FALSE;
@@ -2654,8 +2663,20 @@ int reload_find_and_check_module_basic_elements(reload_config_vars_t ** config_v
       return -1;
    }
 
-   if ((basic_elements[0] != 1) || (basic_elements[1] != 1)) {
+   if ((basic_elements[name_elem_idx] != 1) || (basic_elements[path_elem_idx] != 1) || (basic_elements[trapifc_elem_idx] > 1)) {
       return -1;
+   }
+
+   // If the module was already in configuration and had some interfaces, check if trapinterfaces element was found; if not, delete the interfaces.
+   if ((*config_vars)->new_module == FALSE && basic_elements[trapifc_elem_idx] == 0 && running_modules[(*config_vars)->current_module_idx].module_ifces_cnt > 0) {
+      VERBOSE(N_STDOUT,"[WARNING] Reloading module \"%s\" - original interface cnt:%d, but trapinterfaces element was not found -> gonna remove module's interfaces.\n",
+                                             running_modules[(*config_vars)->current_module_idx].module_name, running_modules[(*config_vars)->current_module_idx].module_ifces_cnt);
+      running_modules[(*config_vars)->current_module_idx].module_modified_by_reload = TRUE;
+      free_module_interfaces_on_index((*config_vars)->current_module_idx);
+      running_modules[(*config_vars)->current_module_idx].module_ifces_cnt = 0;
+      running_modules[(*config_vars)->current_module_idx].module_num_out_ifc = 0;
+      running_modules[(*config_vars)->current_module_idx].module_num_in_ifc = 0;
+      (*config_vars)->module_ifc_insert = TRUE;
    }
 
    return 0;
@@ -2838,7 +2859,7 @@ void reload_resolve_module_enabled(reload_config_vars_t ** config_vars, const in
          running_modules[(*config_vars)->current_module_idx].module_restart_cnt = -1;
       }
       // If current module is new in configuration, just save the anded enabled flag and return
-      if ((*config_vars)->module_modifying == FALSE) {
+      if ((*config_vars)->new_module == TRUE) {
          running_modules[(*config_vars)->current_module_idx].module_enabled = profile_and_module_enabled_anded;
       } else if (profile_and_module_enabled_anded != running_modules[(*config_vars)->current_module_idx].module_enabled) {
          VERBOSE(N_STDOUT, "[WARNING] %s enabled flag has been modified: %s -> %s.\n",
@@ -2852,7 +2873,7 @@ void reload_resolve_module_enabled(reload_config_vars_t ** config_vars, const in
          running_modules[(*config_vars)->current_module_idx].module_restart_cnt = -1;
       }
       // If current module is new in configuration, just save the enabled flag and return
-      if ((*config_vars)->module_modifying == FALSE) {
+      if ((*config_vars)->new_module == TRUE) {
          running_modules[(*config_vars)->current_module_idx].module_enabled = config_module_enabled;
       } else if (config_module_enabled != running_modules[(*config_vars)->current_module_idx].module_enabled) {
          VERBOSE(N_STDOUT, "[WARNING] %s enabled flag has been modified: %s -> %s.\n",
@@ -3130,7 +3151,7 @@ int reload_configuration(const int choice, xmlNodePtr node)
                      reload_process_module_atribute(&config_vars, &running_modules[config_vars->current_module_idx].module_params);
                   } else if ((!xmlStrcmp(config_vars->module_atr_elem->name,BAD_CAST "name"))) {
                      // Process module's "name" attribute
-                     if (config_vars->module_modifying == FALSE) {
+                     if (config_vars->new_module == TRUE) {
                         key = xmlNodeListGetString(config_vars->doc_tree_ptr, config_vars->module_atr_elem->xmlChildrenNode, 1);
                         if (key != NULL) {
                            str_len = strlen((char *) key);
@@ -3147,8 +3168,8 @@ int reload_configuration(const int choice, xmlNodePtr node)
                      ifc_cnt=0;
                      config_vars->ifc_elem = config_vars->module_atr_elem->xmlChildrenNode;
 
-                     // If the parsed module has been already in configuration, check it's interfaces count -> it original count equals actual, it's ok, otherwise interfaces will be updated.
-                     if (config_vars->module_modifying) {
+                     // If the parsed module has been already in configuration, check it's interfaces count -> if original count equals actual, it's ok, otherwise interfaces will be updated.
+                     if (config_vars->new_module == FALSE) {
                         reload_check_modules_interfaces_count(&config_vars);
                      }
 
@@ -3189,7 +3210,7 @@ int reload_configuration(const int choice, xmlNodePtr node)
                            }
 
                            ifc_cnt++;
-                           if (config_vars->module_modifying == FALSE) {
+                           if (config_vars->module_ifc_insert == TRUE) {
                               running_modules[config_vars->current_module_idx].module_ifces_cnt++;
                            }
                         }
@@ -3201,7 +3222,7 @@ int reload_configuration(const int choice, xmlNodePtr node)
                }
 
                // If the parsed module is new or it's interfaces were updated, count it's input and output interfaces
-               if (config_vars->module_modifying == FALSE) {
+               if (config_vars->module_ifc_insert == TRUE) {
                   reload_count_module_interfaces(&config_vars);
                }
 

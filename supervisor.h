@@ -151,7 +151,8 @@ typedef struct reload_config_vars_s {
    xmlNodePtr     ifc_elem;
    xmlNodePtr     ifc_atr_elem;
    int                   current_module_idx;
-   int                   module_modifying;
+   int                   new_module;
+   int                   module_ifc_insert;
    int                   inserted_modules;
    int                   removed_modules;
    int                   modified_modules;
