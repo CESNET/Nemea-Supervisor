@@ -517,6 +517,7 @@ char **make_module_arguments(const int number_of_module)
 
       params[3] = NULL;
    } else {
+      params_counter = 0;
       unsigned int size_of_buffer = DEFAULT_SIZE_OF_BUFFER;
       char * buffer = (char *) calloc (size_of_buffer, sizeof(char));
       int num_module_params = 0;
@@ -531,16 +532,9 @@ char **make_module_arguments(const int number_of_module)
 
       params = (char **) calloc (4+num_module_params,sizeof(char*));
       str_len = strlen(running_modules[number_of_module].module_name);
-      params[0] = (char *) calloc (str_len+1, sizeof(char));   // binary name for exec
-      strncpy(params[0],running_modules[number_of_module].module_name, str_len+1);
-      str_len = strlen(TRAP_PARAM);
-      params[1] = (char *) calloc (str_len+1,sizeof(char));    // libtrap param "-i"
-      strncpy(params[1],TRAP_PARAM,str_len+1);
-      str_len = strlen(atr);
-      params[2] = (char *) calloc (str_len+1,sizeof(char)); // atributes for "-i" param
-      strncpy(params[2],atr,str_len+1);
-
-      params_counter = 3;
+      params[params_counter] = (char *) calloc (str_len+1, sizeof(char));   // binary name for exec
+      strncpy(params[params_counter],running_modules[number_of_module].module_name, str_len+1);
+      params_counter++;
 
       y=0;
       for (x=0; x<module_params_length; x++) {
@@ -562,10 +556,19 @@ char **make_module_arguments(const int number_of_module)
             y++;
          }
       }
+
       params[params_counter] = (char *) calloc (strlen(buffer)+1,sizeof(char));
       sprintf(params[params_counter],"%s",buffer);
       params_counter++;
 
+      str_len = strlen(TRAP_PARAM);
+      params[params_counter] = (char *) calloc (str_len+1,sizeof(char));    // libtrap param "-i"
+      strncpy(params[params_counter],TRAP_PARAM,str_len+1);
+      params_counter++;
+      str_len = strlen(atr);
+      params[params_counter] = (char *) calloc (str_len+1,sizeof(char)); // atributes for "-i" param
+      strncpy(params[params_counter],atr,str_len+1);
+      params_counter++;
 
       params[params_counter] = NULL;
    }
