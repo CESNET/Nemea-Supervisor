@@ -2488,13 +2488,22 @@ int reload_find_and_check_module_basic_elements(reload_config_vars_t ** config_v
          key = NULL;
       }
 
+      // If there is no more children of module element and path or name elements were not found, move to next module
+      if ((*config_vars)->module_atr_elem->next == NULL && (basic_elements[name_elem_idx] == 0 || basic_elements[path_elem_idx] == 0)) {
+         move_to_next_module = TRUE;
+      }
+
       if (move_to_next_module) {
          if (basic_elements[name_elem_idx] > 1) {
             VERBOSE(N_STDOUT, "[WARNING] Reloading error - found more \"name\" elements in module -> moving to next module.\n");
+         } else if (basic_elements[name_elem_idx] == 0) {
+            VERBOSE(N_STDOUT, "[WARNING] Reloading error - didn't find \"name\" element in module -> moving to next module.\n");
          } else if (basic_elements[name_elem_idx] == -1) {
             VERBOSE(N_STDOUT, "[WARNING] Reloading error - found empty \"name\" element in module -> moving to next module.\n");
          } else if (basic_elements[path_elem_idx] > 1) {
             VERBOSE(N_STDOUT, "[WARNING] Reloading error - found more \"path\" elements in module -> moving to next module.\n");
+         } else if (basic_elements[path_elem_idx] == 0) {
+            VERBOSE(N_STDOUT, "[WARNING] Reloading error - didn't find \"path\" element in module -> moving to next module.\n");
          } else if (basic_elements[path_elem_idx] == -1) {
             VERBOSE(N_STDOUT, "[WARNING] Reloading error - found empty \"path\" element in module -> moving to next module.\n");
          }
