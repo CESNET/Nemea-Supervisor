@@ -485,7 +485,7 @@ char **make_module_arguments(const int number_of_module)
       unsigned int module_params_length = strlen(running_modules[number_of_module].module_params);
 
       for (x=0; x<module_params_length; x++) {
-         if (running_modules[number_of_module].module_params[x] == 32) {
+         if (running_modules[number_of_module].module_params[x] == 32 && (x != (module_params_length-1))) {
             num_module_params++;
          }
       }
@@ -506,7 +506,9 @@ char **make_module_arguments(const int number_of_module)
 
       y=0;
       for (x=0; x<module_params_length; x++) {
-         if (running_modules[number_of_module].module_params[x] == 32) {
+         if (running_modules[number_of_module].module_params[x] == 32 && (x == (module_params_length-1))) {
+            break;
+         } else if (running_modules[number_of_module].module_params[x] == 32) {
             params[params_counter] = (char *) calloc (strlen(buffer)+1,sizeof(char));
             sprintf(params[params_counter],"%s",buffer);
             params_counter++;
