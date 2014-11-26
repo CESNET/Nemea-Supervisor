@@ -75,16 +75,26 @@
 #define RUNNING_MODULES_ARRAY_START_SIZE  10 ///< Initial size of allocated running_modules array.
 #define IFCES_ARRAY_START_SIZE            5 ///< Initial size of allocated interface_t array of every module.
 
+#define IN_MODULE_IFC_DIRECTION                  1  ///< Constant for input module interface direction
+#define OUT_MODULE_IFC_DIRECTION              2  ///< Constant for output module interface direction
+#define SERVICE_MODULE_IFC_DIRECTION       3  ///< Constant for service module interface direction
 
+#define TCP_MODULE_IFC_TYPE                        1  ///< Constant for tcp module interface type
+#define UNIXSOCKET_MODULE_IFC_TYPE         2  ///< Constant for unixsocket module interface type
+#define SERVICE_MODULE_IFC_TYPE                3  ///< Constant for service module interface type
+
+#define INVALID_MODULE_IFC_ATTR                -1  ///< Constant for invalid module interface attribute
 
 /***********STRUCTURES***********/
 
 /** Structure with information about one loaded interface of module */
 typedef struct interface_s {
-   char *ifc_note; ///< Interface note
-   char *ifc_type; ///< Interface type (TCP/UNIXSOCKET)
-   char *ifc_params; ///< Interface parameters (input interface ~ address,port; output interface ~ port,number of connections)
-   char *ifc_direction; ///< Interface direction (IN, OUT)
+   char     *ifc_note; ///< Interface note
+   char     *ifc_type; ///< Interface type (TCP / UNIXSOCKET / SERVICE)
+   char     *ifc_params; ///< Interface parameters (input interface ~ address, port; output interface ~ port, number of connections; service interface ~ port, number of connections)
+   char     *ifc_direction; ///< Interface direction (IN / OUT / SERVICE)
+   int         int_ifc_direction; ///< Integer value of interface direction - for faster comparison
+   int         int_ifc_type; ///< Integer value of interface type - for faster comparison
 } interface_t;
 
 /** Structure with information about one running module */

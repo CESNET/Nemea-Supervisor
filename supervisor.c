@@ -132,6 +132,8 @@ char *get_param_by_delimiter(const char *source, char **dest, const char delimit
 void free_output_file_strings_and_streams();
 void generate_backup_config_file();
 char * get_stats_formated_time();
+void check_duplicated_ports();
+void check_missing_interface_attributes();
 
 void print_xmlDoc_to_stream(xmlDocPtr doc_ptr, FILE * stream)
 {
@@ -2778,22 +2780,37 @@ void reload_count_module_interfaces(reload_config_vars_t ** config_vars)
 
    running_modules[(*config_vars)->current_module_idx].module_has_service_ifc = FALSE;
    running_modules[(*config_vars)->current_module_idx].module_num_in_ifc = 0;
-   running_modules[(*config_vars)->current_module_idx].module_num_in_ifc = 0;
+   running_modules[(*config_vars)->current_module_idx].module_num_out_ifc = 0;
 
    for (x=0; x<running_modules[(*config_vars)->current_module_idx].module_ifces_cnt; x++) {
       if (running_modules[(*config_vars)->current_module_idx].module_ifces[x].ifc_direction != NULL) {
          if (strncmp(running_modules[(*config_vars)->current_module_idx].module_ifces[x].ifc_direction, "IN", 2) == 0) {
             running_modules[(*config_vars)->current_module_idx].module_num_in_ifc++;
+            running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_direction = IN_MODULE_IFC_DIRECTION;
          } else if (strncmp(running_modules[(*config_vars)->current_module_idx].module_ifces[x].ifc_direction, "OUT", 3) == 0) {
             running_modules[(*config_vars)->current_module_idx].module_num_out_ifc++;
+            running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_direction = OUT_MODULE_IFC_DIRECTION;
+         } else if (strncmp(running_modules[(*config_vars)->current_module_idx].module_ifces[x].ifc_direction, "SERVICE", 7) == 0) {
+            running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_direction = SERVICE_MODULE_IFC_DIRECTION;
          }
+      } else {
+         running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_direction = INVALID_MODULE_IFC_ATTR;
       }
+
       if (running_modules[(*config_vars)->current_module_idx].module_ifces[x].ifc_type != NULL) {
-         if (strncmp(running_modules[(*config_vars)->current_module_idx].module_ifces[x].ifc_type, "SERVICE", 7) == 0) {
+         if (strncmp(running_modules[(*config_vars)->current_module_idx].module_ifces[x].ifc_type, "TCP", 3) == 0) {
+            running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_type = TCP_MODULE_IFC_TYPE;
+         } else if (strncmp(running_modules[(*config_vars)->current_module_idx].module_ifces[x].ifc_type, "UNIXSOCKET", 10) == 0) {
+            running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_type = UNIXSOCKET_MODULE_IFC_TYPE;
+         } else if (strncmp(running_modules[(*config_vars)->current_module_idx].module_ifces[x].ifc_type, "SERVICE", 7) == 0) {
             running_modules[(*config_vars)->current_module_idx].module_has_service_ifc = TRUE;
+            running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_type = SERVICE_MODULE_IFC_TYPE;
          }
+      } else {
+         running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_type = INVALID_MODULE_IFC_ATTR;
       }
    }
+
    return;
 }
 
@@ -3089,7 +3106,7 @@ int reload_configuration(const int choice, xmlNodePtr node)
          *  return value 0 means success -> modules children will have a profile
          */
          if (reload_find_and_check_modules_profile_basic_elements(&config_vars) == 0) {
-            VERBOSE(N_STDOUT, "[WARNING] Found valid modules profile with name \"%s\" set to %s.\n", actual_profile_ptr->profile_name, (actual_profile_ptr->profile_enabled == TRUE ? "enabled" : "disabled"));
+            VERBOSE(N_STDOUT, "[INFO] Found valid modules profile with name \"%s\" set to %s.\n", actual_profile_ptr->profile_name, (actual_profile_ptr->profile_enabled == TRUE ? "enabled" : "disabled"));
             modules_got_profile = TRUE;
          } else {
             modules_got_profile = FALSE;
@@ -3285,6 +3302,12 @@ int reload_configuration(const int choice, xmlNodePtr node)
       }
    }
 
+   // Check whether some module misses an attribute in it's interfaces
+   check_missing_interface_attributes();
+
+   // Check whether some modules have output interfaces with same port
+   check_duplicated_ports();
+
    // Print reload statistics
    VERBOSE(N_STDOUT,"Inserted modules:\t%d\n", config_vars->inserted_modules);
    VERBOSE(N_STDOUT,"Removed modules:\t%d\n", config_vars->removed_modules);
@@ -3294,6 +3317,84 @@ int reload_configuration(const int choice, xmlNodePtr node)
    pthread_mutex_unlock(&running_modules_lock);
    free(config_vars);
    return TRUE;
+}
+
+void check_missing_interface_attributes()
+{
+   unsigned int x = 0, y = 0;
+
+   for (x = 0; x < loaded_modules_cnt; x++) {
+      if (running_modules[x].remove_module == FALSE) {
+         for (y = 0; y<running_modules[x].module_ifces_cnt; y++) {
+            if (running_modules[x].module_ifces[y].ifc_direction == NULL) {
+               VERBOSE(N_STDOUT, "[WARNING] Checking missing attributes - %s's interface %d doesn't have filled direction!\n", running_modules[x].module_name, y);
+               if (running_modules[x].module_ifces[y].int_ifc_type == SERVICE_MODULE_IFC_TYPE) {
+                  VERBOSE(N_STDOUT, "[INFO] Service interface must have \"SERVICE\" also in direction.\n");
+               }
+            }
+            if (running_modules[x].module_ifces[y].ifc_type == NULL) {
+               VERBOSE(N_STDOUT, "[WARNING] Checking missing attributes - %s's interface %d doesn't have filled type!\n", running_modules[x].module_name, y);
+               if (running_modules[x].module_ifces[y].int_ifc_direction == SERVICE_MODULE_IFC_DIRECTION) {
+                  VERBOSE(N_STDOUT, "[INFO] Service interface must have \"SERVICE\" also in type.\n");
+               }
+            }
+            if (running_modules[x].module_ifces[y].ifc_params == NULL) {
+               VERBOSE(N_STDOUT, "[WARNING] Checking missing attributes - %s's interface %d doesn't have filled params!\n", running_modules[x].module_name, y);
+            }
+         }
+      }
+   }
+}
+
+void check_duplicated_ports()
+{
+   unsigned int v = 0, x = 0, y = 0, z = 0;
+   char *port1 = NULL, *port2 = NULL;
+   int str_len_port1 = 0, str_len_port2 = 0;
+
+   for (v = 0; v < loaded_modules_cnt; v++) {
+      if (running_modules[v].remove_module == FALSE) {
+         for (x = 0; x < running_modules[v].module_ifces_cnt; x++) {
+            if ((running_modules[v].module_ifces[x].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) || (running_modules[v].module_ifces[x].int_ifc_direction == SERVICE_MODULE_IFC_DIRECTION)) {
+               for (y = (v+1); y < loaded_modules_cnt; y++) {
+                  if (running_modules[y].remove_module == FALSE) {
+                     for (z = 0; z < running_modules[y].module_ifces_cnt; z++) {
+                        if (running_modules[y].module_ifces[z].int_ifc_direction == running_modules[v].module_ifces[x].int_ifc_direction) {
+                           if (running_modules[v].module_ifces[x].int_ifc_type == running_modules[y].module_ifces[z].int_ifc_type &&
+                               (running_modules[v].module_ifces[x].ifc_params != NULL && running_modules[y].module_ifces[z].ifc_params != NULL)) {
+                              get_param_by_delimiter(running_modules[v].module_ifces[x].ifc_params, &port1, ',');
+                              get_param_by_delimiter(running_modules[y].module_ifces[z].ifc_params, &port2, ',');
+                              if (port1 != NULL && port2 != NULL) {
+                                 str_len_port1 = strlen(port1);
+                                 str_len_port2 = strlen(port2);
+                                 if (str_len_port1 == str_len_port2) {
+                                    if (strncmp(port1, port2, str_len_port1) == 0) {
+                                       VERBOSE(N_STDOUT, "[WARNING] Checking duplicated ports - %s's output interface %d has the same port as %s's output interface %d!\n",
+                                          running_modules[v].module_name, x, running_modules[y].module_name, z);
+                                    }
+                                 }
+                                 free(port1);
+                                 port1 = NULL;
+                                 str_len_port1 = 0;
+                                 free(port2);
+                                 port2 = NULL;
+                                 str_len_port2 = 0;
+                              } else if (port1 != NULL) {
+                                 free(port1);
+                                 port1 = NULL;
+                              } else if (port2 != NULL) {
+                                 free(port2);
+                                 port2 = NULL;
+                              }
+                           }
+                        }
+                     }
+                  }
+               }
+            }
+         }
+      }
+   }
 }
 
 void generate_backup_config_file()
