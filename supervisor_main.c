@@ -46,11 +46,8 @@
 #include "internal.h"
 #include <stdio.h>
 
-int main (int argc, char * argv [])
+void interactive_mode()
 {
-   if (supervisor_initialization(&argc, argv)) {
-      return 0;
-   }
    int ret_val = 0;
 
    while ((ret_val = interactive_get_option()) != 8) {
@@ -88,6 +85,39 @@ int main (int argc, char * argv [])
          break;
       }
    }
+}
+
+
+int main (int argc, char * argv [])
+{
+   int ret_val = 0;
+
+   // Initialize main control flags, which will be set in parse_program_arguments and supervisor_initialization functions
+   supervisor_flags_initialization();
+   // Parse program arguments
+   ret_val = parse_program_arguments(&argc, argv);
+
+   if (ret_val == DAEMON_MODE_CODE) {
+      // Initialize a new daemon process and it's socket
+      if (daemon_mode_initialization() == 0) {
+         // Initialize supervisor's structures, service thread, output, signal handler and load startup configuration
+         if (supervisor_initialization() == 0) {
+            // Start daemon mode
+            daemon_mode();
+         }
+      }
+   } else if (ret_val == INTERACTIVE_MODE_CODE) {
+      // Initialize supervisor's structures, service thread, output, signal handler and load startup configuration
+      if (supervisor_initialization() == 0) {
+         // Start interactive mode
+         interactive_mode();
+      }
+   } else {
+      /* Wrong input arguments - just terminate. */
+   }
+   
+   // Cleanup all structures and join service thread
    supervisor_termination(FALSE, FALSE);
-   return 0;
+
+   exit(EXIT_SUCCESS);
 }

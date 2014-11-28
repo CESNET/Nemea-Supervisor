@@ -210,7 +210,7 @@ void sigpipe_handler(int sig);
  * @param[in] argv Argv of main function.
  * @return 0 if interactive mode, 2 if daemon mode, 1 if error.
  */
-int supervisor_initialization(int *argc, char **argv);
+int supervisor_initialization();
 
 /** Starts every loaded module.
  */
@@ -279,14 +279,14 @@ char * make_formated_statistics();
 
 /** Function creates 2 threads - service and acceptor thread.
  */
-void start_service_thread();
+int start_service_thread();
 
 /** Function parses program arguments.
  * @param[in] argc Argc of main function.
  * @param[in] argv Argv of main function.
  * @return 1 if success, 0 if error.
  */
-int parse_arguments(int *argc, char **argv);
+int parse_program_arguments(int *argc, char **argv);
 
 /** Function prints a help to supervisor after executing program with -h argument.
  */
@@ -296,7 +296,7 @@ void print_help();
  * @param[out] d_sd Socket descriptor of the created socket.
  * @return 0 if success, else error;
  */
-int daemon_init();
+// int daemon_init();
 
 /** Function accepts new connection from supervisor_cli.
  * @param[in] d_sd Daemon socket descriptor.
@@ -307,7 +307,7 @@ int daemon_get_client ();
 /** Function creates input and output filestream via supervisor_cli socket. After that it represents main loop function.
  * @param[in] arg Daemon socket descriptor.
  */
-void daemon_mode();
+// void daemon_mode();
 
 int get_shorter_string_length(char * first, char * second);
 

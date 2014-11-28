@@ -48,6 +48,7 @@
 #endif
 
 #include "supervisor.h"
+#include "supervisor_api.h"
 #include "internal.h"
 
 #include <arpa/inet.h>
@@ -102,7 +103,9 @@ struct tm * init_time_info = NULL;
 int service_stop_all_modules = FALSE;
 
 // supervisor flags
-int      file_flag = FALSE;        // -f "file" arguments
+int      supervisor_initialized = FALSE;
+int      service_thread_initialized = FALSE;
+int      daemon_mode_initialized = FALSE;
 int      verbose_flag = FALSE;     // -v messages and cpu_usage stats
 int      daemon_flag = FALSE;      // --daemon
 int      netconf_flag = FALSE;
@@ -124,9 +127,10 @@ union tcpip_socket_addr {
    struct sockaddr_un unix_addr; ///< used for path of UNIX socket
 };
 
+void check_running_modules_allocated_memory();
 long int get_total_cpu_usage();
-void start_service_thread();
-int parse_arguments(int *argc, char **argv);
+int start_service_thread();
+int parse_program_arguments(int *argc, char **argv);
 void daemon_mode();
 char *get_param_by_delimiter(const char *source, char **dest, const char delimiter);
 void free_output_file_strings_and_streams();
@@ -876,60 +880,52 @@ void supervisor_signal_handler(int catched_signal)
    }
 }
 
-int supervisor_initialization(int *argc, char **argv)
+void supervisor_flags_initialization()
 {
-   unsigned int y = 0;
-   int ret_val = 0;
+   supervisor_initialized = FALSE;
+   service_thread_initialized = FALSE;
+   daemon_mode_initialized = FALSE;
 
-   init_time_info = get_sys_time();
-   service_stop_all_modules = FALSE;
    logs_path = NULL;
    config_file = NULL;
    socket_path = NULL;
+
    verbose_flag = FALSE;
-   file_flag = FALSE;
    daemon_flag = FALSE;
    netconf_flag = FALSE;
+}
+
+int supervisor_initialization()
+{
+   unsigned int y = 0;
+   init_time_info = get_sys_time();   
 
    input_fd = stdin;
    output_fd = stdout;
 
-   ret_val = parse_arguments(argc, argv);
-   if (ret_val) {
-      if (file_flag == FALSE) {
-         fprintf(stderr,"Wrong format of arguments.\n supervisor [-d|--daemon] -f|--config-file=path [-h|--help] [-v|--verbose] [-L|--logs-path] [-s|--daemon-socket=path]\n");
-         return 1;
-      }
-   } else {
-      return 1;
-   }
-
-   if (daemon_flag) {
-      daemon_init();
-   }
-
+   // Check and create (if it doesn't exist) directory for all output (started modules and also supervisor's) according to the logs_path
    create_output_dir();
+   // Create strings with supervisor's output files names and get their file descriptors
    create_output_files_strings();
 
-   VERBOSE(N_STDOUT,"[INIT LOADING CONFIGURATION]\n");
-   loaded_modules_cnt = 0;
-   running_modules_array_size = RUNNING_MODULES_ARRAY_START_SIZE;
-   running_modules = (running_module_t *) calloc (running_modules_array_size,sizeof(running_module_t));
-   for (y=0; y<running_modules_array_size; y++) {
-      running_modules[y].module_ifces = (interface_t *) calloc(IFCES_ARRAY_START_SIZE, sizeof(interface_t));
-      running_modules[y].module_running = FALSE;
-      running_modules[y].module_ifces_array_size = IFCES_ARRAY_START_SIZE;
-      running_modules[y].module_ifces_cnt = 0;
-   }
+   // Allocate running_modules memory
+   running_modules_array_size = 0;
+   check_running_modules_allocated_memory();
 
+   // Initialize main mutex
    pthread_mutex_init(&running_modules_lock,NULL);
-   service_thread_continue = TRUE;
 
-   //load configuration
+   // Load startup configuration
+   VERBOSE(N_STDOUT,"[INIT LOADING CONFIGURATION]\n");
    reload_configuration(RELOAD_INIT_LOAD_CONFIG, NULL);
 
+   // Create a new thread doing service routine
    VERBOSE(N_STDOUT,"[SERVICE] Starting service thread.\n");
-   start_service_thread();
+   if (start_service_thread() != 0) {
+      service_thread_initialized = FALSE;
+   } else {
+      service_thread_initialized = TRUE;
+   }
 
    /************ SIGNAL HANDLING *************/
    /* function prototype to set handler */
@@ -957,12 +953,12 @@ int supervisor_initialization(int *argc, char **argv)
    }
    /****************************************/
 
-   if (daemon_flag) {
-      daemon_mode();
-      return 2;
+   supervisor_initialized = TRUE;
+   if (service_thread_initialized == TRUE) {
+      return 0;
+   } else {
+      return -1;
    }
-
-   return 0;
 }
 
 
@@ -1344,89 +1340,127 @@ void free_module_and_shift_array(const int module_idx)
 
 void supervisor_termination(int stop_all_modules, int generate_backup)
 {
-   unsigned int x, y;
+   unsigned int x = 0, y = 0;
 
-   if (stop_all_modules == TRUE) {
-      interactive_stop_configuration();
-      service_stop_all_modules = TRUE;
-   } else {
-      service_stop_all_modules = FALSE;
-   }
+   // If supervisor was initialized, than proceed termination, else just check allocated memory from program argument parsing
+   if (supervisor_initialized == TRUE) {
+      // If service thread was created successfully, check running modules, terminate service thread and (if needed) generate backup file
+      if (service_thread_initialized == TRUE) {
+         if (stop_all_modules == TRUE) {
+            interactive_stop_configuration();
+            service_stop_all_modules = TRUE;
+         } else {
+            service_stop_all_modules = FALSE;
+         }
 
-   VERBOSE(N_STDOUT,"%s [SERVICE] Aborting service thread!\n", get_stats_formated_time());
-   service_thread_continue = 0;
+         VERBOSE(N_STDOUT,"%s [SERVICE] Aborting service thread!\n", get_stats_formated_time());
+         service_thread_continue = FALSE;
 
-   x = pthread_join(service_thread_id, NULL);
+         x = pthread_join(service_thread_id, NULL);
 
-   if (x == 0) {
-      VERBOSE(N_STDOUT, "%s [SERVICE] pthread_join success: Service thread finished!\n", get_stats_formated_time())
-   } else if (((int) x) == -1) {
-      if (errno == EINVAL) {
-         VERBOSE(N_STDOUT, "%s [ERROR] pthread_join: Not joinable thread!\n", get_stats_formated_time());
-      } else if (errno == ESRCH) {
-         VERBOSE(N_STDOUT, "%s [ERROR] pthread_join: No thread with this ID found!\n", get_stats_formated_time());
-      } else if ( errno == EDEADLK) {
-         VERBOSE(N_STDOUT, "%s [ERROR] pthread_join: Deadlock in service thread detected!\n", get_stats_formated_time());
-      }
-   }
+         if (x == 0) {
+            VERBOSE(N_STDOUT, "%s [SERVICE] pthread_join success: Service thread finished!\n", get_stats_formated_time())
+         } else if (((int) x) == -1) {
+            if (errno == EINVAL) {
+               VERBOSE(N_STDOUT, "%s [ERROR] pthread_join: Not joinable thread!\n", get_stats_formated_time());
+            } else if (errno == ESRCH) {
+               VERBOSE(N_STDOUT, "%s [ERROR] pthread_join: No thread with this ID found!\n", get_stats_formated_time());
+            } else if ( errno == EDEADLK) {
+               VERBOSE(N_STDOUT, "%s [ERROR] pthread_join: Deadlock in service thread detected!\n", get_stats_formated_time());
+            }
+         }
 
-   if (generate_backup == TRUE) {
-      generate_backup_config_file();
-   } else {
-      for (x=0; ((unsigned int) x)<loaded_modules_cnt; x++) {
-         if (running_modules[x].module_status == TRUE) {
-            VERBOSE(N_STDOUT, "%s [WARNING] Some modules are still running, gonna generate backup anyway!\n", get_stats_formated_time());
+         if (generate_backup == TRUE) {
             generate_backup_config_file();
-            break;
+         } else {
+            for (x=0; ((unsigned int) x)<loaded_modules_cnt; x++) {
+               if (running_modules[x].module_status == TRUE) {
+                  VERBOSE(N_STDOUT, "%s [WARNING] Some modules are still running, gonna generate backup anyway!\n", get_stats_formated_time());
+                  generate_backup_config_file();
+                  break;
+               }
+            }
          }
       }
+
+      for (x=0; ((unsigned int) x)<loaded_modules_cnt;x++) {
+         if (running_modules[x].module_counters_array != NULL) {
+            free(running_modules[x].module_counters_array);
+            running_modules[x].module_counters_array = NULL;
+         }
+      }
+      for (x=0;x<running_modules_array_size;x++) {
+         for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
+            if (running_modules[x].module_ifces[y].ifc_note != NULL) {
+               free(running_modules[x].module_ifces[y].ifc_note);
+               running_modules[x].module_ifces[y].ifc_note = NULL;
+            }
+            if (running_modules[x].module_ifces[y].ifc_type != NULL) {
+               free(running_modules[x].module_ifces[y].ifc_type);
+               running_modules[x].module_ifces[y].ifc_type = NULL;
+            }
+            if (running_modules[x].module_ifces[y].ifc_direction != NULL) {
+               free(running_modules[x].module_ifces[y].ifc_direction);
+               running_modules[x].module_ifces[y].ifc_direction = NULL;
+            }
+            if (running_modules[x].module_ifces[y].ifc_params != NULL) {
+               free(running_modules[x].module_ifces[y].ifc_params);
+               running_modules[x].module_ifces[y].ifc_params = NULL;
+            }
+         }
+         if (running_modules[x].module_ifces != NULL) {
+            free(running_modules[x].module_ifces);
+            running_modules[x].module_ifces = NULL;
+         }
+         if (running_modules[x].module_path != NULL) {
+            free(running_modules[x].module_path);
+            running_modules[x].module_path = NULL;
+         }
+         if (running_modules[x].module_name != NULL) {
+            free(running_modules[x].module_name);
+            running_modules[x].module_name = NULL;
+         }
+         if (running_modules[x].module_params != NULL) {
+            free(running_modules[x].module_params);
+            running_modules[x].module_params = NULL;
+         }
+      }
+
+      if (running_modules != NULL) {
+         free(running_modules);
+         running_modules = NULL;
+      }
+
+      modules_profile_t * ptr = first_profile_ptr;
+      modules_profile_t * p = NULL;
+      while (ptr != NULL) {
+         p = ptr;
+         ptr = ptr->next;
+         if (p->profile_name != NULL) {
+            free(p->profile_name);
+         }
+         if (p != NULL) {
+            free(p);
+         }
+      }
+
+      free_output_file_strings_and_streams();
    }
 
-   for (x=0; ((unsigned int) x)<loaded_modules_cnt;x++) {
-      if (running_modules[x].module_counters_array != NULL) {
-         free(running_modules[x].module_counters_array);
-         running_modules[x].module_counters_array = NULL;
-      }
-   }
-   for (x=0;x<running_modules_array_size;x++) {
-      for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
-         if (running_modules[x].module_ifces[y].ifc_note != NULL) {
-            free(running_modules[x].module_ifces[y].ifc_note);
-            running_modules[x].module_ifces[y].ifc_note = NULL;
+   // If daemon_mode_initialization call was successful, cleanup after daemon
+   if (daemon_mode_initialized == TRUE) {
+      if (daemon_flag && (daemon_internals != NULL)) {
+         free_daemon_internals_variables();
+         if (daemon_internals->daemon_sd > 0) {
+            close(daemon_internals->daemon_sd);
+            daemon_internals->daemon_sd = 0;
          }
-         if (running_modules[x].module_ifces[y].ifc_type != NULL) {
-            free(running_modules[x].module_ifces[y].ifc_type);
-            running_modules[x].module_ifces[y].ifc_type = NULL;
+         if (daemon_internals != NULL) {
+            free(daemon_internals);
+            daemon_internals = NULL;
          }
-         if (running_modules[x].module_ifces[y].ifc_direction != NULL) {
-            free(running_modules[x].module_ifces[y].ifc_direction);
-            running_modules[x].module_ifces[y].ifc_direction = NULL;
-         }
-         if (running_modules[x].module_ifces[y].ifc_params != NULL) {
-            free(running_modules[x].module_ifces[y].ifc_params);
-            running_modules[x].module_ifces[y].ifc_params = NULL;
-         }
+         unlink(socket_path);
       }
-      if (running_modules[x].module_ifces != NULL) {
-         free(running_modules[x].module_ifces);
-         running_modules[x].module_ifces = NULL;
-      }
-      if (running_modules[x].module_path != NULL) {
-         free(running_modules[x].module_path);
-         running_modules[x].module_path = NULL;
-      }
-      if (running_modules[x].module_name != NULL) {
-         free(running_modules[x].module_name);
-         running_modules[x].module_name = NULL;
-      }
-      if (running_modules[x].module_params != NULL) {
-         free(running_modules[x].module_params);
-         running_modules[x].module_params = NULL;
-      }
-   }
-   if (running_modules != NULL) {
-      free(running_modules);
-      running_modules = NULL;
    }
 
    if (config_file != NULL) {
@@ -1437,34 +1471,6 @@ void supervisor_termination(int stop_all_modules, int generate_backup)
       free(logs_path);
       logs_path = NULL;
    }
-
-   modules_profile_t * ptr = first_profile_ptr;
-   modules_profile_t * p = NULL;
-   while (ptr != NULL) {
-      p = ptr;
-      ptr = ptr->next;
-      if (p->profile_name != NULL) {
-         free(p->profile_name);
-      }
-      if (p != NULL) {
-         free(p);
-      }
-   }
-
-   if (daemon_flag && (daemon_internals != NULL)) {
-      free_daemon_internals_variables();
-      if (daemon_internals->daemon_sd > 0) {
-         close(daemon_internals->daemon_sd);
-         daemon_internals->daemon_sd = 0;
-      }
-      if (daemon_internals != NULL) {
-         free(daemon_internals);
-         daemon_internals = NULL;
-      }
-      unlink(socket_path);
-   }
-
-   free_output_file_strings_and_streams();
 }
 
 char *get_param_by_delimiter(const char *source, char **dest, const char delimiter)
@@ -1847,40 +1853,51 @@ char * make_formated_statistics()
    return buffer;
 }
 
-void start_service_thread()
+int start_service_thread()
 {
+   service_stop_all_modules = FALSE;
+   service_thread_continue = TRUE;
    pthread_attr_t attr;
    pthread_attr_init(&attr);
    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
-   pthread_create(&service_thread_id,  &attr, service_thread_routine, NULL);
+   return pthread_create(&service_thread_id,  &attr, service_thread_routine, NULL);
 }
 
-int parse_arguments(int *argc, char **argv)
+int parse_program_arguments(int *argc, char **argv)
 {
-   char c;
-   while (1) {
-      int this_option_optind = optind ? optind : 1;
-      int option_index = 0;
-      static struct option long_options[] = {
-         {"daemon", no_argument, 0, 'd'},
-         {"config-file",  required_argument,    0, 'f'},
-         {"help", no_argument,           0,  'h' },
-         {"verbose",  no_argument,       0,  'v' },
-         {"daemon-socket",  required_argument,  0, 's'},
-         {"logs-path",  required_argument,  0, 'L'},
-         {0, 0, 0, 0}
-      };
+   /******/
+   static struct option long_options[] = {
+      {"daemon", no_argument, 0, 'd'},
+      {"config-file",  required_argument,    0, 'f'},
+      {"help", no_argument,           0,  'h' },
+      {"verbose",  no_argument,       0,  'v' },
+      {"daemon-socket",  required_argument,  0, 's'},
+      {"logs-path",  required_argument,  0, 'L'},
+      {0, 0, 0, 0}
+   };
+   /******/
 
+   char c = 0;
+   int option_index = 0;
+
+   while (1) {
+      option_index = 0;
       c = getopt_long(*argc, argv, "df:hvs:L:", long_options, &option_index);
       if (c == -1) {
          break;
       }
 
       switch (c) {
+      case ':':
+         fprintf(stderr, "Wrong arguments, use \"supervisor -h\" for help.\n");
+         return -1;
+      case '?':
+         fprintf(stderr, "Unknown option, use \"supervisor -h\" for help.\n");
+         return -1;
       case 'h':
          printf("Usage: supervisor [-d|--daemon] -f|--config-file=path [-h|--help] [-v|--verbose] [-L|--logs-path] [-s|--daemon-socket=path]\n");
-         return FALSE;
+         return -1;
       case 's':
          socket_path = optarg;
          break;
@@ -1889,7 +1906,6 @@ int parse_arguments(int *argc, char **argv)
          break;
       case 'f':
          config_file = strdup(optarg);
-         file_flag = TRUE;
          break;
       case 'd':
          daemon_flag = TRUE;
@@ -1906,7 +1922,7 @@ int parse_arguments(int *argc, char **argv)
    }
    if (config_file == NULL) {
       fprintf(stderr, "Missing required config file (-f|--config-file).\n");
-      return FALSE;
+      return -1;
    }
    if (strstr(config_file, ".xml") == NULL) {
       if (config_file != NULL) {
@@ -1914,12 +1930,17 @@ int parse_arguments(int *argc, char **argv)
          config_file = NULL;
       }
       fprintf(stderr, "File does not have expected .xml extension.\n");
-      return FALSE;
+      return -1;
    }
-   return TRUE;
+
+   if (daemon_flag == TRUE) {
+      return DAEMON_MODE_CODE;
+   } else {
+      return INTERACTIVE_MODE_CODE;
+   }
 }
 
-int daemon_init()
+int daemon_mode_initialization()
 {
    // create daemon
    pid_t process_id = 0;
@@ -1929,7 +1950,7 @@ int daemon_init()
    process_id = fork();
    if (process_id < 0)  {
       VERBOSE(N_STDOUT,"%s [ERROR] Fork: could not initialize daemon process!\n", get_stats_formated_time());
-      exit(EXIT_FAILURE);
+      return -1;
    } else if (process_id > 0) {
       if (config_file != NULL) {
          free(config_file);
@@ -1939,7 +1960,7 @@ int daemon_init()
          free(logs_path);
          logs_path = NULL;
       }
-      VERBOSE(N_STDOUT,"%s [INFO] PID of daemon process: %d.\n", get_stats_formated_time(), process_id);
+      fprintf(stdout, "%s [INFO] PID of daemon process: %d.\n", get_stats_formated_time(), process_id);
       exit(EXIT_SUCCESS);
    }
 
@@ -1947,14 +1968,14 @@ int daemon_init()
    sid = setsid();
    if (sid < 0) {
       VERBOSE(N_STDOUT,"[ERROR] Setsid: calling process is process group leader!\n");
-      exit(EXIT_FAILURE);
+      return -1;
    }
 
    // allocate daemon_internals
    daemon_internals = (daemon_internals_t *) calloc (1, sizeof(daemon_internals_t));
    if (daemon_internals == NULL) {
       fprintf(stderr, "%s [ERROR] Could not allocate dameon_internals, cannot proceed without it!\n", get_stats_formated_time());
-      exit(EXIT_FAILURE);
+      return -1;
    }
 
    // create socket
@@ -1970,14 +1991,15 @@ int daemon_init()
       chmod(socket_path, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
    } else {
       VERBOSE(N_STDOUT,"%s [ERROR] Bind: could not bind the daemon socket!\n", get_stats_formated_time());
-      exit(EXIT_FAILURE);
+      return -1;
    }
 
    if (listen(daemon_internals->daemon_sd, 0) == -1) {
       VERBOSE(N_STDOUT,"%s [ERROR] Listen: could not listen on the daemon socket!\n", get_stats_formated_time());
-      exit(EXIT_FAILURE);
+      return -1;
    }
 
+   daemon_mode_initialized = TRUE;
    return 0;
 }
 
@@ -2277,7 +2299,6 @@ void daemon_mode()
       }
    }
 
-   supervisor_termination(FALSE, FALSE);
    return;
 }
 
@@ -2834,11 +2855,21 @@ void reload_check_module_allocated_interfaces(reload_config_vars_t ** config_var
    }
 }
 
-void reload_check_running_modules_allocated_memory()
+void check_running_modules_allocated_memory()
 {
    int origin_size = 0, x = 0;
 
-   if (loaded_modules_cnt == running_modules_array_size) {
+   if (running_modules_array_size == 0) {
+      loaded_modules_cnt = 0;
+      running_modules_array_size = RUNNING_MODULES_ARRAY_START_SIZE;
+      running_modules = (running_module_t *) calloc (running_modules_array_size,sizeof(running_module_t));
+      for (x=0; x<running_modules_array_size; x++) {
+         running_modules[x].module_ifces = (interface_t *) calloc(IFCES_ARRAY_START_SIZE, sizeof(interface_t));
+         running_modules[x].module_running = FALSE;
+         running_modules[x].module_ifces_array_size = IFCES_ARRAY_START_SIZE;
+         running_modules[x].module_ifces_cnt = 0;
+      }
+   } else if (loaded_modules_cnt == running_modules_array_size) {
       VERBOSE(N_STDOUT, "[WARNING] Reload - reallocating running_modules memory.\n");
       origin_size = running_modules_array_size;
       running_modules_array_size += running_modules_array_size/2;
@@ -3124,7 +3155,7 @@ int reload_configuration(const int choice, xmlNodePtr node)
                config_vars->current_module_idx = -1;
 
                // Check and reallocate (if needed) running_modules memory
-               reload_check_running_modules_allocated_memory();
+               check_running_modules_allocated_memory();
 
                config_vars->module_atr_elem = config_vars->module_elem->xmlChildrenNode;
 
@@ -3585,7 +3616,6 @@ int nc_supervisor_initialization()
    config_file = NULL;
    socket_path = DEFAULT_DAEMON_UNIXSOCKET_PATH_FILENAME;
    verbose_flag = FALSE;
-   file_flag = FALSE;
    daemon_flag = FALSE;
    netconf_flag = TRUE;
    graph_first_node = NULL;
