@@ -2650,6 +2650,10 @@ int reload_find_and_check_module_basic_elements(reload_config_vars_t ** config_v
             break;
          } else {
             (*config_vars)->module_elem = (*config_vars)->module_elem->next;
+            if ((*config_vars)->module_elem == NULL) {
+               last_module = TRUE;
+               break;
+            }
             (*config_vars)->current_module_idx = -1;
             memset(basic_elements,0,3*sizeof(int));
             (*config_vars)->module_atr_elem = (*config_vars)->module_elem->xmlChildrenNode;
