@@ -87,6 +87,13 @@ void print_msg(int level, char *string)
          fflush(supervisor_debug_log_fd);
       }
       break;
+
+   case SUP_LOG:
+      if (supervisor_log_fd != NULL) {
+         fprintf(supervisor_log_fd, "%s", string);
+         fflush(supervisor_log_fd);
+      }
+      break;
    }
 }
 

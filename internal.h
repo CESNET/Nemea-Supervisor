@@ -55,6 +55,7 @@
 #define MODULE_EVENT    	2
 #define N_STDOUT     		3
 #define DEBUG 			4
+#define SUP_LOG 			5
 
 #define RELOAD_INIT_LOAD_CONFIG 		1
 #define RELOAD_CALLBACK_ROOT_ELEM 	2

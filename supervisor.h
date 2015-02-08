@@ -143,14 +143,24 @@ struct modules_profile_s {
    modules_profile_t * next;
 };
 
+typedef struct sup_client_s {
+   FILE *         client_input_stream;
+   FILE *         client_output_stream;
+   int               client_input_stream_fd;
+   int               client_sd;
+   int               client_connected;
+   int               client_id;
+   pthread_t   client_thread_id;
+} sup_client_t;
+
 typedef struct daemon_internals_s {
-   FILE *   client_input_stream;
-   FILE *   client_output_stream;
-   int         client_input_stream_fd;
-   int         client_sd;
-   int         daemon_sd;
-   int         client_connected;
-   int         daemon_terminated;
+   sup_client_t **         clients;
+   int                            clients_cnt;
+   int                            daemon_sd;
+   int                            daemon_terminated;
+   uint16_t                   next_client_id;
+   int                            config_mode_active;
+   pthread_mutex_t     lock;
 } daemon_internals_t;
 
 typedef struct reload_config_vars_s {

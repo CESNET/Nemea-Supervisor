@@ -148,7 +148,7 @@ int main(int argc, char **argv)
          printf("Usage: supervisor_cli [-h] [-s <path>]\n"
                "\t-h\tshows this help\n\t-s <path>\tpath to UNIX socket file\n");
          exit(EXIT_SUCCESS);
-      
+
       case 's':
          socket_path = optarg;
          break;
@@ -262,7 +262,8 @@ int main(int argc, char **argv)
             usleep(200000);
             ioctl(client_internals->supervisor_input_stream_fd, FIONREAD, &bytes_to_read);
             if (bytes_to_read == 0 || bytes_to_read == -1) {
-               fprintf(stderr, "[WARNING] Supervisor has disconnected, I'm done!\n");
+               fprintf(stderr, ANSI_RED_BOLD "[WARNING] Supervisor has disconnected, I'm done!\n" ANSI_ATTR_RESET);
+               fflush(stderr);
                free_client_internals_variables();
                exit(EXIT_SUCCESS);
             } else {

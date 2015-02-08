@@ -115,7 +115,7 @@ int main (int argc, char * argv [])
    } else {
       /* Wrong input arguments - just terminate. */
    }
-   
+
    // Cleanup all structures and join service thread
    supervisor_termination(FALSE, FALSE);
 

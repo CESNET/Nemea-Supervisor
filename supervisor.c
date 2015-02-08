@@ -82,6 +82,7 @@
 #define DEFAULT_BACKUP_FILE_PREFIX "sup_backup"
 
 #define RET_ERROR    -1
+#define MAX_NUMBER_SUP_CLIENTS   5
 
 /*******GLOBAL VARIABLES*******/
 running_module_t *   running_modules = NULL;  ///< Information about running modules
@@ -127,6 +128,7 @@ union tcpip_socket_addr {
    struct sockaddr_un unix_addr; ///< used for path of UNIX socket
 };
 
+void * serve_sup_client_routine (void * arg);
 void check_running_modules_allocated_memory();
 long int get_total_cpu_usage();
 int start_service_thread();
@@ -245,7 +247,7 @@ void create_output_files_strings()
       }
       if (netconf_flag) {
          output_fd = supervisor_log_fd;
-      } else if (!(daemon_internals->client_connected)) {
+      } else if (daemon_internals->clients_cnt == 0) {
          output_fd = supervisor_log_fd;
       }
    }
@@ -898,7 +900,7 @@ void supervisor_flags_initialization()
 int supervisor_initialization()
 {
    unsigned int y = 0;
-   init_time_info = get_sys_time();   
+   init_time_info = get_sys_time();
 
    input_fd = stdin;
    output_fd = stdout;
@@ -1301,27 +1303,6 @@ void free_output_file_strings_and_streams()
    }
 }
 
-void free_daemon_internals_variables()
-{
-   daemon_internals->client_connected = FALSE;
-   if (daemon_internals->client_input_stream_fd > 0) {
-      close(daemon_internals->client_input_stream_fd);
-      daemon_internals->client_input_stream_fd = 0;
-   }
-   if (daemon_internals->client_input_stream != NULL) {
-      fclose(daemon_internals->client_input_stream);
-      daemon_internals->client_input_stream = NULL;
-   }
-   if (daemon_internals->client_output_stream != NULL) {
-      fclose(daemon_internals->client_output_stream);
-      daemon_internals->client_output_stream = NULL;
-   }
-   if (daemon_internals->client_sd > 0) {
-      close(daemon_internals->client_sd);
-      daemon_internals->client_sd = 0;
-   }
-}
-
 void free_module_and_shift_array(const int module_idx)
 {
    int y = 0;
@@ -1340,7 +1321,14 @@ void free_module_and_shift_array(const int module_idx)
 
 void supervisor_termination(int stop_all_modules, int generate_backup)
 {
-   unsigned int x = 0, y = 0;
+   unsigned int x = 0, y = 0, attemps = 0;
+
+   // If daemon mode was initialized and supervisor caught a signal to terminate, set termination flag for client's threads
+   if (daemon_mode_initialized  == TRUE && daemon_internals != NULL) {
+      pthread_mutex_lock(&daemon_internals->lock);
+      daemon_internals->daemon_terminated = TRUE;
+      pthread_mutex_unlock(&daemon_internals->lock);
+   }
 
    // If supervisor was initialized, than proceed termination, else just check allocated memory from program argument parsing
    if (supervisor_initialized == TRUE) {
@@ -1443,24 +1431,53 @@ void supervisor_termination(int stop_all_modules, int generate_backup)
             free(p);
          }
       }
-
-      free_output_file_strings_and_streams();
    }
 
    // If daemon_mode_initialization call was successful, cleanup after daemon
    if (daemon_mode_initialized == TRUE) {
       if (daemon_flag && (daemon_internals != NULL)) {
-         free_daemon_internals_variables();
+         if (daemon_internals->clients != NULL) {
+            // Wait for daemon clients threads
+            VERBOSE(SUP_LOG, "%s [INFO] Waiting for client's threads to terminate.\n", get_stats_formated_time());
+            for (x = 0; x < MAX_NUMBER_SUP_CLIENTS; x++) {
+               // After 2 unsuccessful attempts terminate
+               if (attemps >= 2) {
+                  VERBOSE(SUP_LOG, "%s [INFO] Enough waiting, gonna terminate anyway.\n", get_stats_formated_time());
+                  break;
+               }
+               // If any client is still connected, wait 300 ms and check all clients again
+               if (daemon_internals->clients[x]->client_connected == TRUE) {
+                  attemps++;
+                  x = -1;
+                  usleep(300000);
+                  VERBOSE(SUP_LOG, "...\n");
+               }
+            }
+            if (attemps < 2) {
+               VERBOSE(SUP_LOG, "%s [INFO] All client's threads terminated.\n", get_stats_formated_time());
+            }
+            for (x = 0; x < MAX_NUMBER_SUP_CLIENTS; x++) {
+               if (daemon_internals->clients[x] != NULL) {
+                  free(daemon_internals->clients[x]);
+                  daemon_internals->clients[x] = NULL;
+               }
+            }
+            free(daemon_internals->clients);
+            daemon_internals->clients = NULL;
+         }
+
          if (daemon_internals->daemon_sd > 0) {
             close(daemon_internals->daemon_sd);
             daemon_internals->daemon_sd = 0;
          }
-         if (daemon_internals != NULL) {
-            free(daemon_internals);
-            daemon_internals = NULL;
-         }
+         free(daemon_internals);
+         daemon_internals = NULL;
          unlink(socket_path);
       }
+   }
+
+   if (supervisor_initialized == TRUE) {
+      free_output_file_strings_and_streams();
    }
 
    if (config_file != NULL) {
@@ -1945,6 +1962,7 @@ int daemon_mode_initialization()
    // create daemon
    pid_t process_id = 0;
    pid_t sid = 0;
+   unsigned int x = 0;
 
    fflush(stdout);
    process_id = fork();
@@ -1971,12 +1989,29 @@ int daemon_mode_initialization()
       return -1;
    }
 
-   // allocate daemon_internals
+   // allocate structures needed by daemon process
    daemon_internals = (daemon_internals_t *) calloc (1, sizeof(daemon_internals_t));
    if (daemon_internals == NULL) {
       fprintf(stderr, "%s [ERROR] Could not allocate dameon_internals, cannot proceed without it!\n", get_stats_formated_time());
       return -1;
    }
+   daemon_internals->clients = (sup_client_t **) calloc (MAX_NUMBER_SUP_CLIENTS, sizeof(sup_client_t*));
+   if (daemon_internals->clients == NULL) {
+      fprintf(stderr, "%s [ERROR] Could not allocate structures for clients, cannot proceed without it!\n", get_stats_formated_time());
+      return -1;
+   }
+   for (x = 0; x < MAX_NUMBER_SUP_CLIENTS; x++) {
+      daemon_internals->clients[x] = (sup_client_t *) calloc (1, sizeof(sup_client_t));
+      if (daemon_internals->clients[x] != NULL) {
+         daemon_internals->clients[x]->client_sd = -1;
+         daemon_internals->clients[x]->client_input_stream_fd = -1;
+      } else {
+         fprintf(stderr, "%s [ERROR] Could not allocate structures for clients, cannot proceed without it!\n", get_stats_formated_time());
+         return -1;
+      }
+   }
+   // Initialize daemon's structure mutex
+   pthread_mutex_init(&daemon_internals->lock,NULL);
 
    // create socket
    union tcpip_socket_addr addr;
@@ -1987,15 +2022,24 @@ int daemon_mode_initialization()
    /* if socket file exists, it could be hard to create new socket and bind */
    unlink(socket_path); /* error when file does not exist is not a problem */
    daemon_internals->daemon_sd = socket(AF_UNIX, SOCK_STREAM, 0);
-   if (bind(daemon_internals->daemon_sd, (struct sockaddr *) &addr.unix_addr, sizeof(addr.unix_addr)) != -1) {
-      chmod(socket_path, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
-   } else {
-      VERBOSE(N_STDOUT,"%s [ERROR] Bind: could not bind the daemon socket!\n", get_stats_formated_time());
+   if (daemon_internals->daemon_sd == -1) {
+      fprintf(stderr, "%s [ERROR] Could not create daemon socket.\n", get_stats_formated_time());
+      return -1;
+   }
+   if (fcntl(daemon_internals->daemon_sd, F_SETFL, O_NONBLOCK) == -1) {
+      fprintf(stderr, "%s [ERROR] Could not set nonblocking mode on daemon socket.\n", get_stats_formated_time());
       return -1;
    }
 
-   if (listen(daemon_internals->daemon_sd, 0) == -1) {
-      VERBOSE(N_STDOUT,"%s [ERROR] Listen: could not listen on the daemon socket!\n", get_stats_formated_time());
+   if (bind(daemon_internals->daemon_sd, (struct sockaddr *) &addr.unix_addr, sizeof(addr.unix_addr)) != -1) {
+      chmod(socket_path, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+   } else {
+      fprintf(stderr,"%s [ERROR] Bind: could not bind the daemon socket!\n", get_stats_formated_time());
+      return -1;
+   }
+
+   if (listen(daemon_internals->daemon_sd, MAX_NUMBER_SUP_CLIENTS) == -1) {
+      fprintf(stderr,"%s [ERROR] Listen: could not listen on the daemon socket!\n", get_stats_formated_time());
       return -1;
    }
 
@@ -2004,38 +2048,90 @@ int daemon_mode_initialization()
 }
 
 
-int daemon_get_client()
+void daemon_mode()
 {
-   int error, ret_val;
-   socklen_t len;
+   long int last_total_cpu_usage = get_total_cpu_usage();
+   unsigned int x = 0;
+   int ret_val = 0, new_client = 0;
    struct sockaddr_storage remoteaddr; // client address
-   socklen_t addrlen;
-   int newclient;
-   addrlen = sizeof remoteaddr;
+   socklen_t addrlen = sizeof remoteaddr;
+   fd_set read_fds;
+   struct timeval tv;
 
-   // handle new connection
-   while(1) {
-      newclient = accept(daemon_internals->daemon_sd, (struct sockaddr *)&remoteaddr, &addrlen);
-      if (newclient == -1) {
-         VERBOSE(N_STDOUT,"%s [ERROR] Accept: could not accept a new client!\n", get_stats_formated_time());
-         return newclient;
-      }
+   pthread_attr_t clients_thread_attr;
+   pthread_attr_init(&clients_thread_attr);
+   pthread_attr_setdetachstate(&clients_thread_attr, PTHREAD_CREATE_DETACHED);
 
-      error = 0;
-      len = sizeof (error);
-      ret_val = getsockopt (newclient, SOL_SOCKET, SO_ERROR, &error, &len );
-      if (ret_val == 0) {
-         VERBOSE(N_STDOUT, "Socket is up\n");
-         break;
+   VERBOSE(SUP_LOG, "%s [INFO] Starting acceptor's thread.\n", get_stats_formated_time());
+   while(daemon_internals->daemon_terminated == FALSE) {
+      FD_ZERO(&read_fds);
+      FD_SET(daemon_internals->daemon_sd, &read_fds);
+
+      tv.tv_sec = 1;
+      tv.tv_usec = 0;
+
+      ret_val = select(daemon_internals->daemon_sd+1, &read_fds, NULL, NULL, &tv);
+      if (ret_val == -1) {
+         // Select error, return -1 and terminate
+         VERBOSE(SUP_LOG, "%s [ERROR] Acceptor's thread: select call failed.\n", get_stats_formated_time());
+         return;
+      } else if (ret_val != 0) {
+         if (FD_ISSET(daemon_internals->daemon_sd, &read_fds)) {
+            new_client = accept(daemon_internals->daemon_sd, (struct sockaddr *)&remoteaddr, &addrlen);
+            if (new_client == -1) {
+               if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                  // Some client wanted to connect but before accepting, he canceled the connection attempt
+                  VERBOSE(SUP_LOG, "%s [WARNING] Accept would block error, wait for another client.\n", get_stats_formated_time());
+                  continue;
+               } else {
+                  VERBOSE(SUP_LOG,"%s [ERROR] Acceptor's thread: accept call failed.\n", get_stats_formated_time());
+                  continue;
+               }
+            } else {
+               if (daemon_internals->clients_cnt < MAX_NUMBER_SUP_CLIENTS) {
+                  // Find a free spot in the clients buffer for a new client
+                  for (x = 0; x < MAX_NUMBER_SUP_CLIENTS; x++) {
+                     if (daemon_internals->clients[x]->client_sd == -1) {
+                        VERBOSE(SUP_LOG,"%s [INFO] New client has connected and will be saved to position %d. (client's ID: %d)\n", get_stats_formated_time(), x, daemon_internals->next_client_id);
+                        daemon_internals->clients[x]->client_sd = new_client;
+                        daemon_internals->clients[x]->client_id = daemon_internals->next_client_id;
+                        daemon_internals->clients[x]->client_connected = TRUE;
+                        daemon_internals->next_client_id++;
+                        pthread_mutex_lock(&daemon_internals->lock);
+                        daemon_internals->clients_cnt++;
+                        pthread_mutex_unlock(&daemon_internals->lock);
+                        // Serve the new client
+                        if (pthread_create(&daemon_internals->clients[x]->client_thread_id,  &clients_thread_attr, serve_sup_client_routine, (void*)(daemon_internals->clients[x])) != 0) {
+                           VERBOSE(SUP_LOG, "%s [ERROR] Could not create client's thread.\n", get_stats_formated_time());
+                           close(daemon_internals->clients[x]->client_sd);
+                           daemon_internals->clients[x]->client_sd = -1;
+                           daemon_internals->clients[x]->client_connected = FALSE;
+                           pthread_mutex_lock(&daemon_internals->lock);
+                           daemon_internals->clients_cnt--;
+                           pthread_mutex_unlock(&daemon_internals->lock);
+                        }
+                        break;
+                     }
+                  }
+               } else {
+                  // Daemon cannot accept another client -> reject the new client
+                  VERBOSE(SUP_LOG, "[WARNING] New client has connected, but there is too many clients - cannot accept another one.\n");
+                  close(new_client);
+                  continue;
+               }
+            }
+         }
+      } else {
+         /* Select timeout - nothing to do (waiting for incoming connections). */
       }
    }
-   VERBOSE(N_STDOUT,"%s [WARNING] New client has connected!\n", get_stats_formated_time());
-   return newclient;
+   return;
 }
 
 
-int daemon_get_code_from_client()
+int daemon_get_code_from_client(sup_client_t ** cli)
 {
+   sup_client_t * client = *cli;
    int bytes_to_read = 0; // value can be also -1 <=> ioctl error
    int ret_val = 0;
    int request = -1;
@@ -2045,24 +2141,24 @@ int daemon_get_code_from_client()
 
    while (1) {
          FD_ZERO(&read_fds);
-         FD_SET(daemon_internals->client_input_stream_fd, &read_fds);
+         FD_SET(client->client_input_stream_fd, &read_fds);
 
          tv.tv_sec = 2;
          tv.tv_usec = 0;
 
-         ret_val = select(daemon_internals->client_input_stream_fd+1, &read_fds, NULL, NULL, &tv);
+         ret_val = select(client->client_input_stream_fd+1, &read_fds, NULL, NULL, &tv);
          if (ret_val == -1) {
             // select error, return -1 and wait for new client
             return -1;
          } else if (ret_val != 0) {
-            if (FD_ISSET(daemon_internals->client_input_stream_fd, &read_fds)) {
-               ioctl(daemon_internals->client_input_stream_fd, FIONREAD, &bytes_to_read);
+            if (FD_ISSET(client->client_input_stream_fd, &read_fds)) {
+               ioctl(client->client_input_stream_fd, FIONREAD, &bytes_to_read);
                if (bytes_to_read == 0 || bytes_to_read == -1) {
                   // client has disconnected, return -2 and wait for new client
                   return -2;
                }
 
-               buffer = get_input_from_stream(input_fd);
+               buffer = get_input_from_stream(client->client_input_stream);
                if (buffer == NULL) {
                   // problem with input, return -1 and wait for new client
                   return -1;
@@ -2112,194 +2208,228 @@ void send_options_to_client()
    VERBOSE(N_STDOUT, ANSI_YELLOW_BOLD "[INTERACTIVE] Your choice: " ANSI_ATTR_RESET);
 }
 
-
-void daemon_mode()
+int open_sup_client_streams(sup_client_t ** cli)
 {
-   long int last_total_cpu_usage = get_total_cpu_usage();
+   // open input stream on client' s socket
+   sup_client_t * client = *cli;
+   client->client_input_stream = fdopen(client->client_sd, "r");
+   if (client->client_input_stream == NULL) {
+      VERBOSE(N_STDOUT,"%s [ERROR] Fdopen: could not open client's input stream! (client's ID: %d)\n", get_stats_formated_time(), client->client_id);
+      return -1;
+   }
+
+   // open output stream on client' s socket
+   client->client_output_stream = fdopen(client->client_sd, "w");
+   if (client->client_output_stream == NULL) {
+      VERBOSE(N_STDOUT,"%s [ERROR] Fdopen: could not open client's output stream! (client's ID: %d)\n", get_stats_formated_time(), client->client_id);
+      return -1;
+   }
+
+   // get file descriptor of input stream on client' s socket
+   client->client_input_stream_fd = fileno(client->client_input_stream);
+   if (client->client_input_stream_fd < 0) {
+      VERBOSE(N_STDOUT,"%s [ERROR] Fileno: could not get client's input stream descriptor! (client's ID: %d)\n", get_stats_formated_time(), client->client_id);
+      return -1;
+   }
+
+   return 0;
+}
+
+void disconnect_sup_client(sup_client_t * client)
+{
+   client->client_connected = FALSE;
+   if (client->client_input_stream_fd >= 0) {
+      close(client->client_input_stream_fd);
+      client->client_input_stream_fd = -1;
+   }
+   if (client->client_input_stream != NULL) {
+      fclose(client->client_input_stream);
+      client->client_input_stream = NULL;
+   }
+   if (client->client_output_stream != NULL) {
+      fclose(client->client_output_stream);
+      client->client_output_stream = NULL;
+   }
+   if (client->client_sd >= 0) {
+      close(client->client_sd);
+      client->client_sd = -1;
+   }
+   pthread_mutex_lock(&daemon_internals->lock);
+   daemon_internals->clients_cnt--;
+   pthread_mutex_unlock(&daemon_internals->lock);
+   VERBOSE(SUP_LOG, "%s [INFO] Disconnected client. (client's ID: %d)\n", get_stats_formated_time(), client->client_id);
+}
+
+void * serve_sup_client_routine (void * arg)
+{
+   sup_client_t * client = (sup_client_t *) arg;
    int bytes_to_read = 0; // value can be also -1 <=> ioctl error
    int ret_val = 0, nine_cnt = 0;
    int request = -1;
    fd_set read_fds;
    struct timeval tv;
 
-   daemon_internals->daemon_terminated = FALSE;
-   daemon_internals->client_connected = FALSE;
+   // Open client's streams
+   if (open_sup_client_streams(&client) != 0) {
+      disconnect_sup_client(client);
+      pthread_exit(EXIT_SUCCESS);
+   }
 
-   while (daemon_internals->daemon_terminated == FALSE) {
+   // get code from client according to operation he wants to perform
+   switch (daemon_get_code_from_client(&client)) {
+   case -3: // timeout
+      VERBOSE(SUP_LOG, "[ERROR] Timeout, client has not sent mode-code -> gonna wait for new client\n");
+      disconnect_sup_client(client);
+      pthread_exit(EXIT_SUCCESS);
 
-      // get new client
-      daemon_internals->client_sd = daemon_get_client();
-      if (daemon_internals->client_sd == -1) {
-         daemon_internals->client_connected = FALSE;
-         continue;
+   case -2: // client has disconnected
+      VERBOSE(SUP_LOG, "[ERROR] Client has disconnected -> gonna wait for new client\n");
+      disconnect_sup_client(client);
+      pthread_exit(EXIT_SUCCESS);
+
+   case -1: // another error while receiving mode-code from client
+      VERBOSE(SUP_LOG, "[ERROR] Error while waiting for a mode-code from client -> gonna wait for new client\n");
+      disconnect_sup_client(client);
+      pthread_exit(EXIT_SUCCESS);
+
+   case DAEMON_CONFIG_MODE_CODE: // normal client configure mode -> continue to options loop
+      // Check whether any client is already connected in config mode
+      pthread_mutex_lock(&daemon_internals->lock);
+      if (daemon_internals->config_mode_active == TRUE) {
+         VERBOSE(SUP_LOG, "%s [INFO] Got configuration mode code, but another client is already connected in this mode. (client's ID: %d)\n", get_stats_formated_time(), client->client_id);
+         fprintf(client->client_output_stream, ANSI_RED_BOLD "[WARNING] Another client is connected to supervisor in configuration mode, you have to wait.\n" ANSI_ATTR_RESET);
+         fflush(client->client_output_stream);
+         pthread_mutex_unlock(&daemon_internals->lock);
+         disconnect_sup_client(client);
+         pthread_exit(EXIT_SUCCESS);
+      } else {
+         VERBOSE(SUP_LOG, "%s [INFO] Got configuration mode code. (client's ID: %d)\n", get_stats_formated_time(), client->client_id);
+         daemon_internals->config_mode_active = TRUE;
       }
+      pthread_mutex_unlock(&daemon_internals->lock);
+      output_fd = client->client_output_stream;
+      input_fd = client->client_input_stream;
+      send_options_to_client();
+      break;
 
-      // open input stream on client' s socket
-      daemon_internals->client_input_stream = fdopen(daemon_internals->client_sd, "r");
-      if (daemon_internals->client_input_stream == NULL) {
-         VERBOSE(N_STDOUT,"%s [ERROR] Fdopen: could not open client input stream!\n", get_stats_formated_time());
-         free_daemon_internals_variables();
-         continue;
+   case DAEMON_RELOAD_MODE_CODE: // just reload configuration and wait for new client
+      VERBOSE(SUP_LOG, "%s [INFO] Got reload mode code. (client's ID: %d)\n", get_stats_formated_time(), client->client_id);
+      disconnect_sup_client(client);
+      reload_configuration(RELOAD_DEFAULT_CONFIG_FILE, NULL);
+      pthread_exit(EXIT_SUCCESS);
+
+   case DAEMON_STATS_MODE_CODE: { // send stats to current client and wait for new one
+      VERBOSE(SUP_LOG, "%s [INFO] Got stats mode code. (client's ID: %d)\n", get_stats_formated_time(), client->client_id);
+      // update_module_cpu_usage(&last_total_cpu_usage);
+      char * stats_buffer = make_formated_statistics();
+      int buffer_len = strlen(stats_buffer);
+      char stats_buffer2[buffer_len+1];
+      memset(stats_buffer2,0,buffer_len+1);
+      strncpy(stats_buffer2, stats_buffer, buffer_len+1);
+      fprintf(client->client_output_stream, "%s", stats_buffer2);
+      fflush(client->client_output_stream);
+      if (stats_buffer != NULL) {
+         free(stats_buffer);
+         stats_buffer = NULL;
       }
+      VERBOSE(SUP_LOG, "%s [INFO] Stats sent to client. (client's ID: %d)\n", get_stats_formated_time(), client->client_id);
+      disconnect_sup_client(client);
+      pthread_exit(EXIT_SUCCESS);
+   }
 
-      // open output stream on client' s socket
-      daemon_internals->client_output_stream = fdopen(daemon_internals->client_sd, "w");
-      if (daemon_internals->client_output_stream == NULL) {
-         VERBOSE(N_STDOUT,"%s [ERROR] Fdopen: could not open client output stream!\n", get_stats_formated_time());
-         free_daemon_internals_variables();
-         continue;
-      }
+   default: // just in case of unknown return value.. clean up and wait for new client
+      disconnect_sup_client(client);
+      pthread_exit(EXIT_SUCCESS);
+   }
 
-      // get file descriptor of input stream on client' s socket
-      daemon_internals->client_input_stream_fd = fileno(daemon_internals->client_input_stream);
-      if (daemon_internals->client_input_stream_fd < 0) {
-         VERBOSE(N_STDOUT,"%s [ERROR] Fileno: could not get client input stream descriptor!\n", get_stats_formated_time());
-         free_daemon_internals_variables();
-         continue;
-      }
+   // Configuration mode MAIN LOOP
+   while (client->client_connected == TRUE && daemon_internals->daemon_terminated == FALSE) {
+      request = -1;
+      FD_ZERO(&read_fds);
+      FD_SET(client->client_input_stream_fd, &read_fds);
 
-      // I/O streams are opened and client is connected
-      daemon_internals->client_connected = TRUE;
-      input_fd = daemon_internals->client_input_stream;
-      output_fd = daemon_internals->client_output_stream;
+      tv.tv_sec = 0;
+      tv.tv_usec = 500000;
 
-      // get code from client according to operation he wants to perform
-      switch (daemon_get_code_from_client()) {
-      case -3: // timeout
+      ret_val = select(client->client_input_stream_fd+1, &read_fds, NULL, NULL, &tv);
+      if (ret_val == -1) {
+         VERBOSE(SUP_LOG,"%s [ERROR] Client's thread: select error.\n", get_stats_formated_time());
          input_fd = stdin;
          output_fd = supervisor_log_fd;
-         VERBOSE(N_STDOUT, "[ERROR] Timeout, client has not sent mode-code -> gonna wait for new client\n");
-         free_daemon_internals_variables();
-         continue;
-
-      case -2: // client has disconnected
-         input_fd = stdin;
-         output_fd = supervisor_log_fd;
-         VERBOSE(N_STDOUT, "[ERROR] Client has disconnected -> gonna wait for new client\n");
-         free_daemon_internals_variables();
-         continue;
-
-      case -1: // another error while receiving mode-code from client
-         input_fd = stdin;
-         output_fd = supervisor_log_fd;
-         VERBOSE(N_STDOUT, "[ERROR] Error while waiting for a mode-code from client -> gonna wait for new client\n");
-         free_daemon_internals_variables();
-         continue;
-
-      case DAEMON_CONFIG_MODE_CODE: // normal client configure mode -> continue to options loop
-         send_options_to_client();
-         break;
-
-      case DAEMON_RELOAD_MODE_CODE: // just reload configuration and wait for new client
-         input_fd = stdin;
-         output_fd = supervisor_log_fd;
-         VERBOSE(N_STDOUT, "%s [RELOAD] Got request from client to reload...\n", get_stats_formated_time());
-         free_daemon_internals_variables();
-         reload_configuration(RELOAD_DEFAULT_CONFIG_FILE, NULL);
-         continue;
-
-      case DAEMON_STATS_MODE_CODE: { // send stats to current client and wait for new one
-         update_module_cpu_usage(&last_total_cpu_usage);
-         char * stats_buffer = make_formated_statistics();
-         int buffer_len = strlen(stats_buffer);
-         char stats_buffer2[buffer_len+1];
-         memset(stats_buffer2,0,buffer_len+1);
-         strncpy(stats_buffer2, stats_buffer, buffer_len+1);
-         VERBOSE(N_STDOUT,"%s", stats_buffer2);
-         if (stats_buffer != NULL) {
-            free(stats_buffer);
-            stats_buffer = NULL;
-         }
-         input_fd = stdin;
-         output_fd = supervisor_log_fd;
-         VERBOSE(N_STDOUT, "%s [WARNING] Stats sent to client!\n", get_stats_formated_time());
-         free_daemon_internals_variables();
-         continue;
-      }
-
-      default: // just in case of unknown return value.. clean up and wait for new client
-         input_fd = stdin;
-         output_fd = supervisor_log_fd;
-         free_daemon_internals_variables();
-         continue;
-      }
-
-      while (daemon_internals->client_connected) {
-         request = -1;
-         FD_ZERO(&read_fds);
-         FD_SET(daemon_internals->client_input_stream_fd, &read_fds);
-
-         tv.tv_sec = 1;
-         tv.tv_usec = 0;
-
-         ret_val = select(daemon_internals->client_input_stream_fd+1, &read_fds, NULL, NULL, &tv);
-         if (ret_val == -1) {
-            VERBOSE(N_STDOUT,"%s [ERROR] Select: error\n", get_stats_formated_time());
-            free_daemon_internals_variables();
-            input_fd = stdin;
-            output_fd = supervisor_log_fd;
-            break;
-         } else if (ret_val != 0) {
-            if (FD_ISSET(daemon_internals->client_input_stream_fd, &read_fds)) {
-               ioctl(daemon_internals->client_input_stream_fd, FIONREAD, &bytes_to_read);
-               if (bytes_to_read == 0 || bytes_to_read == -1) {
-                  input_fd = stdin;
-                  output_fd = supervisor_log_fd;
-                  VERBOSE(N_STDOUT, "%s [WARNING] Client has disconnected!\n", get_stats_formated_time());
-                  free_daemon_internals_variables();
-                  break;
-               }
-
-               request = get_number_from_input_choosing_option();
-
-               switch (request) {
-               case 1:
-                  interactive_start_configuration();
-                  break;
-               case 2:
-                  interactive_stop_configuration();
-                  break;
-               case 3:
-                  interactive_set_module_enabled();
-                  break;
-               case 4:
-                  interactive_stop_module();
-                  break;
-               case 5:
-                  interactive_show_running_modules_status();
-                  break;
-               case 6:
-                  interactive_show_available_modules();
-                  break;
-               case 7:
-                  reload_configuration(RELOAD_INTERACTIVE, NULL);
-                  break;
-               case 9:
-                  nine_cnt++;
-                  if (nine_cnt == 3) {
-                     daemon_internals->client_connected = FALSE;
-                     daemon_internals->daemon_terminated = TRUE;
-                  }
-                  break;
-               default:
-                  VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Wrong input!\n" ANSI_ATTR_RESET);
-                  break;
-               }
-               if (nine_cnt == 0 && !(daemon_internals->daemon_terminated) && daemon_internals->client_connected) {
-                  send_options_to_client();
-               }
+         pthread_mutex_lock(&daemon_internals->lock);
+         daemon_internals->config_mode_active = FALSE;
+         pthread_mutex_unlock(&daemon_internals->lock);
+         disconnect_sup_client(client);
+         pthread_exit(EXIT_SUCCESS);
+      } else if (ret_val != 0) {
+         if (FD_ISSET(client->client_input_stream_fd, &read_fds)) {
+            ioctl(client->client_input_stream_fd, FIONREAD, &bytes_to_read);
+            if (bytes_to_read == 0 || bytes_to_read == -1) {
+               input_fd = stdin;
+               output_fd = supervisor_log_fd;
+               pthread_mutex_lock(&daemon_internals->lock);
+               daemon_internals->config_mode_active = FALSE;
+               pthread_mutex_unlock(&daemon_internals->lock);
+               disconnect_sup_client(client);
+               pthread_exit(EXIT_SUCCESS);
             }
-         } else {
-            if (nine_cnt > 0) {
+
+            request = get_number_from_input_choosing_option();
+
+            switch (request) {
+            case 1:
+               interactive_start_configuration();
+               break;
+            case 2:
+               interactive_stop_configuration();
+               break;
+            case 3:
+               interactive_set_module_enabled();
+               break;
+            case 4:
+               interactive_stop_module();
+               break;
+            case 5:
+               interactive_show_running_modules_status();
+               break;
+            case 6:
+               interactive_show_available_modules();
+               break;
+            case 7:
+               reload_configuration(RELOAD_INTERACTIVE, NULL);
+               break;
+            case 9:
+               nine_cnt++;
+               if (nine_cnt == 3) {
+                  pthread_mutex_lock(&daemon_internals->lock);
+                  daemon_internals->daemon_terminated = TRUE;
+                  pthread_mutex_unlock(&daemon_internals->lock);
+               }
+               break;
+            default:
                VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Wrong input!\n" ANSI_ATTR_RESET);
-               nine_cnt = 0;
+               break;
+            }
+            if (nine_cnt == 0 && !(daemon_internals->daemon_terminated) && client->client_connected) {
                send_options_to_client();
             }
+         }
+      } else {
+         if (nine_cnt > 0) {
+            VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Wrong input!\n" ANSI_ATTR_RESET);
+            nine_cnt = 0;
+            send_options_to_client();
          }
       }
    }
 
-   return;
+   input_fd = stdin;
+   output_fd = supervisor_log_fd;
+   pthread_mutex_lock(&daemon_internals->lock);
+   daemon_internals->config_mode_active = FALSE;
+   pthread_mutex_unlock(&daemon_internals->lock);
+   disconnect_sup_client(client);
+   pthread_exit(EXIT_SUCCESS);
 }
 
 int find_loaded_module(char * name)
@@ -3163,7 +3293,7 @@ int reload_configuration(const int choice, xmlNodePtr node)
                *  return value 0 is success -> parse the module attributes
                */
                if (reload_find_and_check_module_basic_elements(&config_vars) == -1) {
-                  VERBOSE(N_STDOUT, "[WARNING] Reloading error - last module is invalid, breaking the loop.\n");
+                  // VERBOSE(N_STDOUT, "[WARNING] Reloading error - last module is invalid, breaking the loop.\n");
                   break;
                } else {
                   if (config_vars->current_module_idx != loaded_modules_cnt) {
