@@ -70,6 +70,11 @@
 #include <sys/ioctl.h>
 #include <net/if.h>
 #include <ifaddrs.h>
+#include <dirent.h>
+
+#include <pwd.h>
+#include <grp.h>
+#include <langinfo.h>
 
 #define TRAP_PARAM               "-i" ///< Interface parameter for libtrap
 #define DEFAULT_MAX_RESTARTS_PER_MINUTE  3  ///< Maximum number of module restarts per minute
@@ -96,6 +101,8 @@ int         max_restarts_per_minute_config = DEFAULT_MAX_RESTARTS_PER_MINUTE;
 
 modules_profile_t * first_profile_ptr = NULL;
 modules_profile_t * actual_profile_ptr = NULL;
+
+available_module_t * first_available_module = NULL;
 
 pthread_t   service_thread_id; ///< Service thread identificator.
 pthread_t   nc_clients_thread_id;
@@ -128,6 +135,9 @@ union tcpip_socket_addr {
    struct sockaddr_un unix_addr; ///< used for path of UNIX socket
 };
 
+void reload_check_module_allocated_interfaces(const int running_module_idx, const int ifc_cnt);
+void disconnect_service_ifc(const int module_idx);
+void free_module_ifc_on_index(const int module_idx, const int ifc_idx);
 void * serve_sup_client_routine (void * arg);
 void check_running_modules_allocated_memory();
 long int get_total_cpu_usage();
@@ -1319,6 +1329,46 @@ void free_module_and_shift_array(const int module_idx)
    memset(&running_modules[loaded_modules_cnt], 0, sizeof(running_module_t));
 }
 
+void free_available_modules_struct()
+{
+   available_module_t * p1 = first_available_module;
+   available_module_t * p2 = NULL;
+   while (p1 != NULL) {
+      p2 = p1 -> next;
+      if (p1 -> name != NULL) {
+         free(p1 -> name);
+         p1 -> name = NULL;
+      }
+      if (p1 -> path != NULL) {
+         free(p1 -> path);
+         p1 -> path = NULL;
+      }
+      free(p1);
+      p1 = p2;
+   }
+   first_available_module = NULL;
+}
+
+void free_module_ifc_on_index(const int module_idx, const int ifc_idx)
+{
+   if (running_modules[module_idx].module_ifces[ifc_idx].ifc_note != NULL) {
+      free(running_modules[module_idx].module_ifces[ifc_idx].ifc_note);
+      running_modules[module_idx].module_ifces[ifc_idx].ifc_note = NULL;
+   }
+   if (running_modules[module_idx].module_ifces[ifc_idx].ifc_type != NULL) {
+      free(running_modules[module_idx].module_ifces[ifc_idx].ifc_type);
+      running_modules[module_idx].module_ifces[ifc_idx].ifc_type = NULL;
+   }
+   if (running_modules[module_idx].module_ifces[ifc_idx].ifc_direction != NULL) {
+      free(running_modules[module_idx].module_ifces[ifc_idx].ifc_direction);
+      running_modules[module_idx].module_ifces[ifc_idx].ifc_direction = NULL;
+   }
+   if (running_modules[module_idx].module_ifces[ifc_idx].ifc_params != NULL) {
+      free(running_modules[module_idx].module_ifces[ifc_idx].ifc_params);
+      running_modules[module_idx].module_ifces[ifc_idx].ifc_params = NULL;
+   }
+}
+
 void supervisor_termination(int stop_all_modules, int generate_backup)
 {
    unsigned int x = 0, y = 0, attemps = 0;
@@ -1379,22 +1429,7 @@ void supervisor_termination(int stop_all_modules, int generate_backup)
       }
       for (x=0;x<running_modules_array_size;x++) {
          for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
-            if (running_modules[x].module_ifces[y].ifc_note != NULL) {
-               free(running_modules[x].module_ifces[y].ifc_note);
-               running_modules[x].module_ifces[y].ifc_note = NULL;
-            }
-            if (running_modules[x].module_ifces[y].ifc_type != NULL) {
-               free(running_modules[x].module_ifces[y].ifc_type);
-               running_modules[x].module_ifces[y].ifc_type = NULL;
-            }
-            if (running_modules[x].module_ifces[y].ifc_direction != NULL) {
-               free(running_modules[x].module_ifces[y].ifc_direction);
-               running_modules[x].module_ifces[y].ifc_direction = NULL;
-            }
-            if (running_modules[x].module_ifces[y].ifc_params != NULL) {
-               free(running_modules[x].module_ifces[y].ifc_params);
-               running_modules[x].module_ifces[y].ifc_params = NULL;
-            }
+            free_module_ifc_on_index(x, y);
          }
          if (running_modules[x].module_ifces != NULL) {
             free(running_modules[x].module_ifces);
@@ -1475,6 +1510,9 @@ void supervisor_termination(int stop_all_modules, int generate_backup)
          unlink(socket_path);
       }
    }
+
+   // Free available modules linked list
+   free_available_modules_struct();
 
    if (supervisor_initialized == TRUE) {
       free_output_file_strings_and_streams();
@@ -1576,6 +1614,7 @@ void update_module_cpu_usage(long int * last_total_cpu_usage)
 
 int service_get_data(int sd, int running_module_number)
 {
+   int num_of_timeouts = 0;
    int sizeof_recv = (running_modules[running_module_number].module_num_in_ifc + 3*running_modules[running_module_number].module_num_out_ifc) * sizeof(uint64_t);
    int total_receved = 0;
    int last_receved = 0;
@@ -1588,7 +1627,13 @@ int service_get_data(int sd, int running_module_number)
          return 0;
       } else if (last_receved == -1) {
          if (errno == EAGAIN  || errno == EWOULDBLOCK) {
-            return 0;
+            num_of_timeouts++;
+            if (num_of_timeouts >= 3) {
+               return 0;
+            } else {
+               usleep(25000);
+               continue;
+            }
          }
          VERBOSE(MODULE_EVENT,"[SERVICE] Error while receiving from module %d_%s !\n", running_module_number, running_modules[running_module_number].module_name);
          return 0;
@@ -1679,6 +1724,18 @@ void print_statistics(struct tm * timeinfo)
    }
 }
 
+void disconnect_service_ifc(const int module_idx)
+{
+   if ((running_modules[module_idx].module_has_service_ifc == TRUE) && (running_modules[module_idx].module_service_ifc_isconnected == TRUE)) {
+      VERBOSE(MODULE_EVENT,"%s [SERVICE] Disconnecting from module %s\n", get_stats_formated_time(), running_modules[module_idx].module_name);
+      if (running_modules[module_idx].module_service_sd != -1) {
+         close(running_modules[module_idx].module_service_sd);
+         running_modules[module_idx].module_service_sd = -1;
+      }
+      running_modules[module_idx].module_service_ifc_isconnected = FALSE;
+   }
+}
+
 void print_statistics_legend()
 {
    VERBOSE(STATISTICS,"Legend CPU stats:\n"
@@ -1735,7 +1792,7 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
                if (running_modules[y].module_status == FALSE) {
                   free_module_and_shift_array(y);
                }
-            } else if (running_modules[y].init_module) {
+            } else if (running_modules[y].init_module == TRUE) {
                if (running_modules[y].module_status == FALSE) {
                   running_modules[y].module_enabled = TRUE;
                   running_modules[y].module_restart_cnt = -1;
@@ -1803,12 +1860,7 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
    }
 
    for (x=0;x<loaded_modules_cnt;x++) {
-      if ((running_modules[x].module_has_service_ifc == TRUE) && (running_modules[x].module_service_ifc_isconnected == TRUE)) {
-         VERBOSE(MODULE_EVENT,"%s [SERVICE] Disconnecting from module %s\n", get_stats_formated_time(), running_modules[x].module_name);
-         if (running_modules[x].module_service_sd != -1) {
-            close(running_modules[x].module_service_sd);
-         }
-      }
+      disconnect_service_ifc(x);
    }
 
    pthread_exit(EXIT_SUCCESS);
@@ -2969,19 +3021,19 @@ void reload_count_module_interfaces(reload_config_vars_t ** config_vars)
    return;
 }
 
-void reload_check_module_allocated_interfaces(reload_config_vars_t ** config_vars, int ifc_cnt)
+void reload_check_module_allocated_interfaces(const int running_module_idx, const int ifc_cnt)
 {
    int origin_size = 0;
 
-   if (running_modules[(*config_vars)->current_module_idx].module_ifces_array_size == 0) {
-      running_modules[(*config_vars)->current_module_idx].module_ifces = (interface_t *) calloc(IFCES_ARRAY_START_SIZE, sizeof(interface_t));
-      running_modules[(*config_vars)->current_module_idx].module_ifces_array_size = IFCES_ARRAY_START_SIZE;
-      running_modules[(*config_vars)->current_module_idx].module_ifces_cnt = 0;
-   } else if (ifc_cnt == running_modules[(*config_vars)->current_module_idx].module_ifces_array_size) {
-      origin_size = running_modules[(*config_vars)->current_module_idx].module_ifces_array_size;
-      running_modules[(*config_vars)->current_module_idx].module_ifces_array_size += running_modules[(*config_vars)->current_module_idx].module_ifces_array_size/2;
-      running_modules[(*config_vars)->current_module_idx].module_ifces = (interface_t *) realloc (running_modules[(*config_vars)->current_module_idx].module_ifces, (running_modules[(*config_vars)->current_module_idx].module_ifces_array_size) * sizeof(interface_t));
-      memset(running_modules[(*config_vars)->current_module_idx].module_ifces + origin_size,0,(origin_size/2)*sizeof(interface_t));
+   if (running_modules[running_module_idx].module_ifces_array_size == 0) {
+      running_modules[running_module_idx].module_ifces = (interface_t *) calloc(IFCES_ARRAY_START_SIZE, sizeof(interface_t));
+      running_modules[running_module_idx].module_ifces_array_size = IFCES_ARRAY_START_SIZE;
+      running_modules[running_module_idx].module_ifces_cnt = 0;
+   } else if (ifc_cnt == running_modules[running_module_idx].module_ifces_array_size) {
+      origin_size = running_modules[running_module_idx].module_ifces_array_size;
+      running_modules[running_module_idx].module_ifces_array_size += running_modules[running_module_idx].module_ifces_array_size/2;
+      running_modules[running_module_idx].module_ifces = (interface_t *) realloc (running_modules[running_module_idx].module_ifces, (running_modules[running_module_idx].module_ifces_array_size) * sizeof(interface_t));
+      memset(running_modules[running_module_idx].module_ifces + origin_size,0,(origin_size/2)*sizeof(interface_t));
    }
 }
 
@@ -3067,6 +3119,226 @@ void reload_resolve_module_enabled(reload_config_vars_t ** config_vars, const in
    }
    return;
 }
+
+char const * sperm(__mode_t mode) {
+    static char local_buff[16] = {0};
+    int i = 0;
+    // user permissions
+    if ((mode & S_IRUSR) == S_IRUSR) local_buff[i] = 'r';
+    else local_buff[i] = '-';
+    i++;
+    if ((mode & S_IWUSR) == S_IWUSR) local_buff[i] = 'w';
+    else local_buff[i] = '-';
+    i++;
+    if ((mode & S_IXUSR) == S_IXUSR) local_buff[i] = 'x';
+    else local_buff[i] = '-';
+    i++;
+    // group permissions
+    if ((mode & S_IRGRP) == S_IRGRP) local_buff[i] = 'r';
+    else local_buff[i] = '-';
+    i++;
+    if ((mode & S_IWGRP) == S_IWGRP) local_buff[i] = 'w';
+    else local_buff[i] = '-';
+    i++;
+    if ((mode & S_IXGRP) == S_IXGRP) local_buff[i] = 'x';
+    else local_buff[i] = '-';
+    i++;
+    // other permissions
+    if ((mode & S_IROTH) == S_IROTH) local_buff[i] = 'r';
+    else local_buff[i] = '-';
+    i++;
+    if ((mode & S_IWOTH) == S_IWOTH) local_buff[i] = 'w';
+    else local_buff[i] = '-';
+    i++;
+    if ((mode & S_IXOTH) == S_IXOTH) local_buff[i] = 'x';
+    else local_buff[i] = '-';
+    return local_buff;
+}
+
+
+void reload_process_availablemodules_element(reload_config_vars_t ** config_vars)
+{
+   const char * perm = NULL;
+   xmlChar * key = NULL;
+   available_module_t * p = NULL;
+   DIR * bin_dir_str = NULL;
+   int x = 0, y = 0, allowed = 0;
+   int modules_check_sum = 0;
+   struct dirent * file = NULL;
+   struct stat file_stat;
+   memset(&file_stat, 0, sizeof(file_stat));
+   pid_t proc;
+   char buffer[1024];
+   char * current_path = NULL;
+
+   char ** args = (char **) calloc (4, sizeof(char *));
+   args[0] = (char *) calloc (1024, sizeof(char));
+   args[1] = (char *) calloc (1024, sizeof(char));
+   args[2] = NULL;
+   args[3] = NULL;
+   char * args2_allocated = (char *) calloc (1024, sizeof(char));
+
+   int pipe_fd[2];
+   pipe_fd[0] = 0; pipe_fd[1] = 0;
+   if (pipe(pipe_fd) != 0) {
+      fprintf(stderr, "Could not create pipe for module info transfer.\n");
+      goto clean_up;
+   }
+
+   // Free previous available modules
+   free_available_modules_struct();
+
+   // Set environment variable for modules to make decision about printing help in json format
+   putenv("LIBTRAP_OUTPUT_FORMAT=json");
+
+   // Load binary paths from configuration and compare all files with allowed modules
+   while ((*config_vars)->module_elem != NULL) {
+      if (!xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "search-paths")) {
+         (*config_vars)->module_atr_elem = (*config_vars)->module_elem->xmlChildrenNode;
+         while ((*config_vars)->module_atr_elem != NULL) {
+            if (!xmlStrcmp((*config_vars)->module_atr_elem->name, BAD_CAST "binpath")) {
+               key = xmlNodeListGetString((*config_vars)->doc_tree_ptr, (*config_vars)->module_atr_elem->xmlChildrenNode, 1);
+               if (key != NULL) {
+                  bin_dir_str = opendir(key);
+                  printf("dir -> %s\n", (char *) key);
+                  if (current_path != NULL) {
+                     free(current_path);
+                     current_path = NULL;
+                  }
+                  current_path = strdup((char *) key);
+                  xmlFree(key);
+                  key = NULL;
+                  if (bin_dir_str == NULL) {
+                     printf("Directory does not exist.\n");
+                     break;
+                  }
+               } else {
+                  (*config_vars)->module_atr_elem = (*config_vars)->module_atr_elem->next;
+                  continue;
+               }
+
+               while (1) {
+                  file = readdir(bin_dir_str);
+                  if (file == NULL) {
+                     printf("End of stream\n");
+                     closedir(bin_dir_str);
+                     break;
+                  } else {
+                     memset(buffer, 0, 1024);
+                     sprintf(buffer, "%s%s", current_path, file->d_name);
+                     if (stat(buffer, &file_stat) == -1) {
+                         continue;
+                     }
+                     if (S_ISDIR(file_stat->st_mode) == 1) {
+                        // current directory entry is a directory
+                     } else {
+                        perm = sperm (file_stat.st_mode);
+                        if (perm != NULL && strcmp(file->d_name, ".") != 0 && strcmp(file->d_name, "..") != 0 && strstr(file->d_name, ".py") == NULL) {
+                           if (perm[5] == 'x' || perm[8] == 'x') {
+                              printf("%s - executable\n", file->d_name);
+                              if (strcmp(file->d_name, "flowcounter") == 0) {
+                                 // Fork process and execute binary
+                                 proc = fork();
+                                 if (proc == 0) {
+                                    memset(args[0], 0, 1024);
+                                    sprintf(args[0], "%s", file -> d_name);
+                                    memset(args[1], 0, 1024);
+                                    sprintf(args[1], "-h");
+                                    args[2] = NULL;
+                                    execve(buffer, args);
+                                    fprintf(stderr, "Execution of %s failed.\n", args[0]);
+                                    exit(EXIT_FAILURE);
+                                 } else if (proc > 0) {
+                                    // parent
+
+
+
+                                    waitpid(proc);// Take care of possible deadlock
+                                 } else {
+                                    // error
+                                 }
+                              }
+                           }
+                        } else if (strstr(file->d_name, ".py") != NULL) {
+                           printf("%s - python\n", file->d_name);
+                           // Fork process and execute python
+                           proc = fork();
+                           if (proc == 0) {
+                              // memset(args[0], 0, 1024);
+                              // sprintf(args[0], "%s", file -> d_name);
+                              // execve(buffer, args);
+                              // printf("exec fail\n");
+                              exit(EXIT_FAILURE);
+                           } else if (proc > 0) {
+                              // parent
+                              waitpid(proc); // Take care of possible deadlock
+                           } else {
+                              // error
+                           }
+                        } else {
+                           continue;
+                        }
+                        p = (available_module_t *) calloc (1, sizeof(available_module_t));
+                        p -> name = strdup((char *) file -> d_name);
+                        p -> path = strdup(buffer);
+                        p -> next  = first_available_module;
+                        first_available_module = p;
+                     }
+                  }
+               }
+            }
+            (*config_vars)->module_atr_elem = (*config_vars)->module_atr_elem->next;
+         }
+      }
+      (*config_vars)->module_elem = (*config_vars)->module_elem->next;
+   }
+
+   // Print available modules out and add them to loaded xml file
+   // printf("Available modules:\n");
+   // p = first_available_module;
+   // xmlNodePtr available_modules = xmlNewChild((*config_vars)->current_node, NULL, BAD_CAST "available", NULL);
+   // xmlNodePtr new;
+   // while (p != NULL) {
+   //    printf("\t%s\n", p -> name);
+
+   //    // new = xmlNewChild(available_modules, NULL, BAD_CAST "module", NULL);
+   //    // xmlNewChild(new, NULL, BAD_CAST "name", BAD_CAST p->name);
+   //    // xmlNewChild(new, NULL, BAD_CAST "description", BAD_CAST p->name);
+   //    // if (xmlAddChild(available_modules, new) == NULL) {
+   //    //    xmlFree(new);
+   //    // }
+   //    p = p -> next;
+   // }
+
+   // if (xmlAddChild((*config_vars)->current_node, available_modules) == NULL) {
+   //    xmlFree(available_modules);
+   // }
+
+   // Save modified xml file
+   // FILE * out = fopen("./availablemodules.xml","w");
+   // xmlDocFormatDump(out, (*config_vars)->doc_tree_ptr, 1);
+   // fclose(out);
+
+
+   // Set environment variable for modules to make decision about printing help in text format
+   putenv("LIBTRAP_OUTPUT_FORMAT=text");
+
+   /* clean up */
+   clean_up:
+   if (args != NULL)  {
+      for (x=0; x<3; x++) {
+         if (args[x] != NULL) {
+            free(args[x]);
+         }
+      }
+      free(args);
+   }
+   if (current_path != NULL) {
+      free(current_path);
+      current_path = NULL;
+   }
+}
+
 
 int reload_configuration(const int choice, xmlNodePtr node)
 {
@@ -3260,6 +3532,10 @@ int reload_configuration(const int choice, xmlNodePtr node)
          // Process root's element "supervisor"
          config_vars->module_elem = config_vars->current_node->xmlChildrenNode;
          reload_process_supervisor_element(&config_vars);
+      } else if (!xmlStrcmp(config_vars->current_node->name, BAD_CAST "available-modules")) {
+         // Process root's element "modulesinfo"
+         config_vars->module_elem = config_vars->current_node->xmlChildrenNode;
+         reload_process_availablemodules_element(&config_vars);
       } else if (!xmlStrcmp(config_vars->current_node->name, BAD_CAST "modules")) {
          // Process root's element "modules"
          modules_got_profile = FALSE;
@@ -3360,7 +3636,7 @@ int reload_configuration(const int choice, xmlNodePtr node)
                            config_vars->ifc_atr_elem = config_vars->ifc_elem->xmlChildrenNode;
 
                            // Check and reallocate (if needed) module's interfaces array
-                           reload_check_module_allocated_interfaces(&config_vars, ifc_cnt);
+                           reload_check_module_allocated_interfaces(config_vars -> current_module_idx, ifc_cnt);
 
                            while (config_vars->ifc_atr_elem != NULL) {
                               if ((!xmlStrcmp(config_vars->ifc_atr_elem->name,BAD_CAST "note"))) {

@@ -178,6 +178,14 @@ typedef struct reload_config_vars_s {
    int                   modified_modules;
 } reload_config_vars_t;
 
+typedef struct available_module_s available_module_t;
+
+struct available_module_s {
+   char *         name;
+   char *         path;
+   available_module_t *   next;
+};
+
 /***********FUNCTIONS***********/
 
 /** Function prints list of loaded modules with their params and all their interfaces with params.
