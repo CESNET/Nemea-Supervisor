@@ -8,6 +8,34 @@
 		<logs-directory>./supervisor_logsX/</logs-directory>
 	</supervisor>
 
+	<!-- <available-modules>
+		<search-paths>   <-- config information
+			<path>/usr/local/bin/</path>   <-- config information
+			<path>...</path>   <-- config information
+		</search-paths>
+		<modules>   <-- state information
+			<module>   <-- state information
+				<name>Flow-counter module</name>   <-- state information
+				<description>Example module for counting number of incoming flow records.</description>   <-- state information
+				<number-out-ifc>0</number-out-ifc>   <-- state information
+				<number-in-ifc>1</number-in-ifc>   <-- state information
+				<parameter>   <-- state information   <-- state information
+					<short-opt></short-opt>   <-- state information
+					<long-opt></long-opt>   <-- state information
+					<description></description>   <-- state information
+					<mandatory-argument></mandatory-argument>   <-- state information
+					<argument-type></argument-type>   <-- state information
+				</parameter>
+				<parameter>   <-- state information
+					...
+				</parameter>
+			</module>
+			<module>   <-- state information
+				...
+			</module>
+		</modules>
+	</available-modules> -->
+
 	<modules>
 		<name>test_profile</name>
 		<enabled>true</enabled>

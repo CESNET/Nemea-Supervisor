@@ -63,6 +63,120 @@ module "nemea" {
         description "Path to supervisor logs directory (also with outputs of started modules)";
       }
     }
+
+
+    container "available-modules" {
+      container "search-paths" {
+        description "Directories searched by supervisor for Nemea modules";
+        leaf-list "path" {
+          type "string";
+          description "Individual path with nemea modules.";
+        }
+      }
+
+      container "modules" {
+        description "All Nemea modules that were found in search-paths";
+        config "false";
+
+        list "module" {
+          description "Describes one available module.";
+          key "name";
+          config "false";
+
+          leaf "name" {
+            type "string";
+            description "Name that is presented by the module.";
+            config "false";
+          }
+
+          leaf "description" {
+            type "string";
+            description "Description of the module.";
+            config "false";
+          }
+
+          leaf "number-out-ifc" {
+            type "uint8";
+            description "Number of module output interfaces.";
+            config "false";
+          }
+
+          leaf "number-in-ifc" {
+            type "uint8";
+            description "Number of module input interfaces.";
+            config "false";
+          }
+
+          list "parameter" {
+            description "Contains information about one particular parameter of the module.";
+            key "short-opt";
+            config "false";
+
+            leaf "short-opt" {
+              type "string";
+              description "Short version of the module parameter.";
+              config "false";
+            }
+
+            leaf "long-opt" {
+              type "string";
+              description "Long version of the module parameter.";
+              config "false";
+              mandatory "false";
+            }
+
+            leaf "description" {
+              type "string";
+              description "Description of the module parameter";
+              config "false";
+            }
+
+            leaf "mandatory-argument" {
+              type "boolean";
+              description "Information, whether the parameter has mandatory argument.";
+              config "false";
+            }
+
+            leaf "argument-type" {
+              type "enumeration" {
+                enum "int8" {
+                  description "int8 is expected for the parameter";
+                }
+                enum "int16" {
+                  description "int16 is expected for the parameter";
+                }
+                enum "int32" {
+                  description "int32 is expected for the parameter";
+                }
+                enum "int64" {
+                  description "int64 is expected for the parameter";
+                }
+                enum "uint8" {
+                  description "uint8 is expected for the parameter";
+                }
+                enum "uint16" {
+                  description "uint16 is expected for the parameter";
+                }
+                enum "uint32" {
+                  description "uint32 is expected for the parameter";
+                }
+                enum "uint64" {
+                  description "uint64 is expected for the parameter";
+                }
+                enum "string" {
+                  description "String argument is expected for the parameter.";
+                }
+              }
+              description "The data type of the parameters argument.";
+              config "false";
+              mandatory "false";
+            }
+          }
+        }
+      }
+    }
+
+
     list "modules" {
       key "name";
       leaf "name" {
