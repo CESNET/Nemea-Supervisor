@@ -103,7 +103,7 @@ int         max_restarts_per_minute_config = DEFAULT_MAX_RESTARTS_PER_MINUTE;
 modules_profile_t * first_profile_ptr = NULL;
 modules_profile_t * actual_profile_ptr = NULL;
 
-available_module_t * first_available_module = NULL;
+available_modules_path_t * first_available_modules_path = NULL;
 
 pthread_t   service_thread_id; ///< Service thread identificator.
 pthread_t   nc_clients_thread_id;
@@ -1330,24 +1330,33 @@ void free_module_and_shift_array(const int module_idx)
    memset(&running_modules[loaded_modules_cnt], 0, sizeof(running_module_t));
 }
 
-void free_available_modules_struct()
+void free_available_modules_structs()
 {
-   available_module_t * p1 = first_available_module;
-   available_module_t * p2 = NULL;
-   while (p1 != NULL) {
-      p2 = p1 -> next;
-      if (p1 -> name != NULL) {
-         free(p1 -> name);
-         p1 -> name = NULL;
+   available_modules_path_t * path_p1 = first_available_modules_path;
+   available_modules_path_t * path_p2 = NULL;
+   available_module_t * module_p1 = NULL;
+   available_module_t * module_p2 = NULL;
+
+   while (path_p1 != NULL) {
+      path_p2 = path_p1 -> next;
+      module_p1 = path_p1 -> modules;
+      while (module_p1 != NULL) {
+         module_p2 = module_p1 -> next;
+         if (module_p1 -> name != NULL) {
+            free(module_p1 -> name);
+            module_p1 -> name = NULL;
+         }
+         free(module_p1);
+         module_p1 = module_p2;
       }
-      if (p1 -> path != NULL) {
-         free(p1 -> path);
-         p1 -> path = NULL;
+      if (path_p1 -> path != NULL) {
+         free(path_p1 -> path);
+         path_p1 -> path = NULL;
       }
-      free(p1);
-      p1 = p2;
+      free(path_p1);
+      path_p1 = path_p2;
    }
-   first_available_module = NULL;
+   first_available_modules_path = NULL;
 }
 
 void free_module_ifc_on_index(const int module_idx, const int ifc_idx)
@@ -1513,7 +1522,7 @@ void supervisor_termination(int stop_all_modules, int generate_backup)
    }
 
    // Free available modules linked list
-   free_available_modules_struct();
+   free_available_modules_structs();
 
    if (supervisor_initialized == TRUE) {
       free_output_file_strings_and_streams();
@@ -1679,8 +1688,8 @@ int service_get_data(int sd, int running_module_number)
 
 void connect_to_module_service_ifc(int module, int num_ifc)
 {
-   char * dest_port;
-   int sockfd;
+   char * dest_port = NULL;
+   int sockfd = -1;
    union tcpip_socket_addr addr;
 
    // Increase counter of connection attempts to the service interface
@@ -3204,9 +3213,14 @@ char const * sperm(__mode_t mode) {
 
 void reload_process_availablemodules_element(reload_config_vars_t ** config_vars)
 {
+   printf(ANSI_RED_BOLD "--- Modules auto-detection ---\n" ANSI_ATTR_RESET);
+   int found = FALSE;
+   int ret_val = 0;
+   int wait_cnt = 0;
+   int status;
+   int signalll = 2;
    const char * perm = NULL;
    xmlChar * key = NULL;
-   available_module_t * p = NULL;
    DIR * bin_dir_str = NULL;
    int x = 0, y = 0, allowed = 0;
    int modules_check_sum = 0;
@@ -3215,7 +3229,9 @@ void reload_process_availablemodules_element(reload_config_vars_t ** config_vars
    memset(&file_stat, 0, sizeof(file_stat));
    pid_t proc;
    char buffer[1024];
-   char * current_path = NULL;
+
+   available_modules_path_t * available_modules_path_p = NULL;
+   available_module_t * available_module_p = NULL;
 
    char ** args = (char **) calloc (4, sizeof(char *));
    args[0] = (char *) calloc (1024, sizeof(char));
@@ -3226,13 +3242,13 @@ void reload_process_availablemodules_element(reload_config_vars_t ** config_vars
 
    int pipe_fd[2];
    pipe_fd[0] = 0; pipe_fd[1] = 0;
-   if (pipe(pipe_fd) != 0) {
-      fprintf(stderr, "Could not create pipe for module info transfer.\n");
-      goto clean_up;
-   }
 
-   // Free previous available modules
-   free_available_modules_struct();
+   // Set valid variable of all previous paths to false
+   available_modules_path_p = first_available_modules_path;
+   while (available_modules_path_p != NULL) {
+      available_modules_path_p -> is_valid = FALSE;
+      available_modules_path_p = available_modules_path_p -> next;
+   }
 
    // Set environment variable for modules to make decision about printing help in json format
    putenv("LIBTRAP_OUTPUT_FORMAT=json");
@@ -3242,21 +3258,43 @@ void reload_process_availablemodules_element(reload_config_vars_t ** config_vars
       if (!xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "search-paths")) {
          (*config_vars)->module_atr_elem = (*config_vars)->module_elem->xmlChildrenNode;
          while ((*config_vars)->module_atr_elem != NULL) {
-            if (!xmlStrcmp((*config_vars)->module_atr_elem->name, BAD_CAST "binpath")) {
+            if (!xmlStrcmp((*config_vars)->module_atr_elem->name, BAD_CAST "path")) {
                key = xmlNodeListGetString((*config_vars)->doc_tree_ptr, (*config_vars)->module_atr_elem->xmlChildrenNode, 1);
                if (key != NULL) {
-                  bin_dir_str = opendir(key);
-                  printf("dir -> %s\n", (char *) key);
-                  if (current_path != NULL) {
-                     free(current_path);
-                     current_path = NULL;
+                  // Try to find the path in actual paths
+                  found = FALSE;
+                  available_modules_path_p = first_available_modules_path;
+                  while (available_modules_path_p != NULL) {
+                     if (strcmp(available_modules_path_p -> path, (char *) key) == 0) {
+                        available_modules_path_p -> is_valid = TRUE;
+                        found = TRUE;
+                        break;
+                     }
+                     available_modules_path_p = available_modules_path_p -> next;
                   }
-                  current_path = strdup((char *) key);
-                  xmlFree(key);
-                  key = NULL;
-                  if (bin_dir_str == NULL) {
-                     printf("Directory does not exist.\n");
-                     break;
+                  if (found == TRUE) {
+                     printf(ANSI_BOLD "-> Path %s already searched.\n" ANSI_ATTR_RESET, (char *) key);
+                     xmlFree(key);
+                     key = NULL;
+                     (*config_vars)->module_atr_elem = (*config_vars)->module_atr_elem->next;
+                     continue;
+                  } else {
+                     printf(ANSI_BOLD "-> New path %s\n" ANSI_ATTR_RESET, (char *) key);
+                     bin_dir_str = opendir(key);
+                     if (bin_dir_str == NULL) {
+                        xmlFree(key);
+                        key = NULL;
+                        fprintf(stderr, "[ERROR] Directory does not exist.\n");
+                        (*config_vars)->module_atr_elem = (*config_vars)->module_atr_elem->next;
+                        continue;
+                     }
+                     available_modules_path_p = (available_modules_path_t *) calloc (1, sizeof(available_modules_path_t));
+                     available_modules_path_p -> path = strdup((char *) key);
+                     available_modules_path_p -> is_valid = TRUE;
+                     available_modules_path_p -> next = first_available_modules_path;
+                     first_available_modules_path = available_modules_path_p;
+                     xmlFree(key);
+                     key = NULL;
                   }
                } else {
                   (*config_vars)->module_atr_elem = (*config_vars)->module_atr_elem->next;
@@ -3266,23 +3304,26 @@ void reload_process_availablemodules_element(reload_config_vars_t ** config_vars
                while (1) {
                   file = readdir(bin_dir_str);
                   if (file == NULL) {
-                     printf("End of stream\n");
                      closedir(bin_dir_str);
                      break;
                   } else {
                      memset(buffer, 0, 1024);
-                     sprintf(buffer, "%s%s", current_path, file->d_name);
+                     sprintf(buffer, "%s%s", available_modules_path_p -> path, file->d_name);
                      if (stat(buffer, &file_stat) == -1) {
                          continue;
                      }
-                     if (S_ISDIR(file_stat->st_mode) == 1) {
+                     if (S_ISDIR(file_stat.st_mode) == 1) {
                         // current directory entry is a directory
+                        continue;
                      } else {
                         perm = sperm (file_stat.st_mode);
                         if (perm != NULL && strcmp(file->d_name, ".") != 0 && strcmp(file->d_name, "..") != 0 && strstr(file->d_name, ".py") == NULL) {
                            if (perm[5] == 'x' || perm[8] == 'x') {
-                              printf("%s - executable\n", file->d_name);
-                              if (strcmp(file->d_name, "flowcounter") == 0) {
+                              if (strstr(file->d_name, "flowcounter") != NULL) {
+                                 if (pipe(pipe_fd) != 0) {
+                                    fprintf(stderr, "Could not create pipe for module info transfer.\n");
+                                    goto clean_up;
+                                 }
                                  // Fork process and execute binary
                                  proc = fork();
                                  if (proc == 0) {
@@ -3291,15 +3332,51 @@ void reload_process_availablemodules_element(reload_config_vars_t ** config_vars
                                     memset(args[1], 0, 1024);
                                     sprintf(args[1], "-h");
                                     args[2] = NULL;
-                                    execve(buffer, args);
-                                    fprintf(stderr, "Execution of %s failed.\n", args[0]);
+                                    dup2(pipe_fd[1], 2);
+                                    dup2(pipe_fd[1], 1);
+                                    close(pipe_fd[1]);
+                                    close(pipe_fd[0]);
+                                    execvp(buffer, args);
                                     exit(EXIT_FAILURE);
                                  } else if (proc > 0) {
                                     // parent
-
-
-
-                                    waitpid(proc);// Take care of possible deadlock
+                                    if (fcntl(pipe_fd[0], F_SETFL, O_NONBLOCK) == -1) {
+                                       fprintf(stderr, "%s [ERROR] Could not set nonblocking mode on pipe.\n", get_stats_formated_time());
+                                       continue;
+                                    }
+                                    uint16_t check_sequence = 0;
+                                    int recv_bytes;
+                                    usleep(50000);
+                                    memset(buffer, 0, 1024);
+                                    ret_val = read(pipe_fd[0], &check_sequence, sizeof(uint16_t));
+                                    if (ret_val > 0 && check_sequence == 0X1a2b){
+                                       ret_val = read(pipe_fd[0], &recv_bytes, sizeof(int));
+                                       if (ret_val < 1 || recv_bytes < 1) {
+                                          continue;
+                                       }
+                                       ret_val = read(pipe_fd[0], buffer, recv_bytes * sizeof(char));
+                                       close(pipe_fd[1]);
+                                       close(pipe_fd[0]);
+                                       printf("%s -> " ANSI_RED "received:" ANSI_ATTR_RESET,file->d_name);
+                                       int iter;
+                                       for (iter=0; iter < recv_bytes; iter++) {
+                                          printf("%c", buffer[iter]);
+                                       }
+                                       printf("\n");
+                                       while (1) {
+                                          ret_val = waitpid(proc , &status, WNOHANG);
+                                          if (ret_val == 0 && wait_cnt < 3) {
+                                             wait_cnt++;
+                                             usleep(10000);
+                                          } else if (ret_val == 0 && wait_cnt >= 3) {
+                                             kill(proc, signalll);
+                                             signalll = 9;
+                                             usleep(10000);
+                                          } else if (ret_val != 0) {
+                                             break;
+                                          }
+                                       }
+                                    }
                                  } else {
                                     // error
                                  }
@@ -3308,27 +3385,33 @@ void reload_process_availablemodules_element(reload_config_vars_t ** config_vars
                         } else if (strstr(file->d_name, ".py") != NULL) {
                            printf("%s - python\n", file->d_name);
                            // Fork process and execute python
-                           proc = fork();
-                           if (proc == 0) {
-                              // memset(args[0], 0, 1024);
-                              // sprintf(args[0], "%s", file -> d_name);
-                              // execve(buffer, args);
-                              // printf("exec fail\n");
-                              exit(EXIT_FAILURE);
-                           } else if (proc > 0) {
-                              // parent
-                              waitpid(proc); // Take care of possible deadlock
-                           } else {
-                              // error
-                           }
+                           // proc = fork();
+                           // if (proc == 0) {
+                           //    // memset(args[0], 0, 1024);
+                           //    // sprintf(args[0], "%s", file -> d_name);
+                           //    // execve(buffer, args);
+                           //    // printf("exec fail\n");
+                           //    exit(EXIT_FAILURE);
+                           // } else if (proc > 0) {
+                           //    // parent
+                           //    // waitpid(proc); // Take care of possible deadlock
+                           // } else {
+                           //    // error
+                           // }
                         } else {
                            continue;
                         }
-                        p = (available_module_t *) calloc (1, sizeof(available_module_t));
-                        p -> name = strdup((char *) file -> d_name);
-                        p -> path = strdup(buffer);
-                        p -> next  = first_available_module;
-                        first_available_module = p;
+                        if (available_modules_path_p -> modules == NULL) {
+                           available_modules_path_p -> modules = (available_module_t *) calloc (1, sizeof(available_module_t));
+                           available_modules_path_p -> modules -> name = strdup((char *) file -> d_name);
+                           available_modules_path_p -> modules -> next = NULL;
+                           available_module_p = available_modules_path_p -> modules;
+                        } else {
+                           available_module_p -> next = (available_module_t *) calloc (1, sizeof(available_module_t));
+                           available_module_p = available_module_p -> next;
+                           available_module_p -> name = strdup((char *) file -> d_name);
+                           available_module_p -> next = NULL;
+                        }
                      }
                   }
                }
@@ -3337,6 +3420,33 @@ void reload_process_availablemodules_element(reload_config_vars_t ** config_vars
          }
       }
       (*config_vars)->module_elem = (*config_vars)->module_elem->next;
+   }
+
+   // Find non-valid paths and delete them
+   available_modules_path_p = first_available_modules_path;
+   available_modules_path_t * p = NULL;
+   while (available_modules_path_p != NULL) {
+      if (available_modules_path_p -> is_valid == FALSE) {
+         printf(ANSI_BOLD "-> Removing non-valid path %s.\n" ANSI_ATTR_RESET, available_modules_path_p -> path);
+         p = available_modules_path_p;
+         available_modules_path_p = available_modules_path_p -> next;
+         available_module_p = p -> modules;
+         while (available_module_p != NULL) {
+            if (available_module_p -> name != NULL) {
+               free(available_module_p -> name);
+               available_module_p -> name = NULL;
+            }
+            available_module_p = available_module_p -> next;
+         }
+         if (p -> path != NULL) {
+            free(p -> path);
+            p -> path = NULL;
+         }
+         free(p);
+         p = NULL;
+         continue;
+      }
+      available_modules_path_p = available_modules_path_p -> next;
    }
 
    // Print available modules out and add them to loaded xml file
@@ -3379,10 +3489,7 @@ void reload_process_availablemodules_element(reload_config_vars_t ** config_vars
       }
       free(args);
    }
-   if (current_path != NULL) {
-      free(current_path);
-      current_path = NULL;
-   }
+   printf(ANSI_RED_BOLD "--- Modules auto-detection finished ---\n" ANSI_ATTR_RESET);
 }
 
 
@@ -3580,8 +3687,8 @@ int reload_configuration(const int choice, xmlNodePtr node)
          reload_process_supervisor_element(&config_vars);
       } else if (!xmlStrcmp(config_vars->current_node->name, BAD_CAST "available-modules")) {
          // Process root's element "modulesinfo"
-         config_vars->module_elem = config_vars->current_node->xmlChildrenNode;
-         reload_process_availablemodules_element(&config_vars);
+         // config_vars->module_elem = config_vars->current_node->xmlChildrenNode;
+         // reload_process_availablemodules_element(&config_vars);
       } else if (!xmlStrcmp(config_vars->current_node->name, BAD_CAST "modules")) {
          // Process root's element "modules"
          modules_got_profile = FALSE;

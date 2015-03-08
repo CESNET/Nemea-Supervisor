@@ -180,10 +180,17 @@ typedef struct reload_config_vars_s {
 } reload_config_vars_t;
 
 typedef struct available_module_s available_module_t;
+typedef struct available_modules_path_s available_modules_path_t;
+
+struct available_modules_path_s {
+   int                              is_valid;
+   char *                         path;
+   available_module_t *    modules;
+   available_modules_path_t * next;
+};
 
 struct available_module_s {
    char *         name;
-   char *         path;
    available_module_t *   next;
 };
 
