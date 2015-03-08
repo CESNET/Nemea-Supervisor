@@ -133,6 +133,7 @@ typedef struct running_module_s {
    int            module_is_my_child;
    int            remove_module;
    int            init_module;
+   unsigned int   virtual_memory_usage;
 } running_module_t;
 
 typedef struct modules_profile_s modules_profile_t;
@@ -265,7 +266,7 @@ long int get_total_cpu_usage();
 /** Function updates running modules CPU usage - in kernel/user mode.
  * @param[in] last_total_cpu_usage Total cpu usage in last period.
  */
-void update_module_cpu_usage(long int * last_total_cpu_usage);
+void update_module_cpu_usage();
 
 void generate_periodic_picture();
 

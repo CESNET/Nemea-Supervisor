@@ -94,6 +94,7 @@ running_module_t *   running_modules = NULL;  ///< Information about running mod
 
 unsigned int         running_modules_array_size = 0;  ///< Current size of running_modules array.
 unsigned int         loaded_modules_cnt = 0; ///< Current number of loaded modules.
+long int                last_total_cpu_usage = 0; // Variable with total cpu usage of whole operating system
 
 pthread_mutex_t running_modules_lock; ///< mutex for locking counters
 int         service_thread_continue = FALSE; ///< condition variable of main loop of the service_thread
@@ -1577,20 +1578,20 @@ long int get_total_cpu_usage()
    return new_total_cpu_usage;
 }
 
-void update_module_cpu_usage(long int * last_total_cpu_usage)
+void update_module_cpu_usage()
 {
    int utime = 0, stime = 0;
    unsigned int x = 0;
    FILE * proc_stat_fd = NULL;
    char path[20];
-   memset(path,0,20);
    long int new_total_cpu_usage = get_total_cpu_usage();
-   long int difference_total = new_total_cpu_usage - *last_total_cpu_usage;
+   long int difference_total = new_total_cpu_usage - last_total_cpu_usage;
 
-   *last_total_cpu_usage = new_total_cpu_usage;
+   last_total_cpu_usage = new_total_cpu_usage;
 
    for (x=0; x<loaded_modules_cnt; x++) {
-      if (running_modules[x].module_status) {
+      if (running_modules[x].module_status == TRUE) {
+         memset(path,0,20*sizeof(char));
          sprintf(path,"/proc/%d/stat",running_modules[x].module_pid);
          proc_stat_fd = fopen(path,"r");
          if (!fscanf(proc_stat_fd,"%*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %d %d", &utime , &stime)) {
@@ -1608,6 +1609,39 @@ void update_module_cpu_usage(long int * last_total_cpu_usage)
          running_modules[x].last_period_cpu_usage_kernel_mode = stime;
          running_modules[x].last_period_cpu_usage_user_mode = utime;
          fclose(proc_stat_fd);
+      }
+   }
+}
+
+void update_module_mem_usage()
+{
+   unsigned int x = 0;
+   FILE * proc_status_fd = NULL;
+   char * match = NULL;
+   int ret_val = 0;
+   char path[20];
+   char buffer[1024];
+
+   for (x=0; x<loaded_modules_cnt; x++) {
+      if (running_modules[x].module_status == TRUE) {
+         memset(path,0,20*sizeof(char));
+         memset(buffer, 0, 1024*sizeof(char));
+         sprintf(path,"/proc/%d/status",running_modules[x].module_pid);
+         proc_status_fd = fopen(path,"r");
+         if (proc_status_fd == NULL) {
+            continue;
+         }
+
+         ret_val = fread(buffer, sizeof(char), 1000, proc_status_fd);
+         if (ret_val < 1) {
+            continue;
+         }
+
+         match = strstr(buffer, "VmSize");
+         if (match != NULL) {
+            sscanf(match, "%*[^' ']%*[' ']%d", &(running_modules[x].virtual_memory_usage));
+         }
+         fclose(proc_status_fd);
       }
    }
 }
@@ -1874,7 +1908,7 @@ char * make_formated_statistics()
    int ptr = 0;
 
    for (x=0; x<loaded_modules_cnt; x++) {
-      if(running_modules[x].module_status) {
+      if(running_modules[x].module_status == TRUE) {
          counter = 0;
          for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
             if(running_modules[x].module_ifces[y].ifc_direction != NULL) {
@@ -1909,8 +1943,19 @@ char * make_formated_statistics()
    }
 
    for (x=0; x<loaded_modules_cnt; x++) {
-      if(running_modules[x].module_status) {
+      if(running_modules[x].module_status == TRUE) {
          ptr += sprintf(buffer + ptr, "%s,cpu,%d,%d\n", running_modules[x].module_name, running_modules[x].last_period_percent_cpu_usage_kernel_mode, running_modules[x].last_period_percent_cpu_usage_user_mode);
+         if (strlen(buffer) >= (3*size_of_buffer)/5) {
+            size_of_buffer += size_of_buffer/2;
+            buffer = (char *) realloc (buffer, size_of_buffer * sizeof(char));
+            memset(buffer + ptr, 0, size_of_buffer - ptr);
+         }
+      }
+   }
+
+   for (x=0; x<loaded_modules_cnt; x++) {
+      if(running_modules[x].module_status == TRUE) {
+         ptr += sprintf(buffer + ptr, "%s,mem,%d\n", running_modules[x].module_name, running_modules[x].virtual_memory_usage);
          if (strlen(buffer) >= (3*size_of_buffer)/5) {
             size_of_buffer += size_of_buffer/2;
             buffer = (char *) realloc (buffer, size_of_buffer * sizeof(char));
@@ -2102,7 +2147,7 @@ int daemon_mode_initialization()
 
 void daemon_mode()
 {
-   long int last_total_cpu_usage = get_total_cpu_usage();
+   last_total_cpu_usage = get_total_cpu_usage();
    unsigned int x = 0;
    int ret_val = 0, new_client = 0;
    struct sockaddr_storage remoteaddr; // client address
@@ -2372,7 +2417,8 @@ void * serve_sup_client_routine (void * arg)
 
    case DAEMON_STATS_MODE_CODE: { // send stats to current client and wait for new one
       VERBOSE(SUP_LOG, "%s [INFO] Got stats mode code. (client's ID: %d)\n", get_stats_formated_time(), client->client_id);
-      // update_module_cpu_usage(&last_total_cpu_usage);
+      update_module_cpu_usage();
+      update_module_mem_usage();
       char * stats_buffer = make_formated_statistics();
       int buffer_len = strlen(stats_buffer);
       char stats_buffer2[buffer_len+1];
