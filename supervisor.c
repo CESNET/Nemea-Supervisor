@@ -71,6 +71,7 @@
 #include <net/if.h>
 #include <ifaddrs.h>
 #include <dirent.h>
+#include <jansson.h>
 
 #include <pwd.h>
 #include <grp.h>
@@ -136,6 +137,25 @@ union tcpip_socket_addr {
    struct sockaddr_un unix_addr; ///< used for path of UNIX socket
 };
 
+typedef struct module_info_parameter_s {
+   char   * short_opt;
+   char   * long_opt;
+   char   * description;
+   int        mandatory_argument;
+   char   * argument_type;
+} module_info_parameter_t;
+
+typedef struct trap_module_info_s {
+   char *name;           ///< Name of the module (short string)
+   char *description;    /**< Detialed description of the module, can be a long
+                              string with several lines or even paragraphs. */
+   unsigned int num_ifc_in;  ///< Number of input interfaces
+   unsigned int num_ifc_out; ///< Number of output interfaces
+   // TODO more ... (e.g. UniRec specifiers)
+   unsigned int num_params;
+   module_info_parameter_t * params;
+} trap_module_info_t;
+
 void reload_check_module_allocated_interfaces(const int running_module_idx, const int ifc_cnt);
 void disconnect_service_ifc(const int module_idx);
 void free_module_ifc_on_index(const int module_idx, const int ifc_idx);
@@ -151,6 +171,136 @@ void generate_backup_config_file();
 char * get_stats_formated_time();
 void check_duplicated_ports();
 void check_missing_interface_attributes();
+
+int convert_json_module_info(const char * json_str, trap_module_info_t * info){
+   json_error_t error;
+   json_t * json_struct = NULL;
+   json_t * value;
+   json_t * value2;
+   json_t * array_value;
+   size_t index_arr = 0;
+   int array_size = 0;
+   printf("----------\n CONVERT FROM JSON TO STRUCTURE\n");
+   json_struct = json_loads(json_str , 0, &error);
+   const char * str;
+    if (!json_struct) {
+        fprintf(stderr, "ERROR json string converting to json structure on line %d: %s\n", error.line, error.text);
+        json_decref(json_struct);
+        return -1;
+    }
+    value = json_object_get(json_struct, "name");
+   if(value == NULL){
+      fprintf(stderr, "ERROR during converting string from json structure\n");
+      json_decref(json_struct);
+      return -1;
+   }
+   str = json_string_value(value);
+   if(str != NULL){
+      info->name = (char*) calloc (sizeof(char), strlen(str)+1);
+      strcpy(info->name, str);
+   }
+
+   value = json_object_get(json_struct, "description");
+   if(value == NULL){
+      fprintf(stderr, "ERROR during converting string from json structure\n");
+      json_decref(json_struct);
+      return -1;
+   }
+   str = json_string_value(value);
+   if(str != NULL){
+      info->description = (char*) calloc (sizeof(char), strlen(str)+1);
+      strcpy(info->description, str);
+   }
+
+   value = json_object_get(json_struct, "num_ifc_in");
+   if(value == NULL){
+      fprintf(stderr, "ERROR during converting integer from json structure num_ifc_in\n");
+      json_decref(json_struct);
+      return -1;
+   }
+   info->num_ifc_in = json_integer_value(value);
+
+   value = json_object_get(json_struct, "num_ifc_out");
+   if(value == NULL){
+      fprintf(stderr, "ERROR during converting integer from json structure num_ifc_out\n");
+      json_decref(json_struct);
+      return -1;
+   }
+   info->num_ifc_out = json_integer_value(value);
+
+   value = json_object_get(json_struct, "params");
+   if(value == NULL){
+      fprintf(stderr, "ERROR during converting array from json structure\n");
+      json_decref(json_struct);
+      return -1;
+   }
+   array_size = json_array_size(value);
+   info->num_params = array_size;
+   info->params = (module_info_parameter_t *) calloc (sizeof(module_info_parameter_t), array_size);
+   if(info->params == NULL){
+      json_decref(json_struct);
+      return -2;
+   }
+   json_array_foreach(value, index_arr, array_value){
+      value2 = json_object_get(array_value, "short_opt");
+      if(value2 == NULL){
+         fprintf(stderr, "ERROR during converting string from json structure short_opt\n");
+         json_decref(json_struct);
+         return -1;
+      }
+      str = json_string_value(value2);
+      if(str != NULL){
+         info->params[index_arr].short_opt = (char*) calloc (sizeof(char), strlen(str)+1);
+         strcpy(info->params[index_arr].short_opt, str);
+      }
+
+      value2 = json_object_get(array_value, "long_opt");
+      if(value2 == NULL){
+         fprintf(stderr, "ERROR during converting string from json structure long_opt\n");
+         json_decref(json_struct);
+         return -1;
+      }
+      str = json_string_value(value2);
+      if(str != NULL){
+         info->params[index_arr].long_opt = (char*) calloc (sizeof(char), strlen(str)+1);
+         strcpy(info->params[index_arr].long_opt, str);
+      }
+
+      value2 = json_object_get(array_value, "description");
+      if(value2 == NULL){
+         fprintf(stderr, "ERROR during converting string from json structure description\n");
+         json_decref(json_struct);
+         return -1;
+      }
+      str = json_string_value(value2);
+      if(str != NULL){
+         info->params[index_arr].description = (char*) calloc (sizeof(char), strlen(str)+1);
+         strcpy(info->params[index_arr].description, str);
+      }
+
+      value2 = json_object_get(array_value, "argument_type");
+      if(value2 == NULL){
+         fprintf(stderr, "ERROR during converting string from json structure argument_type\n");
+         json_decref(json_struct);
+         return -1;
+      }
+      str = json_string_value(value2);
+      if(str != NULL){
+         info->params[index_arr].argument_type = (char*) calloc (sizeof(char), strlen(str)+1);
+         strcpy(info->params[index_arr].argument_type, str);
+      }
+
+      value2 = json_object_get(array_value, "mandatory_argument");
+      if(value2 == NULL){
+         fprintf(stderr, "ERROR during converting integer from json structure mandatory_argument\n");
+         json_decref(json_struct);
+         return -1;
+      }
+      info->params[index_arr].mandatory_argument = json_integer_value(value);
+   }
+   json_decref(json_struct);
+   return 0;
+}
 
 void print_xmlDoc_to_stream(xmlDocPtr doc_ptr, FILE * stream)
 {
