@@ -137,25 +137,6 @@ union tcpip_socket_addr {
    struct sockaddr_un unix_addr; ///< used for path of UNIX socket
 };
 
-typedef struct module_info_parameter_s {
-   char   * short_opt;
-   char   * long_opt;
-   char   * description;
-   int        mandatory_argument;
-   char   * argument_type;
-} module_info_parameter_t;
-
-typedef struct trap_module_info_s {
-   char *name;           ///< Name of the module (short string)
-   char *description;    /**< Detialed description of the module, can be a long
-                              string with several lines or even paragraphs. */
-   unsigned int num_ifc_in;  ///< Number of input interfaces
-   unsigned int num_ifc_out; ///< Number of output interfaces
-   // TODO more ... (e.g. UniRec specifiers)
-   unsigned int num_params;
-   module_info_parameter_t * params;
-} trap_module_info_t;
-
 void reload_check_module_allocated_interfaces(const int running_module_idx, const int ifc_cnt);
 void disconnect_service_ifc(const int module_idx);
 void free_module_ifc_on_index(const int module_idx, const int ifc_idx);
@@ -172,7 +153,7 @@ char * get_stats_formated_time();
 void check_duplicated_ports();
 void check_missing_interface_attributes();
 
-int convert_json_module_info(const char * json_str, trap_module_info_t * info){
+int convert_json_module_info(const char * json_str, trap_module_info_t ** info){
    json_error_t error;
    json_t * json_struct = NULL;
    json_t * value;
@@ -180,7 +161,6 @@ int convert_json_module_info(const char * json_str, trap_module_info_t * info){
    json_t * array_value;
    size_t index_arr = 0;
    int array_size = 0;
-   printf("----------\n CONVERT FROM JSON TO STRUCTURE\n");
    json_struct = json_loads(json_str , 0, &error);
    const char * str;
     if (!json_struct) {
@@ -196,8 +176,8 @@ int convert_json_module_info(const char * json_str, trap_module_info_t * info){
    }
    str = json_string_value(value);
    if(str != NULL){
-      info->name = (char*) calloc (sizeof(char), strlen(str)+1);
-      strcpy(info->name, str);
+      (*info)->name = (char*) calloc (sizeof(char), strlen(str)+1);
+      strcpy((*info)->name, str);
    }
 
    value = json_object_get(json_struct, "description");
@@ -208,8 +188,8 @@ int convert_json_module_info(const char * json_str, trap_module_info_t * info){
    }
    str = json_string_value(value);
    if(str != NULL){
-      info->description = (char*) calloc (sizeof(char), strlen(str)+1);
-      strcpy(info->description, str);
+      (*info)->description = (char*) calloc (sizeof(char), strlen(str)+1);
+      strcpy((*info)->description, str);
    }
 
    value = json_object_get(json_struct, "num_ifc_in");
@@ -218,7 +198,7 @@ int convert_json_module_info(const char * json_str, trap_module_info_t * info){
       json_decref(json_struct);
       return -1;
    }
-   info->num_ifc_in = json_integer_value(value);
+   (*info)->num_ifc_in = json_integer_value(value);
 
    value = json_object_get(json_struct, "num_ifc_out");
    if(value == NULL){
@@ -226,7 +206,7 @@ int convert_json_module_info(const char * json_str, trap_module_info_t * info){
       json_decref(json_struct);
       return -1;
    }
-   info->num_ifc_out = json_integer_value(value);
+   (*info)->num_ifc_out = json_integer_value(value);
 
    value = json_object_get(json_struct, "params");
    if(value == NULL){
@@ -235,9 +215,9 @@ int convert_json_module_info(const char * json_str, trap_module_info_t * info){
       return -1;
    }
    array_size = json_array_size(value);
-   info->num_params = array_size;
-   info->params = (module_info_parameter_t *) calloc (sizeof(module_info_parameter_t), array_size);
-   if(info->params == NULL){
+   (*info)->num_params = array_size;
+   (*info)->params = (module_info_parameter_t *) calloc (sizeof(module_info_parameter_t), array_size);
+   if((*info)->params == NULL){
       json_decref(json_struct);
       return -2;
    }
@@ -250,8 +230,8 @@ int convert_json_module_info(const char * json_str, trap_module_info_t * info){
       }
       str = json_string_value(value2);
       if(str != NULL){
-         info->params[index_arr].short_opt = (char*) calloc (sizeof(char), strlen(str)+1);
-         strcpy(info->params[index_arr].short_opt, str);
+         (*info)->params[index_arr].short_opt = (char*) calloc (sizeof(char), strlen(str)+1);
+         strcpy((*info)->params[index_arr].short_opt, str);
       }
 
       value2 = json_object_get(array_value, "long_opt");
@@ -262,8 +242,8 @@ int convert_json_module_info(const char * json_str, trap_module_info_t * info){
       }
       str = json_string_value(value2);
       if(str != NULL){
-         info->params[index_arr].long_opt = (char*) calloc (sizeof(char), strlen(str)+1);
-         strcpy(info->params[index_arr].long_opt, str);
+         (*info)->params[index_arr].long_opt = (char*) calloc (sizeof(char), strlen(str)+1);
+         strcpy((*info)->params[index_arr].long_opt, str);
       }
 
       value2 = json_object_get(array_value, "description");
@@ -274,8 +254,8 @@ int convert_json_module_info(const char * json_str, trap_module_info_t * info){
       }
       str = json_string_value(value2);
       if(str != NULL){
-         info->params[index_arr].description = (char*) calloc (sizeof(char), strlen(str)+1);
-         strcpy(info->params[index_arr].description, str);
+         (*info)->params[index_arr].description = (char*) calloc (sizeof(char), strlen(str)+1);
+         strcpy((*info)->params[index_arr].description, str);
       }
 
       value2 = json_object_get(array_value, "argument_type");
@@ -286,8 +266,8 @@ int convert_json_module_info(const char * json_str, trap_module_info_t * info){
       }
       str = json_string_value(value2);
       if(str != NULL){
-         info->params[index_arr].argument_type = (char*) calloc (sizeof(char), strlen(str)+1);
-         strcpy(info->params[index_arr].argument_type, str);
+         (*info)->params[index_arr].argument_type = (char*) calloc (sizeof(char), strlen(str)+1);
+         strcpy((*info)->params[index_arr].argument_type, str);
       }
 
       value2 = json_object_get(array_value, "mandatory_argument");
@@ -296,7 +276,7 @@ int convert_json_module_info(const char * json_str, trap_module_info_t * info){
          json_decref(json_struct);
          return -1;
       }
-      info->params[index_arr].mandatory_argument = json_integer_value(value);
+      (*info)->params[index_arr].mandatory_argument = json_integer_value(value);
    }
    json_decref(json_struct);
    return 0;
@@ -1482,6 +1462,7 @@ void free_module_and_shift_array(const int module_idx)
 
 void free_available_modules_structs()
 {
+   int x = 0;
    available_modules_path_t * path_p1 = first_available_modules_path;
    available_modules_path_t * path_p2 = NULL;
    available_module_t * module_p1 = NULL;
@@ -1495,6 +1476,30 @@ void free_available_modules_structs()
          if (module_p1 -> name != NULL) {
             free(module_p1 -> name);
             module_p1 -> name = NULL;
+         }
+         if (module_p1 -> module_info != NULL) {
+            if (module_p1 -> module_info -> name != NULL) {
+               free(module_p1 -> module_info -> name);
+            }
+            if (module_p1 -> module_info -> description != NULL) {
+               free(module_p1 -> module_info -> description);
+            }
+            for (x=0; x < module_p1 -> module_info -> num_params; x++) {
+               if (module_p1 -> module_info -> params[x].short_opt != NULL) {
+                  free(module_p1 -> module_info -> params[x].short_opt);
+               }
+               if (module_p1 -> module_info -> params[x].long_opt != NULL) {
+                  free(module_p1 -> module_info -> params[x].long_opt);
+               }
+               if (module_p1 -> module_info -> params[x].description != NULL) {
+                  free(module_p1 -> module_info -> params[x].description);
+               }
+               if (module_p1 -> module_info -> params[x].argument_type != NULL) {
+                  free(module_p1 -> module_info -> params[x].argument_type);
+               }
+            }
+            free(module_p1 -> module_info -> params);
+            free(module_p1 -> module_info);
          }
          free(module_p1);
          module_p1 = module_p2;
@@ -3363,37 +3368,34 @@ char const * sperm(__mode_t mode) {
 
 void reload_process_availablemodules_element(reload_config_vars_t ** config_vars)
 {
-   printf(ANSI_RED_BOLD "--- Modules auto-detection ---\n" ANSI_ATTR_RESET);
-   int found = FALSE;
-   int ret_val = 0;
-   int wait_cnt = 0;
-   int status;
-   int signalll = 2;
-   const char * perm = NULL;
+   VERBOSE(N_STDOUT, "--- Modules auto-detection ---\n");
+   int found = FALSE, ret_val = 0, wait_cnt = 0, status = 0, signalll = 2, x = 0, y = 0, received_bytes = 0;
+   uint32_t size_of_buffer = 5*DEFAULT_SIZE_OF_BUFFER;
+   uint32_t size_of_args0 = DEFAULT_SIZE_OF_BUFFER, size_of_args1 = DEFAULT_SIZE_OF_BUFFER, size_of_args2 = DEFAULT_SIZE_OF_BUFFER;
    xmlChar * key = NULL;
    DIR * bin_dir_str = NULL;
-   int x = 0, y = 0, allowed = 0;
-   int modules_check_sum = 0;
    struct dirent * file = NULL;
    struct stat file_stat;
    memset(&file_stat, 0, sizeof(file_stat));
    pid_t proc;
-   char buffer[1024];
+   trap_module_info_t * module_info_p = NULL;
 
    available_modules_path_t * available_modules_path_p = NULL;
    available_module_t * available_module_p = NULL;
 
+   const char * perm = NULL;
+   char * buffer = (char *) calloc (size_of_buffer, sizeof(char));
    char ** args = (char **) calloc (4, sizeof(char *));
-   args[0] = (char *) calloc (1024, sizeof(char));
-   args[1] = (char *) calloc (1024, sizeof(char));
+   args[0] = (char *) calloc (size_of_args0, sizeof(char));
+   args[1] = (char *) calloc (size_of_args1, sizeof(char));
    args[2] = NULL;
    args[3] = NULL;
-   char * args2_allocated = (char *) calloc (1024, sizeof(char));
+   char * args2_allocated = (char *) calloc (size_of_args2, sizeof(char));
 
    int pipe_fd[2];
    pipe_fd[0] = 0; pipe_fd[1] = 0;
 
-   // Set valid variable of all previous paths to false
+   // Set valid variable of all previous paths to false to see which will be missing
    available_modules_path_p = first_available_modules_path;
    while (available_modules_path_p != NULL) {
       available_modules_path_p -> is_valid = FALSE;
@@ -3423,13 +3425,13 @@ void reload_process_availablemodules_element(reload_config_vars_t ** config_vars
                      available_modules_path_p = available_modules_path_p -> next;
                   }
                   if (found == TRUE) {
-                     printf(ANSI_BOLD "-> Path %s already searched.\n" ANSI_ATTR_RESET, (char *) key);
+                     VERBOSE(N_STDOUT, "-> Path %s already searched.\n", (char *) key);
                      xmlFree(key);
                      key = NULL;
                      (*config_vars)->module_atr_elem = (*config_vars)->module_atr_elem->next;
                      continue;
                   } else {
-                     printf(ANSI_BOLD "-> New path %s\n" ANSI_ATTR_RESET, (char *) key);
+                     VERBOSE(N_STDOUT, "-> New path %s\n", (char *) key);
                      bin_dir_str = opendir(key);
                      if (bin_dir_str == NULL) {
                         xmlFree(key);
@@ -3442,6 +3444,9 @@ void reload_process_availablemodules_element(reload_config_vars_t ** config_vars
                      available_modules_path_p -> path = strdup((char *) key);
                      available_modules_path_p -> is_valid = TRUE;
                      available_modules_path_p -> next = first_available_modules_path;
+                     if (first_available_modules_path != NULL) {
+                        first_available_modules_path -> prev = available_modules_path_p;
+                     }
                      first_available_modules_path = available_modules_path_p;
                      xmlFree(key);
                      key = NULL;
@@ -3457,29 +3462,40 @@ void reload_process_availablemodules_element(reload_config_vars_t ** config_vars
                      closedir(bin_dir_str);
                      break;
                   } else {
-                     memset(buffer, 0, 1024);
-                     sprintf(buffer, "%s%s", available_modules_path_p -> path, file->d_name);
+                     memset(buffer, 0, size_of_buffer*sizeof(char));
+                     if (available_modules_path_p -> path[strlen(available_modules_path_p -> path) - 1] == '/') {
+                        sprintf(buffer, "%s%s", available_modules_path_p -> path, file->d_name);
+                     } else {
+                        sprintf(buffer, "%s/%s", available_modules_path_p -> path, file->d_name);
+                     }
                      if (stat(buffer, &file_stat) == -1) {
                          continue;
                      }
                      if (S_ISDIR(file_stat.st_mode) == 1) {
-                        // current directory entry is a directory
+                        // current directory entry is a directory -> get next directory entry
                         continue;
                      } else {
                         perm = sperm (file_stat.st_mode);
                         if (perm != NULL && strcmp(file->d_name, ".") != 0 && strcmp(file->d_name, "..") != 0 && strstr(file->d_name, ".py") == NULL) {
-                           if (perm[5] == 'x' || perm[8] == 'x') {
-                              if (strstr(file->d_name, "flowcounter") != NULL) {
+                           if (perm[5] == 'x' || perm[8] == 'x') { // Executable file
+                              if (strstr(file->d_name, "flowcounter") != NULL
+                                 || strstr(file->d_name, "astute") != NULL
+                                 || strstr(file->d_name, "anonymizer") != NULL
+                                 || strstr(file->d_name, "basic2collector") != NULL) {
                                  if (pipe(pipe_fd) != 0) {
                                     fprintf(stderr, "Could not create pipe for module info transfer.\n");
                                     goto clean_up;
                                  }
                                  // Fork process and execute binary
                                  proc = fork();
-                                 if (proc == 0) {
-                                    memset(args[0], 0, 1024);
+                                 if (proc == 0) { // Child
+                                    if ((strlen(file -> d_name) + 1) >= size_of_args0) {
+                                       size_of_args0 = 3*(strlen(file -> d_name) + 1)/2;
+                                       args[0] = (char *) realloc (args[0], size_of_args0 * sizeof(char));
+                                    }
+                                    memset(args[0], 0, size_of_args0 * sizeof(char));
                                     sprintf(args[0], "%s", file -> d_name);
-                                    memset(args[1], 0, 1024);
+                                    memset(args[1], 0, size_of_args1 * sizeof(char));
                                     sprintf(args[1], "-h");
                                     args[2] = NULL;
                                     dup2(pipe_fd[1], 2);
@@ -3488,52 +3504,59 @@ void reload_process_availablemodules_element(reload_config_vars_t ** config_vars
                                     close(pipe_fd[0]);
                                     execvp(buffer, args);
                                     exit(EXIT_FAILURE);
-                                 } else if (proc > 0) {
-                                    // parent
+                                 } else if (proc > 0) { // Parent
                                     if (fcntl(pipe_fd[0], F_SETFL, O_NONBLOCK) == -1) {
                                        fprintf(stderr, "%s [ERROR] Could not set nonblocking mode on pipe.\n", get_stats_formated_time());
                                        continue;
                                     }
-                                    uint16_t check_sequence = 0;
-                                    int recv_bytes;
-                                    usleep(50000);
-                                    memset(buffer, 0, 1024);
-                                    ret_val = read(pipe_fd[0], &check_sequence, sizeof(uint16_t));
-                                    if (ret_val > 0 && check_sequence == 0X1a2b){
-                                       ret_val = read(pipe_fd[0], &recv_bytes, sizeof(int));
-                                       if (ret_val < 1 || recv_bytes < 1) {
-                                          continue;
+                                    usleep(100000);
+                                    memset(buffer, 0, size_of_buffer*sizeof(char));
+                                    received_bytes = 0;
+                                    wait_cnt = 0;
+                                    while (wait_cnt < 3) {
+                                       if (received_bytes >= (2*size_of_buffer)/3) {
+                                          size_of_buffer += size_of_buffer/2;
+                                          buffer = (char *) realloc (buffer, size_of_buffer*sizeof(char));
+                                          memset(buffer + (2*size_of_buffer)/3, 0, (size_of_buffer/3)*sizeof(char));
                                        }
-                                       ret_val = read(pipe_fd[0], buffer, recv_bytes * sizeof(char));
-                                       close(pipe_fd[1]);
-                                       close(pipe_fd[0]);
-                                       printf("%s -> " ANSI_RED "received:" ANSI_ATTR_RESET,file->d_name);
-                                       int iter;
-                                       for (iter=0; iter < recv_bytes; iter++) {
-                                          printf("%c", buffer[iter]);
-                                       }
-                                       printf("\n");
-                                       while (1) {
-                                          ret_val = waitpid(proc , &status, WNOHANG);
-                                          if (ret_val == 0 && wait_cnt < 3) {
-                                             wait_cnt++;
-                                             usleep(10000);
-                                          } else if (ret_val == 0 && wait_cnt >= 3) {
-                                             kill(proc, signalll);
-                                             signalll = 9;
-                                             usleep(10000);
-                                          } else if (ret_val != 0) {
-                                             break;
-                                          }
+                                       ret_val = read(pipe_fd[0], buffer + received_bytes, size_of_buffer - received_bytes);
+                                       if (ret_val > 0) {
+                                          received_bytes += ret_val;
+                                       } else if ( ret_val == -1) {
+                                          wait_cnt++;
+                                          usleep(10000);
+                                       } else {
+                                          break;
                                        }
                                     }
-                                 } else {
-                                    // error
+
+                                    close(pipe_fd[1]);
+                                    close(pipe_fd[0]);
+                                    module_info_p = (trap_module_info_t *) calloc (1, sizeof(trap_module_info_t));
+                                    if (convert_json_module_info(buffer, &module_info_p) != 0) {
+                                       free(module_info_p);
+                                       module_info_p = NULL;
+                                    }
+                                    wait_cnt = 0;
+                                    while (1) {
+                                       ret_val = waitpid(proc , &status, WNOHANG);
+                                       if (ret_val == 0 && wait_cnt < 3) {
+                                          wait_cnt++;
+                                          usleep(10000);
+                                       } else if (ret_val == 0 && wait_cnt >= 3) {
+                                          kill(proc, signalll);
+                                          signalll = 9;
+                                          usleep(10000);
+                                       } else if (ret_val != 0) {
+                                          break;
+                                       }
+                                    }
+                                 } else { // Error during fork -> clean up
+                                    goto clean_up;
                                  }
                               }
                            }
                         } else if (strstr(file->d_name, ".py") != NULL) {
-                           printf("%s - python\n", file->d_name);
                            // Fork process and execute python
                            // proc = fork();
                            // if (proc == 0) {
@@ -3551,15 +3574,28 @@ void reload_process_availablemodules_element(reload_config_vars_t ** config_vars
                         } else {
                            continue;
                         }
+
                         if (available_modules_path_p -> modules == NULL) {
                            available_modules_path_p -> modules = (available_module_t *) calloc (1, sizeof(available_module_t));
                            available_modules_path_p -> modules -> name = strdup((char *) file -> d_name);
+                           if (module_info_p != NULL) {
+                              available_modules_path_p -> modules -> module_info = module_info_p;
+                              module_info_p = NULL;
+                           } else {
+                              available_modules_path_p -> modules -> module_info = NULL;
+                           }
                            available_modules_path_p -> modules -> next = NULL;
                            available_module_p = available_modules_path_p -> modules;
                         } else {
                            available_module_p -> next = (available_module_t *) calloc (1, sizeof(available_module_t));
                            available_module_p = available_module_p -> next;
                            available_module_p -> name = strdup((char *) file -> d_name);
+                           if (module_info_p != NULL) {
+                              available_module_p -> module_info = module_info_p;
+                              module_info_p = NULL;
+                           } else {
+                              available_module_p -> module_info = NULL;
+                           }
                            available_module_p -> next = NULL;
                         }
                      }
@@ -3574,63 +3610,72 @@ void reload_process_availablemodules_element(reload_config_vars_t ** config_vars
 
    // Find non-valid paths and delete them
    available_modules_path_p = first_available_modules_path;
-   available_modules_path_t * p = NULL;
+   available_modules_path_t * p_p = NULL;
+   available_module_t * m_p = NULL;
    while (available_modules_path_p != NULL) {
       if (available_modules_path_p -> is_valid == FALSE) {
-         printf(ANSI_BOLD "-> Removing non-valid path %s.\n" ANSI_ATTR_RESET, available_modules_path_p -> path);
-         p = available_modules_path_p;
+         VERBOSE(N_STDOUT, "-> Removing non-valid path %s.\n", available_modules_path_p -> path);
+         p_p = available_modules_path_p;
+         if (available_modules_path_p -> prev != NULL) {
+            available_modules_path_p -> prev -> next = available_modules_path_p -> next;
+         } else {
+            first_available_modules_path = available_modules_path_p -> next;
+         }
          available_modules_path_p = available_modules_path_p -> next;
-         available_module_p = p -> modules;
+         available_module_p = p_p -> modules;
          while (available_module_p != NULL) {
+            m_p = available_module_p -> next;
             if (available_module_p -> name != NULL) {
                free(available_module_p -> name);
                available_module_p -> name = NULL;
             }
-            available_module_p = available_module_p -> next;
+            if (available_module_p -> module_info != NULL) {
+               if (available_module_p -> module_info -> name != NULL) {
+                  free(available_module_p -> module_info -> name);
+               }
+               if (available_module_p -> module_info -> description != NULL) {
+                  free(available_module_p -> module_info -> description);
+               }
+               for (x=0; x < available_module_p -> module_info -> num_params; x++) {
+                  if (available_module_p -> module_info -> params[x].short_opt != NULL) {
+                     free(available_module_p -> module_info -> params[x].short_opt);
+                  }
+                  if (available_module_p -> module_info -> params[x].long_opt != NULL) {
+                     free(available_module_p -> module_info -> params[x].long_opt);
+                  }
+                  if (available_module_p -> module_info -> params[x].description != NULL) {
+                     free(available_module_p -> module_info -> params[x].description);
+                  }
+                  if (available_module_p -> module_info -> params[x].argument_type != NULL) {
+                     free(available_module_p -> module_info -> params[x].argument_type);
+                  }
+               }
+               free(available_module_p -> module_info -> params);
+               free(available_module_p -> module_info);
+            }
+            free(available_module_p);
+            available_module_p = m_p;
          }
-         if (p -> path != NULL) {
-            free(p -> path);
-            p -> path = NULL;
+         if (p_p -> path != NULL) {
+            free(p_p -> path);
+            p_p -> path = NULL;
          }
-         free(p);
-         p = NULL;
+         free(p_p);
+         p_p = NULL;
          continue;
       }
       available_modules_path_p = available_modules_path_p -> next;
    }
-
-   // Print available modules out and add them to loaded xml file
-   // printf("Available modules:\n");
-   // p = first_available_module;
-   // xmlNodePtr available_modules = xmlNewChild((*config_vars)->current_node, NULL, BAD_CAST "available", NULL);
-   // xmlNodePtr new;
-   // while (p != NULL) {
-   //    printf("\t%s\n", p -> name);
-
-   //    // new = xmlNewChild(available_modules, NULL, BAD_CAST "module", NULL);
-   //    // xmlNewChild(new, NULL, BAD_CAST "name", BAD_CAST p->name);
-   //    // xmlNewChild(new, NULL, BAD_CAST "description", BAD_CAST p->name);
-   //    // if (xmlAddChild(available_modules, new) == NULL) {
-   //    //    xmlFree(new);
-   //    // }
-   //    p = p -> next;
-   // }
-
-   // if (xmlAddChild((*config_vars)->current_node, available_modules) == NULL) {
-   //    xmlFree(available_modules);
-   // }
-
-   // Save modified xml file
-   // FILE * out = fopen("./availablemodules.xml","w");
-   // xmlDocFormatDump(out, (*config_vars)->doc_tree_ptr, 1);
-   // fclose(out);
-
 
    // Set environment variable for modules to make decision about printing help in text format
    putenv("LIBTRAP_OUTPUT_FORMAT=text");
 
    /* clean up */
    clean_up:
+   if (buffer != NULL) {
+      free(buffer);
+      buffer = NULL;
+   }
    if (args != NULL)  {
       for (x=0; x<3; x++) {
          if (args[x] != NULL) {
@@ -3639,7 +3684,7 @@ void reload_process_availablemodules_element(reload_config_vars_t ** config_vars
       }
       free(args);
    }
-   printf(ANSI_RED_BOLD "--- Modules auto-detection finished ---\n" ANSI_ATTR_RESET);
+   VERBOSE(N_STDOUT, "--- Modules auto-detection finished ---\n");
 }
 
 
@@ -3837,8 +3882,8 @@ int reload_configuration(const int choice, xmlNodePtr node)
          reload_process_supervisor_element(&config_vars);
       } else if (!xmlStrcmp(config_vars->current_node->name, BAD_CAST "available-modules")) {
          // Process root's element "modulesinfo"
-         // config_vars->module_elem = config_vars->current_node->xmlChildrenNode;
-         // reload_process_availablemodules_element(&config_vars);
+         config_vars->module_elem = config_vars->current_node->xmlChildrenNode;
+         reload_process_availablemodules_element(&config_vars);
       } else if (!xmlStrcmp(config_vars->current_node->name, BAD_CAST "modules")) {
          // Process root's element "modules"
          modules_got_profile = FALSE;
