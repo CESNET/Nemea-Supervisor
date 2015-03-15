@@ -4409,6 +4409,7 @@ xmlDocPtr nc_get_state_data()
    const char * template = "<?xml version=\"1.0\"?><nemea-supervisor xmlns=\"urn:cesnet:tmc:nemea:1.0\"></nemea-supervisor>";
    xmlDocPtr doc_tree_ptr = NULL;
    xmlNodePtr root_elem = NULL, modules_elem = NULL, module_elem = NULL, trapinterfaces_elem = NULL, interface_elem = NULL;
+   xmlNodePtr avail_modules = NULL, binpaths = NULL, param = NULL;
 
    if (loaded_modules_cnt > 0) {
       doc_tree_ptr = xmlParseMemory(template, strlen(template));
@@ -4418,6 +4419,47 @@ xmlDocPtr nc_get_state_data()
       root_elem = xmlDocGetRootElement(doc_tree_ptr);
       if (root_elem == NULL) {
          return NULL;
+      }
+
+      avail_modules = xmlNewChild(root_elem, NULL, "available-modules", NULL);
+      binpaths = xmlNewChild(avail_modules, NULL, "search-paths", NULL);
+      modules_elem = xmlNewChild(avail_modules, NULL, "modules", NULL);
+
+      available_modules_path_t * avail_path = first_available_modules_path;
+      available_module_t * avail_path_modules = NULL;
+
+      while (avail_path != NULL) {
+         xmlNewChild(binpaths, NULL, "path", BAD_CAST avail_path -> path);
+         avail_path_modules = avail_path -> modules;
+         while (avail_path_modules != NULL) {
+            module_elem = xmlNewChild(modules_elem, NULL, "module", NULL);
+            xmlNewChild(module_elem, NULL, "name", BAD_CAST avail_path_modules -> name);
+            if (avail_path_modules -> module_info != NULL) {
+               xmlNewChild(module_elem, NULL, "description", BAD_CAST avail_path_modules -> module_info -> description);
+               memset(buffer, 0, DEFAULT_SIZE_OF_BUFFER);
+               snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%d", avail_path_modules -> module_info -> num_ifc_in);
+               xmlNewChild(module_elem, NULL, "number-in-ifc", BAD_CAST buffer);
+               memset(buffer, 0, DEFAULT_SIZE_OF_BUFFER);
+               snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%d", avail_path_modules -> module_info -> num_ifc_out);
+               xmlNewChild(module_elem, NULL, "number-out-ifc", BAD_CAST buffer);
+
+               // Process module parameters
+               for (x = 0; x < avail_path_modules -> module_info -> num_params; x++) {
+                  param = xmlNewChild(module_elem, NULL, "parameter", NULL);
+                  xmlNewChild(param, NULL, "short-opt", BAD_CAST avail_path_modules -> module_info -> params[x].short_opt);
+                  xmlNewChild(param, NULL, "long-opt", BAD_CAST avail_path_modules -> module_info -> params[x].long_opt);
+                  xmlNewChild(param, NULL, "description", BAD_CAST avail_path_modules -> module_info -> params[x].description);
+                  if (avail_path_modules -> module_info -> params[x].mandatory_argument == TRUE) {
+                     xmlNewChild(param, NULL, "mandatory-argument", BAD_CAST "true");
+                  } else {
+                     xmlNewChild(param, NULL, "mandatory-argument", BAD_CAST "false");
+                  }
+                  xmlNewChild(param, NULL, "argument-type", BAD_CAST avail_path_modules -> module_info -> params[x].argument_type);
+               }
+            }
+            avail_path_modules = avail_path_modules -> next;
+         }
+         avail_path = avail_path -> next;
       }
 
       // get state data about modules with a profile
@@ -4571,7 +4613,7 @@ xmlDocPtr nc_get_state_data()
 
 
    }
-
+   xmlCleanupParser();
    return doc_tree_ptr;
 }
 #endif
