@@ -163,6 +163,9 @@ module "nemea" {
                 enum "uint64" {
                   description "uint64 is expected for the parameter";
                 }
+                enum "float" {
+                  description "Float argument is expected for the parameter.";
+                }
                 enum "string" {
                   description "String argument is expected for the parameter.";
                 }
