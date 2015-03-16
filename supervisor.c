@@ -3483,8 +3483,6 @@ int nc_supervisor_initialization()
    file_flag = FALSE;
    daemon_flag = FALSE;
    netconf_flag = TRUE;
-   graph_first_node = NULL;
-   graph_last_node = NULL;
 
    input_fd = stdin;
    output_fd = stdout;
