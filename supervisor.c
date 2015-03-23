@@ -84,7 +84,9 @@
 #define MODULES_UNIXSOCKET_PATH_FILENAME_FORMAT   "/tmp/trap-localhost-%s.sock" ///< Modules output interfaces socket, to which connects service thread.
 #define DEFAULT_DAEMON_UNIXSOCKET_PATH_FILENAME  "/tmp/supervisor_daemon.sock"  ///<  Daemon socket.
 
-#define NC_DEFAULT_LOGSDIR_PATH "/tmp/supervisor_logs/"
+#define NC_DEFAULT_LOGSDIR_PATH "/tmp/netconf_supervisor_logs/"
+#define DAEMON_DEFAULT_LOGSDIR_PATH "/tmp/daemon_supervisor_logs/"
+#define INTERACTIVE_DEFAULT_LOGSDIR_PATH "/tmp/interactive_supervisor_logs/"
 #define DEFAULT_BACKUP_FILE_PREFIX "sup_backup"
 
 #define RET_ERROR    -1
@@ -300,48 +302,58 @@ void print_xmlDoc_to_stream(xmlDocPtr doc_ptr, FILE * stream)
 void create_output_dir()
 {
    char * buffer = NULL;
-   if (netconf_flag) { // netconf mode
-      logs_path = (char *) calloc (strlen(NC_DEFAULT_LOGSDIR_PATH)+1, sizeof(char));
-      strcpy(logs_path, NC_DEFAULT_LOGSDIR_PATH);
-   } else { // interactive mode or daemon mode
-      if (logs_path == NULL) {
+   struct stat st = {0};
+
+logs_path_null:
+   if (logs_path == NULL) {
+      if (netconf_flag == TRUE) {
+         logs_path = strdup(NC_DEFAULT_LOGSDIR_PATH);
+      } else if (daemon_flag == TRUE) {
+         logs_path = strdup(DAEMON_DEFAULT_LOGSDIR_PATH);
+      } else {
          if ((buffer = getenv("HOME")) != NULL) {
             logs_path = (char *) calloc (strlen(buffer)+strlen("/supervisor_logs/")+1, sizeof(char));
             sprintf(logs_path,"%s/supervisor_logs/", buffer);
-         }
-      } else {
-         if (logs_path[strlen(logs_path)-1] != '/') {
-            buffer = (char *) calloc (strlen(logs_path)+2, sizeof(char));
-            sprintf(buffer, "%s/", logs_path);
-            free(logs_path);
-            logs_path = buffer;
+         } else {
+            logs_path = strdup(INTERACTIVE_DEFAULT_LOGSDIR_PATH);
          }
       }
    }
 
-   struct stat st = {0};
-   /* check and create output directiory */
+   if (logs_path[strlen(logs_path)-1] != '/') {
+      buffer = (char *) calloc (strlen(logs_path)+2, sizeof(char));
+      sprintf(buffer, "%s/", logs_path);
+      free(logs_path);
+      logs_path = buffer;
+   }
+
+   // Check and create output directory
    if (stat(logs_path, &st) == -1) {
       if (errno == EACCES) {
+         // Don't have permissions to acces this directory, use default directory according to executed mode of supervisor
          if (logs_path != NULL) {
             free(logs_path);
             logs_path = NULL;
          }
-         logs_path = (char *) calloc (strlen(NC_DEFAULT_LOGSDIR_PATH)+1, sizeof(char));
-         strcpy(logs_path, NC_DEFAULT_LOGSDIR_PATH);
-         mkdir(logs_path, PERM_LOGSDIR);
+         goto logs_path_null;
       }
+      // Directory does not exist, try to create it
       if (mkdir(logs_path, PERM_LOGSDIR) == -1) {
          if (errno == EACCES) {
+            // Don't have permissions to some folder in logs_path, use default directory according to executed mode of supervisor
             if (logs_path != NULL) {
                free(logs_path);
                logs_path = NULL;
             }
-            logs_path = (char *) calloc (strlen(NC_DEFAULT_LOGSDIR_PATH)+1, sizeof(char));
-            strcpy(logs_path, NC_DEFAULT_LOGSDIR_PATH);
-            mkdir(logs_path, PERM_LOGSDIR);
+            goto logs_path_null;
          }
       }
+   } else if (S_ISDIR(st.st_mode) == FALSE) { // Check whether the file is a directory
+      if (logs_path != NULL) {
+         free(logs_path);
+         logs_path = NULL;
+      }
+      goto logs_path_null;
    }
 }
 
