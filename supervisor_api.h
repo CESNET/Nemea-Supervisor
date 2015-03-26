@@ -64,16 +64,16 @@ void 		interactive_set_module_enabled();
 void 		interactive_stop_module();
 void 		interactive_show_running_modules_status();
 void 		interactive_show_available_modules();
-int 		reload_configuration(const int, xmlNodePtr);
+int 		reload_configuration(const int, xmlNodePtr *);
 
 /* Daemon mode functions */
 int 		daemon_mode_initialization();
-void 		daemon_mode();
+void 		server_routine();
 
 /* Netconf mode functions */
 #ifdef nemea_plugin
-int 		nc_supervisor_initialization();
-xmlDocPtr 	nc_get_state_data();
+int 		netconf_supervisor_initialization(xmlNodePtr * running);
+xmlDocPtr 	netconf_get_state_data();
 #endif
 
 #endif

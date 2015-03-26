@@ -82,9 +82,10 @@
 #define SERVICE_IFC_CONN_ATTEMPTS_LIMIT 3 // Maximum count of connection attempts to service interface
 
 #define MODULES_UNIXSOCKET_PATH_FILENAME_FORMAT   "/tmp/trap-localhost-%s.sock" ///< Modules output interfaces socket, to which connects service thread.
-#define DEFAULT_DAEMON_UNIXSOCKET_PATH_FILENAME  "/tmp/supervisor_daemon.sock"  ///<  Daemon socket.
+#define DEFAULT_DAEMON_SERVER_SOCKET  "/tmp/daemon_supervisor.sock"  ///<  Daemon server socket
+#define DEFAULT_NETCONF_SERVER_SOCKET "/tmp/netconf_supervisor.sock"  ///<  Netconf server socket
 
-#define NC_DEFAULT_LOGSDIR_PATH "/tmp/netconf_supervisor_logs/"
+#define NETCONF_DEFAULT_LOGSDIR_PATH "/tmp/netconf_supervisor_logs/"
 #define DAEMON_DEFAULT_LOGSDIR_PATH "/tmp/daemon_supervisor_logs/"
 #define INTERACTIVE_DEFAULT_LOGSDIR_PATH "/tmp/interactive_supervisor_logs/"
 #define DEFAULT_BACKUP_FILE_PREFIX "sup_backup"
@@ -109,7 +110,7 @@ modules_profile_t * actual_profile_ptr = NULL;
 available_modules_path_t * first_available_modules_path = NULL;
 
 pthread_t   service_thread_id; ///< Service thread identificator.
-pthread_t   nc_clients_thread_id;
+pthread_t   netconf_server_thread_id;
 
 struct tm * init_time_info = NULL;
 int service_stop_all_modules = FALSE;
@@ -147,7 +148,7 @@ void check_running_modules_allocated_memory();
 long int get_total_cpu_usage();
 int start_service_thread();
 int parse_program_arguments(int *argc, char **argv);
-void daemon_mode();
+void server_routine();
 char *get_param_by_delimiter(const char *source, char **dest, const char delimiter);
 void free_output_file_strings_and_streams();
 void generate_backup_config_file();
@@ -307,7 +308,7 @@ void create_output_dir()
 logs_path_null:
    if (logs_path == NULL) {
       if (netconf_flag == TRUE) {
-         logs_path = strdup(NC_DEFAULT_LOGSDIR_PATH);
+         logs_path = strdup(NETCONF_DEFAULT_LOGSDIR_PATH);
       } else if (daemon_flag == TRUE) {
          logs_path = strdup(DAEMON_DEFAULT_LOGSDIR_PATH);
       } else {
@@ -361,47 +362,47 @@ void create_output_files_strings()
 {
    free_output_file_strings_and_streams();
 
-   supervisor_debug_log_file_path = (char *) calloc (strlen(logs_path)+strlen("supervisor_debug_log")+1, sizeof(char));
-   sprintf(supervisor_debug_log_file_path, "%ssupervisor_debug_log", logs_path);
-   statistics_file_path = (char *) calloc (strlen(logs_path)+strlen("supervisor_log_statistics")+1, sizeof(char));
-   sprintf(statistics_file_path, "%ssupervisor_log_statistics", logs_path);
-   module_event_file_path = (char *) calloc (strlen(logs_path)+strlen("supervisor_log_module_event")+1, sizeof(char));
-   sprintf(module_event_file_path, "%ssupervisor_log_module_event", logs_path);
+   if (logs_path != NULL) {
+      supervisor_debug_log_file_path = (char *) calloc (strlen(logs_path)+strlen("supervisor_debug_log")+1, sizeof(char));
+      sprintf(supervisor_debug_log_file_path, "%ssupervisor_debug_log", logs_path);
+      statistics_file_path = (char *) calloc (strlen(logs_path)+strlen("supervisor_log_statistics")+1, sizeof(char));
+      sprintf(statistics_file_path, "%ssupervisor_log_statistics", logs_path);
+      module_event_file_path = (char *) calloc (strlen(logs_path)+strlen("supervisor_log_module_event")+1, sizeof(char));
+      sprintf(module_event_file_path, "%ssupervisor_log_module_event", logs_path);
 
-   supervisor_debug_log_fd = fopen(supervisor_debug_log_file_path, "a");
-   if (supervisor_debug_log_fd == NULL) {
-      fprintf(stderr, "%s [ERROR] Could not open supervisor_debug_log file stream!\n",get_stats_formated_time());
-   } else {
-      fprintf(supervisor_debug_log_fd,"-------------------- %s --------------------\n", get_stats_formated_time());
-   }
-   statistics_fd = fopen(statistics_file_path, "a");
-   if (statistics_fd == NULL) {
-      fprintf(stderr, "%s [ERROR] Could not open supervisor_log_statistics file stream!\n",get_stats_formated_time());
-   } else {
-      VERBOSE(STATISTICS,"-------------------- %s --------------------\n", get_stats_formated_time());
-      print_statistics_legend();
-   }
-   module_event_fd = fopen(module_event_file_path, "a");
-   if (module_event_fd == NULL) {
-      fprintf(stderr, "%s [ERROR] Could not open supervisor_log_module_event file stream!\n",get_stats_formated_time());
-   } else {
-      VERBOSE(MODULE_EVENT,"-------------------- %s --------------------\n", get_stats_formated_time());
-   }
-
-   if (netconf_flag || daemon_flag) {
-      supervisor_log_file_path = (char *) calloc (strlen(logs_path)+strlen("supervisor_log")+1, sizeof(char));
-      sprintf(supervisor_log_file_path, "%ssupervisor_log", logs_path);
-
-      supervisor_log_fd = fopen (supervisor_log_file_path, "a");
-      if (supervisor_log_fd == NULL) {
-         fprintf(stderr, "%s [ERROR] Could not open supervisor_log file stream!\n",get_stats_formated_time());
+      supervisor_debug_log_fd = fopen(supervisor_debug_log_file_path, "a");
+      if (supervisor_debug_log_fd == NULL) {
+         fprintf(stderr, "%s [ERROR] Could not open supervisor_debug_log file stream!\n",get_stats_formated_time());
       } else {
-         fprintf(supervisor_log_fd,"-------------------- %s --------------------\n", get_stats_formated_time());
+         fprintf(supervisor_debug_log_fd,"-------------------- %s --------------------\n", get_stats_formated_time());
       }
-      if (netconf_flag) {
-         output_fd = supervisor_log_fd;
-      } else if (daemon_internals->clients_cnt == 0) {
-         output_fd = supervisor_log_fd;
+      statistics_fd = fopen(statistics_file_path, "a");
+      if (statistics_fd == NULL) {
+         fprintf(stderr, "%s [ERROR] Could not open supervisor_log_statistics file stream!\n",get_stats_formated_time());
+      } else {
+         VERBOSE(STATISTICS,"-------------------- %s --------------------\n", get_stats_formated_time());
+         print_statistics_legend();
+      }
+      module_event_fd = fopen(module_event_file_path, "a");
+      if (module_event_fd == NULL) {
+         fprintf(stderr, "%s [ERROR] Could not open supervisor_log_module_event file stream!\n",get_stats_formated_time());
+      } else {
+         VERBOSE(MODULE_EVENT,"-------------------- %s --------------------\n", get_stats_formated_time());
+      }
+
+      if (netconf_flag || daemon_flag) {
+         supervisor_log_file_path = (char *) calloc (strlen(logs_path)+strlen("supervisor_log")+1, sizeof(char));
+         sprintf(supervisor_log_file_path, "%ssupervisor_log", logs_path);
+
+         supervisor_log_fd = fopen (supervisor_log_file_path, "a");
+         if (supervisor_log_fd == NULL) {
+            fprintf(stderr, "%s [ERROR] Could not open supervisor_log file stream!\n",get_stats_formated_time());
+         } else {
+            fprintf(supervisor_log_fd,"-------------------- %s --------------------\n", get_stats_formated_time());
+         }
+         if (daemon_internals->clients_cnt == 0) {
+            output_fd = supervisor_log_fd;
+         }
       }
    }
 }
@@ -873,7 +874,7 @@ void re_start_module(const int module_number)
    if (running_modules[module_number].module_running == FALSE) {
       VERBOSE(MODULE_EVENT,"%s [START] Starting module %s.\n", get_stats_formated_time(), running_modules[module_number].module_name);
       #ifdef nemea_plugin
-         nc_notify(MODULE_EVENT_STARTED,running_modules[module_number].module_name);
+         netconf_notify(MODULE_EVENT_STARTED,running_modules[module_number].module_name);
       #endif
       if (running_modules[module_number].module_counters_array != NULL) {
          free(running_modules[module_number].module_counters_array);
@@ -883,7 +884,7 @@ void re_start_module(const int module_number)
       running_modules[module_number].module_running = TRUE;
    } else {
       #ifdef nemea_plugin
-         nc_notify(MODULE_EVENT_RESTARTED,running_modules[module_number].module_name);
+         netconf_notify(MODULE_EVENT_RESTARTED,running_modules[module_number].module_name);
       #endif
       VERBOSE(MODULE_EVENT,"%s [RESTART] Restarting module %s\n", get_stats_formated_time(), running_modules[module_number].module_name);
    }
@@ -1071,8 +1072,10 @@ int supervisor_initialization()
    pthread_mutex_init(&running_modules_lock,NULL);
 
    // Load startup configuration
-   VERBOSE(N_STDOUT,"[INIT LOADING CONFIGURATION]\n");
-   reload_configuration(RELOAD_INIT_LOAD_CONFIG, NULL);
+   if (netconf_flag == FALSE) {
+      VERBOSE(N_STDOUT,"[INIT LOADING CONFIGURATION]\n");
+      reload_configuration(RELOAD_INIT_LOAD_CONFIG, NULL);
+   }
 
    // Create a new thread doing service routine
    VERBOSE(N_STDOUT,"[SERVICE] Starting service thread.\n");
@@ -1083,28 +1086,30 @@ int supervisor_initialization()
    }
 
    /************ SIGNAL HANDLING *************/
-   /* function prototype to set handler */
-   void supervisor_signal_handler(int catched_signal);
+   if (netconf_flag == FALSE) {
+      /* function prototype to set handler */
+      void supervisor_signal_handler(int catched_signal);
 
-   struct sigaction sig_action;
-   sig_action.sa_handler = supervisor_signal_handler;
-   sig_action.sa_flags = 0;
-   sigemptyset(&sig_action.sa_mask);
+      struct sigaction sig_action;
+      sig_action.sa_handler = supervisor_signal_handler;
+      sig_action.sa_flags = 0;
+      sigemptyset(&sig_action.sa_mask);
 
-   if (sigaction(SIGPIPE,&sig_action,NULL) == -1) {
-      VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGPIPE !\n", get_stats_formated_time());
-   }
-   if (sigaction(SIGINT,&sig_action,NULL) == -1) {
-      VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGINT !\n", get_stats_formated_time());
-   }
-   if (sigaction(SIGTERM,&sig_action,NULL) == -1) {
-      VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGTERM !\n", get_stats_formated_time());
-   }
-   if (sigaction(SIGSEGV,&sig_action,NULL) == -1) {
-      VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGSEGV !\n", get_stats_formated_time());
-   }
-   if (sigaction(SIGQUIT,&sig_action,NULL) == -1) {
-      VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGQUIT !\n", get_stats_formated_time());
+      if (sigaction(SIGPIPE,&sig_action,NULL) == -1) {
+         VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGPIPE !\n", get_stats_formated_time());
+      }
+      if (sigaction(SIGINT,&sig_action,NULL) == -1) {
+         VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGINT !\n", get_stats_formated_time());
+      }
+      if (sigaction(SIGTERM,&sig_action,NULL) == -1) {
+         VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGTERM !\n", get_stats_formated_time());
+      }
+      if (sigaction(SIGSEGV,&sig_action,NULL) == -1) {
+         VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGSEGV !\n", get_stats_formated_time());
+      }
+      if (sigaction(SIGQUIT,&sig_action,NULL) == -1) {
+         VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGQUIT !\n", get_stats_formated_time());
+      }
    }
    /****************************************/
 
@@ -1231,7 +1236,7 @@ void service_stop_modules_sigint()
    for (x=0; x<loaded_modules_cnt; x++) {
       if (running_modules[x].module_status && running_modules[x].module_enabled == FALSE && running_modules[x].sent_sigint == FALSE) {
          #ifdef nemea_plugin
-            nc_notify(MODULE_EVENT_STOPPED,running_modules[x].module_name);
+            netconf_notify(MODULE_EVENT_STOPPED,running_modules[x].module_name);
          #endif
          VERBOSE(MODULE_EVENT, "%s [STOP] Stopping module %s... sending SIGINT\n", get_stats_formated_time(), running_modules[x].module_name);
          kill(running_modules[x].module_pid,2);
@@ -1371,7 +1376,7 @@ void service_restart_modules()
          VERBOSE(MODULE_EVENT,"%s [RESTART] Module: %s was restarted %d times per minute and it is down again. I set it disabled.\n", get_stats_formated_time(), running_modules[x].module_name, max_restarts);
          running_modules[x].module_enabled = FALSE;
          #ifdef nemea_plugin
-            nc_notify(MODULE_EVENT_DISABLED,running_modules[x].module_name);
+            netconf_notify(MODULE_EVENT_DISABLED,running_modules[x].module_name);
          #endif
       } else if (running_modules[x].module_status == FALSE && running_modules[x].module_enabled == TRUE) {
          re_start_module(x);
@@ -1555,6 +1560,9 @@ void supervisor_termination(int stop_all_modules, int generate_backup)
       pthread_mutex_lock(&daemon_internals->lock);
       daemon_internals->daemon_terminated = TRUE;
       pthread_mutex_unlock(&daemon_internals->lock);
+      if (netconf_flag == TRUE) {
+         sleep(1); // Wait for server thread
+      }
    }
 
    // If supervisor was initialized, than proceed termination, else just check allocated memory from program argument parsing
@@ -1647,7 +1655,7 @@ void supervisor_termination(int stop_all_modules, int generate_backup)
 
    // If daemon_mode_initialization call was successful, cleanup after daemon
    if (daemon_mode_initialized == TRUE) {
-      if (daemon_flag && (daemon_internals != NULL)) {
+      if (daemon_internals != NULL) {
          if (daemon_internals->clients != NULL) {
             // Wait for daemon clients threads
             VERBOSE(SUP_LOG, "%s [INFO] Waiting for client's threads to terminate.\n", get_stats_formated_time());
@@ -2208,7 +2216,7 @@ int parse_program_arguments(int *argc, char **argv)
 
    if (socket_path == NULL) {
       /* socket_path was not set by user, use default value. */
-      socket_path = DEFAULT_DAEMON_UNIXSOCKET_PATH_FILENAME;
+      socket_path = DEFAULT_DAEMON_SERVER_SOCKET;
    }
    if (config_file == NULL) {
       fprintf(stderr, "Missing required config file (-f|--config-file).\n");
@@ -2230,14 +2238,11 @@ int parse_program_arguments(int *argc, char **argv)
    }
 }
 
-int daemon_mode_initialization()
+int create_daemon_process()
 {
-   // create daemon
    pid_t process_id = 0;
    pid_t sid = 0;
-   unsigned int x = 0;
 
-   fflush(stdout);
    process_id = fork();
    if (process_id < 0)  {
       VERBOSE(N_STDOUT,"%s [ERROR] Fork: could not initialize daemon process!\n", get_stats_formated_time());
@@ -2262,7 +2267,13 @@ int daemon_mode_initialization()
       return -1;
    }
 
-   // allocate structures needed by daemon process
+   return 0;
+}
+
+int alloc_server_structures()
+{
+   unsigned int x = 0;
+
    daemon_internals = (daemon_internals_t *) calloc (1, sizeof(daemon_internals_t));
    if (daemon_internals == NULL) {
       fprintf(stderr, "%s [ERROR] Could not allocate dameon_internals, cannot proceed without it!\n", get_stats_formated_time());
@@ -2286,7 +2297,11 @@ int daemon_mode_initialization()
    // Initialize daemon's structure mutex
    pthread_mutex_init(&daemon_internals->lock,NULL);
 
-   // create socket
+   return 0;
+}
+
+int create_server_socket()
+{
    union tcpip_socket_addr addr;
    memset(&addr, 0, sizeof(addr));
    addr.unix_addr.sun_family = AF_UNIX;
@@ -2316,12 +2331,35 @@ int daemon_mode_initialization()
       return -1;
    }
 
+   return 0;
+}
+
+
+int daemon_mode_initialization()
+{
+   fflush(stdout);
+
+   // create daemon
+   if (create_daemon_process() != 0) {
+      return -1;
+   }
+
+   // allocate structures needed by daemon process
+   if (alloc_server_structures() != 0) {
+      return -1;
+   }
+
+   // create socket
+   if (create_server_socket() != 0) {
+      return -1;
+   }
+
    daemon_mode_initialized = TRUE;
    return 0;
 }
 
 
-void daemon_mode()
+void server_routine()
 {
    last_total_cpu_usage = get_total_cpu_usage();
    unsigned int x = 0;
@@ -3700,7 +3738,7 @@ void reload_process_availablemodules_element(reload_config_vars_t ** config_vars
 }
 
 
-int reload_configuration(const int choice, xmlNodePtr node)
+int reload_configuration(const int choice, xmlNodePtr * node)
 {
    pthread_mutex_lock(&running_modules_lock);
 
@@ -3769,7 +3807,7 @@ int reload_configuration(const int choice, xmlNodePtr node)
          break;
 
       case RELOAD_CALLBACK_ROOT_ELEM:
-         config_vars->current_node = node;
+         config_vars->current_node = *node;
          break;
 
       case RELOAD_INTERACTIVE: {
@@ -4372,48 +4410,45 @@ void generate_backup_config_file()
 }
 
 #ifdef nemea_plugin
-int nc_supervisor_initialization()
+void * netconf_server_routine_thread(void *arg) {
+   server_routine();
+   pthread_exit(EXIT_SUCCESS);
+}
+
+// Nemea plugin initialization method
+int netconf_supervisor_initialization(xmlNodePtr * running)
 {
-   unsigned int y = 0;
+   pthread_attr_t attr;
+   pthread_attr_init(&attr);
 
-   init_time_info = get_sys_time();
-   service_stop_all_modules = FALSE;
-   logs_path = NULL;
-   config_file = NULL;
-   socket_path = DEFAULT_DAEMON_UNIXSOCKET_PATH_FILENAME;
-   verbose_flag = FALSE;
-   daemon_flag = FALSE;
+   supervisor_flags_initialization();
    netconf_flag = TRUE;
-   graph_first_node = NULL;
-   graph_last_node = NULL;
+   socket_path = DEFAULT_NETCONF_SERVER_SOCKET;
 
-   input_fd = stdin;
-   output_fd = stdout;
+   if (alloc_server_structures() != 0) {
+      return -1;
+   }
+   if (create_server_socket() != 0) {
+      return -1;
+   }
+   daemon_mode_initialized = TRUE;
 
-   create_output_dir();
-   create_output_files_strings();
-
-   VERBOSE(N_STDOUT,"[INIT LOADING CONFIGURATION]\n");
-   loaded_modules_cnt = 0;
-   running_modules_array_size = RUNNING_MODULES_ARRAY_START_SIZE;
-   running_modules = (running_module_t *) calloc (running_modules_array_size,sizeof(running_module_t));
-   for (y=0;y<running_modules_array_size;y++) {
-      running_modules[y].module_ifces = (interface_t *) calloc(IFCES_ARRAY_START_SIZE, sizeof(interface_t));
-      running_modules[y].module_running = FALSE;
-      running_modules[y].module_ifces_array_size = IFCES_ARRAY_START_SIZE;
-      running_modules[y].module_ifces_cnt = 0;
+   if (supervisor_initialization() != 0) {
+      return -1;
    }
 
-   pthread_mutex_init(&running_modules_lock,NULL);
-   service_thread_continue = TRUE;
+   // Load startup configuration
+   reload_configuration(RELOAD_CALLBACK_ROOT_ELEM, running);
 
-   VERBOSE(N_STDOUT,"[SERVICE] Starting service thread.\n");
-   start_service_thread();
-
+   // Create thread doing server routine
+   pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+   if(pthread_create(&netconf_server_thread_id,  &attr, netconf_server_routine_thread, NULL) != 0) {
+      return -1;
+   }
    return 0;
 }
 
-xmlDocPtr nc_get_state_data()
+xmlDocPtr netconf_get_state_data()
 {
    modules_profile_t * ptr = first_profile_ptr;
    unsigned int x = 0, y = 0, in_ifc_cnt = 0, out_ifc_cnt = 0, modules_with_profile = 0;

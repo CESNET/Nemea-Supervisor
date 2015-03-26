@@ -354,7 +354,7 @@ int daemon_get_client ();
 /** Function creates input and output filestream via supervisor_cli socket. After that it represents main loop function.
  * @param[in] arg Daemon socket descriptor.
  */
-// void daemon_mode();
+// void server_routine();
 
 int get_shorter_string_length(char * first, char * second);
 
@@ -364,7 +364,7 @@ void free_module_on_index(int index);
 
 void free_module_interfaces_on_index(int index);
 
-int reload_configuration(const int choice, xmlNodePtr node);
+int reload_configuration(const int choice, xmlNodePtr * node);
 
 #endif
 

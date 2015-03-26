@@ -61,9 +61,7 @@
 #include <fcntl.h>
 #include <signal.h>
 
-#define TRUE            1 ///< Bool true
-#define FALSE           0 ///< Bool false
-#define DAEMON_UNIX_PATH_FILENAME_FORMAT  "/tmp/supervisor_daemon.sock"
+#define DEFAULT_DAEMON_SERVER_SOCKET  "/tmp/daemon_supervisor.sock"  ///<  Daemon server socket
 
 typedef struct client_internals_s {
    FILE *   supervisor_input_stream;
@@ -175,7 +173,7 @@ int main(int argc, char **argv)
 
    if (socket_path == NULL) {
       /* socket_path was not set by user, use default value. */
-      socket_path = DAEMON_UNIX_PATH_FILENAME_FORMAT;
+      socket_path = DEFAULT_DAEMON_SERVER_SOCKET;
    }
 
    if(connect_to_supervisor(socket_path) == EXIT_FAILURE){
