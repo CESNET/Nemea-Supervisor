@@ -2,7 +2,7 @@ SUBDIRS=munin
 
 bin_PROGRAMS=supervisor supervisor_cli
 supervisor_SOURCES= supervisor.c supervisor.h supervisor_api.h supervisor_main.c internal.c internal.h
-supervisor_LDADD = -lpthread
+supervisor_LDADD = -lpthread -ljansson
 supervisor_cli_SOURCES= supervisor_cli.c internal.h internal.c
 doc_DATA=README
 EXTRA_DIST = supervisor_config.xml nemea-supervisor README
