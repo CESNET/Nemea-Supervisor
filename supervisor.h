@@ -154,15 +154,15 @@ typedef struct sup_client_s {
    pthread_t   client_thread_id;
 } sup_client_t;
 
-typedef struct daemon_internals_s {
+typedef struct server_internals_s {
    sup_client_t **         clients;
    int                            clients_cnt;
-   int                            daemon_sd;
+   int                            server_sd;
    int                            daemon_terminated;
    uint16_t                   next_client_id;
    int                            config_mode_active;
    pthread_mutex_t     lock;
-} daemon_internals_t;
+} server_internals_t;
 
 typedef struct reload_config_vars_s {
    xmlDocPtr       doc_tree_ptr;

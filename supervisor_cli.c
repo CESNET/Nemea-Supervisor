@@ -209,14 +209,14 @@ int main(int argc, char **argv)
    struct timeval tv;
 
    if(just_stats_flag) {
-      fprintf(client_internals->supervisor_output_stream,"%d\n", DAEMON_STATS_MODE_CODE);
+      fprintf(client_internals->supervisor_output_stream,"%d\n", CLIENT_STATS_MODE_CODE);
    } else if (reload_command_flag) {
-      fprintf(client_internals->supervisor_output_stream,"%d\n", DAEMON_RELOAD_MODE_CODE);
+      fprintf(client_internals->supervisor_output_stream,"%d\n", CLIENT_RELOAD_MODE_CODE);
       fflush(client_internals->supervisor_output_stream);
       free_client_internals_variables();
       exit(EXIT_SUCCESS);
    } else {
-      fprintf(client_internals->supervisor_output_stream,"%d\n", DAEMON_CONFIG_MODE_CODE);
+      fprintf(client_internals->supervisor_output_stream,"%d\n", CLIENT_CONFIG_MODE_CODE);
    }
    fflush(client_internals->supervisor_output_stream);
 

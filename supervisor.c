@@ -131,7 +131,7 @@ char *   module_event_file_path = NULL;
 char *   supervisor_debug_log_file_path = NULL;
 char *   supervisor_log_file_path = NULL;
 
-daemon_internals_t * daemon_internals = NULL;
+server_internals_t * server_internals = NULL;
 
 /**************************************/
 
@@ -400,7 +400,7 @@ void create_output_files_strings()
          } else {
             fprintf(supervisor_log_fd,"-------------------- %s --------------------\n", get_stats_formated_time());
          }
-         if (daemon_internals->clients_cnt == 0) {
+         if (server_internals->clients_cnt == 0) {
             output_fd = supervisor_log_fd;
          }
       }
@@ -1556,10 +1556,10 @@ void supervisor_termination(int stop_all_modules, int generate_backup)
    unsigned int x = 0, y = 0, attemps = 0;
 
    // If daemon mode was initialized and supervisor caught a signal to terminate, set termination flag for client's threads
-   if (daemon_mode_initialized  == TRUE && daemon_internals != NULL) {
-      pthread_mutex_lock(&daemon_internals->lock);
-      daemon_internals->daemon_terminated = TRUE;
-      pthread_mutex_unlock(&daemon_internals->lock);
+   if (daemon_mode_initialized  == TRUE && server_internals != NULL) {
+      pthread_mutex_lock(&server_internals->lock);
+      server_internals->daemon_terminated = TRUE;
+      pthread_mutex_unlock(&server_internals->lock);
       if (netconf_flag == TRUE) {
          sleep(1); // Wait for server thread
       }
@@ -1655,8 +1655,8 @@ void supervisor_termination(int stop_all_modules, int generate_backup)
 
    // If daemon_mode_initialization call was successful, cleanup after daemon
    if (daemon_mode_initialized == TRUE) {
-      if (daemon_internals != NULL) {
-         if (daemon_internals->clients != NULL) {
+      if (server_internals != NULL) {
+         if (server_internals->clients != NULL) {
             // Wait for daemon clients threads
             VERBOSE(SUP_LOG, "%s [INFO] Waiting for client's threads to terminate.\n", get_stats_formated_time());
             for (x = 0; x < MAX_NUMBER_SUP_CLIENTS; x++) {
@@ -1666,7 +1666,7 @@ void supervisor_termination(int stop_all_modules, int generate_backup)
                   break;
                }
                // If any client is still connected, wait 300 ms and check all clients again
-               if (daemon_internals->clients[x]->client_connected == TRUE) {
+               if (server_internals->clients[x]->client_connected == TRUE) {
                   attemps++;
                   x = -1;
                   usleep(300000);
@@ -1677,21 +1677,21 @@ void supervisor_termination(int stop_all_modules, int generate_backup)
                VERBOSE(SUP_LOG, "%s [INFO] All client's threads terminated.\n", get_stats_formated_time());
             }
             for (x = 0; x < MAX_NUMBER_SUP_CLIENTS; x++) {
-               if (daemon_internals->clients[x] != NULL) {
-                  free(daemon_internals->clients[x]);
-                  daemon_internals->clients[x] = NULL;
+               if (server_internals->clients[x] != NULL) {
+                  free(server_internals->clients[x]);
+                  server_internals->clients[x] = NULL;
                }
             }
-            free(daemon_internals->clients);
-            daemon_internals->clients = NULL;
+            free(server_internals->clients);
+            server_internals->clients = NULL;
          }
 
-         if (daemon_internals->daemon_sd > 0) {
-            close(daemon_internals->daemon_sd);
-            daemon_internals->daemon_sd = 0;
+         if (server_internals->server_sd > 0) {
+            close(server_internals->server_sd);
+            server_internals->server_sd = 0;
          }
-         free(daemon_internals);
-         daemon_internals = NULL;
+         free(server_internals);
+         server_internals = NULL;
          unlink(socket_path);
       }
    }
@@ -2274,28 +2274,28 @@ int alloc_server_structures()
 {
    unsigned int x = 0;
 
-   daemon_internals = (daemon_internals_t *) calloc (1, sizeof(daemon_internals_t));
-   if (daemon_internals == NULL) {
+   server_internals = (server_internals_t *) calloc (1, sizeof(server_internals_t));
+   if (server_internals == NULL) {
       fprintf(stderr, "%s [ERROR] Could not allocate dameon_internals, cannot proceed without it!\n", get_stats_formated_time());
       return -1;
    }
-   daemon_internals->clients = (sup_client_t **) calloc (MAX_NUMBER_SUP_CLIENTS, sizeof(sup_client_t*));
-   if (daemon_internals->clients == NULL) {
+   server_internals->clients = (sup_client_t **) calloc (MAX_NUMBER_SUP_CLIENTS, sizeof(sup_client_t*));
+   if (server_internals->clients == NULL) {
       fprintf(stderr, "%s [ERROR] Could not allocate structures for clients, cannot proceed without it!\n", get_stats_formated_time());
       return -1;
    }
    for (x = 0; x < MAX_NUMBER_SUP_CLIENTS; x++) {
-      daemon_internals->clients[x] = (sup_client_t *) calloc (1, sizeof(sup_client_t));
-      if (daemon_internals->clients[x] != NULL) {
-         daemon_internals->clients[x]->client_sd = -1;
-         daemon_internals->clients[x]->client_input_stream_fd = -1;
+      server_internals->clients[x] = (sup_client_t *) calloc (1, sizeof(sup_client_t));
+      if (server_internals->clients[x] != NULL) {
+         server_internals->clients[x]->client_sd = -1;
+         server_internals->clients[x]->client_input_stream_fd = -1;
       } else {
          fprintf(stderr, "%s [ERROR] Could not allocate structures for clients, cannot proceed without it!\n", get_stats_formated_time());
          return -1;
       }
    }
    // Initialize daemon's structure mutex
-   pthread_mutex_init(&daemon_internals->lock,NULL);
+   pthread_mutex_init(&server_internals->lock,NULL);
 
    return 0;
 }
@@ -2309,24 +2309,24 @@ int create_server_socket()
 
    /* if socket file exists, it could be hard to create new socket and bind */
    unlink(socket_path); /* error when file does not exist is not a problem */
-   daemon_internals->daemon_sd = socket(AF_UNIX, SOCK_STREAM, 0);
-   if (daemon_internals->daemon_sd == -1) {
+   server_internals->server_sd = socket(AF_UNIX, SOCK_STREAM, 0);
+   if (server_internals->server_sd == -1) {
       fprintf(stderr, "%s [ERROR] Could not create daemon socket.\n", get_stats_formated_time());
       return -1;
    }
-   if (fcntl(daemon_internals->daemon_sd, F_SETFL, O_NONBLOCK) == -1) {
+   if (fcntl(server_internals->server_sd, F_SETFL, O_NONBLOCK) == -1) {
       fprintf(stderr, "%s [ERROR] Could not set nonblocking mode on daemon socket.\n", get_stats_formated_time());
       return -1;
    }
 
-   if (bind(daemon_internals->daemon_sd, (struct sockaddr *) &addr.unix_addr, sizeof(addr.unix_addr)) != -1) {
+   if (bind(server_internals->server_sd, (struct sockaddr *) &addr.unix_addr, sizeof(addr.unix_addr)) != -1) {
       chmod(socket_path, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
    } else {
       fprintf(stderr,"%s [ERROR] Bind: could not bind the daemon socket!\n", get_stats_formated_time());
       return -1;
    }
 
-   if (listen(daemon_internals->daemon_sd, MAX_NUMBER_SUP_CLIENTS) == -1) {
+   if (listen(server_internals->server_sd, MAX_NUMBER_SUP_CLIENTS) == -1) {
       fprintf(stderr,"%s [ERROR] Listen: could not listen on the daemon socket!\n", get_stats_formated_time());
       return -1;
    }
@@ -2373,53 +2373,53 @@ void server_routine()
    pthread_attr_init(&clients_thread_attr);
    pthread_attr_setdetachstate(&clients_thread_attr, PTHREAD_CREATE_DETACHED);
 
-   VERBOSE(SUP_LOG, "%s [INFO] Starting acceptor's thread.\n", get_stats_formated_time());
-   while(daemon_internals->daemon_terminated == FALSE) {
+   VERBOSE(SUP_LOG, "%s [INFO] Starting server thread.\n", get_stats_formated_time());
+   while(server_internals->daemon_terminated == FALSE) {
       FD_ZERO(&read_fds);
-      FD_SET(daemon_internals->daemon_sd, &read_fds);
+      FD_SET(server_internals->server_sd, &read_fds);
 
       tv.tv_sec = 1;
       tv.tv_usec = 0;
 
-      ret_val = select(daemon_internals->daemon_sd+1, &read_fds, NULL, NULL, &tv);
+      ret_val = select(server_internals->server_sd+1, &read_fds, NULL, NULL, &tv);
       if (ret_val == -1) {
          // Select error, return -1 and terminate
-         VERBOSE(SUP_LOG, "%s [ERROR] Acceptor's thread: select call failed.\n", get_stats_formated_time());
+         VERBOSE(SUP_LOG, "%s [ERROR] Server thread: select call failed.\n", get_stats_formated_time());
          return;
       } else if (ret_val != 0) {
-         if (FD_ISSET(daemon_internals->daemon_sd, &read_fds)) {
-            new_client = accept(daemon_internals->daemon_sd, (struct sockaddr *)&remoteaddr, &addrlen);
+         if (FD_ISSET(server_internals->server_sd, &read_fds)) {
+            new_client = accept(server_internals->server_sd, (struct sockaddr *)&remoteaddr, &addrlen);
             if (new_client == -1) {
                if (errno == EAGAIN || errno == EWOULDBLOCK) {
                   // Some client wanted to connect but before accepting, he canceled the connection attempt
                   VERBOSE(SUP_LOG, "%s [WARNING] Accept would block error, wait for another client.\n", get_stats_formated_time());
                   continue;
                } else {
-                  VERBOSE(SUP_LOG,"%s [ERROR] Acceptor's thread: accept call failed.\n", get_stats_formated_time());
+                  VERBOSE(SUP_LOG,"%s [ERROR] Server thread: accept call failed.\n", get_stats_formated_time());
                   continue;
                }
             } else {
-               if (daemon_internals->clients_cnt < MAX_NUMBER_SUP_CLIENTS) {
+               if (server_internals->clients_cnt < MAX_NUMBER_SUP_CLIENTS) {
                   // Find a free spot in the clients buffer for a new client
                   for (x = 0; x < MAX_NUMBER_SUP_CLIENTS; x++) {
-                     if (daemon_internals->clients[x]->client_sd == -1) {
-                        VERBOSE(SUP_LOG,"%s [INFO] New client has connected and will be saved to position %d. (client's ID: %d)\n", get_stats_formated_time(), x, daemon_internals->next_client_id);
-                        daemon_internals->clients[x]->client_sd = new_client;
-                        daemon_internals->clients[x]->client_id = daemon_internals->next_client_id;
-                        daemon_internals->clients[x]->client_connected = TRUE;
-                        daemon_internals->next_client_id++;
-                        pthread_mutex_lock(&daemon_internals->lock);
-                        daemon_internals->clients_cnt++;
-                        pthread_mutex_unlock(&daemon_internals->lock);
+                     if (server_internals->clients[x]->client_sd == -1) {
+                        VERBOSE(SUP_LOG,"%s [INFO] New client has connected and will be saved to position %d. (client's ID: %d)\n", get_stats_formated_time(), x, server_internals->next_client_id);
+                        server_internals->clients[x]->client_sd = new_client;
+                        server_internals->clients[x]->client_id = server_internals->next_client_id;
+                        server_internals->clients[x]->client_connected = TRUE;
+                        server_internals->next_client_id++;
+                        pthread_mutex_lock(&server_internals->lock);
+                        server_internals->clients_cnt++;
+                        pthread_mutex_unlock(&server_internals->lock);
                         // Serve the new client
-                        if (pthread_create(&daemon_internals->clients[x]->client_thread_id,  &clients_thread_attr, serve_sup_client_routine, (void*)(daemon_internals->clients[x])) != 0) {
+                        if (pthread_create(&server_internals->clients[x]->client_thread_id,  &clients_thread_attr, serve_sup_client_routine, (void*)(server_internals->clients[x])) != 0) {
                            VERBOSE(SUP_LOG, "%s [ERROR] Could not create client's thread.\n", get_stats_formated_time());
-                           close(daemon_internals->clients[x]->client_sd);
-                           daemon_internals->clients[x]->client_sd = -1;
-                           daemon_internals->clients[x]->client_connected = FALSE;
-                           pthread_mutex_lock(&daemon_internals->lock);
-                           daemon_internals->clients_cnt--;
-                           pthread_mutex_unlock(&daemon_internals->lock);
+                           close(server_internals->clients[x]->client_sd);
+                           server_internals->clients[x]->client_sd = -1;
+                           server_internals->clients[x]->client_connected = FALSE;
+                           pthread_mutex_lock(&server_internals->lock);
+                           server_internals->clients_cnt--;
+                           pthread_mutex_unlock(&server_internals->lock);
                         }
                         break;
                      }
@@ -2482,14 +2482,14 @@ int daemon_get_code_from_client(sup_client_t ** cli)
                free(buffer);
 
                switch (request) {
-               case DAEMON_CONFIG_MODE_CODE:
-                  return DAEMON_CONFIG_MODE_CODE;
+               case CLIENT_CONFIG_MODE_CODE:
+                  return CLIENT_CONFIG_MODE_CODE;
 
-               case DAEMON_RELOAD_MODE_CODE:
-                  return DAEMON_RELOAD_MODE_CODE;
+               case CLIENT_RELOAD_MODE_CODE:
+                  return CLIENT_RELOAD_MODE_CODE;
 
-               case DAEMON_STATS_MODE_CODE:
-                  return DAEMON_STATS_MODE_CODE;
+               case CLIENT_STATS_MODE_CODE:
+                  return CLIENT_STATS_MODE_CODE;
 
                default:
                   // unknown code, return -1 and wait for new client
@@ -2565,9 +2565,9 @@ void disconnect_sup_client(sup_client_t * client)
       close(client->client_sd);
       client->client_sd = -1;
    }
-   pthread_mutex_lock(&daemon_internals->lock);
-   daemon_internals->clients_cnt--;
-   pthread_mutex_unlock(&daemon_internals->lock);
+   pthread_mutex_lock(&server_internals->lock);
+   server_internals->clients_cnt--;
+   pthread_mutex_unlock(&server_internals->lock);
    VERBOSE(SUP_LOG, "%s [INFO] Disconnected client. (client's ID: %d)\n", get_stats_formated_time(), client->client_id);
 }
 
@@ -2603,33 +2603,33 @@ void * serve_sup_client_routine (void * arg)
       disconnect_sup_client(client);
       pthread_exit(EXIT_SUCCESS);
 
-   case DAEMON_CONFIG_MODE_CODE: // normal client configure mode -> continue to options loop
+   case CLIENT_CONFIG_MODE_CODE: // normal client configure mode -> continue to options loop
       // Check whether any client is already connected in config mode
-      pthread_mutex_lock(&daemon_internals->lock);
-      if (daemon_internals->config_mode_active == TRUE) {
+      pthread_mutex_lock(&server_internals->lock);
+      if (server_internals->config_mode_active == TRUE) {
          VERBOSE(SUP_LOG, "%s [INFO] Got configuration mode code, but another client is already connected in this mode. (client's ID: %d)\n", get_stats_formated_time(), client->client_id);
          fprintf(client->client_output_stream, ANSI_RED_BOLD "[WARNING] Another client is connected to supervisor in configuration mode, you have to wait.\n" ANSI_ATTR_RESET);
          fflush(client->client_output_stream);
-         pthread_mutex_unlock(&daemon_internals->lock);
+         pthread_mutex_unlock(&server_internals->lock);
          disconnect_sup_client(client);
          pthread_exit(EXIT_SUCCESS);
       } else {
          VERBOSE(SUP_LOG, "%s [INFO] Got configuration mode code. (client's ID: %d)\n", get_stats_formated_time(), client->client_id);
-         daemon_internals->config_mode_active = TRUE;
+         server_internals->config_mode_active = TRUE;
       }
-      pthread_mutex_unlock(&daemon_internals->lock);
+      pthread_mutex_unlock(&server_internals->lock);
       output_fd = client->client_output_stream;
       input_fd = client->client_input_stream;
       send_options_to_client();
       break;
 
-   case DAEMON_RELOAD_MODE_CODE: // just reload configuration and wait for new client
+   case CLIENT_RELOAD_MODE_CODE: // just reload configuration and wait for new client
       VERBOSE(SUP_LOG, "%s [INFO] Got reload mode code. (client's ID: %d)\n", get_stats_formated_time(), client->client_id);
       disconnect_sup_client(client);
       reload_configuration(RELOAD_DEFAULT_CONFIG_FILE, NULL);
       pthread_exit(EXIT_SUCCESS);
 
-   case DAEMON_STATS_MODE_CODE: { // send stats to current client and wait for new one
+   case CLIENT_STATS_MODE_CODE: { // send stats to current client and wait for new one
       VERBOSE(SUP_LOG, "%s [INFO] Got stats mode code. (client's ID: %d)\n", get_stats_formated_time(), client->client_id);
       update_module_cpu_usage();
       update_module_mem_usage();
@@ -2655,7 +2655,7 @@ void * serve_sup_client_routine (void * arg)
    }
 
    // Configuration mode MAIN LOOP
-   while (client->client_connected == TRUE && daemon_internals->daemon_terminated == FALSE) {
+   while (client->client_connected == TRUE && server_internals->daemon_terminated == FALSE) {
       request = -1;
       FD_ZERO(&read_fds);
       FD_SET(client->client_input_stream_fd, &read_fds);
@@ -2668,9 +2668,9 @@ void * serve_sup_client_routine (void * arg)
          VERBOSE(SUP_LOG,"%s [ERROR] Client's thread: select error.\n", get_stats_formated_time());
          input_fd = stdin;
          output_fd = supervisor_log_fd;
-         pthread_mutex_lock(&daemon_internals->lock);
-         daemon_internals->config_mode_active = FALSE;
-         pthread_mutex_unlock(&daemon_internals->lock);
+         pthread_mutex_lock(&server_internals->lock);
+         server_internals->config_mode_active = FALSE;
+         pthread_mutex_unlock(&server_internals->lock);
          disconnect_sup_client(client);
          pthread_exit(EXIT_SUCCESS);
       } else if (ret_val != 0) {
@@ -2679,9 +2679,9 @@ void * serve_sup_client_routine (void * arg)
             if (bytes_to_read == 0 || bytes_to_read == -1) {
                input_fd = stdin;
                output_fd = supervisor_log_fd;
-               pthread_mutex_lock(&daemon_internals->lock);
-               daemon_internals->config_mode_active = FALSE;
-               pthread_mutex_unlock(&daemon_internals->lock);
+               pthread_mutex_lock(&server_internals->lock);
+               server_internals->config_mode_active = FALSE;
+               pthread_mutex_unlock(&server_internals->lock);
                disconnect_sup_client(client);
                pthread_exit(EXIT_SUCCESS);
             }
@@ -2713,16 +2713,16 @@ void * serve_sup_client_routine (void * arg)
             case 9:
                nine_cnt++;
                if (nine_cnt == 3) {
-                  pthread_mutex_lock(&daemon_internals->lock);
-                  daemon_internals->daemon_terminated = TRUE;
-                  pthread_mutex_unlock(&daemon_internals->lock);
+                  pthread_mutex_lock(&server_internals->lock);
+                  server_internals->daemon_terminated = TRUE;
+                  pthread_mutex_unlock(&server_internals->lock);
                }
                break;
             default:
                VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Wrong input!\n" ANSI_ATTR_RESET);
                break;
             }
-            if (nine_cnt == 0 && !(daemon_internals->daemon_terminated) && client->client_connected) {
+            if (nine_cnt == 0 && !(server_internals->daemon_terminated) && client->client_connected) {
                send_options_to_client();
             }
          }
@@ -2737,9 +2737,9 @@ void * serve_sup_client_routine (void * arg)
 
    input_fd = stdin;
    output_fd = supervisor_log_fd;
-   pthread_mutex_lock(&daemon_internals->lock);
-   daemon_internals->config_mode_active = FALSE;
-   pthread_mutex_unlock(&daemon_internals->lock);
+   pthread_mutex_lock(&server_internals->lock);
+   server_internals->config_mode_active = FALSE;
+   pthread_mutex_unlock(&server_internals->lock);
    disconnect_sup_client(client);
    pthread_exit(EXIT_SUCCESS);
 }
