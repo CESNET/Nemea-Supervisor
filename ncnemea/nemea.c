@@ -59,9 +59,10 @@ NC_EDIT_ERROPT_TYPE erropt = NC_EDIT_ERROPT_NOTSET;
 
  * @return EXIT_SUCCESS or EXIT_FAILURE
  */
-int transapi_init(xmlDocPtr * running __attribute__ ((unused)))
+int transapi_init(xmlDocPtr * running)
 {
-	nc_supervisor_initialization();
+	xmlNodePtr node = xmlDocGetRootElement(*running);
+	netconf_supervisor_initialization(&node);
 	VERBOSE(N_STDOUT,"-- Transapi init --\n");
 	return EXIT_SUCCESS;
 }
@@ -87,7 +88,7 @@ void transapi_close(void)
 xmlDocPtr get_state_data(xmlDocPtr model __attribute__ ((unused)), xmlDocPtr running __attribute__ ((unused)),
 			 struct nc_err ** err __attribute__ ((unused)))
 {
-	return nc_get_state_data();
+	return netconf_get_state_data();
 }
 
 /*
@@ -229,7 +230,7 @@ int callback_nemea_nemea_supervisor(void **data __attribute__ ((unused)), XMLDIF
 				    struct nc_err **error __attribute__ ((unused)))
 {
 	VERBOSE(N_STDOUT, "Callback supervisor... \n");
-	reload_configuration(RELOAD_CALLBACK_ROOT_ELEM, node);
+	reload_configuration(RELOAD_CALLBACK_ROOT_ELEM, &node);
 	interactive_show_available_modules();
 	return EXIT_SUCCESS;
 }
@@ -277,7 +278,7 @@ struct transapi_rpc_callbacks rpc_clbks = {
 		      }
 };
 
-void nc_notify(int module_event, const char * module_name)
+void netconf_notify(int module_event, const char * module_name)
 {
 	char buffer[300];
 	memset(buffer,0,300);
