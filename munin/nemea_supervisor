@@ -125,6 +125,10 @@ MAIN_Anonymizer,cpu,0,3
 MAIN_ipv6stats,cpu,0,0
 MAIN_dns_amplification,cpu,0,24
 MAIN_dns_amp_report_handler,cpu,0,0
+MAIN_Anonymizer,mem,110000
+MAIN_ipv6stats,mem,220000
+MAIN_dns_amplification,mem,330000
+MAIN_dns_amp_report_handler,mem,440000
 """
 else:
 	import os
@@ -237,6 +241,16 @@ def getTotalCPUValues(modules):
 		for i in sel_modules:
 			print "%s.value %s" % (i, modules[i]["cpu"][0][1])
 
+def getTotalMEMValues(modules):
+	sel_modules = []
+	for i in modules:
+		if modules[i].has_key("mem"):
+			sel_modules.append(i)
+	if sel_modules:
+		print "multigraph nemea_modules_mem"
+		for i in sel_modules:
+			print "%s.value %s" % (i, modules[i]["mem"][0][0])
+
 def getConfiguration(modules):
 	getTotalCPUConfiguration(modules)
 	for module in modules:
@@ -244,6 +258,7 @@ def getConfiguration(modules):
 
 def getValues(modules):
 	getTotalCPUValues(modules)
+	getTotalMEMValues(modules)
 	for module in modules:
 		# iterate over Nemea modules
 		for cat in modules[module]:
@@ -253,6 +268,10 @@ def getValues(modules):
 				graph = graphs[graphid]
 				print "multigraph %s_%s%d" % (module, cat, graphid)
 				if cat == "cpu":
+					r = range(0, graph.__len__())
+					for val in r:
+						print "stat%s.value %d" % (val, abs(int(graph[val])))
+				elif cat == "mem":
 					r = range(0, graph.__len__())
 					for val in r:
 						print "stat%s.value %d" % (val, abs(int(graph[val])))
