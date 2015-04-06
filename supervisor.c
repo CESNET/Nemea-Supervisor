@@ -1042,14 +1042,11 @@ void supervisor_flags_initialization()
    service_thread_initialized = FALSE;
    daemon_mode_initialized = FALSE;
 
-   init_time_info = get_sys_time();
-   service_stop_all_modules = FALSE;
    logs_path = NULL;
    config_file = NULL;
    socket_path = NULL;
 
    verbose_flag = FALSE;
-   file_flag = FALSE;
    daemon_flag = FALSE;
    netconf_flag = FALSE;
 }
@@ -1073,7 +1070,6 @@ int supervisor_initialization()
 
    // Initialize main mutex
    pthread_mutex_init(&running_modules_lock,NULL);
-   service_thread_continue = TRUE;
 
    // Load startup configuration
    if (netconf_flag == FALSE) {
@@ -1123,8 +1119,6 @@ int supervisor_initialization()
    } else {
       return -1;
    }
-
-   return 0;
 }
 
 
@@ -1467,27 +1461,6 @@ void free_output_file_strings_and_streams()
    }
 }
 
-void free_daemon_internals_variables()
-{
-   daemon_internals->client_connected = FALSE;
-   if (daemon_internals->client_input_stream_fd > 0) {
-      close(daemon_internals->client_input_stream_fd);
-      daemon_internals->client_input_stream_fd = 0;
-   }
-   if (daemon_internals->client_input_stream != NULL) {
-      fclose(daemon_internals->client_input_stream);
-      daemon_internals->client_input_stream = NULL;
-   }
-   if (daemon_internals->client_output_stream != NULL) {
-      fclose(daemon_internals->client_output_stream);
-      daemon_internals->client_output_stream = NULL;
-   }
-   if (daemon_internals->client_sd > 0) {
-      close(daemon_internals->client_sd);
-      daemon_internals->client_sd = 0;
-   }
-}
-
 void free_module_and_shift_array(const int module_idx)
 {
    int y = 0;
@@ -1632,7 +1605,6 @@ void supervisor_termination(int stop_all_modules, int generate_backup)
             }
          }
       }
-   }
 
       for (x=0; ((unsigned int) x)<loaded_modules_cnt;x++) {
          if (running_modules[x].module_counters_array != NULL) {
@@ -1739,34 +1711,6 @@ void supervisor_termination(int stop_all_modules, int generate_backup)
       free(logs_path);
       logs_path = NULL;
    }
-
-   modules_profile_t * ptr = first_profile_ptr;
-   modules_profile_t * p = NULL;
-   while (ptr != NULL) {
-      p = ptr;
-      ptr = ptr->next;
-      if (p->profile_name != NULL) {
-         free(p->profile_name);
-      }
-      if (p != NULL) {
-         free(p);
-      }
-   }
-
-   if (daemon_flag && (daemon_internals != NULL)) {
-      free_daemon_internals_variables();
-      if (daemon_internals->daemon_sd > 0) {
-         close(daemon_internals->daemon_sd);
-         daemon_internals->daemon_sd = 0;
-      }
-      if (daemon_internals != NULL) {
-         free(daemon_internals);
-         daemon_internals = NULL;
-      }
-      unlink(socket_path);
-   }
-
-   free_output_file_strings_and_streams();
 }
 
 char *get_param_by_delimiter(const char *source, char **dest, const char delimiter)
@@ -1824,7 +1768,6 @@ void update_module_cpu_usage()
    unsigned int x = 0;
    FILE * proc_stat_fd = NULL;
    char path[20];
-   memset(path,0,20);
    long int new_total_cpu_usage = get_total_cpu_usage();
    long int difference_total = new_total_cpu_usage - last_total_cpu_usage;
 
@@ -2261,7 +2204,6 @@ int parse_program_arguments(int *argc, char **argv)
          break;
       case 'f':
          config_file = strdup(optarg);
-         file_flag = TRUE;
          break;
       case 'd':
          daemon_flag = TRUE;
@@ -2298,11 +2240,9 @@ int parse_program_arguments(int *argc, char **argv)
 
 int create_daemon_process()
 {
-   // create daemon
    pid_t process_id = 0;
    pid_t sid = 0;
 
-   fflush(stdout);
    process_id = fork();
    if (process_id < 0)  {
       VERBOSE(N_STDOUT,"%s [ERROR] Fork: could not initialize daemon process!\n", get_stats_formated_time());
