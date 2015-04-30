@@ -179,24 +179,33 @@ typedef struct reload_config_vars_s {
    int                   modified_modules;
 } reload_config_vars_t;
 
-typedef struct module_info_parameter_s {
-   char   * short_opt;
-   char   * long_opt;
-   char   * description;
-   int        mandatory_argument;
-   char   * argument_type;
-} module_info_parameter_t;
+/** Structure with information about one module parameter
+ *  Every parameter contains short_opt, long_opt, description,
+ *  flag whether the parameter requires argument and argument type.
+ */
+typedef struct trap_module_info_parameter_s {
+   char   short_opt;
+   char  *long_opt;
+   char  *description;
+   int param_required_argument;
+   char  *argument_type;
+} trap_module_info_parameter_t;
 
+/** Structure with information about module
+ *  This struct contains basic information about the module, such as module's
+ *  name, number of interfaces etc. It's supposed to be filled with static data
+ *  and passed to trap_init function.
+ */
 typedef struct trap_module_info_s {
    char *name;           ///< Name of the module (short string)
    char *description;    /**< Detialed description of the module, can be a long
                               string with several lines or even paragraphs. */
-   unsigned int num_ifc_in;  ///< Number of input interfaces
-   unsigned int num_ifc_out; ///< Number of output interfaces
+   int num_ifc_in;  ///< Number of input interfaces
+   int num_ifc_out; ///< Number of output interfaces
    // TODO more ... (e.g. UniRec specifiers)
-   unsigned int num_params;
-   module_info_parameter_t * params;
+   trap_module_info_parameter_t **params;
 } trap_module_info_t;
+
 
 typedef struct available_module_s available_module_t;
 typedef struct available_modules_path_s available_modules_path_t;

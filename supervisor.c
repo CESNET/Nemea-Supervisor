@@ -218,13 +218,13 @@ int convert_json_module_info(const char * json_str, trap_module_info_t ** info){
       return -1;
    }
    array_size = json_array_size(value);
-   (*info)->num_params = array_size;
-   (*info)->params = (module_info_parameter_t *) calloc (sizeof(module_info_parameter_t), array_size);
+   (*info)->params = (trap_module_info_parameter_t **) calloc (array_size + 1, sizeof(trap_module_info_parameter_t *));
    if((*info)->params == NULL){
       json_decref(json_struct);
       return -2;
    }
    json_array_foreach(value, index_arr, array_value){
+      (*info)->params[index_arr] = (trap_module_info_parameter_t *) calloc (1, sizeof(trap_module_info_parameter_t));
       value2 = json_object_get(array_value, "short_opt");
       if(value2 == NULL){
          fprintf(stderr, "ERROR during converting string from json structure short_opt\n");
@@ -233,8 +233,7 @@ int convert_json_module_info(const char * json_str, trap_module_info_t ** info){
       }
       str = json_string_value(value2);
       if(str != NULL){
-         (*info)->params[index_arr].short_opt = (char*) calloc (sizeof(char), strlen(str)+1);
-         strcpy((*info)->params[index_arr].short_opt, str);
+         (*info)->params[index_arr]->short_opt = str[0];
       }
 
       value2 = json_object_get(array_value, "long_opt");
@@ -245,8 +244,8 @@ int convert_json_module_info(const char * json_str, trap_module_info_t ** info){
       }
       str = json_string_value(value2);
       if(str != NULL){
-         (*info)->params[index_arr].long_opt = (char*) calloc (sizeof(char), strlen(str)+1);
-         strcpy((*info)->params[index_arr].long_opt, str);
+         (*info)->params[index_arr]->long_opt = (char*) calloc (sizeof(char), strlen(str)+1);
+         strcpy((*info)->params[index_arr]->long_opt, str);
       }
 
       value2 = json_object_get(array_value, "description");
@@ -257,8 +256,8 @@ int convert_json_module_info(const char * json_str, trap_module_info_t ** info){
       }
       str = json_string_value(value2);
       if(str != NULL){
-         (*info)->params[index_arr].description = (char*) calloc (sizeof(char), strlen(str)+1);
-         strcpy((*info)->params[index_arr].description, str);
+         (*info)->params[index_arr]->description = (char*) calloc (sizeof(char), strlen(str)+1);
+         strcpy((*info)->params[index_arr]->description, str);
       }
 
       value2 = json_object_get(array_value, "argument_type");
@@ -269,8 +268,8 @@ int convert_json_module_info(const char * json_str, trap_module_info_t ** info){
       }
       str = json_string_value(value2);
       if(str != NULL){
-         (*info)->params[index_arr].argument_type = (char*) calloc (sizeof(char), strlen(str)+1);
-         strcpy((*info)->params[index_arr].argument_type, str);
+         (*info)->params[index_arr]->argument_type = (char*) calloc (sizeof(char), strlen(str)+1);
+         strcpy((*info)->params[index_arr]->argument_type, str);
       }
 
       value2 = json_object_get(array_value, "mandatory_argument");
@@ -279,7 +278,7 @@ int convert_json_module_info(const char * json_str, trap_module_info_t ** info){
          json_decref(json_struct);
          return -1;
       }
-      (*info)->params[index_arr].mandatory_argument = json_integer_value(value);
+      (*info)->params[index_arr]->param_required_argument = json_integer_value(value);
    }
    json_decref(json_struct);
    return 0;
@@ -1501,19 +1500,21 @@ void free_available_modules_structs()
             if (module_p1 -> module_info -> description != NULL) {
                free(module_p1 -> module_info -> description);
             }
-            for (x=0; x < module_p1 -> module_info -> num_params; x++) {
-               if (module_p1 -> module_info -> params[x].short_opt != NULL) {
-                  free(module_p1 -> module_info -> params[x].short_opt);
+            x=0;
+            while (module_p1 -> module_info->params[x] != NULL) {
+               if (module_p1 -> module_info -> params[x]->long_opt != NULL) {
+                  free(module_p1 -> module_info -> params[x]->long_opt);
                }
-               if (module_p1 -> module_info -> params[x].long_opt != NULL) {
-                  free(module_p1 -> module_info -> params[x].long_opt);
+               if (module_p1 -> module_info -> params[x]->description != NULL) {
+                  free(module_p1 -> module_info -> params[x]->description);
                }
-               if (module_p1 -> module_info -> params[x].description != NULL) {
-                  free(module_p1 -> module_info -> params[x].description);
+               if (module_p1 -> module_info -> params[x]->argument_type != NULL) {
+                  free(module_p1 -> module_info -> params[x]->argument_type);
                }
-               if (module_p1 -> module_info -> params[x].argument_type != NULL) {
-                  free(module_p1 -> module_info -> params[x].argument_type);
+               if (module_p1 -> module_info -> params[x] != NULL) {
+                  free(module_p1 -> module_info -> params[x]);
                }
+               x++;
             }
             free(module_p1 -> module_info -> params);
             free(module_p1 -> module_info);
@@ -3686,19 +3687,18 @@ void reload_process_availablemodules_element(reload_config_vars_t ** config_vars
                if (available_module_p -> module_info -> description != NULL) {
                   free(available_module_p -> module_info -> description);
                }
-               for (x=0; x < available_module_p -> module_info -> num_params; x++) {
-                  if (available_module_p -> module_info -> params[x].short_opt != NULL) {
-                     free(available_module_p -> module_info -> params[x].short_opt);
+               x=0;
+               while (available_module_p -> module_info->params[x] != NULL) {
+                  if (available_module_p -> module_info -> params[x]->long_opt != NULL) {
+                     free(available_module_p -> module_info -> params[x]->long_opt);
                   }
-                  if (available_module_p -> module_info -> params[x].long_opt != NULL) {
-                     free(available_module_p -> module_info -> params[x].long_opt);
+                  if (available_module_p -> module_info -> params[x]->description != NULL) {
+                     free(available_module_p -> module_info -> params[x]->description);
                   }
-                  if (available_module_p -> module_info -> params[x].description != NULL) {
-                     free(available_module_p -> module_info -> params[x].description);
+                  if (available_module_p -> module_info -> params[x]->argument_type != NULL) {
+                     free(available_module_p -> module_info -> params[x]->argument_type);
                   }
-                  if (available_module_p -> module_info -> params[x].argument_type != NULL) {
-                     free(available_module_p -> module_info -> params[x].argument_type);
-                  }
+                  x++;
                }
                free(available_module_p -> module_info -> params);
                free(available_module_p -> module_info);
@@ -4491,17 +4491,19 @@ xmlDocPtr netconf_get_state_data()
                xmlNewChild(module_elem, NULL, "number-out-ifc", BAD_CAST buffer);
 
                // Process module parameters
-               for (x = 0; x < avail_path_modules -> module_info -> num_params; x++) {
+               x=0;
+               while (module_info->params[x] != NULL) {
                   param = xmlNewChild(module_elem, NULL, "parameter", NULL);
-                  xmlNewChild(param, NULL, "short-opt", BAD_CAST avail_path_modules -> module_info -> params[x].short_opt);
-                  xmlNewChild(param, NULL, "long-opt", BAD_CAST avail_path_modules -> module_info -> params[x].long_opt);
-                  xmlNewChild(param, NULL, "description", BAD_CAST avail_path_modules -> module_info -> params[x].description);
-                  if (avail_path_modules -> module_info -> params[x].mandatory_argument == TRUE) {
+                  xmlNewChild(param, NULL, "short-opt", BAD_CAST avail_path_modules -> module_info -> params[x]->short_opt);
+                  xmlNewChild(param, NULL, "long-opt", BAD_CAST avail_path_modules -> module_info -> params[x]->long_opt);
+                  xmlNewChild(param, NULL, "description", BAD_CAST avail_path_modules -> module_info -> params[x]->description);
+                  if (avail_path_modules -> module_info -> params[x]->mandatory_argument == TRUE) {
                      xmlNewChild(param, NULL, "mandatory-argument", BAD_CAST "true");
                   } else {
                      xmlNewChild(param, NULL, "mandatory-argument", BAD_CAST "false");
                   }
-                  xmlNewChild(param, NULL, "argument-type", BAD_CAST avail_path_modules -> module_info -> params[x].argument_type);
+                  xmlNewChild(param, NULL, "argument-type", BAD_CAST avail_path_modules -> module_info -> params[x]->argument_type);
+                  x++;
                }
             }
             avail_path_modules = avail_path_modules -> next;
