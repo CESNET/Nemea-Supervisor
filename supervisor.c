@@ -4492,12 +4492,16 @@ xmlDocPtr netconf_get_state_data()
 
                // Process module parameters
                x=0;
-               while (module_info->params[x] != NULL) {
+               while (avail_path_modules->module_info->params[x] != NULL) {
                   param = xmlNewChild(module_elem, NULL, "parameter", NULL);
-                  xmlNewChild(param, NULL, "short-opt", BAD_CAST avail_path_modules -> module_info -> params[x]->short_opt);
-                  xmlNewChild(param, NULL, "long-opt", BAD_CAST avail_path_modules -> module_info -> params[x]->long_opt);
+                  memset(buffer, 0, DEFAULT_SIZE_OF_BUFFER);
+                  sprintf(buffer, "-%c", avail_path_modules -> module_info -> params[x]->short_opt);
+                  xmlNewChild(param, NULL, "short-opt", BAD_CAST buffer);
+                  memset(buffer, 0, DEFAULT_SIZE_OF_BUFFER);
+                  sprintf(buffer, "--%s", avail_path_modules -> module_info -> params[x]->long_opt);
+                  xmlNewChild(param, NULL, "long-opt", BAD_CAST buffer);
                   xmlNewChild(param, NULL, "description", BAD_CAST avail_path_modules -> module_info -> params[x]->description);
-                  if (avail_path_modules -> module_info -> params[x]->mandatory_argument == TRUE) {
+                  if (avail_path_modules -> module_info -> params[x]->param_required_argument == TRUE) {
                      xmlNewChild(param, NULL, "mandatory-argument", BAD_CAST "true");
                   } else {
                      xmlNewChild(param, NULL, "mandatory-argument", BAD_CAST "false");
