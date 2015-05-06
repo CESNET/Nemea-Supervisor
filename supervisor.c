@@ -3529,10 +3529,6 @@ void reload_process_availablemodules_element(reload_config_vars_t ** config_vars
                         perm = sperm (file_stat.st_mode);
                         if (perm != NULL && strcmp(file->d_name, ".") != 0 && strcmp(file->d_name, "..") != 0 && strstr(file->d_name, ".py") == NULL) {
                            if (perm[5] == 'x' || perm[8] == 'x') { // Executable file
-                              if (strstr(file->d_name, "flowcounter") != NULL
-                                 || strstr(file->d_name, "astute") != NULL
-                                 || strstr(file->d_name, "anonymizer") != NULL
-                                 || strstr(file->d_name, "basic2collector") != NULL) {
                                  if (pipe(pipe_fd) != 0) {
                                     fprintf(stderr, "Could not create pipe for module info transfer.\n");
                                     goto clean_up;
@@ -3587,6 +3583,7 @@ void reload_process_availablemodules_element(reload_config_vars_t ** config_vars
                                     if (convert_json_module_info(buffer, &module_info_p) != 0) {
                                        free(module_info_p);
                                        module_info_p = NULL;
+					goto add_module_on_path;
                                     }
                                     wait_cnt = 0;
                                     while (1) {
@@ -3605,8 +3602,9 @@ void reload_process_availablemodules_element(reload_config_vars_t ** config_vars
                                  } else { // Error during fork -> clean up
                                     goto clean_up;
                                  }
-                              }
-                           }
+                           } else {
+				continue;
+			   }
                         } else if (strstr(file->d_name, ".py") != NULL) {
                            // Fork process and execute python
                            // proc = fork();
@@ -3625,7 +3623,7 @@ void reload_process_availablemodules_element(reload_config_vars_t ** config_vars
                         } else {
                            continue;
                         }
-
+add_module_on_path:
                         if (available_modules_path_p -> modules == NULL) {
                            available_modules_path_p -> modules = (available_module_t *) calloc (1, sizeof(available_module_t));
                            available_modules_path_p -> modules -> name = strdup((char *) file -> d_name);
@@ -4458,7 +4456,7 @@ xmlDocPtr netconf_get_state_data()
    xmlNodePtr root_elem = NULL, modules_elem = NULL, module_elem = NULL, trapinterfaces_elem = NULL, interface_elem = NULL;
    xmlNodePtr avail_modules = NULL, binpaths = NULL, param = NULL;
 
-   if (loaded_modules_cnt > 0) {
+   if (loaded_modules_cnt > 0 || first_available_modules_path != NULL) {
       doc_tree_ptr = xmlParseMemory(template, strlen(template));
       if (doc_tree_ptr == NULL) {
          return NULL;
@@ -4468,15 +4466,14 @@ xmlDocPtr netconf_get_state_data()
          return NULL;
       }
 
+      if (first_available_modules_path != NULL) {
       avail_modules = xmlNewChild(root_elem, NULL, "available-modules", NULL);
-      binpaths = xmlNewChild(avail_modules, NULL, "search-paths", NULL);
       modules_elem = xmlNewChild(avail_modules, NULL, "modules", NULL);
 
       available_modules_path_t * avail_path = first_available_modules_path;
       available_module_t * avail_path_modules = NULL;
 
       while (avail_path != NULL) {
-         xmlNewChild(binpaths, NULL, "path", BAD_CAST avail_path -> path);
          avail_path_modules = avail_path -> modules;
          while (avail_path_modules != NULL) {
             module_elem = xmlNewChild(modules_elem, NULL, "module", NULL);
@@ -4514,18 +4511,14 @@ xmlDocPtr netconf_get_state_data()
          }
          avail_path = avail_path -> next;
       }
+      }
 
+	if (loaded_modules_cnt > 0) {
       // get state data about modules with a profile
       while (ptr != NULL) {
          if (ptr->profile_name != NULL) {
             modules_elem = xmlNewChild(root_elem, NULL, BAD_CAST "modules", NULL);
             xmlNewChild(modules_elem, NULL, BAD_CAST "name", BAD_CAST ptr->profile_name);
-            if (ptr->profile_enabled) {
-               xmlNewChild(modules_elem, NULL, BAD_CAST "enabled", BAD_CAST "true");
-            } else {
-               xmlNewChild(modules_elem, NULL, BAD_CAST "enabled", BAD_CAST "false");
-            }
-
             for (x = 0; x < loaded_modules_cnt; x++) {
                if (running_modules[x].modules_profile == NULL) {
                   continue;
@@ -4565,8 +4558,12 @@ xmlDocPtr netconf_get_state_data()
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
                            snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_counters_array[in_ifc_cnt]);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "recv-msg-cnt", BAD_CAST buffer);
-                           in_ifc_cnt++;
+                           xmlNewChild(interface_elem, NULL, BAD_CAST "sent-msg-cnt", BAD_CAST "0");
+                           xmlNewChild(interface_elem, NULL, BAD_CAST "sent-buffer-cnt", BAD_CAST "0");
+                           xmlNewChild(interface_elem, NULL, BAD_CAST "autoflush-cnt", BAD_CAST "0");
+			   in_ifc_cnt++;
                         } else if (xmlStrcmp(BAD_CAST running_modules[x].module_ifces[y].ifc_direction, BAD_CAST "OUT") == 0) {
+                           xmlNewChild(interface_elem, NULL, BAD_CAST "recv-msg-cnt", BAD_CAST "0");
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
                            snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_counters_array[running_modules[x].module_num_in_ifc + out_ifc_cnt]);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-msg-cnt", BAD_CAST buffer);
@@ -4636,9 +4633,13 @@ xmlDocPtr netconf_get_state_data()
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
                            snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_counters_array[in_ifc_cnt]);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "recv-msg-cnt", BAD_CAST buffer);
+                           xmlNewChild(interface_elem, NULL, BAD_CAST "sent-msg-cnt", BAD_CAST "0");
+                           xmlNewChild(interface_elem, NULL, BAD_CAST "sent-buffer-cnt", BAD_CAST "0");
+                           xmlNewChild(interface_elem, NULL, BAD_CAST "autoflush-cnt", BAD_CAST "0");
                            in_ifc_cnt++;
                         } else if (xmlStrcmp(BAD_CAST running_modules[x].module_ifces[y].ifc_direction, BAD_CAST "OUT") == 0) {
-                           memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
+                           xmlNewChild(interface_elem, NULL, BAD_CAST "recv-msg-cnt", BAD_CAST "0");
+			   memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
                            snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_counters_array[running_modules[x].module_num_in_ifc + out_ifc_cnt]);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-msg-cnt", BAD_CAST buffer);
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
@@ -4663,7 +4664,7 @@ xmlDocPtr netconf_get_state_data()
                xmlFree(modules_elem);
             }
          }
-
+	}
 
    }
    xmlCleanupParser();
