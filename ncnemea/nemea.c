@@ -14,7 +14,7 @@
 #include "ncnemea.h"
 
 /* transAPI version which must be compatible with libnetconf */
-int transapi_version = 5;
+int transapi_version = 6;
 
 /* Signal to libnetconf that configuration data were modified by any callback.
  * 0 - data not modified
@@ -226,11 +226,10 @@ int callback_nemea_nemea_supervisor_nemea_modules(void **data __attribute__ ((un
  * @return EXIT_SUCCESS or EXIT_FAILURE
  */
 /* !DO NOT ALTER FUNCTION SIGNATURE! */
-int callback_nemea_nemea_supervisor(void **data __attribute__ ((unused)), XMLDIFF_OP op __attribute__ ((unused)), xmlNodePtr node,
-				    struct nc_err **error __attribute__ ((unused)))
+int callback_nemea_nemea_supervisor(void **data, XMLDIFF_OP op, xmlNodePtr old_node, xmlNodePtr new_node, struct nc_err **error)
 {
 	VERBOSE(N_STDOUT, "Callback supervisor... \n");
-	reload_configuration(RELOAD_CALLBACK_ROOT_ELEM, &node);
+	reload_configuration(RELOAD_CALLBACK_ROOT_ELEM, &new_node);
 	interactive_show_available_modules();
 	return EXIT_SUCCESS;
 }
@@ -241,22 +240,11 @@ int callback_nemea_nemea_supervisor(void **data __attribute__ ((unused)), XMLDIF
 * DO NOT alter this structure
 */
 struct transapi_data_callbacks clbks = {
-	.callbacks_count = 4,
+	.callbacks_count = 1,
 	.data = NULL,
 	.callbacks = {
-		      {.path =
-		       "/nemea:nemea-supervisor/nemea:modules/nemea:module/nemea:enabled",.
-		       func =
-		       callback_nemea_nemea_supervisor_nemea_modules_nemea_module_nemea_enabled},
-		      {.path =
-		       "/nemea:nemea-supervisor/nemea:modules/nemea:module",.
-		       func =
-		       callback_nemea_nemea_supervisor_nemea_modules_nemea_module},
-		      {.path = "/nemea:nemea-supervisor/nemea:modules",.func =
-		       callback_nemea_nemea_supervisor_nemea_modules},
-		      {.path = "/nemea:nemea-supervisor",.func =
-		       callback_nemea_nemea_supervisor}
-		      }
+		      {.path = "/nemea:nemea-supervisor",.func = callback_nemea_nemea_supervisor}
+		     }
 };
 
 /*
