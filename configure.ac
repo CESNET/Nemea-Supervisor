@@ -45,22 +45,6 @@ AX_LIBXML2_CHECK()
 
 # Checks for libraries.
 
-AC_ARG_ENABLE(jansson, AS_HELP_STRING([--enable-jansson],
-		[enable dependency on jansson library, default: yes]),
-[case "${enableval}" in
-	yes) jansson=true ;;
-	no)  jansson=false ;;
-	*)   AC_MSG_ERROR([bad value ${enableval} for --enable-jannson]) ;;
-esac], [jansson=true])
-
-if test "${jansson}" = "true"; then
-	PKG_CHECK_MODULES([JANSSON], [jansson], [JANSSONLIB="yes"], [AC_MSG_ERROR(Jansson was not found by pkg-config)])
-	LDFLAGS="$JANSSON_LDFLAGS $LDFLAGS"
-	LIBS="$JANSSON_LIBS $LIBS"
-	CFLAGS="$JANSSON_CFLAGS $CFLAGS"
-	CXXFLAGS="$JANSSON_CFLAGS $CXXFLAGS"
-fi
-
 # Checks for header files.
 AC_CHECK_HEADERS([fcntl.h limits.h stdlib.h string.h unistd.h])
 
