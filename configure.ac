@@ -15,6 +15,7 @@ AC_SUBST(USERMAIL)
 # Check for rpmbuild
 AC_CHECK_PROG(RPMBUILD, rpmbuild, rpmbuild, [""])
 AM_CONDITIONAL(MAKE_RPMS, test x$RPMBUILD != x)
+AM_SILENT_RULES([yes])
 
 # Checks for programs.
 AC_PROG_CC

@@ -44,25 +44,43 @@
 		 <axsl:value-of select="$fileDirParameter"/></axsl:comment><svrl:ns-prefix-in-attribute-values uri="http://exslt.org/dynamic" prefix="dyn"/><svrl:ns-prefix-in-attribute-values uri="urn:cesnet:tmc:nemea:1.0" prefix="nemea"/><svrl:ns-prefix-in-attribute-values uri="urn:ietf:params:xml:ns:netconf:base:1.0" prefix="nc"/><svrl:active-pattern><axsl:attribute name="id">nemea</axsl:attribute><axsl:attribute name="name">nemea</axsl:attribute><axsl:apply-templates/></svrl:active-pattern><axsl:apply-templates select="/" mode="M4"/></svrl:schematron-output></axsl:template>
 
 <!--SCHEMATRON PATTERNS-->
-<axsl:param name="root" select="/nc:data"/>
+<axsl:param name="root" select="/nc:config"/>
 
 <!--PATTERN nemea-->
 
 
 	<!--RULE -->
-<axsl:template match="/nc:data/nemea:nemea-supervisor/nemea:modules" priority="1002" mode="M4"><svrl:fired-rule xmlns:svrl="http://purl.oclc.org/dsdl/svrl" context="/nc:data/nemea:nemea-supervisor/nemea:modules"/>
+<axsl:template match="/nc:config/nemea:nemea-supervisor/nemea:available-modules/nemea:search-paths/nemea:path" priority="1005" mode="M4"><svrl:fired-rule xmlns:svrl="http://purl.oclc.org/dsdl/svrl" context="/nc:config/nemea:nemea-supervisor/nemea:available-modules/nemea:search-paths/nemea:path"/>
 
 		<!--REPORT -->
-<axsl:if test="preceding-sibling::nemea:modules[nemea:name=current()/nemea:name]"><svrl:successful-report xmlns:svrl="http://purl.oclc.org/dsdl/svrl" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:schold="http://www.ascc.net/xml/schematron" test="preceding-sibling::nemea:modules[nemea:name=current()/nemea:name]"><axsl:attribute name="location"><axsl:apply-templates select="." mode="schematron-get-full-path"/></axsl:attribute><svrl:text>Duplicate key "nemea:name"</svrl:text></svrl:successful-report></axsl:if><axsl:apply-templates select="*|comment()|processing-instruction()" mode="M4"/></axsl:template>
+<axsl:if test=". = preceding-sibling::nemea:path"><svrl:successful-report xmlns:svrl="http://purl.oclc.org/dsdl/svrl" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:schold="http://www.ascc.net/xml/schematron" test=". = preceding-sibling::nemea:path"><axsl:attribute name="location"><axsl:apply-templates select="." mode="schematron-get-full-path"/></axsl:attribute><svrl:text>Duplicate leaf-list entry "<axsl:text/><axsl:value-of select="."/><axsl:text/>".</svrl:text></svrl:successful-report></axsl:if><axsl:apply-templates select="*|comment()|processing-instruction()" mode="M4"/></axsl:template>
 
 	<!--RULE -->
-<axsl:template match="/nc:data/nemea:nemea-supervisor/nemea:modules/nemea:module" priority="1001" mode="M4"><svrl:fired-rule xmlns:svrl="http://purl.oclc.org/dsdl/svrl" context="/nc:data/nemea:nemea-supervisor/nemea:modules/nemea:module"/>
+<axsl:template match="/nc:config/nemea:nemea-supervisor/nemea:available-modules/nemea:modules/nemea:module" priority="1004" mode="M4"><svrl:fired-rule xmlns:svrl="http://purl.oclc.org/dsdl/svrl" context="/nc:config/nemea:nemea-supervisor/nemea:available-modules/nemea:modules/nemea:module"/>
 
 		<!--REPORT -->
 <axsl:if test="preceding-sibling::nemea:module[nemea:name=current()/nemea:name]"><svrl:successful-report xmlns:svrl="http://purl.oclc.org/dsdl/svrl" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:schold="http://www.ascc.net/xml/schematron" test="preceding-sibling::nemea:module[nemea:name=current()/nemea:name]"><axsl:attribute name="location"><axsl:apply-templates select="." mode="schematron-get-full-path"/></axsl:attribute><svrl:text>Duplicate key "nemea:name"</svrl:text></svrl:successful-report></axsl:if><axsl:apply-templates select="*|comment()|processing-instruction()" mode="M4"/></axsl:template>
 
 	<!--RULE -->
-<axsl:template match="/nc:data/nemea:nemea-supervisor/nemea:modules/nemea:module/nemea:trapinterfaces/nemea:interface" priority="1000" mode="M4"><svrl:fired-rule xmlns:svrl="http://purl.oclc.org/dsdl/svrl" context="/nc:data/nemea:nemea-supervisor/nemea:modules/nemea:module/nemea:trapinterfaces/nemea:interface"/>
+<axsl:template match="/nc:config/nemea:nemea-supervisor/nemea:available-modules/nemea:modules/nemea:module/nemea:parameter" priority="1003" mode="M4"><svrl:fired-rule xmlns:svrl="http://purl.oclc.org/dsdl/svrl" context="/nc:config/nemea:nemea-supervisor/nemea:available-modules/nemea:modules/nemea:module/nemea:parameter"/>
+
+		<!--REPORT -->
+<axsl:if test="preceding-sibling::nemea:parameter[nemea:short-opt=current()/nemea:short-opt]"><svrl:successful-report xmlns:svrl="http://purl.oclc.org/dsdl/svrl" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:schold="http://www.ascc.net/xml/schematron" test="preceding-sibling::nemea:parameter[nemea:short-opt=current()/nemea:short-opt]"><axsl:attribute name="location"><axsl:apply-templates select="." mode="schematron-get-full-path"/></axsl:attribute><svrl:text>Duplicate key "nemea:short-opt"</svrl:text></svrl:successful-report></axsl:if><axsl:apply-templates select="*|comment()|processing-instruction()" mode="M4"/></axsl:template>
+
+	<!--RULE -->
+<axsl:template match="/nc:config/nemea:nemea-supervisor/nemea:modules" priority="1002" mode="M4"><svrl:fired-rule xmlns:svrl="http://purl.oclc.org/dsdl/svrl" context="/nc:config/nemea:nemea-supervisor/nemea:modules"/>
+
+		<!--REPORT -->
+<axsl:if test="preceding-sibling::nemea:modules[nemea:name=current()/nemea:name]"><svrl:successful-report xmlns:svrl="http://purl.oclc.org/dsdl/svrl" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:schold="http://www.ascc.net/xml/schematron" test="preceding-sibling::nemea:modules[nemea:name=current()/nemea:name]"><axsl:attribute name="location"><axsl:apply-templates select="." mode="schematron-get-full-path"/></axsl:attribute><svrl:text>Duplicate key "nemea:name"</svrl:text></svrl:successful-report></axsl:if><axsl:apply-templates select="*|comment()|processing-instruction()" mode="M4"/></axsl:template>
+
+	<!--RULE -->
+<axsl:template match="/nc:config/nemea:nemea-supervisor/nemea:modules/nemea:module" priority="1001" mode="M4"><svrl:fired-rule xmlns:svrl="http://purl.oclc.org/dsdl/svrl" context="/nc:config/nemea:nemea-supervisor/nemea:modules/nemea:module"/>
+
+		<!--REPORT -->
+<axsl:if test="preceding-sibling::nemea:module[nemea:name=current()/nemea:name]"><svrl:successful-report xmlns:svrl="http://purl.oclc.org/dsdl/svrl" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:schold="http://www.ascc.net/xml/schematron" test="preceding-sibling::nemea:module[nemea:name=current()/nemea:name]"><axsl:attribute name="location"><axsl:apply-templates select="." mode="schematron-get-full-path"/></axsl:attribute><svrl:text>Duplicate key "nemea:name"</svrl:text></svrl:successful-report></axsl:if><axsl:apply-templates select="*|comment()|processing-instruction()" mode="M4"/></axsl:template>
+
+	<!--RULE -->
+<axsl:template match="/nc:config/nemea:nemea-supervisor/nemea:modules/nemea:module/nemea:trapinterfaces/nemea:interface" priority="1000" mode="M4"><svrl:fired-rule xmlns:svrl="http://purl.oclc.org/dsdl/svrl" context="/nc:config/nemea:nemea-supervisor/nemea:modules/nemea:module/nemea:trapinterfaces/nemea:interface"/>
 
 		<!--REPORT -->
 <axsl:if test="preceding-sibling::nemea:interface[nemea:type=current()/nemea:type and nemea:direction=current()/nemea:direction and nemea:params=current()/nemea:params]"><svrl:successful-report xmlns:svrl="http://purl.oclc.org/dsdl/svrl" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:schold="http://www.ascc.net/xml/schematron" test="preceding-sibling::nemea:interface[nemea:type=current()/nemea:type and nemea:direction=current()/nemea:direction and nemea:params=current()/nemea:params]"><axsl:attribute name="location"><axsl:apply-templates select="." mode="schematron-get-full-path"/></axsl:attribute><svrl:text>Duplicate key "nemea:type nemea:direction nemea:params"</svrl:text></svrl:successful-report></axsl:if><axsl:apply-templates select="*|comment()|processing-instruction()" mode="M4"/></axsl:template><axsl:template match="text()" priority="-1" mode="M4"/><axsl:template match="@*|node()" priority="-2" mode="M4"><axsl:apply-templates select="*|comment()|processing-instruction()" mode="M4"/></axsl:template></axsl:stylesheet>
