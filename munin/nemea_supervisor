@@ -2,9 +2,11 @@
 # \file nemea_supervisor
 # \brief Export script for the Munin system to translate date from supervisor.
 # \author Tomas Cejka <cejkat@cesnet.cz>
+# \author Marek Svepes <svepemar@fit.cvut.cz>
 # \date 2014
+# \date 2015
 #
-# Copyright (C) 2014 CESNET
+# Copyright (C) 2014-2015 CESNET
 #
 # LICENSE TERMS
 #
@@ -50,7 +52,7 @@ LOG_LEVEL = logging.ERROR
 test = False
 
 # path to supervisor socket
-supervisor_socket = "/tmp/MAIN_sup.sock"
+supervisor_socket = "/var/run/nemea-supervisor.sock"
 
 # temporary file with downloaded data
 data_temp_file = "/tmp/munin_nemea_data.txt"
@@ -66,6 +68,7 @@ labels = {
 	"in": ["received messages"],
 	"out": ["sent messages", "sent buffers", "autoflush"],
 	"cpu": ["kernel mode", "user mode"],
+	"mem": ["virtual memory"],
 }
 
 # data types of counters in graphs
@@ -73,20 +76,23 @@ datatypes = {
 	"in": ["DERIVE"],
 	"out": ["DERIVE", "DERIVE", "DERIVE"],
 	"cpu": ["GAUGE", "GAUGE"],
+	"mem": ["GAUGE"],
 }
 
 # vertical axis labels
 vlabels = {
 	"in": "count",
 	"out": "count",
-	"cpu": "%"
+	"cpu": "%",
+	"mem": "kB",
 }
 
 # graph titles
 graph_title = {
 	"in": "input IFC",
 	"out": "output IFC",
-	"cpu": "CPU usage"
+	"cpu": "CPU usage",
+	"mem": "Memory usage",
 }
 
 #==============================
@@ -189,7 +195,7 @@ def parseData(data):
 		logging.error("Cannot parse data. (%s)" % e)
 
 def genModuleGraph(name, data):
-	for i in "cpu", "in", "out":
+	for i in "cpu", "in", "out", "mem":
 		if data.has_key(i):
 			for graphid in range(0, data[i].__len__()):
 				print "multigraph %s_%s%d" % (name, i, graphid)
@@ -200,7 +206,7 @@ def genModuleGraph(name, data):
 				print 'graph_vlabel %s' % vlabels[i]
 				print "graph_category nemea_supervisor"
 				graph = data[i][graphid]
-				if i == "cpu":
+				if i in ["cpu", "mem"]:
 					r = range(0, graph.__len__())
 				else:
 					r = range(0, graph.__len__()-1)
@@ -241,6 +247,23 @@ def getTotalCPUValues(modules):
 		for i in sel_modules:
 			print "%s.value %s" % (i, modules[i]["cpu"][0][1])
 
+def getTotalMEMConfiguration(modules):
+	sel_modules = []
+	for i in modules:
+		if modules[i].has_key("mem"):
+			sel_modules.append(i)
+	if sel_modules:
+		print "multigraph nemea_modules_mem"
+		print "graph_title Virtual memory usage of Nemea modules"
+		print "graph_category nemea_supervisor"
+		print 'graph_vlabel %s' % vlabels["mem"]
+		print "graph_info Virtual memory usage of all running and monitored modules."
+		for i in sel_modules:
+			print "%s.label %s" % (i, i.replace("_", " "))
+			print "%s.min 0" % i
+			print "%s.type GAUGE" % i
+			print "%s.draw AREASTACK" % i
+
 def getTotalMEMValues(modules):
 	sel_modules = []
 	for i in modules:
@@ -253,6 +276,7 @@ def getTotalMEMValues(modules):
 
 def getConfiguration(modules):
 	getTotalCPUConfiguration(modules)
+	getTotalMEMConfiguration(modules)
 	for module in modules:
 		genModuleGraph(module, modules[module])
 
@@ -288,7 +312,7 @@ if not data:
 
 parseData(data)
 if len(sys.argv) == 2 and sys.argv[1] == "autoconf":
-        print "yes"
+	print "yes"
 elif len(sys.argv) == 2 and sys.argv[1] == "config":
 	getConfiguration(modules)
 elif len(sys.argv) == 2 and sys.argv[1] == "suggest":
