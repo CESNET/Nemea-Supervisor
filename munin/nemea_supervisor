@@ -2,9 +2,11 @@
 # \file nemea_supervisor
 # \brief Export script for the Munin system to translate date from supervisor.
 # \author Tomas Cejka <cejkat@cesnet.cz>
+# \author Marek Svepes <svepemar@fit.cvut.cz>
 # \date 2014
+# \date 2015
 #
-# Copyright (C) 2014 CESNET
+# Copyright (C) 2014-2015 CESNET
 #
 # LICENSE TERMS
 #
@@ -41,6 +43,11 @@
 # set to false to call supervisor_cli to get data
 
 import logging
+import os
+import time
+import signal
+import subprocess
+
 LOG_FILENAME = '/tmp/nemea_supervisor_munin.log'
 #LOG_LEVEL = logging.DEBUG
 LOG_LEVEL = logging.ERROR
@@ -50,7 +57,7 @@ LOG_LEVEL = logging.ERROR
 test = False
 
 # path to supervisor socket
-supervisor_socket = "/tmp/MAIN_sup.sock"
+supervisor_socket = "/var/run/nemea-supervisor.sock"
 
 # temporary file with downloaded data
 data_temp_file = "/tmp/munin_nemea_data.txt"
@@ -66,6 +73,7 @@ labels = {
 	"in": ["received messages"],
 	"out": ["sent messages", "sent buffers", "autoflush"],
 	"cpu": ["kernel mode", "user mode"],
+	"mem": ["virtual memory"],
 }
 
 # data types of counters in graphs
@@ -73,39 +81,45 @@ datatypes = {
 	"in": ["DERIVE"],
 	"out": ["DERIVE", "DERIVE", "DERIVE"],
 	"cpu": ["GAUGE", "GAUGE"],
+	"mem": ["GAUGE"],
 }
 
 # vertical axis labels
 vlabels = {
 	"in": "count",
 	"out": "count",
-	"cpu": "%"
+	"cpu": "%",
+	"mem": "kB",
 }
 
 # graph titles
 graph_title = {
 	"in": "input IFC",
 	"out": "output IFC",
-	"cpu": "CPU usage"
+	"cpu": "CPU usage",
+	"mem": "Memory usage",
 }
 
 #==============================
 # end of configuration        #
 #==============================
-
 logging.basicConfig(filename=LOG_FILENAME,
 		level=LOG_LEVEL,
 		format='%(asctime)s %(levelname)s %(message)s',
 		filemod='a')
-global child_pid
+child_pid = -1
 
 def handler_function(signum, stackframe):
-	os.unlink(data_temp_file)
-	os.kill(child_pid, signal.SIGTERM)
+	global child_pid
+	try:
+		os.unlink(data_temp_file)
+	except:
+		pass
+	if child_pid != -1:
+		os.kill(child_pid, signal.SIGTERM)
 	logging.error("Timouted... Exiting.")
 	exit(1)
 
-import signal
 #Sets an handler function, you can comment it if you don't need it.
 signal.signal(signal.SIGALRM,handler_function)
 
@@ -131,22 +145,18 @@ MAIN_dns_amplification,mem,330000
 MAIN_dns_amp_report_handler,mem,440000
 """
 else:
-	import os
-	import time
 	current_time = time.time()
 	last_time = 0
 	try:
 		last_time = os.stat(data_temp_file).st_mtime
 	except:
-		logging.debug("%s not found or cannot read info." % data_temp_file)
+		logging.debug("{} not found or cannot read info.".format(data_temp_file))
 		pass
 	if (current_time - last_time) > munin_interval:
 		logging.debug("Download new data.")
-		import subprocess
 		sup = ""
 		try:
 			sup = subprocess.Popen([supervisor_cli, "-x", "-s", supervisor_socket], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-			global child_pid
 			child_pid = sup.pid
 			(data, errdata) = sup.communicate()
 			sup.wait()
@@ -159,8 +169,9 @@ else:
 			with open(data_temp_file, "w") as f:
 				f.write(data)
 		except Exception as e:
-			logging.critical("Download failed. (%s)" % e)
-			os.kill(child_pid, signal.SIGTERM)
+			logging.critical("Download failed. ({})".format(e))
+			if child_pid != -1:
+				os.kill(child_pid, signal.SIGTERM)
 			exit(1)
 	else:
 		logging.debug("Use existing data.")
@@ -170,89 +181,108 @@ else:
 				data = data + line
 
 
-counters = []
-modules = {}
 
 def parseData(data):
+	modules = {}
+	counters = []
 	try:
 		for line in data.split('\n'):
 			if not line:
 				continue
 			parsed_line = line.split(',')
 			counters.append(parsed_line)
-			if not modules.has_key(parsed_line[0]):
+			if parsed_line[0] not in modules:
 				modules[parsed_line[0]] = {}
-			if not modules[parsed_line[0]].has_key(parsed_line[1]):
+			if parsed_line[1] not in modules[parsed_line[0]]:
 				modules[parsed_line[0]][parsed_line[1]] = []
 			modules[parsed_line[0]][parsed_line[1]].append(parsed_line[2:])
 	except Exception as e:
-		logging.error("Cannot parse data. (%s)" % e)
+		logging.error("Cannot parse data. ({})".format(e))
+	return modules
 
 def genModuleGraph(name, data):
-	for i in "cpu", "in", "out":
-		if data.has_key(i):
+	for i in "cpu", "in", "out", "mem":
+		if i in data:
 			for graphid in range(0, data[i].__len__()):
-				print "multigraph %s_%s%d" % (name, i, graphid)
+				print("multigraph {}_{}{}".format(name, i, graphid))
 				if i == "cpu":
-					print 'graph_title %s %s' % (name, graph_title[i])
+					print('graph_title {} {}'.format(name, graph_title[i]))
 				else:
-					print 'graph_title %s %s %d' % (name, graph_title[i], graphid)
-				print 'graph_vlabel %s' % vlabels[i]
-				print "graph_category nemea_supervisor"
+					print('graph_title {} {} {}'.format(name, graph_title[i], graphid))
+				print('graph_vlabel {}'.format(vlabels[i]))
+				print("graph_category nemea_supervisor")
 				graph = data[i][graphid]
-				if i == "cpu":
+				if i in ["cpu", "mem"]:
 					r = range(0, graph.__len__())
 				else:
 					r = range(0, graph.__len__()-1)
 				for statid in r:
-					print "stat%d.label %s" % (statid, labels[i][statid])
-					print "stat%d.type %s" % (statid, datatypes[i][statid])
+					print("stat{}.label {}".format(statid, labels[i][statid]))
+					print("stat{}.type {}".format(statid, datatypes[i][statid]))
 					if i == "cpu":
-						print "stat%d.min 0" % statid
-						print "stat%d.max 100" % statid
+						print("stat{}.min 0".format(statid))
+						print("stat{}.max 100".format(statid))
 
-				print ""
+				print("")
 
 
 def getTotalCPUConfiguration(modules):
 	sel_modules = []
 	for i in modules:
-		if modules[i].has_key("cpu"):
+		if "cpu" in modules[i]:
 			sel_modules.append(i)
 	if sel_modules:
-		print "multigraph nemea_modules_cpu"
-		print "graph_title CPU usage of Nemea modules"
-		print "graph_category nemea_supervisor"
-		print 'graph_vlabel %s' % vlabels["cpu"]
-		print "graph_info User CPU usage of all running and monitored modules."
+		print("multigraph nemea_modules_cpu")
+		print("graph_title CPU usage of Nemea modules")
+		print("graph_category nemea_supervisor")
+		print('graph_vlabel {}'.format(vlabels["cpu"]))
+		print("graph_info User CPU usage of all running and monitored modules.")
 		for i in sel_modules:
-			print "%s.label %s" % (i, i.replace("_", " "))
-			print "%s.min 0" % i
-			print "%s.type GAUGE" % i
-			print "%s.draw AREASTACK" % i
+			print("{}.label {}".format(i, i.replace("_", " ")))
+			print("{}.min 0".format(i))
+			print("{}.type GAUGE".format(i))
+			print("{}.draw AREASTACK".format(i))
 
 def getTotalCPUValues(modules):
 	sel_modules = []
 	for i in modules:
-		if modules[i].has_key("cpu"):
+		if "cpu" in modules[i]:
 			sel_modules.append(i)
 	if sel_modules:
-		print "multigraph nemea_modules_cpu"
+		print("multigraph nemea_modules_cpu")
 		for i in sel_modules:
-			print "%s.value %s" % (i, modules[i]["cpu"][0][1])
+			print("{}.value {}".format(i, modules[i]["cpu"][0][1]))
+
+def getTotalMEMConfiguration(modules):
+	sel_modules = []
+	for i in modules:
+		if "mem" in modules[i]:
+			sel_modules.append(i)
+	if sel_modules:
+		print("multigraph nemea_modules_mem")
+		print("graph_title Virtual memory usage of Nemea modules")
+		print("graph_category nemea_supervisor")
+		print('graph_vlabel {}'.format(vlabels["mem"]))
+		print("graph_info Virtual memory usage of all running and monitored modules.")
+		for i in sel_modules:
+			print("{}.label {}".format(i, i.replace("_", " ")))
+			print("{}.min 0".format(i))
+			print("{}.type GAUGE".format(i))
+			print("{}.draw AREASTACK".format(i))
 
 def getTotalMEMValues(modules):
 	sel_modules = []
 	for i in modules:
-		if modules[i].has_key("mem"):
+		if "mem" in modules[i]:
 			sel_modules.append(i)
 	if sel_modules:
-		print "multigraph nemea_modules_mem"
+		print("multigraph nemea_modules_mem")
 		for i in sel_modules:
-			print "%s.value %s" % (i, modules[i]["mem"][0][0])
+			print("{}.value {}".format(i, modules[i]["mem"][0][0]))
 
 def getConfiguration(modules):
 	getTotalCPUConfiguration(modules)
+	getTotalMEMConfiguration(modules)
 	for module in modules:
 		genModuleGraph(module, modules[module])
 
@@ -266,19 +296,19 @@ def getValues(modules):
 			graphs = modules[module][cat]
 			for graphid in range(0, graphs.__len__()):
 				graph = graphs[graphid]
-				print "multigraph %s_%s%d" % (module, cat, graphid)
+				print("multigraph {}_{}{}".format(module, cat, graphid))
 				if cat == "cpu":
 					r = range(0, graph.__len__())
 					for val in r:
-						print "stat%s.value %d" % (val, abs(int(graph[val])))
+						print("stat{}.value {}".format(val, abs(int(graph[val]))))
 				elif cat == "mem":
 					r = range(0, graph.__len__())
 					for val in r:
-						print "stat%s.value %d" % (val, abs(int(graph[val])))
+						print("stat{}.value {}".format(val, abs(int(graph[val]))))
 				else:
 					r = range(1, graph.__len__())
 					for val in r:
-						print "stat%s.value %d" % (val-1, abs(int(graph[val])))
+						print("stat{}.value {}".format(val-1, abs(int(graph[val]))))
 
 import sys
 if not data:
@@ -286,13 +316,13 @@ if not data:
 	os.unlink(data_temp_file)
 	exit(1)
 
-parseData(data)
+modules = parseData(data)
 if len(sys.argv) == 2 and sys.argv[1] == "autoconf":
-        print "yes"
+	print("yes")
 elif len(sys.argv) == 2 and sys.argv[1] == "config":
 	getConfiguration(modules)
 elif len(sys.argv) == 2 and sys.argv[1] == "suggest":
-	print ""
+	print("")
 else:
 	#values
 	getValues(modules)
