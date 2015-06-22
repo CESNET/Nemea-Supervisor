@@ -4,9 +4,9 @@
 #include <inttypes.h>
 #include <getopt.h>
 
-#include "module_info_test.h"
+#include <libtrap/trap.h>
 
-module_info_test_t * module_info = NULL;
+trap_module_info_t * module_info = NULL;
 
 
 // Definition of basic module information - module name, module description, number of input and output interfaces
@@ -16,12 +16,12 @@ module_info_test_t * module_info = NULL;
 // Definition of module parameters - every parameter has short_opt, long_opt, description, flag whether argument is required or it is optional
 // and argument type which is NULL in case the parameter does not need argument
 #define MODULE_PARAMS(PARAM) \
-  PARAM('s', "long_opt", "description", 0, NULL) \
-  PARAM('b', "long_opt2", "description2", 1, "argument_type") \
-  PARAM('d', "long_opt3", "description3", 1, "argument_type") \
-  PARAM('u', "long_opt4", "description4", 0, NULL) \
-  PARAM('i', "long_opt5", "description5", 1, "argument_type") \
-  PARAM('c', "long_opt6", "description6", 1, "argument_type")
+  PARAM('s', "long_opt", "description", no_argument, NULL) \
+  PARAM('b', "long_opt2", "description2", required_argument, "argument_type") \
+  PARAM('d', "long_opt3", "description3", required_argument, "argument_type") \
+  PARAM('u', "long_opt4", "description4", no_argument, NULL) \
+  PARAM('i', "long_opt5", "description5", required_argument, "argument_type") \
+  PARAM('c', "long_opt6", "description6", required_argument, "argument_type")
 
 
 int main()
@@ -32,9 +32,10 @@ int main()
 	INIT_MODULE_INFO_STRUCT(MODULE_BASIC_INFO, MODULE_PARAMS);
 
 	printf("--- Module_info structure after initialization ---\n");
-	printf("Basic info: %s %s %d %d\nParams:\n", module_info -> name, module_info -> description, module_info -> num_in_ifc, module_info -> num_out_ifc);
-	for (x = 0; x < trap_module_params_cnt; x++) {
-		printf("-%c --%s %s %d %s\n", module_info -> params[x].short_opt, module_info -> params[x].long_opt, module_info -> params[x].description, module_info -> params[x].param_required_argument, module_info -> params[x].argument_type);
+	printf("Basic info: %s %s %d %d\nParams:\n", module_info->name, module_info->description, module_info->num_ifc_in, module_info->num_ifc_out);
+	while (module_info->params[x] != NULL) {
+		printf("-%c --%s %s %d %s\n", module_info->params[x]->short_opt, module_info->params[x]->long_opt, module_info->params[x]->description, module_info->params[x]->param_required_argument, module_info->params[x]->argument_type);
+		x++;
 	}
 
 	// Generate long_options array of structures for getopt_long function
@@ -43,7 +44,7 @@ int main()
 	x = 0;
 	printf("\n--- Long_options structure after initialization ---\n");
 	while (long_options[x].name != 0) {
-		printf("{%s, %d, 0, %c}\n", long_options[x].name, long_options[x].has_arg, (char)long_options[x].val);
+		printf("{%s, %d, 0, '%c'}\n", long_options[x].name, long_options[x].has_arg, (char)long_options[x].val);
 		x++;
 	}
 
