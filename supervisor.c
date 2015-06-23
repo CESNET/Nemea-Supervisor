@@ -278,7 +278,7 @@ int convert_json_module_info(const char * json_str, trap_module_info_t ** info){
          json_decref(json_struct);
          return -1;
       }
-      (*info)->params[index_arr]->param_required_argument = json_integer_value(value);
+      (*info)->params[index_arr]->param_required_argument = json_integer_value(value2);
    }
    json_decref(json_struct);
    return 0;
@@ -3421,7 +3421,7 @@ void reload_process_availablemodules_element(reload_config_vars_t ** config_vars
 {
    VERBOSE(N_STDOUT, "--- Modules auto-detection ---\n");
    int found = FALSE, ret_val = 0, wait_cnt = 0, status = 0, signalll = 2, x = 0, y = 0, received_bytes = 0;
-   uint32_t size_of_buffer = 5*DEFAULT_SIZE_OF_BUFFER;
+   uint32_t size_of_buffer = 20*DEFAULT_SIZE_OF_BUFFER;
    uint32_t size_of_args0 = DEFAULT_SIZE_OF_BUFFER, size_of_args1 = DEFAULT_SIZE_OF_BUFFER, size_of_args2 = DEFAULT_SIZE_OF_BUFFER;
    xmlChar * key = NULL;
    DIR * bin_dir_str = NULL;
@@ -3556,7 +3556,6 @@ void reload_process_availablemodules_element(reload_config_vars_t ** config_vars
                                        fprintf(stderr, "%s [ERROR] Could not set nonblocking mode on pipe.\n", get_stats_formated_time());
                                        continue;
                                     }
-                                    usleep(100000);
                                     memset(buffer, 0, size_of_buffer*sizeof(char));
                                     received_bytes = 0;
                                     wait_cnt = 0;
@@ -3571,7 +3570,7 @@ void reload_process_availablemodules_element(reload_config_vars_t ** config_vars
                                           received_bytes += ret_val;
                                        } else if ( ret_val == -1) {
                                           wait_cnt++;
-                                          usleep(10000);
+                                          usleep(100000);
                                        } else {
                                           break;
                                        }
