@@ -17,6 +17,16 @@ AC_CHECK_PROG(RPMBUILD, rpmbuild, rpmbuild, [""])
 AM_CONDITIONAL(MAKE_RPMS, test x$RPMBUILD != x)
 AM_SILENT_RULES([yes])
 
+AC_ARG_ENABLE([debug],
+        AC_HELP_STRING([--enable-debug],
+        [Enable build with debug symbols and without optimizations.]),
+        [if test "$enableval" = "yes"; then
+                CFLAGS="-Wall -g -O0 $CFLAGS"
+                CXXFLAGS="-Wall -g -O0 $CXXFLAGS"
+        fi], [CFLAGS="-Wall -O3 $CFLAGS"
+              CXXFLAGS="-Wall -O3 $CXXFLAGS"])
+AM_CONDITIONAL(DEBUG, test x"$debug" = x"true")
+
 # Checks for programs.
 AC_PROG_CC
 AM_PROG_CC_C_O
