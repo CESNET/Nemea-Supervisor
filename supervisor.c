@@ -1052,7 +1052,6 @@ void supervisor_flags_initialization()
 
 int supervisor_initialization()
 {
-   unsigned int y = 0;
    init_time_info = get_sys_time();
 
    input_fd = stdin;
@@ -2876,7 +2875,6 @@ void reload_process_supervisor_element(reload_config_vars_t ** config_vars)
 
 void reload_process_module_atribute(reload_config_vars_t ** config_vars, char ** module_ifc_atr)
 {
-   int str_len = 0;
    xmlChar * key = NULL;
 
    key = xmlNodeListGetString((*config_vars)->doc_tree_ptr, (*config_vars)->module_atr_elem->xmlChildrenNode, 1);
@@ -2891,7 +2889,6 @@ void reload_process_module_atribute(reload_config_vars_t ** config_vars, char **
                free(*module_ifc_atr);
                *module_ifc_atr = NULL;
             }
-            str_len = strlen((char *) key);
             *module_ifc_atr = (char *) xmlStrdup(key);
          }
       } else if (*module_ifc_atr == NULL && key == NULL) {
@@ -2900,7 +2897,6 @@ void reload_process_module_atribute(reload_config_vars_t ** config_vars, char **
          VERBOSE(N_STDOUT, "[WARNING] %s's attribute \"%s\" should be empty, gonna update it.\n",
                running_modules[(*config_vars)->current_module_idx].module_name, (char *)(*config_vars)->module_atr_elem->name);
          running_modules[(*config_vars)->current_module_idx].module_modified_by_reload = TRUE;
-         str_len = strlen((char *) key);
          *module_ifc_atr = (char *) xmlStrdup(key);
       } else if (key == NULL) {
          VERBOSE(N_STDOUT, "[WARNING] %s's attribute \"%s\" shouldn't be empty, gonna update it.\n",
@@ -2915,7 +2911,6 @@ void reload_process_module_atribute(reload_config_vars_t ** config_vars, char **
       if (key == NULL) {
          *module_ifc_atr = NULL;
       } else {
-         str_len = strlen((char *) key);
          *module_ifc_atr = (char *) xmlStrdup(key);
       }
    }
@@ -3420,9 +3415,9 @@ char const * sperm(__mode_t mode) {
 void reload_process_availablemodules_element(reload_config_vars_t ** config_vars)
 {
    VERBOSE(N_STDOUT, "--- Modules auto-detection ---\n");
-   int found = FALSE, ret_val = 0, wait_cnt = 0, status = 0, signalll = 2, x = 0, y = 0, received_bytes = 0;
+   int found = FALSE, ret_val = 0, wait_cnt = 0, status = 0, signalll = 2, x = 0, received_bytes = 0;
    uint32_t size_of_buffer = 20*DEFAULT_SIZE_OF_BUFFER;
-   uint32_t size_of_args0 = DEFAULT_SIZE_OF_BUFFER, size_of_args1 = DEFAULT_SIZE_OF_BUFFER, size_of_args2 = DEFAULT_SIZE_OF_BUFFER;
+   uint32_t size_of_args0 = DEFAULT_SIZE_OF_BUFFER, size_of_args1 = DEFAULT_SIZE_OF_BUFFER;
    xmlChar * key = NULL;
    DIR * bin_dir_str = NULL;
    struct dirent * file = NULL;
@@ -3441,7 +3436,6 @@ void reload_process_availablemodules_element(reload_config_vars_t ** config_vars
    args[1] = (char *) calloc (size_of_args1, sizeof(char));
    args[2] = NULL;
    args[3] = NULL;
-   char * args2_allocated = (char *) calloc (size_of_args2, sizeof(char));
 
    int pipe_fd[2];
    pipe_fd[0] = 0; pipe_fd[1] = 0;
@@ -3483,7 +3477,7 @@ void reload_process_availablemodules_element(reload_config_vars_t ** config_vars
                      continue;
                   } else {
                      VERBOSE(N_STDOUT, "-> New path %s\n", (char *) key);
-                     bin_dir_str = opendir(key);
+                     bin_dir_str = opendir((char *) key);
                      if (bin_dir_str == NULL) {
                         xmlFree(key);
                         key = NULL;
@@ -3740,13 +3734,11 @@ int reload_configuration(const int choice, xmlNodePtr * node)
    pthread_mutex_lock(&running_modules_lock);
 
    int modules_got_profile;
-   unsigned int x = 0, y = 0;
+   unsigned int x = 0;
    int number = 0;
-   int ret_val = 0;
    unsigned int original_loaded_modules_cnt = loaded_modules_cnt;
    int already_loaded_modules_found[loaded_modules_cnt];
    memset(already_loaded_modules_found, 0, loaded_modules_cnt*sizeof(int));
-   int str_len = 0;
    char * buffer = NULL;
    int ifc_cnt = 0;
    reload_config_vars_t * config_vars = (reload_config_vars_t *) calloc (1, sizeof(reload_config_vars_t));
@@ -4007,7 +3999,6 @@ int reload_configuration(const int choice, xmlNodePtr * node)
                      if (config_vars->new_module == TRUE) {
                         key = xmlNodeListGetString(config_vars->doc_tree_ptr, config_vars->module_atr_elem->xmlChildrenNode, 1);
                         if (key != NULL) {
-                           str_len = strlen((char *) key);
                            running_modules[config_vars->current_module_idx].module_name = (char *) xmlStrdup(key);
                            xmlFree(key);
                            key = NULL;
@@ -4337,24 +4328,24 @@ void generate_backup_config_file()
 
             memset(buffer,0,20);
             sprintf(buffer, "%d", running_modules[x].module_pid);
-            xmlNewProp (module, "module_pid", buffer);
+            xmlNewProp (module, BAD_CAST "module_pid", BAD_CAST buffer);
 
-            xmlNewChild(module, NULL, BAD_CAST "name", running_modules[x].module_name);
-            xmlNewChild(module, NULL, BAD_CAST "path", running_modules[x].module_path);
-            xmlNewChild(module, NULL, BAD_CAST "params", running_modules[x].module_params);
+            xmlNewChild(module, NULL, BAD_CAST "name", BAD_CAST running_modules[x].module_name);
+            xmlNewChild(module, NULL, BAD_CAST "path", BAD_CAST running_modules[x].module_path);
+            xmlNewChild(module, NULL, BAD_CAST "params", BAD_CAST running_modules[x].module_params);
             if (running_modules[x].module_enabled) {
-               xmlNewChild(module, NULL, BAD_CAST "enabled", "true");
+               xmlNewChild(module, NULL, BAD_CAST "enabled", BAD_CAST "true");
             } else {
-               xmlNewChild(module, NULL, BAD_CAST "enabled", "false");
+               xmlNewChild(module, NULL, BAD_CAST "enabled", BAD_CAST "false");
             }
             trapinterfaces = xmlNewChild(module, NULL, BAD_CAST "trapinterfaces", NULL);
 
             for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
                interface = xmlNewChild(trapinterfaces, NULL, BAD_CAST "interface", NULL);
-               xmlNewChild(interface, NULL, BAD_CAST "note", running_modules[x].module_ifces[y].ifc_note);
-               xmlNewChild(interface, NULL, BAD_CAST "params", running_modules[x].module_ifces[y].ifc_params);
-               xmlNewChild(interface, NULL, BAD_CAST "direction", running_modules[x].module_ifces[y].ifc_direction);
-               xmlNewChild(interface, NULL, BAD_CAST "type", running_modules[x].module_ifces[y].ifc_type);
+               xmlNewChild(interface, NULL, BAD_CAST "note", BAD_CAST running_modules[x].module_ifces[y].ifc_note);
+               xmlNewChild(interface, NULL, BAD_CAST "params", BAD_CAST running_modules[x].module_ifces[y].ifc_params);
+               xmlNewChild(interface, NULL, BAD_CAST "direction", BAD_CAST running_modules[x].module_ifces[y].ifc_direction);
+               xmlNewChild(interface, NULL, BAD_CAST "type", BAD_CAST running_modules[x].module_ifces[y].ifc_type);
 
                if (xmlAddChild(trapinterfaces, interface) == NULL) {
                   xmlFree(interface);
