@@ -115,7 +115,7 @@ int connect_to_supervisor(char *socket_path)
 
    client_internals->supervisor_sd = socket(AF_UNIX, SOCK_STREAM, 0);
    if (client_internals->supervisor_sd < 0) {
-      fprintf(stderr, "[ERROR] Could not create socket!\n");
+      fprintf(stderr, ANSI_RED_BOLD "[ERROR] Could not create socket!" ANSI_ATTR_RESET "\n");
       return EXIT_FAILURE;
    }
 
@@ -177,7 +177,7 @@ int main(int argc, char **argv)
    }
 
    if(connect_to_supervisor(socket_path) == EXIT_FAILURE){
-      fprintf(stderr, "[ERROR] Could not connect to supervisor!\n");
+      fprintf(stderr, ANSI_RED_BOLD "[ERROR] Could not connect to supervisor!" ANSI_ATTR_RESET "\n");
       free_client_internals_variables();
       exit(EXIT_FAILURE);
    } else {
@@ -186,21 +186,21 @@ int main(int argc, char **argv)
 
    client_internals->supervisor_input_stream = fdopen(client_internals->supervisor_sd, "r");
    if(client_internals->supervisor_input_stream == NULL) {
-      fprintf(stderr, "[ERROR] Fdopen: could not open supervisor input stream!\n");
+      fprintf(stderr, ANSI_RED_BOLD "[ERROR] Fdopen: could not open supervisor input stream!" ANSI_ATTR_RESET "\n");
       free_client_internals_variables();
       exit(EXIT_FAILURE);
    }
 
    client_internals->supervisor_output_stream = fdopen(client_internals->supervisor_sd, "w");
    if(client_internals->supervisor_output_stream == NULL) {
-      fprintf(stderr, "[ERROR] Fdopen: could not open supervisor output stream!\n");
+      fprintf(stderr, ANSI_RED_BOLD "[ERROR] Fdopen: could not open supervisor output stream!" ANSI_ATTR_RESET "\n");
       free_client_internals_variables();
       exit(EXIT_FAILURE);
    }
 
    client_internals->supervisor_input_stream_fd = fileno(client_internals->supervisor_input_stream);
    if(client_internals->supervisor_input_stream_fd < 0) {
-      fprintf(stderr, "[ERROR] Fileno: could not get supervisor input stream descriptor!\n");
+      fprintf(stderr, ANSI_RED_BOLD "[ERROR] Fileno: could not get supervisor input stream descriptor!" ANSI_ATTR_RESET "\n");
       free_client_internals_variables();
       exit(EXIT_FAILURE);
    }
@@ -260,7 +260,7 @@ int main(int argc, char **argv)
             usleep(200000);
             ioctl(client_internals->supervisor_input_stream_fd, FIONREAD, &bytes_to_read);
             if (bytes_to_read == 0 || bytes_to_read == -1) {
-               fprintf(stderr, ANSI_RED_BOLD "[WARNING] Supervisor has disconnected, I'm done!\n" ANSI_ATTR_RESET);
+               fprintf(stderr, ANSI_RED_BOLD "[WARNING] Supervisor has disconnected, I'm done!" ANSI_ATTR_RESET "\n");
                fflush(stderr);
                free_client_internals_variables();
                exit(EXIT_SUCCESS);
