@@ -142,7 +142,6 @@ union tcpip_socket_addr {
 
 void reload_check_module_allocated_interfaces(const int running_module_idx, const int ifc_cnt);
 void disconnect_service_ifc(const int module_idx);
-void free_module_ifc_on_index(const int module_idx, const int ifc_idx);
 void * serve_sup_client_routine (void * arg);
 void check_running_modules_allocated_memory();
 long int get_total_cpu_usage();
@@ -1512,29 +1511,9 @@ void free_available_modules_structs()
    first_available_modules_path = NULL;
 }
 
-void free_module_ifc_on_index(const int module_idx, const int ifc_idx)
-{
-   if (running_modules[module_idx].module_ifces[ifc_idx].ifc_note != NULL) {
-      free(running_modules[module_idx].module_ifces[ifc_idx].ifc_note);
-      running_modules[module_idx].module_ifces[ifc_idx].ifc_note = NULL;
-   }
-   if (running_modules[module_idx].module_ifces[ifc_idx].ifc_type != NULL) {
-      free(running_modules[module_idx].module_ifces[ifc_idx].ifc_type);
-      running_modules[module_idx].module_ifces[ifc_idx].ifc_type = NULL;
-   }
-   if (running_modules[module_idx].module_ifces[ifc_idx].ifc_direction != NULL) {
-      free(running_modules[module_idx].module_ifces[ifc_idx].ifc_direction);
-      running_modules[module_idx].module_ifces[ifc_idx].ifc_direction = NULL;
-   }
-   if (running_modules[module_idx].module_ifces[ifc_idx].ifc_params != NULL) {
-      free(running_modules[module_idx].module_ifces[ifc_idx].ifc_params);
-      running_modules[module_idx].module_ifces[ifc_idx].ifc_params = NULL;
-   }
-}
-
 void supervisor_termination(int stop_all_modules, int generate_backup)
 {
-   unsigned int x = 0, y = 0, attemps = 0;
+   unsigned int x = 0, attemps = 0;
 
    // If daemon mode was initialized and supervisor caught a signal to terminate, set termination flag for client's threads
    if (daemon_mode_initialized  == TRUE && server_internals != NULL) {
@@ -1587,32 +1566,8 @@ void supervisor_termination(int stop_all_modules, int generate_backup)
          }
       }
 
-      for (x=0; ((unsigned int) x)<loaded_modules_cnt;x++) {
-         if (running_modules[x].module_counters_array != NULL) {
-            free(running_modules[x].module_counters_array);
-            running_modules[x].module_counters_array = NULL;
-         }
-      }
-      for (x=0;x<running_modules_array_size;x++) {
-         for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
-            free_module_ifc_on_index(x, y);
-         }
-         if (running_modules[x].module_ifces != NULL) {
-            free(running_modules[x].module_ifces);
-            running_modules[x].module_ifces = NULL;
-         }
-         if (running_modules[x].module_path != NULL) {
-            free(running_modules[x].module_path);
-            running_modules[x].module_path = NULL;
-         }
-         if (running_modules[x].module_name != NULL) {
-            free(running_modules[x].module_name);
-            running_modules[x].module_name = NULL;
-         }
-         if (running_modules[x].module_params != NULL) {
-            free(running_modules[x].module_params);
-            running_modules[x].module_params = NULL;
-         }
+      for (x = 0; x < running_modules_array_size; x++) {
+         free_module_on_index(x);
       }
 
       if (running_modules != NULL) {
@@ -2912,7 +2867,6 @@ int reload_process_module_interface_atribute(reload_config_vars_t ** config_vars
                *module_ifc_atr, (char *)key);
             running_modules[(*config_vars)->current_module_idx].module_modified_by_reload = TRUE;
             free_module_interfaces_on_index((*config_vars)->current_module_idx);
-            // ifc_cnt = -1;
             (*config_vars)->ifc_elem = (*config_vars)->module_atr_elem->xmlChildrenNode;
             running_modules[(*config_vars)->current_module_idx].module_ifces_cnt = -1;
             running_modules[(*config_vars)->current_module_idx].module_num_out_ifc = 0;
@@ -2942,7 +2896,6 @@ int reload_process_module_interface_atribute(reload_config_vars_t ** config_vars
          }
          running_modules[(*config_vars)->current_module_idx].module_modified_by_reload = TRUE;
          free_module_interfaces_on_index((*config_vars)->current_module_idx);
-         // ifc_cnt = -1;
          (*config_vars)->ifc_elem = (*config_vars)->module_atr_elem->xmlChildrenNode;
          running_modules[(*config_vars)->current_module_idx].module_ifces_cnt = -1;
          running_modules[(*config_vars)->current_module_idx].module_num_out_ifc = 0;
