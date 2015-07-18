@@ -564,51 +564,41 @@ char **make_module_arguments(const int number_of_module)
    }
 
    for (x=0; x<running_modules[number_of_module].module_ifces_cnt; x++) {
-      if (running_modules[number_of_module].module_ifces[x].ifc_direction != NULL) {
-         if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_direction, "IN", 2)) {
-            if (running_modules[number_of_module].module_ifces[x].ifc_type != NULL) {
-               if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type, "TCP", 3)) {
-                  strncpy(atr + ptr,"t",1);
-                  ptr++;
-               } else if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type, "UNIXSOCKET", 10)) {
-                  strncpy(atr + ptr,"u",1);
-                  ptr++;
-               } else {
-                  VERBOSE(N_STDOUT,"%s\n", running_modules[number_of_module].module_ifces[x].ifc_type);
-                  VERBOSE(N_STDOUT,"Wrong ifc_type in module %d.\n", number_of_module);
-                  return NULL;
-               }
-            }
-         }
-      }
-   }
-
-   for (x=0; x<running_modules[number_of_module].module_ifces_cnt; x++) {
-      if (running_modules[number_of_module].module_ifces[x].ifc_direction != NULL) {
-         if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_direction,"OUT", 3)) {
-            if (running_modules[number_of_module].module_ifces[x].ifc_type != NULL) {
-               if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type, "TCP", 3)) {
-                  strncpy(atr + ptr,"t",1);
-                  ptr++;
-               } else if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type, "UNIXSOCKET", 10)) {
-                  strncpy(atr + ptr,"u",1);
-                  ptr++;
-               } else {
-                  VERBOSE(N_STDOUT,"%s\n", running_modules[number_of_module].module_ifces[x].ifc_type);
-                  VERBOSE(N_STDOUT,"Wrong ifc_type in module %d.\n", number_of_module);
-                  return NULL;
-               }
-            }
-         }
-      }
-   }
-
-   for (x=0; x<running_modules[number_of_module].module_ifces_cnt; x++) {
-      if (running_modules[number_of_module].module_ifces[x].ifc_type != NULL) {
-         if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type,"SERVICE", 7)) {
-            strncpy(atr + ptr,"s",1);
+      if (running_modules[number_of_module].module_ifces[x].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
+         if (running_modules[number_of_module].module_ifces[x].int_ifc_type == TCP_MODULE_IFC_TYPE) {
+            strncpy(atr + ptr,"t",1);
             ptr++;
+         } else if (running_modules[number_of_module].module_ifces[x].int_ifc_type == UNIXSOCKET_MODULE_IFC_TYPE) {
+            strncpy(atr + ptr,"u",1);
+            ptr++;
+         } else {
+            VERBOSE(N_STDOUT,"%s\n", running_modules[number_of_module].module_ifces[x].ifc_type);
+            VERBOSE(N_STDOUT,"Wrong ifc_type in module %d.\n", number_of_module);
+            return NULL;
          }
+      }
+   }
+
+   for (x=0; x<running_modules[number_of_module].module_ifces_cnt; x++) {
+      if (running_modules[number_of_module].module_ifces[x].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
+         if (running_modules[number_of_module].module_ifces[x].int_ifc_type == TCP_MODULE_IFC_TYPE) {
+            strncpy(atr + ptr,"t",1);
+            ptr++;
+         } else if (running_modules[number_of_module].module_ifces[x].int_ifc_type == UNIXSOCKET_MODULE_IFC_TYPE) {
+            strncpy(atr + ptr,"u",1);
+            ptr++;
+         } else {
+            VERBOSE(N_STDOUT,"%s\n", running_modules[number_of_module].module_ifces[x].ifc_type);
+            VERBOSE(N_STDOUT,"Wrong ifc_type in module %d.\n", number_of_module);
+            return NULL;
+         }
+      }
+   }
+
+   for (x=0; x<running_modules[number_of_module].module_ifces_cnt; x++) {
+      if (running_modules[number_of_module].module_ifces[x].int_ifc_type == SERVICE_MODULE_IFC_TYPE) {
+         strncpy(atr + ptr,"s",1);
+         ptr++;
       }
    }
 
@@ -616,49 +606,43 @@ char **make_module_arguments(const int number_of_module)
    ptr++;
 
    for (x=0; x<running_modules[number_of_module].module_ifces_cnt; x++) {
-      if (running_modules[number_of_module].module_ifces[x].ifc_direction != NULL) {
-         if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_direction,"IN", 2)) {
-            if (running_modules[number_of_module].module_ifces[x].ifc_params != NULL) {
-               if ((strlen(atr) + strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1) >= (3*size_of_atr)/5) {
-                  size_of_atr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + (size_of_atr/2);
-                  atr = (char *) realloc (atr, size_of_atr*sizeof(char));
-                  memset(atr + ptr, 0, size_of_atr - ptr);
-               }
-               sprintf(atr + ptr,"%s;",running_modules[number_of_module].module_ifces[x].ifc_params);
-               ptr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1;
+      if (running_modules[number_of_module].module_ifces[x].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
+         if (running_modules[number_of_module].module_ifces[x].ifc_params != NULL) {
+            if ((strlen(atr) + strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1) >= (3*size_of_atr)/5) {
+               size_of_atr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + (size_of_atr/2);
+               atr = (char *) realloc (atr, size_of_atr*sizeof(char));
+               memset(atr + ptr, 0, size_of_atr - ptr);
             }
+            sprintf(atr + ptr,"%s;",running_modules[number_of_module].module_ifces[x].ifc_params);
+            ptr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1;
          }
       }
    }
 
    for (x=0; x<running_modules[number_of_module].module_ifces_cnt; x++) {
-      if (running_modules[number_of_module].module_ifces[x].ifc_direction != NULL) {
-         if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_direction,"OUT", 3)) {
-            if (running_modules[number_of_module].module_ifces[x].ifc_params != NULL) {
-               if ((strlen(atr) + strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1) >= (3*size_of_atr)/5) {
-                  size_of_atr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + (size_of_atr/2);
-                  atr = (char *) realloc (atr, size_of_atr*sizeof(char));
-                  memset(atr + ptr, 0, size_of_atr - ptr);
-               }
-               sprintf(atr + ptr,"%s;",running_modules[number_of_module].module_ifces[x].ifc_params);
-               ptr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1;
+      if (running_modules[number_of_module].module_ifces[x].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
+         if (running_modules[number_of_module].module_ifces[x].ifc_params != NULL) {
+            if ((strlen(atr) + strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1) >= (3*size_of_atr)/5) {
+               size_of_atr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + (size_of_atr/2);
+               atr = (char *) realloc (atr, size_of_atr*sizeof(char));
+               memset(atr + ptr, 0, size_of_atr - ptr);
             }
+            sprintf(atr + ptr,"%s;",running_modules[number_of_module].module_ifces[x].ifc_params);
+            ptr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1;
          }
       }
    }
 
    for (x=0; x<running_modules[number_of_module].module_ifces_cnt; x++) {
-      if (running_modules[number_of_module].module_ifces[x].ifc_type != NULL) {
-         if (!strncmp(running_modules[number_of_module].module_ifces[x].ifc_type,"SERVICE", 7)) {
-            if (running_modules[number_of_module].module_ifces[x].ifc_params != NULL) {
-               if ((strlen(atr) + strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1) >= (3*size_of_atr)/5) {
-                  size_of_atr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + (size_of_atr/2);
-                  atr = (char *) realloc (atr, size_of_atr*sizeof(char));
-                  memset(atr + ptr, 0, size_of_atr - ptr);
-               }
-               sprintf(atr + ptr,"%s;",running_modules[number_of_module].module_ifces[x].ifc_params);
-               ptr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1;
+      if (running_modules[number_of_module].module_ifces[x].int_ifc_type == SERVICE_MODULE_IFC_TYPE) {
+         if (running_modules[number_of_module].module_ifces[x].ifc_params != NULL) {
+            if ((strlen(atr) + strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1) >= (3*size_of_atr)/5) {
+               size_of_atr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + (size_of_atr/2);
+               atr = (char *) realloc (atr, size_of_atr*sizeof(char));
+               memset(atr + ptr, 0, size_of_atr - ptr);
             }
+            sprintf(atr + ptr,"%s;",running_modules[number_of_module].module_ifces[x].ifc_params);
+            ptr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1;
          }
       }
    }
@@ -1253,22 +1237,19 @@ void service_stop_modules_sigkill()
          VERBOSE(MODULE_EVENT, "%s [STOP] Stopping module %s... sending SIGKILL\n", get_stats_formated_time(), running_modules[x].module_name);
          kill(running_modules[x].module_pid,9);
          for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
-            if (running_modules[x].module_ifces[y].ifc_type != NULL) {
+            if (running_modules[x].module_ifces[y].int_ifc_type == SERVICE_MODULE_IFC_TYPE || ((running_modules[x].module_ifces[y].int_ifc_type == UNIXSOCKET_MODULE_IFC_TYPE)
+                                                                                          && (running_modules[x].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION))) {
+               if (running_modules[x].module_ifces[y].ifc_params == NULL) {
+                  continue;
+               }
                memset(buffer, 0, DEFAULT_SIZE_OF_BUFFER);
-               if (strcmp(running_modules[x].module_ifces[y].ifc_type, "SERVICE") == 0 || ((strcmp(running_modules[x].module_ifces[y].ifc_type, "UNIXSOCKET") == 0)
-                                                                                          && (running_modules[x].module_ifces[y].ifc_direction != NULL)
-                                                                                          && (strcmp(running_modules[x].module_ifces[y].ifc_direction, "OUT") == 0))) {
-                  if (running_modules[x].module_ifces[y].ifc_params == NULL) {
-                     continue;
-                  }
-                  get_param_by_delimiter(running_modules[x].module_ifces[y].ifc_params, &dest_port, ',');
-                  sprintf(buffer,MODULES_UNIXSOCKET_PATH_FILENAME_FORMAT,dest_port);
-                  VERBOSE(MODULE_EVENT, "%s [CLEAN] Deleting socket %s - module %s\n", get_stats_formated_time(), buffer, running_modules[x].module_name);
-                  unlink(buffer);
-                  if (dest_port != NULL) {
-                     free(dest_port);
-                     dest_port = NULL;
-                  }
+               get_param_by_delimiter(running_modules[x].module_ifces[y].ifc_params, &dest_port, ',');
+               sprintf(buffer,MODULES_UNIXSOCKET_PATH_FILENAME_FORMAT,dest_port);
+               VERBOSE(MODULE_EVENT, "%s [CLEAN] Deleting socket %s - module %s\n", get_stats_formated_time(), buffer, running_modules[x].module_name);
+               unlink(buffer);
+               if (dest_port != NULL) {
+                  free(dest_port);
+                  dest_port = NULL;
                }
             }
          }
@@ -2031,10 +2012,8 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
             if (running_modules[x].module_service_ifc_isconnected == FALSE && (running_modules[x].module_service_ifc_conn_attempts < SERVICE_IFC_CONN_ATTEMPTS_LIMIT)) {
                y=0;
                while (1) {
-                  if (running_modules[x].module_ifces[y].ifc_type != NULL) {
-                     if ((strncmp(running_modules[x].module_ifces[y].ifc_type, "SERVICE", 7) == 0)) {
-                        break;
-                     }
+                  if (running_modules[x].module_ifces[y].int_ifc_type == SERVICE_MODULE_IFC_TYPE) {
+                     break;
                   }
                   y++;
                }
@@ -2092,34 +2071,30 @@ char * make_formated_statistics()
    int ptr = 0;
 
    for (x=0; x<loaded_modules_cnt; x++) {
-      if(running_modules[x].module_status == TRUE) {
+      if (running_modules[x].module_status == TRUE) {
          counter = 0;
          for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
-            if(running_modules[x].module_ifces[y].ifc_direction != NULL) {
-               if(strcmp(running_modules[x].module_ifces[y].ifc_direction, "IN") == 0) {
-                  ptr += sprintf(buffer + ptr, "%s,in,%d,%"PRIu64"\n", running_modules[x].module_name, counter, running_modules[x].module_counters_array[counter]);
-                  counter++;
-                  if (strlen(buffer) >= (3*size_of_buffer)/5) {
-                     size_of_buffer += size_of_buffer/2;
-                     buffer = (char *) realloc (buffer, size_of_buffer * sizeof(char));
-                     memset(buffer + ptr, 0, size_of_buffer - ptr);
-                  }
+            if (running_modules[x].module_ifces[y].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
+               ptr += sprintf(buffer + ptr, "%s,in,%d,%"PRIu64"\n", running_modules[x].module_name, counter, running_modules[x].module_counters_array[counter]);
+               counter++;
+               if (strlen(buffer) >= (3*size_of_buffer)/5) {
+                  size_of_buffer += size_of_buffer/2;
+                  buffer = (char *) realloc (buffer, size_of_buffer * sizeof(char));
+                  memset(buffer + ptr, 0, size_of_buffer - ptr);
                }
             }
          }
          counter = 0;
          for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
-            if(running_modules[x].module_ifces[y].ifc_direction != NULL) {
-               if(strcmp(running_modules[x].module_ifces[y].ifc_direction, "OUT") == 0) {
-                  ptr += sprintf(buffer + ptr, "%s,out,%d,%"PRIu64",%"PRIu64",%"PRIu64"\n", running_modules[x].module_name, counter, running_modules[x].module_counters_array[counter + running_modules[x].module_num_in_ifc],
+            if (running_modules[x].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
+               ptr += sprintf(buffer + ptr, "%s,out,%d,%"PRIu64",%"PRIu64",%"PRIu64"\n", running_modules[x].module_name, counter, running_modules[x].module_counters_array[counter + running_modules[x].module_num_in_ifc],
                                                                            running_modules[x].module_counters_array[counter + running_modules[x].module_num_in_ifc + running_modules[x].module_num_out_ifc],
                                                                            running_modules[x].module_counters_array[counter + running_modules[x].module_num_in_ifc + 2*running_modules[x].module_num_out_ifc]);
-                  counter++;
-                  if (strlen(buffer) >= (3*size_of_buffer)/5) {
-                     size_of_buffer += size_of_buffer/2;
-                     buffer = (char *) realloc (buffer, size_of_buffer * sizeof(char));
-                     memset(buffer + ptr, 0, size_of_buffer - ptr);
-                  }
+               counter++;
+               if (strlen(buffer) >= (3*size_of_buffer)/5) {
+                  size_of_buffer += size_of_buffer/2;
+                  buffer = (char *) realloc (buffer, size_of_buffer * sizeof(char));
+                  memset(buffer + ptr, 0, size_of_buffer - ptr);
                }
             }
          }
@@ -3255,6 +3230,8 @@ void reload_count_module_interfaces(reload_config_vars_t ** config_vars)
             running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_direction = OUT_MODULE_IFC_DIRECTION;
          } else if (strncmp(running_modules[(*config_vars)->current_module_idx].module_ifces[x].ifc_direction, "SERVICE", 7) == 0) {
             running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_direction = SERVICE_MODULE_IFC_DIRECTION;
+         } else {
+            running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_direction = INVALID_MODULE_IFC_ATTR;
          }
       } else {
          running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_direction = INVALID_MODULE_IFC_ATTR;
@@ -3268,6 +3245,8 @@ void reload_count_module_interfaces(reload_config_vars_t ** config_vars)
          } else if (strncmp(running_modules[(*config_vars)->current_module_idx].module_ifces[x].ifc_type, "SERVICE", 7) == 0) {
             running_modules[(*config_vars)->current_module_idx].module_has_service_ifc = TRUE;
             running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_type = SERVICE_MODULE_IFC_TYPE;
+         } else {
+            running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_type = INVALID_MODULE_IFC_ATTR;
          }
       } else {
          running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_type = INVALID_MODULE_IFC_ATTR;
@@ -4544,15 +4523,15 @@ xmlDocPtr netconf_get_state_data()
                         xmlNewChild(interface_elem, NULL, BAD_CAST "type", BAD_CAST running_modules[x].module_ifces[y].ifc_type);
                         xmlNewChild(interface_elem, NULL, BAD_CAST "direction", BAD_CAST running_modules[x].module_ifces[y].ifc_direction);
                         xmlNewChild(interface_elem, NULL, BAD_CAST "params", BAD_CAST running_modules[x].module_ifces[y].ifc_params);
-                        if (strcmp(running_modules[x].module_ifces[y].ifc_direction, "IN") == 0) {
+                        if (running_modules[x].module_ifces[y].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
                            snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_counters_array[in_ifc_cnt]);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "recv-msg-cnt", BAD_CAST buffer);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-msg-cnt", BAD_CAST "0");
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-buffer-cnt", BAD_CAST "0");
                            xmlNewChild(interface_elem, NULL, BAD_CAST "autoflush-cnt", BAD_CAST "0");
-			   in_ifc_cnt++;
-                        } else if (xmlStrcmp(BAD_CAST running_modules[x].module_ifces[y].ifc_direction, BAD_CAST "OUT") == 0) {
+                           in_ifc_cnt++;
+                        } else if (running_modules[x].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
                            xmlNewChild(interface_elem, NULL, BAD_CAST "recv-msg-cnt", BAD_CAST "0");
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
                            snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_counters_array[running_modules[x].module_num_in_ifc + out_ifc_cnt]);
@@ -4619,7 +4598,7 @@ xmlDocPtr netconf_get_state_data()
                         xmlNewChild(interface_elem, NULL, BAD_CAST "type", BAD_CAST running_modules[x].module_ifces[y].ifc_type);
                         xmlNewChild(interface_elem, NULL, BAD_CAST "direction", BAD_CAST running_modules[x].module_ifces[y].ifc_direction);
                         xmlNewChild(interface_elem, NULL, BAD_CAST "params", BAD_CAST running_modules[x].module_ifces[y].ifc_params);
-                        if (strcmp(running_modules[x].module_ifces[y].ifc_direction, "IN") == 0) {
+                        if (running_modules[x].module_ifces[y].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
                            snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_counters_array[in_ifc_cnt]);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "recv-msg-cnt", BAD_CAST buffer);
@@ -4627,7 +4606,7 @@ xmlDocPtr netconf_get_state_data()
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-buffer-cnt", BAD_CAST "0");
                            xmlNewChild(interface_elem, NULL, BAD_CAST "autoflush-cnt", BAD_CAST "0");
                            in_ifc_cnt++;
-                        } else if (xmlStrcmp(BAD_CAST running_modules[x].module_ifces[y].ifc_direction, BAD_CAST "OUT") == 0) {
+                        } else if (running_modules[x].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
                            xmlNewChild(interface_elem, NULL, BAD_CAST "recv-msg-cnt", BAD_CAST "0");
 			   memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
                            snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_counters_array[running_modules[x].module_num_in_ifc + out_ifc_cnt]);
