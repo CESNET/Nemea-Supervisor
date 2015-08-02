@@ -51,10 +51,12 @@ AC_DEFINE([HAVE_DISPLAY], 0, [Use display(1) to show image.])
 AC_MSG_WARN([We need ImageMagick...])
 fi
 
-m4_include([m4/ax_libxml2_check.m4])
-AX_LIBXML2_CHECK()
+AC_CONFIG_MACRO_DIR([m4])
 
 # Checks for libraries.
+
+AX_LIBTRAP_CHECK
+AX_LIBXML2_CHECK
 
 # Checks for header files.
 AC_CHECK_HEADERS([fcntl.h limits.h stdlib.h string.h unistd.h])
