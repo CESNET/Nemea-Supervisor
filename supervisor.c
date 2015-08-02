@@ -71,7 +71,8 @@
 #include <net/if.h>
 #include <ifaddrs.h>
 #include <dirent.h>
-#include <jansson.h>
+
+#include <libtrap/trap.h>
 
 #include <pwd.h>
 #include <grp.h>
@@ -80,6 +81,7 @@
 #define TRAP_PARAM               "-i" ///< Interface parameter for libtrap
 #define DEFAULT_MAX_RESTARTS_PER_MINUTE  3  ///< Maximum number of module restarts per minute
 #define SERVICE_IFC_CONN_ATTEMPTS_LIMIT 3 // Maximum count of connection attempts to service interface
+#define MAX_SERVICE_IFC_CONN_FAILS 3
 
 #define MODULES_UNIXSOCKET_PATH_FILENAME_FORMAT   "/tmp/trap-localhost-%s.sock" ///< Modules output interfaces socket, to which connects service thread.
 #define DEFAULT_DAEMON_SERVER_SOCKET  "/tmp/daemon_supervisor.sock"  ///<  Daemon server socket
@@ -92,6 +94,7 @@
 
 #define RET_ERROR    -1
 #define MAX_NUMBER_SUP_CLIENTS   5
+#define NUM_SERVICE_IFC_PERIODS 30
 
 /*******GLOBAL VARIABLES*******/
 running_module_t *   running_modules = NULL;  ///< Information about running modules
@@ -155,7 +158,180 @@ char * get_stats_formated_time();
 void check_duplicated_ports();
 void check_missing_interface_attributes();
 
-int convert_json_module_info(const char * json_str, trap_module_info_t ** info){
+
+
+
+void print_module_ifc_stats(int module_number)
+{
+   uint x = 0;
+
+   printf("\nMODULE %d IFC STATS:\n", module_number);
+   printf("\tinput ifces: ");
+   for (x = 0; x < running_modules[module_number].module_ifces_cnt; x++) {
+      if (running_modules[module_number].module_ifces[x].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
+         printf("%" PRIu64 " %" PRIu64 " | ", ((in_ifc_stats_t *) running_modules[module_number].module_ifces[x].ifc_data)->recv_msg_cnt,
+                                                                                          ((in_ifc_stats_t *) running_modules[module_number].module_ifces[x].ifc_data)->recv_buffer_cnt);
+      }
+   }
+   printf("\n\toutput ifces: ");
+   for (x = 0; x < running_modules[module_number].module_ifces_cnt; x++) {
+      if (running_modules[module_number].module_ifces[x].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
+         printf("%" PRIu64 " %" PRIu64 " %" PRIu64 " | ", ((out_ifc_stats_t *) running_modules[module_number].module_ifces[x].ifc_data)->sent_msg_cnt,
+                                                                                          ((out_ifc_stats_t *) running_modules[module_number].module_ifces[x].ifc_data)->sent_buffer_cnt,
+                                                                                          ((out_ifc_stats_t *) running_modules[module_number].module_ifces[x].ifc_data)->autoflush_cnt);
+      }
+   }
+}
+
+
+const char counter_message_str[] = "messages";
+const char counter_buffer_str[] = "buffers";
+const char counter_autoflush_str[] = "autoflushes";
+
+// TODO memory leaks
+int decode_cnts_from_json(char **data, int module_number)
+{
+   uint x = 0;
+   int actual_ifc_index = 0;
+   size_t arr_idx = 0;
+
+   json_error_t error;
+   json_t *json_struct = NULL;
+
+   json_t *in_ifces_arr = NULL;
+   json_t *out_ifces_arr = NULL;
+   json_t *in_ifc_cnts  = NULL;
+   json_t *out_ifc_cnts = NULL;
+   json_t *cnt = NULL;
+
+   /***********************************/
+
+   // Parse received modules counters in json format
+   json_struct = json_loads(*data , 0, &error);
+    if (json_struct == NULL) {
+        VERBOSE(MODULE_EVENT, "%s [ERROR] Could not convert modules (%s) stats to json structure on line %d: %s\n", get_stats_formated_time(), running_modules[module_number].module_name, error.line, error.text);
+        return -1;
+    }
+
+    // Check whether the root elem is a json object
+    if (json_is_object(json_struct) == 0) {
+      VERBOSE(MODULE_EVENT, "%s [ERROR] Root elem is not a json object (module %s).\n", get_stats_formated_time(), running_modules[module_number].module_name);
+      json_decref(json_struct);
+      return -1;
+    }
+
+
+    if (running_modules[module_number].module_num_in_ifc > 0) {
+      // Get value of the key "in" from json root elem (it should be an array of json objects - every object contains counters of one input interface)
+      in_ifces_arr = json_object_get(json_struct, "in");
+      if (in_ifces_arr == NULL) {
+         VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"in\" from root json object while parsing modules stats (module %s).\n", get_stats_formated_time(), running_modules[module_number].module_name);
+         json_decref(json_struct);
+         return -1;
+      }
+
+      if (json_is_array(in_ifces_arr) == 0) {
+         VERBOSE(MODULE_EVENT, "%s [ERROR] Value of key \"in\" is not a json array (module %s).\n", get_stats_formated_time(), running_modules[module_number].module_name);
+         json_decref(json_struct);
+         return -1;
+      }
+
+      actual_ifc_index = -1;
+      json_array_foreach(in_ifces_arr, arr_idx, in_ifc_cnts) {
+         // Find index of next input interface in modules structure
+         for (x = actual_ifc_index + 1; x < running_modules[module_number].module_ifces_cnt; x++) {
+            if (running_modules[module_number].module_ifces[x].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
+               actual_ifc_index = x;
+            }
+         }
+
+         if (json_is_object(in_ifc_cnts) == 0) {
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Counters of an input interface are not a json object in received json structure (module %s).\n", get_stats_formated_time(), running_modules[module_number].module_name);
+            json_decref(json_struct);
+            return -1;
+         }
+
+         cnt = json_object_get(in_ifc_cnts, counter_message_str);
+         if (cnt == NULL) {
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an input interface json object (module %s).\n", get_stats_formated_time(), counter_message_str, running_modules[module_number].module_name);
+            json_decref(json_struct);
+            return -1;
+         }
+         ((in_ifc_stats_t *) running_modules[module_number].module_ifces[actual_ifc_index].ifc_data)->recv_msg_cnt = json_integer_value(cnt);
+
+         cnt = json_object_get(in_ifc_cnts, counter_buffer_str);
+         if (cnt == NULL) {
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an input interface json object (module %s).\n", get_stats_formated_time(), counter_buffer_str, running_modules[module_number].module_name);
+            json_decref(json_struct);
+            return -1;
+         }
+         ((in_ifc_stats_t *) running_modules[module_number].module_ifces[actual_ifc_index].ifc_data)->recv_buffer_cnt = json_integer_value(cnt);
+      }
+   }
+
+
+   if (running_modules[module_number].module_num_out_ifc > 0) {
+      // Get value of the key "out" from json root elem (it should be an array of json objects - every object contains counters of one output interface)
+      out_ifces_arr = json_object_get(json_struct, "out");
+      if (out_ifces_arr == NULL) {
+         VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"out\" from root json object while parsing modules stats (module %s).\n", get_stats_formated_time(), running_modules[module_number].module_name);
+         json_decref(json_struct);
+         return -1;
+      }
+
+      if (json_is_array(out_ifces_arr) == 0) {
+         VERBOSE(MODULE_EVENT, "%s [ERROR] Value of key \"out\" is not a json array (module %s).\n", get_stats_formated_time(), running_modules[module_number].module_name);
+         json_decref(json_struct);
+         return -1;
+      }
+
+      actual_ifc_index = -1;
+      json_array_foreach(out_ifces_arr, arr_idx, out_ifc_cnts) {
+         // Find index of next output interface in modules structure
+         for (x = actual_ifc_index + 1; x < running_modules[module_number].module_ifces_cnt; x++) {
+            if (running_modules[module_number].module_ifces[x].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
+               actual_ifc_index = x;
+            }
+         }
+
+         if (json_is_object(out_ifc_cnts) == 0) {
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Counters of an output interface are not a json object in received json structure (module %s).\n", get_stats_formated_time(), running_modules[module_number].module_name);
+            json_decref(json_struct);
+            return -1;
+         }
+
+         cnt = json_object_get(out_ifc_cnts, counter_message_str);
+         if (cnt == NULL) {
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an output interface json object (module %s).\n", get_stats_formated_time(), counter_message_str, running_modules[module_number].module_name);
+            json_decref(json_struct);
+            return -1;
+         }
+         ((out_ifc_stats_t *) running_modules[module_number].module_ifces[actual_ifc_index].ifc_data)->sent_msg_cnt = json_integer_value(cnt);
+
+         cnt = json_object_get(out_ifc_cnts, counter_buffer_str);
+         if (cnt == NULL) {
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an output interface json object (module %s).\n", get_stats_formated_time(), counter_buffer_str, running_modules[module_number].module_name);
+            json_decref(json_struct);
+            return -1;
+         }
+         ((out_ifc_stats_t *) running_modules[module_number].module_ifces[actual_ifc_index].ifc_data)->sent_buffer_cnt = json_integer_value(cnt);
+
+         cnt = json_object_get(out_ifc_cnts, counter_autoflush_str);
+         if (cnt == NULL) {
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an output interface json object (module %s).\n", get_stats_formated_time(), counter_autoflush_str, running_modules[module_number].module_name);
+            json_decref(json_struct);
+            return -1;
+         }
+         ((out_ifc_stats_t *) running_modules[module_number].module_ifces[actual_ifc_index].ifc_data)->autoflush_cnt = json_integer_value(cnt);
+      }
+   }
+
+   json_decref(json_struct);
+   return 0;
+}
+
+// TODO errors to stderr, code maintenance
+int convert_json_module_info(const char * json_str, trap_module_info_t ** info) {
    json_error_t error;
    json_t * json_struct = NULL;
    json_t * value;
@@ -171,31 +347,31 @@ int convert_json_module_info(const char * json_str, trap_module_info_t ** info){
         return -1;
     }
     value = json_object_get(json_struct, "name");
-   if(value == NULL){
+   if (value == NULL) {
       fprintf(stderr, "ERROR during converting string from json structure\n");
       json_decref(json_struct);
       return -1;
    }
    str = json_string_value(value);
-   if(str != NULL){
+   if (str != NULL) {
       (*info)->name = (char*) calloc (sizeof(char), strlen(str)+1);
       strcpy((*info)->name, str);
    }
 
    value = json_object_get(json_struct, "description");
-   if(value == NULL){
+   if (value == NULL) {
       fprintf(stderr, "ERROR during converting string from json structure\n");
       json_decref(json_struct);
       return -1;
    }
    str = json_string_value(value);
-   if(str != NULL){
+   if (str != NULL) {
       (*info)->description = (char*) calloc (sizeof(char), strlen(str)+1);
       strcpy((*info)->description, str);
    }
 
    value = json_object_get(json_struct, "num_ifc_in");
-   if(value == NULL){
+   if (value == NULL) {
       fprintf(stderr, "ERROR during converting integer from json structure num_ifc_in\n");
       json_decref(json_struct);
       return -1;
@@ -203,7 +379,7 @@ int convert_json_module_info(const char * json_str, trap_module_info_t ** info){
    (*info)->num_ifc_in = json_integer_value(value);
 
    value = json_object_get(json_struct, "num_ifc_out");
-   if(value == NULL){
+   if (value == NULL) {
       fprintf(stderr, "ERROR during converting integer from json structure num_ifc_out\n");
       json_decref(json_struct);
       return -1;
@@ -211,68 +387,68 @@ int convert_json_module_info(const char * json_str, trap_module_info_t ** info){
    (*info)->num_ifc_out = json_integer_value(value);
 
    value = json_object_get(json_struct, "params");
-   if(value == NULL){
+   if (value == NULL) {
       fprintf(stderr, "ERROR during converting array from json structure\n");
       json_decref(json_struct);
       return -1;
    }
    array_size = json_array_size(value);
    (*info)->params = (trap_module_info_parameter_t **) calloc (array_size + 1, sizeof(trap_module_info_parameter_t *));
-   if((*info)->params == NULL){
+   if ((*info)->params == NULL) {
       json_decref(json_struct);
       return -2;
    }
-   json_array_foreach(value, index_arr, array_value){
+   json_array_foreach(value, index_arr, array_value) {
       (*info)->params[index_arr] = (trap_module_info_parameter_t *) calloc (1, sizeof(trap_module_info_parameter_t));
       value2 = json_object_get(array_value, "short_opt");
-      if(value2 == NULL){
+      if (value2 == NULL) {
          fprintf(stderr, "ERROR during converting string from json structure short_opt\n");
          json_decref(json_struct);
          return -1;
       }
       str = json_string_value(value2);
-      if(str != NULL){
+      if (str != NULL) {
          (*info)->params[index_arr]->short_opt = str[0];
       }
 
       value2 = json_object_get(array_value, "long_opt");
-      if(value2 == NULL){
+      if (value2 == NULL) {
          fprintf(stderr, "ERROR during converting string from json structure long_opt\n");
          json_decref(json_struct);
          return -1;
       }
       str = json_string_value(value2);
-      if(str != NULL){
+      if (str != NULL) {
          (*info)->params[index_arr]->long_opt = (char*) calloc (sizeof(char), strlen(str)+1);
          strcpy((*info)->params[index_arr]->long_opt, str);
       }
 
       value2 = json_object_get(array_value, "description");
-      if(value2 == NULL){
+      if (value2 == NULL) {
          fprintf(stderr, "ERROR during converting string from json structure description\n");
          json_decref(json_struct);
          return -1;
       }
       str = json_string_value(value2);
-      if(str != NULL){
+      if (str != NULL) {
          (*info)->params[index_arr]->description = (char*) calloc (sizeof(char), strlen(str)+1);
          strcpy((*info)->params[index_arr]->description, str);
       }
 
       value2 = json_object_get(array_value, "argument_type");
-      if(value2 == NULL){
+      if (value2 == NULL) {
          fprintf(stderr, "ERROR during converting string from json structure argument_type\n");
          json_decref(json_struct);
          return -1;
       }
       str = json_string_value(value2);
-      if(str != NULL){
+      if (str != NULL) {
          (*info)->params[index_arr]->argument_type = (char*) calloc (sizeof(char), strlen(str)+1);
          strcpy((*info)->params[index_arr]->argument_type, str);
       }
 
       value2 = json_object_get(array_value, "mandatory_argument");
-      if(value2 == NULL){
+      if (value2 == NULL) {
          fprintf(stderr, "ERROR during converting integer from json structure mandatory_argument\n");
          json_decref(json_struct);
          return -1;
@@ -834,11 +1010,27 @@ int interactive_get_option()
 
 void init_module_variables(int module_number)
 {
-   if (running_modules[module_number].module_counters_array == NULL) {
-      running_modules[module_number].module_counters_array = (uint64_t *) calloc (3*running_modules[module_number].module_num_out_ifc + running_modules[module_number].module_num_in_ifc,sizeof(uint64_t));
-      running_modules[module_number].module_running = TRUE;
+   uint x = 0;
+   // Allocate needed structures for every modules interface according to its direction or memset if they are already allocated
+   for (x = 0; x < running_modules[module_number].module_ifces_cnt; x++) {
+      if (running_modules[module_number].module_ifces[x].ifc_data == NULL) {
+         if (running_modules[module_number].module_ifces[x].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
+            running_modules[module_number].module_ifces[x].ifc_data = (void *) calloc(1, sizeof(in_ifc_stats_t));
+         } else if (running_modules[module_number].module_ifces[x].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
+            running_modules[module_number].module_ifces[x].ifc_data = (void *) calloc(1, sizeof(out_ifc_stats_t));
+         }
+         running_modules[module_number].module_running = TRUE;
+      } else {
+         if (running_modules[module_number].module_ifces[x].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
+            memset(running_modules[module_number].module_ifces[x].ifc_data, 0, sizeof(in_ifc_stats_t));
+         } else if (running_modules[module_number].module_ifces[x].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
+            memset(running_modules[module_number].module_ifces[x].ifc_data, 0, sizeof(out_ifc_stats_t));
+         }
+      }
    }
-   memset(running_modules[module_number].module_counters_array, 0, (running_modules[module_number].module_num_in_ifc + (3*running_modules[module_number].module_num_out_ifc)) * sizeof(uint64_t));
+   // Initialize modules variables
+   running_modules[module_number].sent_sigint = FALSE;
+   running_modules[module_number].virtual_memory_usage = 0;
    running_modules[module_number].total_cpu_usage_during_module_startup = get_total_cpu_usage();
    running_modules[module_number].last_period_cpu_usage_kernel_mode = 0;
    running_modules[module_number].last_period_cpu_usage_user_mode = 0;
@@ -847,22 +1039,29 @@ void init_module_variables(int module_number)
    running_modules[module_number].overall_percent_module_cpu_usage_kernel_mode = 0;
    running_modules[module_number].overall_percent_module_cpu_usage_user_mode = 0;
    running_modules[module_number].module_service_sd = -1;
+   running_modules[module_number].module_service_ifc_isconnected = FALSE;
    running_modules[module_number].module_service_ifc_conn_attempts = 0;
-   running_modules[module_number].sent_sigint = FALSE;
+   running_modules[module_number].module_service_ifc_conn_fails = 0;
+   running_modules[module_number].module_service_ifc_conn_block = FALSE;
+   running_modules[module_number].module_service_ifc_timer = 0;
 }
 
 void re_start_module(const int module_number)
 {
+   uint x = 0;
+
    if (running_modules[module_number].module_running == FALSE) {
       VERBOSE(MODULE_EVENT,"%s [START] Starting module %s.\n", get_stats_formated_time(), running_modules[module_number].module_name);
       #ifdef nemea_plugin
          netconf_notify(MODULE_EVENT_STARTED,running_modules[module_number].module_name);
       #endif
-      if (running_modules[module_number].module_counters_array != NULL) {
-         free(running_modules[module_number].module_counters_array);
-         running_modules[module_number].module_counters_array = NULL;
+      // In case that reloading configuration changes module (its interfaces), module_running is set to FALSE and interfaces data are freed
+      for (x = 0; x < running_modules[module_number].module_ifces_cnt; x++) {
+         if (running_modules[module_number].module_ifces[x].ifc_data != NULL) {
+            free(running_modules[module_number].module_ifces[x].ifc_data);
+            running_modules[module_number].module_ifces[x].ifc_data = NULL;
+         }
       }
-      running_modules[module_number].module_counters_array = (uint64_t *) calloc (3*running_modules[module_number].module_num_out_ifc + running_modules[module_number].module_num_in_ifc,sizeof(uint64_t));
       running_modules[module_number].module_running = TRUE;
    } else {
       #ifdef nemea_plugin
@@ -907,6 +1106,9 @@ void re_start_module(const int module_number)
          running_modules[module_number].module_enabled = FALSE;
       } else {
          char **params = make_module_arguments(module_number);
+         // TODO check return value NULL !!!!!
+         // TODO make_module_arguments - if it fails (comparing types and directions etc.) create exit label
+         // TODO check values of ifc type and direction during reload
          fflush(stdout);
          fflush(stderr);
          execvp(running_modules[module_number].module_path, params);
@@ -1068,9 +1270,6 @@ int supervisor_initialization()
 
    /************ SIGNAL HANDLING *************/
    if (netconf_flag == FALSE) {
-      /* function prototype to set handler */
-      void supervisor_signal_handler(int catched_signal);
-
       struct sigaction sig_action;
       sig_action.sa_handler = supervisor_signal_handler;
       sig_action.sa_flags = 0;
@@ -1338,12 +1537,14 @@ void service_restart_modules()
 {
    unsigned int x = 0;
    int max_restarts = 0;
+
    for (x=0; x<loaded_modules_cnt; x++) {
-      if (++running_modules[x].module_restart_timer == 30) {
+      if (++running_modules[x].module_restart_timer >= NUM_SERVICE_IFC_PERIODS) {
          running_modules[x].module_restart_timer = 0;
          running_modules[x].module_restart_cnt = 0;
       }
 
+      // TODO why assigning this value in every service thread cycle???
       if (running_modules[x].module_max_restarts_per_minute > -1) {
          max_restarts = running_modules[x].module_max_restarts_per_minute;
       } else {
@@ -1360,6 +1561,52 @@ void service_restart_modules()
          re_start_module(x);
       }
    }
+}
+
+
+void service_connect_to_modules()
+{
+   uint x = 0, y = 0;
+
+    for (x = 0; x < loaded_modules_cnt; x++) {
+         // If supervisor couldn't connect to service interface or too many errors during sending/receiving occurred, connecting is blocked
+         if (running_modules[x].module_service_ifc_conn_block == TRUE) {
+            continue;
+         }
+
+         // Check whether the module has service interface and is running
+         if (running_modules[x].module_has_service_ifc == TRUE && running_modules[x].module_status == TRUE) {
+
+            if (++running_modules[x].module_service_ifc_timer >= NUM_SERVICE_IFC_PERIODS) {
+               running_modules[x].module_service_ifc_timer = 0;
+               running_modules[x].module_service_ifc_conn_fails = 0;
+            }
+
+            if (running_modules[x].module_service_ifc_conn_fails >= MAX_SERVICE_IFC_CONN_FAILS) {
+               VERBOSE(MODULE_EVENT, "%s [WARNING] Module %s reached %d errors during connections -> it is blocked.\n", get_stats_formated_time(), running_modules[x].module_name, MAX_SERVICE_IFC_CONN_FAILS);
+               running_modules[x].module_service_ifc_conn_block = TRUE;
+               continue;
+            }
+
+            // Check connection between module and supervisor, if they are not connected and number of attempts <= 3, try to connect
+            if (running_modules[x].module_service_ifc_isconnected == FALSE) {
+               y=0;
+               while (1) {
+                  if (running_modules[x].module_ifces[y].int_ifc_type == SERVICE_MODULE_IFC_TYPE) {
+                     break;
+                  }
+                  y++;
+               }
+
+               // Check module socket descriptor, closed socket has descriptor set to -1
+               if (running_modules[x].module_service_sd != -1) {
+                  close(running_modules[x].module_service_sd);
+                  running_modules[x].module_service_sd = -1;
+               }
+               connect_to_module_service_ifc(x,y);
+            }
+         }
+      }
 }
 
 void interactive_show_running_modules_status()
@@ -1449,7 +1696,7 @@ void free_module_and_shift_array(const int module_idx)
    running_modules[module_idx].module_num_in_ifc = 0;
    running_modules[module_idx].module_ifces_array_size = 0;
    for (y=module_idx; y<(loaded_modules_cnt-1); y++) {
-   memcpy(&running_modules[y], &running_modules[y+1], sizeof(running_module_t));
+      memcpy(&running_modules[y], &running_modules[y+1], sizeof(running_module_t));
    }
    loaded_modules_cnt--;
    memset(&running_modules[loaded_modules_cnt], 0, sizeof(running_module_t));
@@ -1766,35 +2013,57 @@ void update_module_mem_usage()
    }
 }
 
-int service_get_data(int sd, int running_module_number)
+int service_recv_data(int module_number, uint32_t size, void **data)
 {
    int num_of_timeouts = 0;
-   int sizeof_recv = (running_modules[running_module_number].module_num_in_ifc + 3*running_modules[running_module_number].module_num_out_ifc) * sizeof(uint64_t);
    int total_receved = 0;
    int last_receved = 0;
-   char * data_pointer = (char *) running_modules[running_module_number].module_counters_array;
 
-   while (total_receved < sizeof_recv) {
-      last_receved = recv(sd, data_pointer + total_receved, sizeof_recv - total_receved, MSG_DONTWAIT);
+   while (total_receved < size) {
+      last_receved = recv(running_modules[module_number].module_service_sd, (*data) + total_receved, size - total_receved, MSG_DONTWAIT);
       if (last_receved == 0) {
          VERBOSE(STATISTICS,"! Modules service thread closed its socket, im done !\n");
-         return 0;
+         return -1;
       } else if (last_receved == -1) {
          if (errno == EAGAIN  || errno == EWOULDBLOCK) {
             num_of_timeouts++;
             if (num_of_timeouts >= 3) {
-               return 0;
+               return -1;
             } else {
                usleep(25000);
                continue;
             }
          }
-         VERBOSE(MODULE_EVENT,"[SERVICE] Error while receiving from module %d_%s !\n", running_module_number, running_modules[running_module_number].module_name);
-         return 0;
+         VERBOSE(MODULE_EVENT,"%s [SERVICE] Error while receiving from module %d_%s !\n", get_stats_formated_time(), module_number, running_modules[module_number].module_name);
+         return -1;
       }
       total_receved += last_receved;
    }
-   return 1;
+   return 0;
+}
+
+int service_send_data(int module_number, uint32_t size, void **data)
+{
+   int num_of_timeouts = 0, total_sent = 0, last_sent = 0;
+
+   while (total_sent < size) {
+      last_sent = send(running_modules[module_number].module_service_sd, (*data) + total_sent, size - total_sent, MSG_DONTWAIT);
+      if (last_sent == -1) {
+         if (errno == EAGAIN  || errno == EWOULDBLOCK) {
+            num_of_timeouts++;
+            if (num_of_timeouts >= 3) {
+               return -1;
+            } else {
+               usleep(25000);
+               continue;
+            }
+         }
+         VERBOSE(MODULE_EVENT,"%s [SERVICE] Error while sending to module %d_%s !\n", get_stats_formated_time(), module_number, running_modules[module_number].module_name);
+         return -1;
+      }
+      total_sent += last_sent;
+   }
+   return 0;
 }
 
 void connect_to_module_service_ifc(int module, int num_ifc)
@@ -1805,6 +2074,12 @@ void connect_to_module_service_ifc(int module, int num_ifc)
 
    // Increase counter of connection attempts to the service interface
    running_modules[module].module_service_ifc_conn_attempts++;
+
+   if (running_modules[module].module_service_ifc_conn_attempts > SERVICE_IFC_CONN_ATTEMPTS_LIMIT) {
+      VERBOSE(MODULE_EVENT,"%s [WARNING] Connection attempts to service interface of module %s exceeded %d, enough trying!\n", get_stats_formated_time(), running_modules[module].module_name, SERVICE_IFC_CONN_ATTEMPTS_LIMIT);
+      running_modules[module].module_service_ifc_conn_block = TRUE;
+      return;
+   }
 
    if (running_modules[module].module_ifces[num_ifc].ifc_params == NULL) {
       running_modules[module].module_service_ifc_isconnected = FALSE;
@@ -1850,27 +2125,44 @@ void print_statistics(struct tm * timeinfo)
 {
    unsigned int x = 0, y = 0;
    VERBOSE(STATISTICS,"------> %s", asctime(timeinfo));
-   for (x=0;x<loaded_modules_cnt;x++) {
+   for (x = 0; x < loaded_modules_cnt; x++) {
       if (running_modules[x].module_status) {
-         VERBOSE(STATISTICS,"NAME:  %s; PID: %d; | ",
-            running_modules[x].module_name,
-            running_modules[x].module_pid);
+         VERBOSE(STATISTICS,"NAME:  %s; PID: %d; | ",  running_modules[x].module_name, running_modules[x].module_pid);
          if (running_modules[x].module_has_service_ifc && running_modules[x].module_service_ifc_isconnected) {
+
             VERBOSE(STATISTICS,"CNT_RM:  ");
-            for (y=0; y<running_modules[x].module_num_in_ifc; y++) {
-               VERBOSE(STATISTICS,"%"PRIu64"  ", running_modules[x].module_counters_array[y]);
+            for (y = 0; y < running_modules[y].module_ifces_cnt; y++) {
+               if (running_modules[y].module_ifces[y].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
+                  VERBOSE(STATISTICS,"%"PRIu64"  ", ((in_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->recv_msg_cnt);
+               }
             }
+
+            VERBOSE(STATISTICS,"CNT_RB:  ");
+            for (y = 0; y < running_modules[y].module_ifces_cnt; y++) {
+               if (running_modules[y].module_ifces[y].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
+                  VERBOSE(STATISTICS,"%"PRIu64"  ", ((in_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->recv_buffer_cnt);
+               }
+            }
+
             VERBOSE(STATISTICS,"CNT_SM:  ");
-            for (y=0; y<running_modules[x].module_num_out_ifc; y++) {
-               VERBOSE(STATISTICS,"%"PRIu64"  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc]);
+            for (y = 0; y < running_modules[y].module_ifces_cnt; y++) {
+               if (running_modules[y].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
+                  VERBOSE(STATISTICS,"%"PRIu64"  ", ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_msg_cnt);
+               }
             }
+
             VERBOSE(STATISTICS,"CNT_SB:  ");
-            for (y=0; y<running_modules[x].module_num_out_ifc; y++) {
-               VERBOSE(STATISTICS,"%"PRIu64"  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc + running_modules[x].module_num_out_ifc]);
+            for (y = 0; y < running_modules[y].module_ifces_cnt; y++) {
+               if (running_modules[y].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
+                  VERBOSE(STATISTICS,"%"PRIu64"  ", ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_buffer_cnt);
+               }
             }
+
             VERBOSE(STATISTICS,"CNT_AF:  ");
-            for (y=0; y<running_modules[x].module_num_out_ifc; y++) {
-               VERBOSE(STATISTICS,"%"PRIu64"  ", running_modules[x].module_counters_array[y + running_modules[x].module_num_in_ifc + 2*running_modules[x].module_num_out_ifc]);
+            for (y = 0; y < running_modules[y].module_ifces_cnt; y++) {
+               if (running_modules[y].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
+                  VERBOSE(STATISTICS,"%"PRIu64"  ", ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->autoflush_cnt);
+               }
             }
          }
          VERBOSE(STATISTICS,"\n");
@@ -1888,6 +2180,12 @@ void disconnect_service_ifc(const int module_idx)
       }
       running_modules[module_idx].module_service_ifc_isconnected = FALSE;
    }
+
+   running_modules[module_idx].module_service_ifc_conn_fails++;
+
+   if (running_modules[module_idx].module_service_ifc_conn_fails == 1) {
+      running_modules[module_idx].module_service_ifc_timer = 0;
+   }
 }
 
 void print_statistics_legend()
@@ -1904,10 +2202,22 @@ void print_statistics_legend()
                         "\tCNT_AF - autoflush counter of one trap interface (OUTPUT IFC)\n");
 }
 
+#define SERVICE_GET_COM 10
+#define SERVICE_SET_COM 11
+#define SERVICE_OK_REPLY 12
+
+typedef struct service_msg_header_s {
+   uint8_t com;
+   uint32_t data_size;
+} service_msg_header_t;
+
+
 void *service_thread_routine(void *arg __attribute__ ((unused)))
 {
+   service_msg_header_t *header = (service_msg_header_t *) calloc(1, sizeof(service_msg_header_t));
+   uint32_t buffer_size = 256;
+   char * buffer = (char *) calloc(buffer_size, sizeof(char));
    int some_module_running = FALSE;
-   int sizeof_intptr = 4;
    unsigned int x,y;
 
    time_t rawtime;
@@ -1952,6 +2262,8 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
                   running_modules[y].module_restart_cnt = -1;
                   running_modules[y].init_module = FALSE;
                   running_modules[y].module_served_by_service_thread = TRUE;
+               } else {
+                  disconnect_service_ifc(y);
                }
             } else {
                running_modules[y].module_served_by_service_thread = TRUE;
@@ -1959,46 +2271,77 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
          }
       }
 
+      // Update status of every module before sending a request for their stats
       some_module_running = service_update_module_status();
-      int request[1];
-      request[0] = 1;
+
+      // Set request header
+      header->com = SERVICE_GET_COM;
+      header->data_size = 0;
+
+      // TODO handle connection in function including max conn fails and remove it from next cycle
+      // service_ifc_conn()
+      // code maintenance - defines, functions souslednost
+
+      // Handle connection between supervisor and modules via service interface
+      service_connect_to_modules();
+
       for (x=0;x<loaded_modules_cnt;x++) {
-         if (running_modules[x].module_has_service_ifc == TRUE && running_modules[x].module_status == TRUE) {
-            if (running_modules[x].module_service_ifc_isconnected == FALSE && (running_modules[x].module_service_ifc_conn_attempts < SERVICE_IFC_CONN_ATTEMPTS_LIMIT)) {
-               y=0;
-               while (1) {
-                  if (running_modules[x].module_ifces[y].int_ifc_type == SERVICE_MODULE_IFC_TYPE) {
-                     break;
-                  }
-                  y++;
-               }
-               if (running_modules[x].module_service_sd != -1) {
-                  close(running_modules[x].module_service_sd);
-                  running_modules[x].module_service_sd = -1;
-               }
-               connect_to_module_service_ifc(x,y);
-               if (running_modules[x].module_service_ifc_conn_attempts >= SERVICE_IFC_CONN_ATTEMPTS_LIMIT) {
-                  VERBOSE(MODULE_EVENT,"%s [SERVICE] Connection attempts to service interface of module %s reached 3, enough trying!\n", get_stats_formated_time(), running_modules[x].module_name);
-               }
-            }
-            if (running_modules[x].module_service_ifc_isconnected == TRUE) {
-               if (send(running_modules[x].module_service_sd,(void *) request, sizeof_intptr, 0) == -1) {
-                  VERBOSE(MODULE_EVENT,"[SERVICE] Error while sending request to module %d_%s.\n",x,running_modules[x].module_name);
-                  running_modules[x].module_service_ifc_isconnected = FALSE;
-               }
+         // If the module and supervisor are connected via service interface, request for stats is sent
+         if (running_modules[x].module_service_ifc_isconnected == TRUE) {
+            if (service_send_data(x, sizeof(service_msg_header_t), (void **) &header) == -1) {
+               VERBOSE(MODULE_EVENT,"%s [SERVICE] Error while sending request to module %d_%s.\n", get_stats_formated_time(), x, running_modules[x].module_name);
+               disconnect_service_ifc(x);
             }
          }
       }
+
+      // Update status of every module before receiving their stats
       some_module_running = service_update_module_status();
+
       for (x=0;x<loaded_modules_cnt;x++) {
-         if (running_modules[x].module_has_service_ifc == TRUE && running_modules[x].module_status == TRUE) {
-            if (running_modules[x].module_service_ifc_isconnected == TRUE) {
-               if (!(service_get_data(running_modules[x].module_service_sd, x))) {
-                  continue;
-               }
+         // Check whether the module is running and is connected with supervisor via service interface
+         if (running_modules[x].module_has_service_ifc == TRUE && running_modules[x].module_status == TRUE && running_modules[x].module_service_ifc_isconnected == TRUE) {
+            // Receive reply header
+            if (service_recv_data(x, sizeof(service_msg_header_t), (void **) &header) == -1) {
+               VERBOSE(MODULE_EVENT, "%s [SERVICE] Error while receiving reply header from module %d_%s.\n", get_stats_formated_time(), x, running_modules[x].module_name);
+               disconnect_service_ifc(x);
+               continue;
+            }
+
+            // Check if the reply is OK
+            if (header->com != SERVICE_OK_REPLY) {
+               VERBOSE(MODULE_EVENT, "%s [SERVICE] Wrong reply from module %d_%s.\n", get_stats_formated_time(), x, running_modules[x].module_name);
+               disconnect_service_ifc(x);
+               continue;
+            }
+
+            memset(buffer, 0, buffer_size);
+            if (header->data_size > buffer_size) {
+               // Reallocate buffer for incoming data
+               buffer_size += buffer_size / 2;
+               buffer = (char *) realloc(buffer, buffer_size * sizeof(char));
+               memset(buffer + (2 * (buffer_size / 3)), 0, (buffer_size / 3) * sizeof(char));
+            }
+
+            // Receive module stats in json format
+            if (service_recv_data(x, header->data_size, (void **) &buffer) == -1) {
+               VERBOSE(MODULE_EVENT, "%s [SERVICE] Error while receiving stats from module %d_%s.\n", get_stats_formated_time(), x, running_modules[x].module_name);
+               disconnect_service_ifc(x);
+               continue;
+            }
+
+            // Decode json and save stats into module structure
+            if (decode_cnts_from_json(&buffer, x) == -1) {
+               VERBOSE(MODULE_EVENT, "%s [SERVICE] Error while receiving stats from module %d_%s.\n", get_stats_formated_time(), x, running_modules[x].module_name);
+               disconnect_service_ifc(x);
+               continue;
             }
          }
       }
+
+      // DONE - timeouty u send a recv, conn attempts counter, send and recv fails cnt and max value for some time interval
+      // TODO add connection counter to every module and after reaching maximum, do not connect again (errors from send and receive) + timer (max value for some time interval - few errors are allowed)
+      // TODO after reloading and modifying module - solve module_running variable and reallocating interface data structures - whole initialization of their variables - it must be transparent, simple and on one place
 
       pthread_mutex_unlock(&running_modules_lock);
 
@@ -2011,8 +2354,19 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
       }
    }
 
+   // Disconnect from running modules
    for (x=0;x<loaded_modules_cnt;x++) {
       disconnect_service_ifc(x);
+   }
+
+   if (buffer != NULL) {
+      free(buffer);
+      buffer = NULL;
+   }
+
+   if (header != NULL) {
+      free(header);
+      header = NULL;
    }
 
    pthread_exit(EXIT_SUCCESS);
@@ -2026,11 +2380,12 @@ char * make_formated_statistics()
    int ptr = 0;
 
    for (x=0; x<loaded_modules_cnt; x++) {
-      if (running_modules[x].module_status == TRUE) {
+      if (running_modules[x].module_status == TRUE && running_modules[x].module_has_service_ifc == TRUE && running_modules[x].module_service_ifc_isconnected == TRUE) {
          counter = 0;
          for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
             if (running_modules[x].module_ifces[y].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
-               ptr += sprintf(buffer + ptr, "%s,in,%d,%"PRIu64"\n", running_modules[x].module_name, counter, running_modules[x].module_counters_array[counter]);
+               ptr += sprintf(buffer + ptr, "%s,in,%d,%"PRIu64",%"PRIu64"\n", running_modules[x].module_name, counter, ((in_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->recv_msg_cnt,
+                                                                                                                                                                                                      ((in_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->recv_buffer_cnt);
                counter++;
                if (strlen(buffer) >= (3*size_of_buffer)/5) {
                   size_of_buffer += size_of_buffer/2;
@@ -2042,9 +2397,9 @@ char * make_formated_statistics()
          counter = 0;
          for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
             if (running_modules[x].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
-               ptr += sprintf(buffer + ptr, "%s,out,%d,%"PRIu64",%"PRIu64",%"PRIu64"\n", running_modules[x].module_name, counter, running_modules[x].module_counters_array[counter + running_modules[x].module_num_in_ifc],
-                                                                           running_modules[x].module_counters_array[counter + running_modules[x].module_num_in_ifc + running_modules[x].module_num_out_ifc],
-                                                                           running_modules[x].module_counters_array[counter + running_modules[x].module_num_in_ifc + 2*running_modules[x].module_num_out_ifc]);
+               ptr += sprintf(buffer + ptr, "%s,out,%d,%"PRIu64",%"PRIu64",%"PRIu64"\n", running_modules[x].module_name, counter, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_msg_cnt,
+                                                                                                                                                                                                                           ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_buffer_cnt,
+                                                                                                                                                                                                                           ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->autoflush_cnt);
                counter++;
                if (strlen(buffer) >= (3*size_of_buffer)/5) {
                   size_of_buffer += size_of_buffer/2;
@@ -2057,7 +2412,7 @@ char * make_formated_statistics()
    }
 
    for (x=0; x<loaded_modules_cnt; x++) {
-      if(running_modules[x].module_status == TRUE) {
+      if (running_modules[x].module_status == TRUE) {
          ptr += sprintf(buffer + ptr, "%s,cpu,%d,%d\n", running_modules[x].module_name, running_modules[x].last_period_percent_cpu_usage_kernel_mode, running_modules[x].last_period_percent_cpu_usage_user_mode);
          if (strlen(buffer) >= (3*size_of_buffer)/5) {
             size_of_buffer += size_of_buffer/2;
@@ -2068,7 +2423,7 @@ char * make_formated_statistics()
    }
 
    for (x=0; x<loaded_modules_cnt; x++) {
-      if(running_modules[x].module_status == TRUE) {
+      if (running_modules[x].module_status == TRUE) {
          ptr += sprintf(buffer + ptr, "%s,mem,%d\n", running_modules[x].module_name, running_modules[x].virtual_memory_usage);
          if (strlen(buffer) >= (3*size_of_buffer)/5) {
             size_of_buffer += size_of_buffer/2;
@@ -2304,7 +2659,7 @@ void server_routine()
    pthread_attr_setdetachstate(&clients_thread_attr, PTHREAD_CREATE_DETACHED);
 
    VERBOSE(SUP_LOG, "%s [INFO] Starting server thread.\n", get_stats_formated_time());
-   while(server_internals->daemon_terminated == FALSE) {
+   while (server_internals->daemon_terminated == FALSE) {
       FD_ZERO(&read_fds);
       FD_SET(server_internals->server_sd, &read_fds);
 
@@ -2687,47 +3042,24 @@ int find_loaded_module(char * name)
 
 void free_module_on_index(int index)
 {
-   unsigned int y;
+   free_module_interfaces_on_index(index);
 
-   if (running_modules[index].module_counters_array != NULL) {
-      free(running_modules[index].module_counters_array);
-      running_modules[index].module_counters_array = NULL;
+   if (running_modules[index].module_ifces != NULL) {
+      free(running_modules[index].module_ifces);
+      running_modules[index].module_ifces = NULL;
    }
-
-   for (y=0; y<running_modules[index].module_ifces_cnt; y++) {
-         if (running_modules[index].module_ifces[y].ifc_note != NULL) {
-            free(running_modules[index].module_ifces[y].ifc_note);
-            running_modules[index].module_ifces[y].ifc_note = NULL;
-         }
-         if (running_modules[index].module_ifces[y].ifc_type != NULL) {
-            free(running_modules[index].module_ifces[y].ifc_type);
-            running_modules[index].module_ifces[y].ifc_type = NULL;
-         }
-         if (running_modules[index].module_ifces[y].ifc_direction != NULL) {
-            free(running_modules[index].module_ifces[y].ifc_direction);
-            running_modules[index].module_ifces[y].ifc_direction = NULL;
-         }
-         if (running_modules[index].module_ifces[y].ifc_params != NULL) {
-            free(running_modules[index].module_ifces[y].ifc_params);
-            running_modules[index].module_ifces[y].ifc_params = NULL;
-         }
-      }
-      if (running_modules[index].module_ifces != NULL) {
-         free(running_modules[index].module_ifces);
-         running_modules[index].module_ifces = NULL;
-      }
-      if (running_modules[index].module_path != NULL) {
-         free(running_modules[index].module_path);
-         running_modules[index].module_path = NULL;
-      }
-      if (running_modules[index].module_name != NULL) {
-         free(running_modules[index].module_name);
-         running_modules[index].module_name = NULL;
-      }
-      if (running_modules[index].module_params != NULL) {
-         free(running_modules[index].module_params);
-         running_modules[index].module_params = NULL;
-      }
+   if (running_modules[index].module_path != NULL) {
+      free(running_modules[index].module_path);
+      running_modules[index].module_path = NULL;
+   }
+   if (running_modules[index].module_name != NULL) {
+      free(running_modules[index].module_name);
+      running_modules[index].module_name = NULL;
+   }
+   if (running_modules[index].module_params != NULL) {
+      free(running_modules[index].module_params);
+      running_modules[index].module_params = NULL;
+   }
 }
 
 void free_module_interfaces_on_index(int index)
@@ -2749,6 +3081,10 @@ void free_module_interfaces_on_index(int index)
       if (running_modules[index].module_ifces[y].ifc_params != NULL) {
          free(running_modules[index].module_ifces[y].ifc_params);
          running_modules[index].module_ifces[y].ifc_params = NULL;
+      }
+      if (running_modules[index].module_ifces[y].ifc_data != NULL) {
+         free(running_modules[index].module_ifces[y].ifc_data);
+         running_modules[index].module_ifces[y].ifc_data = NULL;
       }
    }
 }
@@ -3205,7 +3541,6 @@ void reload_count_module_interfaces(reload_config_vars_t ** config_vars)
          running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_type = INVALID_MODULE_IFC_ATTR;
       }
    }
-
    return;
 }
 
@@ -3268,7 +3603,7 @@ void reload_resolve_module_enabled(reload_config_vars_t ** config_vars, const in
    } else {
       if (xmlStrncmp(key, BAD_CAST "true", xmlStrlen(key)) == 0) {
          config_module_enabled = TRUE;
-      } else if (xmlStrncmp(key, BAD_CAST "false", xmlStrlen(key)) == 0){
+      } else if (xmlStrncmp(key, BAD_CAST "false", xmlStrlen(key)) == 0) {
          config_module_enabled = FALSE;
       }
       xmlFree(key);
@@ -3508,7 +3843,7 @@ void reload_process_availablemodules_element(reload_config_vars_t ** config_vars
                                     if (convert_json_module_info(buffer, &module_info_p) != 0) {
                                        free(module_info_p);
                                        module_info_p = NULL;
-					goto add_module_on_path;
+               goto add_module_on_path;
                                     }
                                     wait_cnt = 0;
                                     while (1) {
@@ -3528,8 +3863,8 @@ void reload_process_availablemodules_element(reload_config_vars_t ** config_vars
                                     goto clean_up;
                                  }
                            } else {
-				continue;
-			   }
+            continue;
+            }
                         } else if (strstr(file->d_name, ".py") != NULL) {
                            // Fork process and execute python
                            // proc = fork();
@@ -4362,7 +4697,7 @@ int netconf_supervisor_initialization(xmlNodePtr * running)
 
    // Create thread doing server routine
    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-   if(pthread_create(&netconf_server_thread_id,  &attr, netconf_server_routine_thread, NULL) != 0) {
+   if (pthread_create(&netconf_server_thread_id,  &attr, netconf_server_routine_thread, NULL) != 0) {
       return -1;
    }
    return 0;
@@ -4371,7 +4706,7 @@ int netconf_supervisor_initialization(xmlNodePtr * running)
 xmlDocPtr netconf_get_state_data()
 {
    modules_profile_t * ptr = first_profile_ptr;
-   unsigned int x = 0, y = 0, in_ifc_cnt = 0, out_ifc_cnt = 0, modules_with_profile = 0;
+   unsigned int x = 0, y = 0, modules_with_profile = 0;
    char buffer[DEFAULT_SIZE_OF_BUFFER];
    const char * template = "<?xml version=\"1.0\"?><nemea-supervisor xmlns=\"urn:cesnet:tmc:nemea:1.0\"></nemea-supervisor>";
    xmlDocPtr doc_tree_ptr = NULL;
@@ -4435,7 +4770,7 @@ xmlDocPtr netconf_get_state_data()
       }
       }
 
-	if (loaded_modules_cnt > 0) {
+   if (loaded_modules_cnt > 0) {
       // get state data about modules with a profile
       while (ptr != NULL) {
          if (ptr->profile_name != NULL) {
@@ -4467,35 +4802,35 @@ xmlDocPtr netconf_get_state_data()
                }
 
                if (running_modules[x].module_has_service_ifc && running_modules[x].module_status) {
-                  in_ifc_cnt = 0;
-                  out_ifc_cnt = 0;
                   trapinterfaces_elem = xmlNewChild(module_elem, NULL, BAD_CAST "trapinterfaces", NULL);
                   for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
-                     if (running_modules[x].module_ifces[y].ifc_direction != NULL) {
+                     if (running_modules[x].module_ifces[y].int_ifc_direction != INVALID_MODULE_IFC_ATTR && running_modules[x].module_ifces[y].ifc_params != NULL && running_modules[x].module_ifces[y].int_ifc_type != INVALID_MODULE_IFC_ATTR) {
                         interface_elem = xmlNewChild(trapinterfaces_elem, NULL, BAD_CAST "interface", NULL);
                         xmlNewChild(interface_elem, NULL, BAD_CAST "type", BAD_CAST running_modules[x].module_ifces[y].ifc_type);
                         xmlNewChild(interface_elem, NULL, BAD_CAST "direction", BAD_CAST running_modules[x].module_ifces[y].ifc_direction);
                         xmlNewChild(interface_elem, NULL, BAD_CAST "params", BAD_CAST running_modules[x].module_ifces[y].ifc_params);
                         if (running_modules[x].module_ifces[y].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
-                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_counters_array[in_ifc_cnt]);
+                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_ifces[y].ifc_data->recv_buffer_cnt);
+                           xmlNewChild(interface_elem, NULL, BAD_CAST "recv-buffer-cnt", BAD_CAST buffer);
+                           memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
+                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_ifces[y].ifc_data->recv_msg_cnt);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "recv-msg-cnt", BAD_CAST buffer);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-msg-cnt", BAD_CAST "0");
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-buffer-cnt", BAD_CAST "0");
                            xmlNewChild(interface_elem, NULL, BAD_CAST "autoflush-cnt", BAD_CAST "0");
-                           in_ifc_cnt++;
                         } else if (running_modules[x].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
+                           xmlNewChild(interface_elem, NULL, BAD_CAST "recv-buffer-cnt", BAD_CAST "0");
                            xmlNewChild(interface_elem, NULL, BAD_CAST "recv-msg-cnt", BAD_CAST "0");
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
-                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_counters_array[running_modules[x].module_num_in_ifc + out_ifc_cnt]);
+                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_ifces[y].ifc_data->sent_msg_cnt);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-msg-cnt", BAD_CAST buffer);
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
-                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_counters_array[running_modules[x].module_num_in_ifc + running_modules[x].module_num_out_ifc + out_ifc_cnt]);
+                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_ifces[y].ifc_data->sent_buffer_cnt);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-buffer-cnt", BAD_CAST buffer);
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
-                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_counters_array[running_modules[x].module_num_in_ifc + 2*running_modules[x].module_num_out_ifc + out_ifc_cnt]);
+                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_ifces[y].ifc_data->autoflush_cnt);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "autoflush-cnt", BAD_CAST buffer);
-                           out_ifc_cnt++;
                         }
                      }
                   }
@@ -4542,35 +4877,35 @@ xmlDocPtr netconf_get_state_data()
                }
 
                if (running_modules[x].module_has_service_ifc && running_modules[x].module_status) {
-                  in_ifc_cnt = 0;
-                  out_ifc_cnt = 0;
                   trapinterfaces_elem = xmlNewChild(module_elem, NULL, BAD_CAST "trapinterfaces", NULL);
                   for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
-                     if (running_modules[x].module_ifces[y].ifc_direction != NULL) {
+                     if (running_modules[x].module_ifces[y].int_ifc_direction != INVALID_MODULE_IFC_ATTR && running_modules[x].module_ifces[y].ifc_params != NULL && running_modules[x].module_ifces[y].int_ifc_type != INVALID_MODULE_IFC_ATTR) {
                         interface_elem = xmlNewChild(trapinterfaces_elem, NULL, BAD_CAST "interface", NULL);
                         xmlNewChild(interface_elem, NULL, BAD_CAST "type", BAD_CAST running_modules[x].module_ifces[y].ifc_type);
                         xmlNewChild(interface_elem, NULL, BAD_CAST "direction", BAD_CAST running_modules[x].module_ifces[y].ifc_direction);
                         xmlNewChild(interface_elem, NULL, BAD_CAST "params", BAD_CAST running_modules[x].module_ifces[y].ifc_params);
                         if (running_modules[x].module_ifces[y].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
-                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_counters_array[in_ifc_cnt]);
+                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_ifces[y].ifc_data->recv_buffer_cnt);
+                           xmlNewChild(interface_elem, NULL, BAD_CAST "recv-buffer-cnt", BAD_CAST buffer);
+                           memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
+                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_ifces[y].ifc_data->recv_msg_cnt);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "recv-msg-cnt", BAD_CAST buffer);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-msg-cnt", BAD_CAST "0");
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-buffer-cnt", BAD_CAST "0");
                            xmlNewChild(interface_elem, NULL, BAD_CAST "autoflush-cnt", BAD_CAST "0");
-                           in_ifc_cnt++;
                         } else if (running_modules[x].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
+                           xmlNewChild(interface_elem, NULL, BAD_CAST "recv-buffer-cnt", BAD_CAST "0");
                            xmlNewChild(interface_elem, NULL, BAD_CAST "recv-msg-cnt", BAD_CAST "0");
-			   memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
-                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_counters_array[running_modules[x].module_num_in_ifc + out_ifc_cnt]);
+                           memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
+                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_ifces[y].ifc_data->sent_msg_cnt);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-msg-cnt", BAD_CAST buffer);
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
-                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_counters_array[running_modules[x].module_num_in_ifc + running_modules[x].module_num_out_ifc + out_ifc_cnt]);
+                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_ifces[y].ifc_data->sent_buffer_cnt);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-buffer-cnt", BAD_CAST buffer);
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
-                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_counters_array[running_modules[x].module_num_in_ifc + 2*running_modules[x].module_num_out_ifc + out_ifc_cnt]);
+                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_ifces[y].ifc_data->autoflush_cnt);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "autoflush-cnt", BAD_CAST buffer);
-                           out_ifc_cnt++;
                         }
                      }
                   }
@@ -4586,8 +4921,7 @@ xmlDocPtr netconf_get_state_data()
                xmlFree(modules_elem);
             }
          }
-	}
-
+      }
    }
    xmlCleanupParser();
    return doc_tree_ptr;

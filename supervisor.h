@@ -62,6 +62,8 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 
+#include <libtrap/trap.h>
+
 #include <limits.h>
 
 #ifndef PERM_LOGSDIR
@@ -87,6 +89,18 @@
 
 /***********STRUCTURES***********/
 
+typedef struct in_ifc_stats_s {
+   uint64_t recv_msg_cnt;
+   uint64_t recv_buffer_cnt;
+} in_ifc_stats_t;
+
+typedef struct out_ifc_stats_s {
+   uint64_t sent_msg_cnt;
+   uint64_t sent_buffer_cnt;
+   uint64_t autoflush_cnt;
+} out_ifc_stats_t;
+
+
 /** Structure with information about one loaded interface of module */
 typedef struct interface_s {
    char     *ifc_note; ///< Interface note
@@ -95,46 +109,57 @@ typedef struct interface_s {
    char     *ifc_direction; ///< Interface direction (IN / OUT / SERVICE)
    int         int_ifc_direction; ///< Integer value of interface direction - for faster comparison
    int         int_ifc_type; ///< Integer value of interface type - for faster comparison
+   void     *ifc_data;
 } interface_t;
+
 
 /** Structure with information about one running module */
 typedef struct running_module_s {
-   int            module_enabled; ///< TRUE if module is enabled, else FALSE.
-   char          *module_params; ///< Module parameter (loaded from config file).
-   char          *module_name; ///< Module name (loaded from config file).
-   char          *module_path; ///< Path to module from current directory
-   interface_t   *module_ifces; ///< Array of interface_t structures with information about every loaded interface of module
-   int            module_ifces_array_size; ///< Number of allocated interface_t structures by module.
-   unsigned int   module_ifces_cnt; ///< Number of modules loaded interfaces.
-   unsigned int   module_num_out_ifc; ///< Number of modules output interfaces.
-   unsigned int   module_num_in_ifc; ///< Number of modules input interfaces.
-   int            module_restart_timer;  ///< Timer used for monitoring max number of restarts/minute.
-   int            module_restart_cnt; ///< Number of module restarts.
-   int            module_max_restarts_per_minute;
-   int            module_has_service_ifc; ///< if module has service interface ~ TRUE, else ~ FALSE
-   int            module_service_ifc_isconnected; ///< if supervisor is connected to module ~ TRUE, else ~ FALSE
-   int            module_service_ifc_conn_attempts; // Count of supervisor's connection attempts to module's service interface
-   int            module_served_by_service_thread; ///< TRUE if module was added to graph struct by sevice thread, FALSE on start.
-   int            module_running; ///< TRUE after first start of module, else FALSE.
-   int            module_status; ///< Module status (TRUE ~ running, FALSE ~ stopped)
-   int            sent_sigint;
-   pid_t          module_pid; ///< Modules process PID.
-   uint64_t           *module_counters_array; ///< Array of statistics with counters.
-   int            module_service_sd; ///< Socket descriptor of the service connection.
-   int            module_modified_by_reload;
-   long int       total_cpu_usage_during_module_startup;
-   int            last_period_cpu_usage_kernel_mode; ///< Percentage of CPU usage in last period in kernel mode.
-   int            last_period_cpu_usage_user_mode; ///< Percentage of CPU usage in last period in user mode.
-   int            last_period_percent_cpu_usage_kernel_mode; ///< Percentage of CPU usage in current period in kernel mode.
-   int            last_period_percent_cpu_usage_user_mode; ///< Percentage of CPU usage in current period in user mode.
-   int            overall_percent_module_cpu_usage_kernel_mode;
-   int            overall_percent_module_cpu_usage_user_mode;
-   char *         modules_profile;
-   int            module_is_my_child;
-   int            remove_module;
-   int            init_module;
-   unsigned int   virtual_memory_usage;
+   int            module_enabled; ///< TRUE if module is enabled, else FALSE.   /*** RELOAD ***/
+   char          *module_name; ///< Module name (loaded from config file).   /*** RELOAD ***/
+   char          *module_params; ///< Module parameter (loaded from config file).   /*** RELOAD ***/
+   char          *module_path; ///< Path to module from current directory   /*** RELOAD ***/
+
+   interface_t   *module_ifces; ///< Array of interface_t structures with information about every loaded interface of module   /*** RELOAD ***/
+   unsigned int   module_ifces_cnt; ///< Number of modules loaded interfaces.   /*** RELOAD ***/
+   unsigned int   module_num_out_ifc; ///< Number of modules output interfaces.   /*** RELOAD ***/
+   unsigned int   module_num_in_ifc; ///< Number of modules input interfaces.   /*** RELOAD ***/
+   int            module_ifces_array_size; ///< Number of allocated interface_t structures by module.   /*** RELOAD ***/
+
+   int            module_served_by_service_thread; ///< TRUE if module was added to graph struct by sevice thread, FALSE on start.   /*** RELOAD ***/
+   int            module_modified_by_reload;   /*** RELOAD ***/
+   char *         modules_profile;   /*** RELOAD ***/
+   int            module_is_my_child;   /*** RELOAD ***/
+   int            remove_module;   /*** RELOAD ***/
+   int            init_module;   /*** RELOAD ***/
+
+   int            module_status; ///< Module status (TRUE ~ running, FALSE ~ stopped)   /*** SERVICE ***/
+   int            module_running; ///< TRUE after first start of module, else FALSE.   /*** RELOAD/ALLOCATION ***/
+   int            module_restart_cnt; ///< Number of module restarts.   /*** INIT ***/
+   int            module_restart_timer;  ///< Timer used for monitoring max number of restarts/minute.   /*** INIT ***/
+   int            module_max_restarts_per_minute;   /*** RELOAD ***/
+   pid_t          module_pid; ///< Modules process PID.   /*** RELOAD/START ***/
+   int            sent_sigint;   /*** INIT ***/
+
+   unsigned int   virtual_memory_usage;   /*** INIT ***/
+
+   long int       total_cpu_usage_during_module_startup;   /*** INIT ***/
+   int            last_period_cpu_usage_kernel_mode; ///< Percentage of CPU usage in last period in kernel mode.   /*** INIT ***/
+   int            last_period_cpu_usage_user_mode; ///< Percentage of CPU usage in last period in user mode.   /*** INIT ***/
+   int            last_period_percent_cpu_usage_kernel_mode; ///< Percentage of CPU usage in current period in kernel mode.   /*** INIT ***/
+   int            last_period_percent_cpu_usage_user_mode; ///< Percentage of CPU usage in current period in user mode.   /*** INIT ***/
+   int            overall_percent_module_cpu_usage_kernel_mode;   /*** INIT ***/
+   int            overall_percent_module_cpu_usage_user_mode;   /*** INIT ***/
+
+   int            module_has_service_ifc; ///< if module has service interface ~ TRUE, else ~ FALSE   /*** RELOAD ***/
+   int            module_service_sd; ///< Socket descriptor of the service connection.   /*** INIT ***/
+   int            module_service_ifc_isconnected; ///< if supervisor is connected to module ~ TRUE, else ~ FALSE   /*** INIT ***/
+   int            module_service_ifc_conn_attempts; // Count of supervisor's connection attempts to module's service interface    /*** INIT ***/
+   int            module_service_ifc_conn_fails;   /*** INIT ***/
+   int            module_service_ifc_conn_block;   /*** INIT ***/
+   int            module_service_ifc_timer;   /*** INIT ***/
 } running_module_t;
+
 
 typedef struct modules_profile_s modules_profile_t;
 
@@ -143,6 +168,7 @@ struct modules_profile_s {
    int    profile_enabled;
    modules_profile_t * next;
 };
+
 
 typedef struct sup_client_s {
    FILE *         client_input_stream;
@@ -154,6 +180,7 @@ typedef struct sup_client_s {
    pthread_t   client_thread_id;
 } sup_client_t;
 
+
 typedef struct server_internals_s {
    sup_client_t **         clients;
    int                            clients_cnt;
@@ -163,6 +190,7 @@ typedef struct server_internals_s {
    int                            config_mode_active;
    pthread_mutex_t     lock;
 } server_internals_t;
+
 
 typedef struct reload_config_vars_s {
    xmlDocPtr       doc_tree_ptr;
@@ -179,33 +207,6 @@ typedef struct reload_config_vars_s {
    int                   modified_modules;
 } reload_config_vars_t;
 
-/** Structure with information about one module parameter
- *  Every parameter contains short_opt, long_opt, description,
- *  flag whether the parameter requires argument and argument type.
- */
-typedef struct trap_module_info_parameter_s {
-   char   short_opt;
-   char  *long_opt;
-   char  *description;
-   int param_required_argument;
-   char  *argument_type;
-} trap_module_info_parameter_t;
-
-/** Structure with information about module
- *  This struct contains basic information about the module, such as module's
- *  name, number of interfaces etc. It's supposed to be filled with static data
- *  and passed to trap_init function.
- */
-typedef struct trap_module_info_s {
-   char *name;           ///< Name of the module (short string)
-   char *description;    /**< Detialed description of the module, can be a long
-                              string with several lines or even paragraphs. */
-   int num_ifc_in;  ///< Number of input interfaces
-   int num_ifc_out; ///< Number of output interfaces
-   // TODO more ... (e.g. UniRec specifiers)
-   trap_module_info_parameter_t **params;
-} trap_module_info_t;
-
 
 typedef struct available_module_s available_module_t;
 typedef struct available_modules_path_s available_modules_path_t;
@@ -217,6 +218,7 @@ struct available_modules_path_s {
    available_modules_path_t * next;
    available_modules_path_t * prev;
 };
+
 
 struct available_module_s {
    char *                              name;
