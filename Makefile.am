@@ -1,3 +1,5 @@
+ACLOCAL_AMFLAGS = -I m4
+
 SUBDIRS=munin
 
 bin_PROGRAMS=supervisor supervisor_cli

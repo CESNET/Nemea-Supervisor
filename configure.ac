@@ -17,6 +17,8 @@ AC_CHECK_PROG(RPMBUILD, rpmbuild, rpmbuild, [""])
 AM_CONDITIONAL(MAKE_RPMS, test x$RPMBUILD != x)
 AM_SILENT_RULES([yes])
 
+AC_CONFIG_MACRO_DIR([m4])
+
 AC_ARG_ENABLE([debug],
         AC_HELP_STRING([--enable-debug],
         [Enable build with debug symbols and without optimizations.]),
@@ -50,8 +52,6 @@ else
 AC_DEFINE([HAVE_DISPLAY], 0, [Use display(1) to show image.])
 AC_MSG_WARN([We need ImageMagick...])
 fi
-
-AC_CONFIG_MACRO_DIR([m4])
 
 # Checks for libraries.
 
