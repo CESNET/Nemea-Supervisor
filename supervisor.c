@@ -183,12 +183,6 @@ void print_module_ifc_stats(int module_number)
    }
 }
 
-
-const char counter_message_str[] = "messages";
-const char counter_buffer_str[] = "buffers";
-const char counter_autoflush_str[] = "autoflushes";
-
-// TODO memory leaks
 int decode_cnts_from_json(char **data, int module_number)
 {
    uint x = 0;
@@ -251,17 +245,17 @@ int decode_cnts_from_json(char **data, int module_number)
             return -1;
          }
 
-         cnt = json_object_get(in_ifc_cnts, counter_message_str);
+         cnt = json_object_get(in_ifc_cnts, "messages");
          if (cnt == NULL) {
-            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an input interface json object (module %s).\n", get_stats_formated_time(), counter_message_str, running_modules[module_number].module_name);
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an input interface json object (module %s).\n", get_stats_formated_time(), "messages", running_modules[module_number].module_name);
             json_decref(json_struct);
             return -1;
          }
          ((in_ifc_stats_t *) running_modules[module_number].module_ifces[actual_ifc_index].ifc_data)->recv_msg_cnt = json_integer_value(cnt);
 
-         cnt = json_object_get(in_ifc_cnts, counter_buffer_str);
+         cnt = json_object_get(in_ifc_cnts, "buffers");
          if (cnt == NULL) {
-            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an input interface json object (module %s).\n", get_stats_formated_time(), counter_buffer_str, running_modules[module_number].module_name);
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an input interface json object (module %s).\n", get_stats_formated_time(), "buffers", running_modules[module_number].module_name);
             json_decref(json_struct);
             return -1;
          }
@@ -300,25 +294,25 @@ int decode_cnts_from_json(char **data, int module_number)
             return -1;
          }
 
-         cnt = json_object_get(out_ifc_cnts, counter_message_str);
+         cnt = json_object_get(out_ifc_cnts, "messages");
          if (cnt == NULL) {
-            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an output interface json object (module %s).\n", get_stats_formated_time(), counter_message_str, running_modules[module_number].module_name);
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an output interface json object (module %s).\n", get_stats_formated_time(), "messages", running_modules[module_number].module_name);
             json_decref(json_struct);
             return -1;
          }
          ((out_ifc_stats_t *) running_modules[module_number].module_ifces[actual_ifc_index].ifc_data)->sent_msg_cnt = json_integer_value(cnt);
 
-         cnt = json_object_get(out_ifc_cnts, counter_buffer_str);
+         cnt = json_object_get(out_ifc_cnts, "buffers");
          if (cnt == NULL) {
-            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an output interface json object (module %s).\n", get_stats_formated_time(), counter_buffer_str, running_modules[module_number].module_name);
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an output interface json object (module %s).\n", get_stats_formated_time(), "buffers", running_modules[module_number].module_name);
             json_decref(json_struct);
             return -1;
          }
          ((out_ifc_stats_t *) running_modules[module_number].module_ifces[actual_ifc_index].ifc_data)->sent_buffer_cnt = json_integer_value(cnt);
 
-         cnt = json_object_get(out_ifc_cnts, counter_autoflush_str);
+         cnt = json_object_get(out_ifc_cnts, "autoflushes");
          if (cnt == NULL) {
-            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an output interface json object (module %s).\n", get_stats_formated_time(), counter_autoflush_str, running_modules[module_number].module_name);
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an output interface json object (module %s).\n", get_stats_formated_time(), "autoflushes", running_modules[module_number].module_name);
             json_decref(json_struct);
             return -1;
          }
@@ -2278,10 +2272,6 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
       header->com = SERVICE_GET_COM;
       header->data_size = 0;
 
-      // TODO handle connection in function including max conn fails and remove it from next cycle
-      // service_ifc_conn()
-      // code maintenance - defines, functions souslednost
-
       // Handle connection between supervisor and modules via service interface
       service_connect_to_modules();
 
@@ -2338,10 +2328,6 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
             }
          }
       }
-
-      // DONE - timeouty u send a recv, conn attempts counter, send and recv fails cnt and max value for some time interval
-      // TODO add connection counter to every module and after reaching maximum, do not connect again (errors from send and receive) + timer (max value for some time interval - few errors are allowed)
-      // TODO after reloading and modifying module - solve module_running variable and reallocating interface data structures - whole initialization of their variables - it must be transparent, simple and on one place
 
       pthread_mutex_unlock(&running_modules_lock);
 
