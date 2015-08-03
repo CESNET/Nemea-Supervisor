@@ -657,11 +657,13 @@ char **make_module_arguments(const int number_of_module)
 {
    unsigned int size_of_atr = DEFAULT_SIZE_OF_BUFFER;
    char * atr = (char *) calloc (size_of_atr, sizeof(char));
-   unsigned int x = 0, y = 0;
+   unsigned int x = 0, y = 0, act_dir = 0;
    int ptr = 0;
    int str_len = 0;
    unsigned int params_counter = 0;
    char ** params = NULL;
+   char *addr = NULL;
+   char *port = NULL;
 
    //binary without libtrap interfaces
    if (running_modules[number_of_module].module_ifces_cnt == 0) {
@@ -732,89 +734,60 @@ char **make_module_arguments(const int number_of_module)
       return params;
    }
 
-   for (x=0; x<running_modules[number_of_module].module_ifces_cnt; x++) {
-      if (running_modules[number_of_module].module_ifces[x].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
-         if (running_modules[number_of_module].module_ifces[x].int_ifc_type == TCP_MODULE_IFC_TYPE) {
-            strncpy(atr + ptr,"t",1);
-            ptr++;
-         } else if (running_modules[number_of_module].module_ifces[x].int_ifc_type == UNIXSOCKET_MODULE_IFC_TYPE) {
-            strncpy(atr + ptr,"u",1);
-            ptr++;
-         } else {
-            VERBOSE(N_STDOUT,"%s\n", running_modules[number_of_module].module_ifces[x].ifc_type);
-            VERBOSE(N_STDOUT,"Wrong ifc_type in module %d.\n", number_of_module);
-            return NULL;
-         }
+   for (y = 0; y < 3; y++) {
+      // To get first input ifces than output ifces and in the end service ifc
+      switch (y) {
+      case 0:
+         act_dir = IN_MODULE_IFC_DIRECTION;
+         break;
+      case 1:
+         act_dir = OUT_MODULE_IFC_DIRECTION;
+         break;
+      case 2:
+         act_dir = SERVICE_MODULE_IFC_DIRECTION;
+         break;
       }
-   }
 
-   for (x=0; x<running_modules[number_of_module].module_ifces_cnt; x++) {
-      if (running_modules[number_of_module].module_ifces[x].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
-         if (running_modules[number_of_module].module_ifces[x].int_ifc_type == TCP_MODULE_IFC_TYPE) {
-            strncpy(atr + ptr,"t",1);
-            ptr++;
-         } else if (running_modules[number_of_module].module_ifces[x].int_ifc_type == UNIXSOCKET_MODULE_IFC_TYPE) {
-            strncpy(atr + ptr,"u",1);
-            ptr++;
-         } else {
-            VERBOSE(N_STDOUT,"%s\n", running_modules[number_of_module].module_ifces[x].ifc_type);
-            VERBOSE(N_STDOUT,"Wrong ifc_type in module %d.\n", number_of_module);
-            return NULL;
-         }
-      }
-   }
-
-   for (x=0; x<running_modules[number_of_module].module_ifces_cnt; x++) {
-      if (running_modules[number_of_module].module_ifces[x].int_ifc_type == SERVICE_MODULE_IFC_TYPE) {
-         strncpy(atr + ptr,"s",1);
-         ptr++;
-      }
-   }
-
-   strncpy(atr + ptr,";",1);
-   ptr++;
-
-   for (x=0; x<running_modules[number_of_module].module_ifces_cnt; x++) {
-      if (running_modules[number_of_module].module_ifces[x].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
-         if (running_modules[number_of_module].module_ifces[x].ifc_params != NULL) {
-            if ((strlen(atr) + strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1) >= (3*size_of_atr)/5) {
-               size_of_atr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + (size_of_atr/2);
-               atr = (char *) realloc (atr, size_of_atr*sizeof(char));
-               memset(atr + ptr, 0, size_of_atr - ptr);
+      for (x = 0; x < running_modules[number_of_module].module_ifces_cnt; x++) {
+         if (running_modules[number_of_module].module_ifces[x].int_ifc_direction == act_dir) {
+            // Get interface type
+            if (running_modules[number_of_module].module_ifces[x].int_ifc_type == TCP_MODULE_IFC_TYPE) {
+               strncpy(atr + ptr, "t:", 2);
+               ptr+=2;
+            } else if (running_modules[number_of_module].module_ifces[x].int_ifc_type == UNIXSOCKET_MODULE_IFC_TYPE) {
+               strncpy(atr + ptr, "u:", 2);
+               ptr+=2;
+            } else if (running_modules[number_of_module].module_ifces[x].int_ifc_type == SERVICE_MODULE_IFC_TYPE) {
+               strncpy(atr + ptr, "s:", 2);
+               ptr+=2;
+            } /* else if (running_modules[number_of_module].module_ifces[x].int_ifc_type == FILE_MODULE_IFC_TYPE) {
+               strncpy(atr + ptr, "f:", 2);
+               ptr+=2;
+            } */ else {
+               VERBOSE(MODULE_EVENT, "%s [WARNING] Wrong ifc_type in module %d (interface number %d).\n", get_stats_formated_time(), number_of_module, x);
+               return NULL;
             }
-            sprintf(atr + ptr,"%s;",running_modules[number_of_module].module_ifces[x].ifc_params);
-            ptr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1;
-         }
-      }
-   }
-
-   for (x=0; x<running_modules[number_of_module].module_ifces_cnt; x++) {
-      if (running_modules[number_of_module].module_ifces[x].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
-         if (running_modules[number_of_module].module_ifces[x].ifc_params != NULL) {
-            if ((strlen(atr) + strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1) >= (3*size_of_atr)/5) {
-               size_of_atr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + (size_of_atr/2);
-               atr = (char *) realloc (atr, size_of_atr*sizeof(char));
-               memset(atr + ptr, 0, size_of_atr - ptr);
+            // Get interface params
+            if (running_modules[number_of_module].module_ifces[x].ifc_params != NULL) {
+               if ((strlen(atr) + strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1) >= (3*size_of_atr)/5) {
+                  size_of_atr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + (size_of_atr/2);
+                  atr = (char *) realloc (atr, size_of_atr*sizeof(char));
+                  memset(atr + ptr, 0, size_of_atr - ptr);
+               }
+               port = NULL;
+               port = get_param_by_delimiter(running_modules[number_of_module].module_ifces[x].ifc_params, &addr, ',');
+               if (port == NULL) {
+                  sprintf(atr + ptr,"%s,",running_modules[number_of_module].module_ifces[x].ifc_params);
+               } else {
+                  sprintf(atr + ptr,"%s:%s,", addr, port);
+               }
+               ptr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1;
             }
-            sprintf(atr + ptr,"%s;",running_modules[number_of_module].module_ifces[x].ifc_params);
-            ptr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1;
-         }
-      }
-   }
 
-   for (x=0; x<running_modules[number_of_module].module_ifces_cnt; x++) {
-      if (running_modules[number_of_module].module_ifces[x].int_ifc_type == SERVICE_MODULE_IFC_TYPE) {
-         if (running_modules[number_of_module].module_ifces[x].ifc_params != NULL) {
-            if ((strlen(atr) + strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1) >= (3*size_of_atr)/5) {
-               size_of_atr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + (size_of_atr/2);
-               atr = (char *) realloc (atr, size_of_atr*sizeof(char));
-               memset(atr + ptr, 0, size_of_atr - ptr);
-            }
-            sprintf(atr + ptr,"%s;",running_modules[number_of_module].module_ifces[x].ifc_params);
-            ptr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1;
          }
       }
    }
+   // Remove last comma
    memset(atr + ptr-1,0,1);
 
    if (running_modules[number_of_module].module_params == NULL) {
@@ -1100,12 +1073,16 @@ void re_start_module(const int module_number)
          running_modules[module_number].module_enabled = FALSE;
       } else {
          char **params = make_module_arguments(module_number);
-         // TODO check return value NULL !!!!!
+         if (params == NULL) {
+            goto execute_fail;
+         }
          // TODO make_module_arguments - if it fails (comparing types and directions etc.) create exit label
          // TODO check values of ifc type and direction during reload
          fflush(stdout);
          fflush(stderr);
          execvp(running_modules[module_number].module_path, params);
+execute_fail:
+         exit(EXIT_FAILURE);
       }
       VERBOSE(MODULE_EVENT,"%s [ERROR] Module execution: could not execute %s binary! (possible reason - wrong module binary path)\n", get_stats_formated_time(), running_modules[module_number].module_name);
       running_modules[module_number].module_enabled = FALSE;
