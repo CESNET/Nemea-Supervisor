@@ -84,6 +84,7 @@
 #define TCP_MODULE_IFC_TYPE                        1  ///< Constant for tcp module interface type
 #define UNIXSOCKET_MODULE_IFC_TYPE         2  ///< Constant for unixsocket module interface type
 #define SERVICE_MODULE_IFC_TYPE                3  ///< Constant for service module interface type
+#define FILE_MODULE_IFC_TYPE                       4 ///< Constant for file module interface type
 
 #define INVALID_MODULE_IFC_ATTR                -1  ///< Constant for invalid module interface attribute
 

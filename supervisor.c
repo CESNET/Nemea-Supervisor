@@ -760,10 +760,10 @@ char **make_module_arguments(const int number_of_module)
             } else if (running_modules[number_of_module].module_ifces[x].int_ifc_type == SERVICE_MODULE_IFC_TYPE) {
                strncpy(atr + ptr, "s:", 2);
                ptr+=2;
-            } /* else if (running_modules[number_of_module].module_ifces[x].int_ifc_type == FILE_MODULE_IFC_TYPE) {
+            } else if (running_modules[number_of_module].module_ifces[x].int_ifc_type == FILE_MODULE_IFC_TYPE) {
                strncpy(atr + ptr, "f:", 2);
                ptr+=2;
-            } */ else {
+            } else {
                VERBOSE(MODULE_EVENT, "%s [WARNING] Wrong ifc_type in module %d (interface number %d).\n", get_stats_formated_time(), number_of_module, x);
                return NULL;
             }
@@ -3494,6 +3494,8 @@ void reload_count_module_interfaces(reload_config_vars_t ** config_vars)
             running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_type = TCP_MODULE_IFC_TYPE;
          } else if (strncmp(running_modules[(*config_vars)->current_module_idx].module_ifces[x].ifc_type, "UNIXSOCKET", 10) == 0) {
             running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_type = UNIXSOCKET_MODULE_IFC_TYPE;
+         } else if (strncmp(running_modules[(*config_vars)->current_module_idx].module_ifces[x].ifc_type, "FILE", 4) == 0) {
+            running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_type = FILE_MODULE_IFC_TYPE;
          } else if (strncmp(running_modules[(*config_vars)->current_module_idx].module_ifces[x].ifc_type, "SERVICE", 7) == 0) {
             running_modules[(*config_vars)->current_module_idx].module_has_service_ifc = TRUE;
             running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_type = SERVICE_MODULE_IFC_TYPE;

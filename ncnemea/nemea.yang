@@ -22,6 +22,10 @@ module "nemea" {
         description
           "UNIX socket for local connections.";
       }
+      enum "FILE" {
+        description
+          "File interface for loading or saving the data from or to a file.";
+      }
       enum "SERVICE" {
         description
           "Service communication interface for module-supervisor communication.";
