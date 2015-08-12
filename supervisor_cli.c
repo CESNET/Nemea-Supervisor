@@ -234,34 +234,35 @@ int main(int argc, char **argv)
          fprintf(stderr, "[ERROR] Select: error!\n");
          free_client_internals_variables();
          exit(EXIT_FAILURE);
-      } else if (ret_val) {
+      } else if (ret_val > 0) {
          if (FD_ISSET(0, &read_fds)) {
             buffer = get_input_from_stream(stdin);
-            if (buffer == NULL) {
-               continue;
-            }
-            if ((strcmp(buffer,"Cquit") == 0)) {
-               free_client_internals_variables();
-               free(buffer);
-               exit(EXIT_SUCCESS);
-            } else if (strcmp(buffer,"Dstop") == 0) {
-               for (x=0; x<3; x++) {
-                  fprintf(client_internals->supervisor_output_stream,"9\n");
+            if (buffer != NULL) {
+               if ((strcmp(buffer,"Cquit") == 0)) {
+                  free_client_internals_variables();
+                  free(buffer);
+                  exit(EXIT_SUCCESS);
+               } else if (strcmp(buffer,"Dstop") == 0) {
+                  for (x=0; x<3; x++) {
+                     fprintf(client_internals->supervisor_output_stream,"9\n");
+                     fflush(client_internals->supervisor_output_stream);
+                     usleep(300000);
+                  }
+               } else {
+                  fprintf(client_internals->supervisor_output_stream,"%s\n",buffer);
                   fflush(client_internals->supervisor_output_stream);
-                  usleep(300000);
                }
-            } else {
-               fprintf(client_internals->supervisor_output_stream,"%s\n",buffer);
-               fflush(client_internals->supervisor_output_stream);
+               free(buffer);
             }
-            free(buffer);
          }
          if (FD_ISSET(client_internals->supervisor_input_stream_fd, &read_fds)) {
             usleep(200000);
             ioctl(client_internals->supervisor_input_stream_fd, FIONREAD, &bytes_to_read);
             if (bytes_to_read == 0 || bytes_to_read == -1) {
-               fprintf(stderr, ANSI_RED_BOLD "[WARNING] Supervisor has disconnected, I'm done!" ANSI_ATTR_RESET "\n");
-               fflush(stderr);
+               if (just_stats_flag != TRUE) {
+                  fprintf(stderr, ANSI_RED_BOLD "[WARNING] Supervisor has disconnected, I'm done!" ANSI_ATTR_RESET "\n");
+                  fflush(stderr);
+               }
                free_client_internals_variables();
                exit(EXIT_SUCCESS);
             } else {
