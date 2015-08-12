@@ -70,7 +70,7 @@ supervisor_cli = "/usr/bin/nemea/supervisor_cli"
 
 # labels of counters in graphs
 labels = {
-	"in": ["received messages"],
+	"in": ["received messages", "received buffers"],
 	"out": ["sent messages", "sent buffers", "autoflush"],
 	"cpu": ["kernel mode", "user mode"],
 	"mem": ["virtual memory"],
@@ -78,7 +78,7 @@ labels = {
 
 # data types of counters in graphs
 datatypes = {
-	"in": ["DERIVE"],
+	"in": ["DERIVE", "DERIVE"],
 	"out": ["DERIVE", "DERIVE", "DERIVE"],
 	"cpu": ["GAUGE", "GAUGE"],
 	"mem": ["GAUGE"],
@@ -129,11 +129,11 @@ signal.alarm(2)
 
 # get data
 if test:
-	data = """MAIN_Anonymizer,in,0,-792698113
+	data = """MAIN_Anonymizer,in,0,-792698113,1334
 MAIN_Anonymizer,out,0,-792698114,74068444,13382
 MAIN_Anonymizer,out,1,698114,74068444,13382
-MAIN_ipv6stats,in,0,-170390356
-MAIN_dns_amplification,in,0,-1398852332
+MAIN_ipv6stats,in,0,-170390356,423
+MAIN_dns_amplification,in,0,-1398852332,14896
 MAIN_dns_amplification,out,0,125580,72686,2774847
 MAIN_Anonymizer,cpu,0,3
 MAIN_ipv6stats,cpu,0,0
