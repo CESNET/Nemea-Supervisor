@@ -43,6 +43,7 @@
  *
  */
 
+#define _GNU_SOURCE
 #ifdef nemea_plugin
    #include "./ncnemea/ncnemea.h"
 #endif
@@ -90,7 +91,8 @@
 #define NETCONF_DEFAULT_LOGSDIR_PATH "/tmp/netconf_supervisor_logs/"
 #define DAEMON_DEFAULT_LOGSDIR_PATH "/tmp/daemon_supervisor_logs/"
 #define INTERACTIVE_DEFAULT_LOGSDIR_PATH "/tmp/interactive_supervisor_logs/"
-#define DEFAULT_BACKUP_FILE_PREFIX "sup_backup"
+#define BACKUP_FILE_PREFIX "/tmp/"
+#define BACKUP_FILE_SUFIX "_sup_backup_file.xml"
 
 #define RET_ERROR    -1
 #define MAX_NUMBER_SUP_CLIENTS   5
@@ -158,8 +160,44 @@ char * get_stats_formated_time();
 void check_duplicated_ports();
 void check_missing_interface_attributes();
 
+// Returns absolute path of the file / directory passed in file_name parameter
+char *get_absolute_file_path(char *file_name)
+{
+   static char absolute_file_path[PATH_MAX];
+   memset(absolute_file_path, 0, PATH_MAX);
 
+   if (realpath(file_name, absolute_file_path) == NULL) {
+      return NULL;
+   }
+   return absolute_file_path;
+}
 
+// Creates backup file path using configuration file name
+char *create_backup_file_path()
+{
+   uint x = 0;
+   char *absolute_config_file_path = NULL;
+   uint32_t letter_sum = 0;
+   char *buffer = NULL;
+
+   // Get absolute path of the configuration file
+   absolute_config_file_path = get_absolute_file_path(config_file);
+   if (absolute_config_file_path == NULL) {
+      return NULL;
+   }
+
+   // Add up all letters of the absolute path multiplied by their index
+   for (x = 0; x < strlen(absolute_config_file_path); x++) {
+      letter_sum += absolute_config_file_path[x] * (x+1);
+   }
+
+   // Create path of the backup file: "/tmp/" + letter_sum + "_sup_backup.xml"
+   if (asprintf(&buffer, "%s%d%s", BACKUP_FILE_PREFIX, letter_sum, BACKUP_FILE_SUFIX) < 0) {
+      return NULL;
+   }
+
+   return buffer;
+}
 
 void print_module_ifc_stats(int module_number)
 {
@@ -3965,6 +4003,7 @@ int reload_configuration(const int choice, xmlNodePtr * node)
 {
    pthread_mutex_lock(&running_modules_lock);
 
+   char *backup_file_name = NULL;
    int modules_got_profile;
    unsigned int x = 0;
    int number = 0;
@@ -3978,33 +4017,26 @@ int reload_configuration(const int choice, xmlNodePtr * node)
 
    switch (choice) {
       case RELOAD_INIT_LOAD_CONFIG: {
-            char file_name[100];
-            memset(file_name,0,100);
-            if (socket_path == NULL) {
-               sprintf(file_name, "%s%s.xml", logs_path, DEFAULT_BACKUP_FILE_PREFIX); // TODO backup file path, what if logs dir path is changed after restart.. wont find backup file
-            } else {
-               char socket_path_without_s[100];
-               memset(socket_path_without_s,0,100);
-               int socket_path_without_s_length = 0;
-               for (x=0; x<strlen(socket_path); x++) {
-                  if (socket_path[x] != '/') {
-                     socket_path_without_s[socket_path_without_s_length] = socket_path[x];
-                     socket_path_without_s_length++;
-                  }
-               }
-               sprintf(file_name, "%s%s_%s.xml", logs_path, DEFAULT_BACKUP_FILE_PREFIX, socket_path_without_s);
-            }
-            if (access(file_name, F_OK) != -1) {
-               config_vars->doc_tree_ptr = xmlParseFile(file_name);
-               unlink(file_name); // delete backup file after parsing, it wont be needed anymore
-               VERBOSE(N_STDOUT, "%s [WARNING] I found backup file with my socket on path \"%s\" and I'm gonna load it!\n", get_stats_formated_time(), file_name);
-            } else {
-               if (errno == EACCES) {
-                  VERBOSE(N_STDOUT, "%s [WARNING] I don't have permissions to access backup file path \"%s\", I'm gonna load default config file!\n", get_stats_formated_time(), file_name);
-               } else if (errno == ENOENT) {
-                  VERBOSE(N_STDOUT, "%s [WARNING] Backup file with path \"%s\" does not exist, I'm gonna load default config file!\n", get_stats_formated_time(), file_name);
-               }
+            backup_file_name = create_backup_file_path();
+            if (backup_file_name == NULL) {
                config_vars->doc_tree_ptr = xmlParseFile(config_file);
+            } else {
+               if (access(backup_file_name, F_OK) != -1) {
+                  config_vars->doc_tree_ptr = xmlParseFile(backup_file_name);
+                  unlink(backup_file_name); // delete backup file after parsing, it wont be needed anymore
+                  VERBOSE(N_STDOUT, "%s [WARNING] I found backup file for this configuration file on path \"%s\" and I'm gonna load it!\n", get_stats_formated_time(), backup_file_name);
+               } else {
+                  if (errno == EACCES) {
+                     VERBOSE(N_STDOUT, "%s [WARNING] I don't have permissions to access backup file path \"%s\", I'm gonna load default config file!\n", get_stats_formated_time(), backup_file_name);
+                  } else if (errno == ENOENT) {
+                     VERBOSE(N_STDOUT, "%s [WARNING] Backup file with path \"%s\" does not exist, I'm gonna load default config file!\n", get_stats_formated_time(), backup_file_name);
+                  }
+                  config_vars->doc_tree_ptr = xmlParseFile(config_file);
+               }
+               if (backup_file_name != NULL) {
+                  free(backup_file_name);
+                  backup_file_name = NULL;
+               }
             }
             if (config_vars->doc_tree_ptr == NULL) {
                fprintf(stderr,"Document not parsed successfully. \n");
@@ -4458,6 +4490,8 @@ void check_duplicated_ports()
 
 void generate_backup_config_file()
 {
+   FILE *backup_file_fd = NULL;
+   char *backup_file_name = NULL;
    modules_profile_t * ptr = first_profile_ptr;
    unsigned int x, y, backuped_modules = 0;
    char buffer[20];
@@ -4595,34 +4629,25 @@ void generate_backup_config_file()
       }
    }
 
-   char file_name[100];
-   memset(file_name,0,100);
-   if (socket_path == NULL) {
-      sprintf(file_name, "%s%s.xml", logs_path, DEFAULT_BACKUP_FILE_PREFIX); // TODO backup file path, what if logs dir path is changed after restart.. wont find backup file
+   backup_file_name = create_backup_file_path();
+   if (backup_file_name == NULL) {
+      VERBOSE(N_STDOUT, "%s [ERROR] Could not create backup file name!\n", get_stats_formated_time());
    } else {
-      char socket_path_without_s[100];
-      memset(socket_path_without_s,0,100);
-      int socket_path_without_s_length = 0;
-      for (x=0; x<strlen(socket_path); x++) {
-         if (socket_path[x] != '/') {
-            socket_path_without_s[socket_path_without_s_length] = socket_path[x];
-            socket_path_without_s_length++;
+      backup_file_fd = fopen(backup_file_name,"w");
+      if (backup_file_fd != NULL) {
+         if (xmlDocFormatDump(backup_file_fd, document_ptr, 1) == -1) {
+            VERBOSE(N_STDOUT, "%s [ERROR] Could not save backup file!\n", get_stats_formated_time());
+         } else {
+            VERBOSE(N_STDOUT, "%s [WARNING] Phew, backup file saved !!\n", get_stats_formated_time());
          }
-      }
-      sprintf(file_name, "%s%s_%s.xml", logs_path, DEFAULT_BACKUP_FILE_PREFIX, socket_path_without_s);
-   }
-
-   FILE * file_fd = fopen(file_name,"w");
-
-   if (file_fd != NULL) {
-      if (xmlDocFormatDump(file_fd, document_ptr, 1) == -1) {
-         VERBOSE(N_STDOUT, "%s [ERROR] Could not save backup file!\n", get_stats_formated_time());
+         fclose(backup_file_fd);
       } else {
-         VERBOSE(N_STDOUT, "%s [WARNING] Phew, backup file saved !!\n", get_stats_formated_time());
+         VERBOSE(N_STDOUT, "%s [ERROR] Could not open backup file!\n", get_stats_formated_time());
       }
-      fclose(file_fd);
-   } else {
-      VERBOSE(N_STDOUT, "%s [ERROR] Could not open backup file!\n", get_stats_formated_time());
+      if (backup_file_name != NULL) {
+         free(backup_file_name);
+         backup_file_name = NULL;
+      }
    }
 
    xmlFreeDoc(document_ptr);
