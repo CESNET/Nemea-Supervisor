@@ -199,6 +199,39 @@ char *create_backup_file_path()
    return buffer;
 }
 
+void create_shutdown_info(char **backup_file_path)
+{
+   FILE *info_file_fd = NULL;
+   char *info_file_name = NULL;
+
+   if (asprintf(&info_file_name, "%s_info", *backup_file_path) < 0) {
+      return;
+   }
+
+   info_file_fd = fopen(info_file_name, "w");
+   if (info_file_fd == NULL) {
+      if (info_file_name != NULL) {
+         free(info_file_name);
+         info_file_name = NULL;
+      }
+      return;
+   }
+
+   fprintf(info_file_fd, "Supervisor shutdown info:\n==========================\n\n");
+   fprintf(info_file_fd, "Date and time: %s\n", get_stats_formated_time());
+   fprintf(info_file_fd, "Number of modules in configuration: %d\n", loaded_modules_cnt);
+   fprintf(info_file_fd, "Number of running modules: %d\n", service_update_module_status());
+   fprintf(info_file_fd, "Logs directory: %s\n", get_absolute_file_path(logs_path));
+   fprintf(info_file_fd, "Configuration file: %s\n\n", get_absolute_file_path(config_file));
+   fprintf(info_file_fd, "Run supervisor with this configuration file to load generated backup file. It will connect to running modules.\n");
+
+   if (info_file_name != NULL) {
+      free(info_file_name);
+      info_file_name = NULL;
+   }
+   fclose(info_file_fd);
+}
+
 void print_module_ifc_stats(int module_number)
 {
    uint x = 0;
@@ -4644,6 +4677,8 @@ void generate_backup_config_file()
       } else {
          VERBOSE(N_STDOUT, "%s [ERROR] Could not open backup file!\n", get_stats_formated_time());
       }
+      // Create file with information about generated backup file
+      create_shutdown_info(&backup_file_name);
       if (backup_file_name != NULL) {
          free(backup_file_name);
          backup_file_name = NULL;
