@@ -4776,10 +4776,10 @@ xmlDocPtr netconf_get_state_data()
                         xmlNewChild(interface_elem, NULL, BAD_CAST "params", BAD_CAST running_modules[x].module_ifces[y].ifc_params);
                         if (running_modules[x].module_ifces[y].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
-                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_ifces[y].ifc_data->recv_buffer_cnt);
+                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((in_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->recv_buffer_cnt);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "recv-buffer-cnt", BAD_CAST buffer);
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
-                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_ifces[y].ifc_data->recv_msg_cnt);
+                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((in_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->recv_msg_cnt);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "recv-msg-cnt", BAD_CAST buffer);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-msg-cnt", BAD_CAST "0");
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-buffer-cnt", BAD_CAST "0");
@@ -4788,13 +4788,13 @@ xmlDocPtr netconf_get_state_data()
                            xmlNewChild(interface_elem, NULL, BAD_CAST "recv-buffer-cnt", BAD_CAST "0");
                            xmlNewChild(interface_elem, NULL, BAD_CAST "recv-msg-cnt", BAD_CAST "0");
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
-                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_ifces[y].ifc_data->sent_msg_cnt);
+                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_msg_cnt);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-msg-cnt", BAD_CAST buffer);
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
-                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_ifces[y].ifc_data->sent_buffer_cnt);
+                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_buffer_cnt);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-buffer-cnt", BAD_CAST buffer);
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
-                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_ifces[y].ifc_data->autoflush_cnt);
+                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->autoflush_cnt);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "autoflush-cnt", BAD_CAST buffer);
                         }
                      }
@@ -4851,10 +4851,10 @@ xmlDocPtr netconf_get_state_data()
                         xmlNewChild(interface_elem, NULL, BAD_CAST "params", BAD_CAST running_modules[x].module_ifces[y].ifc_params);
                         if (running_modules[x].module_ifces[y].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
-                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_ifces[y].ifc_data->recv_buffer_cnt);
+                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((in_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->recv_buffer_cnt);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "recv-buffer-cnt", BAD_CAST buffer);
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
-                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_ifces[y].ifc_data->recv_msg_cnt);
+                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((in_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->recv_msg_cnt);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "recv-msg-cnt", BAD_CAST buffer);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-msg-cnt", BAD_CAST "0");
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-buffer-cnt", BAD_CAST "0");
@@ -4863,13 +4863,13 @@ xmlDocPtr netconf_get_state_data()
                            xmlNewChild(interface_elem, NULL, BAD_CAST "recv-buffer-cnt", BAD_CAST "0");
                            xmlNewChild(interface_elem, NULL, BAD_CAST "recv-msg-cnt", BAD_CAST "0");
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
-                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_ifces[y].ifc_data->sent_msg_cnt);
+                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_msg_cnt);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-msg-cnt", BAD_CAST buffer);
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
-                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_ifces[y].ifc_data->sent_buffer_cnt);
+                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_buffer_cnt);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-buffer-cnt", BAD_CAST buffer);
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
-                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64,running_modules[x].module_ifces[y].ifc_data->autoflush_cnt);
+                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->autoflush_cnt);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "autoflush-cnt", BAD_CAST buffer);
                         }
                      }
