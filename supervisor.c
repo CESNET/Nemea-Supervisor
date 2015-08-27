@@ -1101,10 +1101,10 @@ execute_fail:
    }
 }
 
-// returns TRUE if some module is running, else FALSE
+// Returns a number of running modules
 int service_update_module_status()
 {
-   unsigned int x, some_module_running = FALSE;
+   unsigned int x, some_module_running = 0;
 
    for (x=0; x<loaded_modules_cnt; x++) {
       if (running_modules[x].module_pid > 0) {
@@ -1127,7 +1127,7 @@ int service_update_module_status()
             running_modules[x].module_pid = 0;
          } else {
             running_modules[x].module_status = TRUE;
-            some_module_running = TRUE;
+            some_module_running++;
          }
       }
    }
@@ -2188,7 +2188,7 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
    service_msg_header_t *header = (service_msg_header_t *) calloc(1, sizeof(service_msg_header_t));
    uint32_t buffer_size = 256;
    char * buffer = (char *) calloc(buffer_size, sizeof(char));
-   int some_module_running = FALSE;
+   int running_modules_cnt = 0;
    unsigned int x,y;
 
    time_t rawtime;
@@ -2199,12 +2199,12 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
       time(&rawtime);
       timeinfo = localtime(&rawtime);
 
-      some_module_running = service_update_module_status();
+      running_modules_cnt = service_update_module_status();
       if (service_thread_continue == FALSE) {
          if (service_stop_all_modules == FALSE) {
             VERBOSE(N_STDOUT, "%s [WARNING] I let modules continue running!\n", get_stats_formated_time());
             break;
-         } else if (some_module_running == FALSE) {
+         } else if (running_modules_cnt == 0) {
             VERBOSE(N_STDOUT, "%s [WARNING] I stopped all modules!\n", get_stats_formated_time());
             break;
          }
@@ -2217,7 +2217,7 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
       pthread_mutex_lock(&running_modules_lock);
 
       service_clean_after_children();
-      some_module_running = service_update_module_status();
+      running_modules_cnt = service_update_module_status();
       service_stop_modules_sigkill();
       service_clean_after_children();
 
@@ -2243,7 +2243,7 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
       }
 
       // Update status of every module before sending a request for their stats
-      some_module_running = service_update_module_status();
+      running_modules_cnt = service_update_module_status();
 
       // Set request header
       header->com = SERVICE_GET_COM;
@@ -2263,7 +2263,7 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
       }
 
       // Update status of every module before receiving their stats
-      some_module_running = service_update_module_status();
+      running_modules_cnt = service_update_module_status();
 
       for (x=0;x<loaded_modules_cnt;x++) {
          // Check whether the module is running and is connected with supervisor via service interface
@@ -2308,7 +2308,7 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
 
       pthread_mutex_unlock(&running_modules_lock);
 
-      if ((verbose_flag == TRUE) && (some_module_running == TRUE)) {
+      if ((verbose_flag == TRUE) && (running_modules_cnt > 0)) {
          print_statistics(timeinfo);
       }
 
