@@ -77,6 +77,16 @@
 
 #define DEFAULT_SIZE_OF_BUFFER   100
 
+/**
+ * Macro for NULL pointer testing, freeing and setting pointer to NULL
+ */
+#define NULLP_TEST_AND_FREE(pointer) do { \
+   if (pointer != NULL) { \
+      free(pointer); \
+      pointer = NULL; \
+   } \
+} while (0);
+
 extern char * supervisor_debug_log_file_path;
 extern char * statistics_file_path;
 extern char * module_event_file_path;

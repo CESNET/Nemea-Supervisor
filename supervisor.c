@@ -210,10 +210,7 @@ void create_shutdown_info(char **backup_file_path)
 
    info_file_fd = fopen(info_file_name, "w");
    if (info_file_fd == NULL) {
-      if (info_file_name != NULL) {
-         free(info_file_name);
-         info_file_name = NULL;
-      }
+      NULLP_TEST_AND_FREE(info_file_name)
       return;
    }
 
@@ -225,10 +222,7 @@ void create_shutdown_info(char **backup_file_path)
    fprintf(info_file_fd, "Configuration file: %s\n\n", get_absolute_file_path(config_file));
    fprintf(info_file_fd, "Run supervisor with this configuration file to load generated backup file. It will connect to running modules.\n");
 
-   if (info_file_name != NULL) {
-      free(info_file_name);
-      info_file_name = NULL;
-   }
+   NULLP_TEST_AND_FREE(info_file_name)
    fclose(info_file_fd);
 }
 
@@ -571,28 +565,19 @@ logs_path_null:
    if (stat(logs_path, &st) == -1) {
       if (errno == EACCES) {
          // Don't have permissions to acces this directory, use default directory according to executed mode of supervisor
-         if (logs_path != NULL) {
-            free(logs_path);
-            logs_path = NULL;
-         }
+         NULLP_TEST_AND_FREE(logs_path)
          goto logs_path_null;
       }
       // Directory does not exist, try to create it
       if (mkdir(logs_path, PERM_LOGSDIR) == -1) {
          if (errno == EACCES) {
             // Don't have permissions to some folder in logs_path, use default directory according to executed mode of supervisor
-            if (logs_path != NULL) {
-               free(logs_path);
-               logs_path = NULL;
-            }
+            NULLP_TEST_AND_FREE(logs_path)
             goto logs_path_null;
          }
       }
    } else if (S_ISDIR(st.st_mode) == FALSE) { // Check whether the file is a directory
-      if (logs_path != NULL) {
-         free(logs_path);
-         logs_path = NULL;
-      }
+      NULLP_TEST_AND_FREE(logs_path)
       goto logs_path_null;
    }
 }
@@ -1010,14 +995,8 @@ int get_numbers_from_input_dis_enable_module(int ** array)
    }
 
    if (error_input == TRUE) {
-      if (module_nums != NULL) {
-         free(module_nums);
-         module_nums = NULL;
-      }
-      if (input_p != NULL) {
-         free(input_p);
-         input_p = NULL;
-      }
+      NULLP_TEST_AND_FREE(module_nums)
+      NULLP_TEST_AND_FREE(input_p)
       array = NULL;
       return RET_ERROR;
    }
@@ -1095,10 +1074,7 @@ void re_start_module(const int module_number)
       #endif
       // In case that reloading configuration changes module (its interfaces), module_running is set to FALSE and interfaces data are freed
       for (x = 0; x < running_modules[module_number].module_ifces_cnt; x++) {
-         if (running_modules[module_number].module_ifces[x].ifc_data != NULL) {
-            free(running_modules[module_number].module_ifces[x].ifc_data);
-            running_modules[module_number].module_ifces[x].ifc_data = NULL;
-         }
+         NULLP_TEST_AND_FREE(running_modules[module_number].module_ifces[x].ifc_data)
       }
       running_modules[module_number].module_running = TRUE;
    } else {
@@ -1487,10 +1463,7 @@ void service_stop_modules_sigkill()
                sprintf(buffer,MODULES_UNIXSOCKET_PATH_FILENAME_FORMAT,dest_port);
                VERBOSE(MODULE_EVENT, "%s [CLEAN] Deleting socket %s - module %s\n", get_stats_formated_time(), buffer, running_modules[x].module_name);
                unlink(buffer);
-               if (dest_port != NULL) {
-                  free(dest_port);
-                  dest_port = NULL;
-               }
+               NULLP_TEST_AND_FREE(dest_port)
             }
          }
       }
@@ -1693,22 +1666,10 @@ void interactive_show_running_modules_status()
 
 void free_output_file_strings_and_streams()
 {
-   if (statistics_file_path != NULL) {
-      free(statistics_file_path);
-      statistics_file_path = NULL;
-   }
-   if (module_event_file_path != NULL) {
-      free(module_event_file_path);
-      module_event_file_path = NULL;
-   }
-   if (supervisor_debug_log_file_path != NULL) {
-      free(supervisor_debug_log_file_path);
-      supervisor_debug_log_file_path = NULL;
-   }
-   if (supervisor_log_file_path != NULL) {
-      free(supervisor_log_file_path);
-      supervisor_log_file_path = NULL;
-   }
+   NULLP_TEST_AND_FREE(statistics_file_path)
+   NULLP_TEST_AND_FREE(module_event_file_path)
+   NULLP_TEST_AND_FREE(supervisor_debug_log_file_path)
+   NULLP_TEST_AND_FREE(supervisor_log_file_path)
 
    if (supervisor_debug_log_fd != NULL) {
       fclose(supervisor_debug_log_fd);
@@ -1757,43 +1718,29 @@ void free_available_modules_structs()
       module_p1 = path_p1 -> modules;
       while (module_p1 != NULL) {
          module_p2 = module_p1 -> next;
-         if (module_p1 -> name != NULL) {
-            free(module_p1 -> name);
-            module_p1 -> name = NULL;
-         }
+         NULLP_TEST_AND_FREE(module_p1 -> name)
          if (module_p1 -> module_info != NULL) {
-            if (module_p1 -> module_info -> name != NULL) {
-               free(module_p1 -> module_info -> name);
+            NULLP_TEST_AND_FREE(module_p1 -> module_info -> name)
+            NULLP_TEST_AND_FREE(module_p1 -> module_info -> description)
+            if (module_p1->module_info->params != NULL) {
+               x=0;
+               while (module_p1 -> module_info->params[x] != NULL) {
+                  NULLP_TEST_AND_FREE(module_p1 -> module_info -> params[x]->long_opt)
+                  NULLP_TEST_AND_FREE(module_p1 -> module_info -> params[x]->description)
+                  NULLP_TEST_AND_FREE(module_p1 -> module_info -> params[x]->argument_type)
+                  NULLP_TEST_AND_FREE(module_p1 -> module_info -> params[x])
+                  x++;
+               }
+               free(module_p1 -> module_info -> params);
+               module_p1->module_info->params = NULL;
             }
-            if (module_p1 -> module_info -> description != NULL) {
-               free(module_p1 -> module_info -> description);
-            }
-            x=0;
-            while (module_p1 -> module_info->params[x] != NULL) {
-               if (module_p1 -> module_info -> params[x]->long_opt != NULL) {
-                  free(module_p1 -> module_info -> params[x]->long_opt);
-               }
-               if (module_p1 -> module_info -> params[x]->description != NULL) {
-                  free(module_p1 -> module_info -> params[x]->description);
-               }
-               if (module_p1 -> module_info -> params[x]->argument_type != NULL) {
-                  free(module_p1 -> module_info -> params[x]->argument_type);
-               }
-               if (module_p1 -> module_info -> params[x] != NULL) {
-                  free(module_p1 -> module_info -> params[x]);
-               }
-               x++;
-            }
-            free(module_p1 -> module_info -> params);
             free(module_p1 -> module_info);
+            module_p1->module_info = NULL;
          }
          free(module_p1);
          module_p1 = module_p2;
       }
-      if (path_p1 -> path != NULL) {
-         free(path_p1 -> path);
-         path_p1 -> path = NULL;
-      }
+      NULLP_TEST_AND_FREE(path_p1 -> path)
       free(path_p1);
       path_p1 = path_p2;
    }
@@ -1859,22 +1806,15 @@ void supervisor_termination(int stop_all_modules, int generate_backup)
          free_module_on_index(x);
       }
 
-      if (running_modules != NULL) {
-         free(running_modules);
-         running_modules = NULL;
-      }
+      NULLP_TEST_AND_FREE(running_modules)
 
       modules_profile_t * ptr = first_profile_ptr;
       modules_profile_t * p = NULL;
       while (ptr != NULL) {
          p = ptr;
          ptr = ptr->next;
-         if (p->profile_name != NULL) {
-            free(p->profile_name);
-         }
-         if (p != NULL) {
-            free(p);
-         }
+         NULLP_TEST_AND_FREE(p->profile_name)
+         NULLP_TEST_AND_FREE(p)
       }
    }
 
@@ -1902,10 +1842,7 @@ void supervisor_termination(int stop_all_modules, int generate_backup)
                VERBOSE(SUP_LOG, "%s [INFO] All client's threads terminated.\n", get_stats_formated_time());
             }
             for (x = 0; x < MAX_NUMBER_SUP_CLIENTS; x++) {
-               if (server_internals->clients[x] != NULL) {
-                  free(server_internals->clients[x]);
-                  server_internals->clients[x] = NULL;
-               }
+               NULLP_TEST_AND_FREE(server_internals->clients[x])
             }
             free(server_internals->clients);
             server_internals->clients = NULL;
@@ -1928,14 +1865,8 @@ void supervisor_termination(int stop_all_modules, int generate_backup)
       free_output_file_strings_and_streams();
    }
 
-   if (config_file != NULL) {
-      free(config_file);
-      config_file = NULL;
-   }
-   if (logs_path != NULL) {
-      free(logs_path);
-      logs_path = NULL;
-   }
+   NULLP_TEST_AND_FREE(config_file)
+   NULLP_TEST_AND_FREE(logs_path)
 }
 
 char *get_param_by_delimiter(const char *source, char **dest, const char delimiter)
@@ -2138,29 +2069,20 @@ void connect_to_module_service_ifc(int module, int num_ifc)
    if (sockfd == -1) {
       VERBOSE(MODULE_EVENT,"%s [SERVICE] Error while opening socket for connection with module %s.\n", get_stats_formated_time(), running_modules[module].module_name);
       running_modules[module].module_service_ifc_isconnected = FALSE;
-      if (dest_port != NULL) {
-         free(dest_port);
-         dest_port = NULL;
-      }
+      NULLP_TEST_AND_FREE(dest_port)
       return;
    }
    if (connect(sockfd, (struct sockaddr *) &addr.unix_addr, sizeof(addr.unix_addr)) == -1) {
       VERBOSE(MODULE_EVENT,"%s [SERVICE] Error while connecting to module %s on port %s\n", get_stats_formated_time(), running_modules[module].module_name, dest_port);
       running_modules[module].module_service_ifc_isconnected = FALSE;
-      if (dest_port != NULL) {
-         free(dest_port);
-         dest_port = NULL;
-      }
+      NULLP_TEST_AND_FREE(dest_port)
       close(sockfd);
       return;
    }
    running_modules[module].module_service_sd = sockfd;
    running_modules[module].module_service_ifc_isconnected = TRUE;
    VERBOSE(MODULE_EVENT,"%s [SERVICE] Connected to module %s.\n", get_stats_formated_time(), running_modules[module].module_name);
-   if (dest_port != NULL) {
-      free(dest_port);
-      dest_port = NULL;
-   }
+   NULLP_TEST_AND_FREE(dest_port)
 }
 
 void print_statistics(struct tm * timeinfo)
@@ -2393,15 +2315,8 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
       disconnect_service_ifc(x);
    }
 
-   if (buffer != NULL) {
-      free(buffer);
-      buffer = NULL;
-   }
-
-   if (header != NULL) {
-      free(header);
-      header = NULL;
-   }
+   NULLP_TEST_AND_FREE(buffer)
+   NULLP_TEST_AND_FREE(header)
 
    pthread_exit(EXIT_SUCCESS);
 }
@@ -2542,10 +2457,7 @@ int parse_program_arguments(int *argc, char **argv)
       return -1;
    }
    if (strstr(config_file, ".xml") == NULL) {
-      if (config_file != NULL) {
-         free(config_file);
-         config_file = NULL;
-      }
+      NULLP_TEST_AND_FREE(config_file)
       fprintf(stderr, "File does not have expected .xml extension.\n");
       return -1;
    }
@@ -2567,14 +2479,8 @@ int create_daemon_process()
       VERBOSE(N_STDOUT,"%s [ERROR] Fork: could not initialize daemon process!\n", get_stats_formated_time());
       return -1;
    } else if (process_id > 0) {
-      if (config_file != NULL) {
-         free(config_file);
-         config_file = NULL;
-      }
-      if (logs_path != NULL) {
-         free(logs_path);
-         logs_path = NULL;
-      }
+      NULLP_TEST_AND_FREE(config_file)
+      NULLP_TEST_AND_FREE(logs_path)
       fprintf(stdout, "%s [INFO] PID of daemon process: %d.\n", get_stats_formated_time(), process_id);
       exit(EXIT_SUCCESS);
    }
@@ -2959,10 +2865,7 @@ void * serve_sup_client_routine (void * arg)
       strncpy(stats_buffer2, stats_buffer, buffer_len+1);
       fprintf(client->client_output_stream, "%s", stats_buffer2);
       fflush(client->client_output_stream);
-      if (stats_buffer != NULL) {
-         free(stats_buffer);
-         stats_buffer = NULL;
-      }
+      NULLP_TEST_AND_FREE(stats_buffer)
       VERBOSE(SUP_LOG, "%s [INFO] Stats sent to client. (client's ID: %d)\n", get_stats_formated_time(), client->client_id);
       disconnect_sup_client(client);
       pthread_exit(EXIT_SUCCESS);
@@ -3078,48 +2981,21 @@ void free_module_on_index(int index)
 {
    free_module_interfaces_on_index(index);
 
-   if (running_modules[index].module_ifces != NULL) {
-      free(running_modules[index].module_ifces);
-      running_modules[index].module_ifces = NULL;
-   }
-   if (running_modules[index].module_path != NULL) {
-      free(running_modules[index].module_path);
-      running_modules[index].module_path = NULL;
-   }
-   if (running_modules[index].module_name != NULL) {
-      free(running_modules[index].module_name);
-      running_modules[index].module_name = NULL;
-   }
-   if (running_modules[index].module_params != NULL) {
-      free(running_modules[index].module_params);
-      running_modules[index].module_params = NULL;
-   }
+   NULLP_TEST_AND_FREE(running_modules[index].module_ifces)
+   NULLP_TEST_AND_FREE(running_modules[index].module_path)
+   NULLP_TEST_AND_FREE(running_modules[index].module_name)
+   NULLP_TEST_AND_FREE(running_modules[index].module_params)
 }
 
 void free_module_interfaces_on_index(int index)
 {
    unsigned int y;
    for (y=0; y<running_modules[index].module_ifces_cnt; y++) {
-      if (running_modules[index].module_ifces[y].ifc_note != NULL) {
-         free(running_modules[index].module_ifces[y].ifc_note);
-         running_modules[index].module_ifces[y].ifc_note = NULL;
-      }
-      if (running_modules[index].module_ifces[y].ifc_type != NULL) {
-         free(running_modules[index].module_ifces[y].ifc_type);
-         running_modules[index].module_ifces[y].ifc_type = NULL;
-      }
-      if (running_modules[index].module_ifces[y].ifc_direction != NULL) {
-         free(running_modules[index].module_ifces[y].ifc_direction);
-         running_modules[index].module_ifces[y].ifc_direction = NULL;
-      }
-      if (running_modules[index].module_ifces[y].ifc_params != NULL) {
-         free(running_modules[index].module_ifces[y].ifc_params);
-         running_modules[index].module_ifces[y].ifc_params = NULL;
-      }
-      if (running_modules[index].module_ifces[y].ifc_data != NULL) {
-         free(running_modules[index].module_ifces[y].ifc_data);
-         running_modules[index].module_ifces[y].ifc_data = NULL;
-      }
+      NULLP_TEST_AND_FREE(running_modules[index].module_ifces[y].ifc_note)
+      NULLP_TEST_AND_FREE(running_modules[index].module_ifces[y].ifc_type)
+      NULLP_TEST_AND_FREE(running_modules[index].module_ifces[y].ifc_direction)
+      NULLP_TEST_AND_FREE(running_modules[index].module_ifces[y].ifc_params)
+      NULLP_TEST_AND_FREE(running_modules[index].module_ifces[y].ifc_data)
    }
 }
 
@@ -3511,10 +3387,7 @@ int reload_find_and_check_modules_profile_basic_elements(reload_config_vars_t **
       } else if (basic_elements[enabled_elem_idx] == -1) { // Found empty "enabled" element
          VERBOSE(N_STDOUT, "[WARNING] Reloading error - found empty \"enabled\" element in modules profile.\n");
       }
-      if (new_profile_name != NULL) {
-         free(new_profile_name);
-         new_profile_name = NULL;
-      }
+      NULLP_TEST_AND_FREE(new_profile_name)
       return -1;
    } else { // Valid profile -> allocate it
       if (first_profile_ptr == NULL) {
@@ -3970,28 +3843,15 @@ add_module_on_path:
          available_module_p = p_p -> modules;
          while (available_module_p != NULL) {
             m_p = available_module_p -> next;
-            if (available_module_p -> name != NULL) {
-               free(available_module_p -> name);
-               available_module_p -> name = NULL;
-            }
+            NULLP_TEST_AND_FREE(available_module_p -> name)
             if (available_module_p -> module_info != NULL) {
-               if (available_module_p -> module_info -> name != NULL) {
-                  free(available_module_p -> module_info -> name);
-               }
-               if (available_module_p -> module_info -> description != NULL) {
-                  free(available_module_p -> module_info -> description);
-               }
+               NULLP_TEST_AND_FREE(available_module_p -> module_info -> name)
+               NULLP_TEST_AND_FREE(available_module_p -> module_info -> description)
                x=0;
                while (available_module_p -> module_info->params[x] != NULL) {
-                  if (available_module_p -> module_info -> params[x]->long_opt != NULL) {
-                     free(available_module_p -> module_info -> params[x]->long_opt);
-                  }
-                  if (available_module_p -> module_info -> params[x]->description != NULL) {
-                     free(available_module_p -> module_info -> params[x]->description);
-                  }
-                  if (available_module_p -> module_info -> params[x]->argument_type != NULL) {
-                     free(available_module_p -> module_info -> params[x]->argument_type);
-                  }
+                  NULLP_TEST_AND_FREE(available_module_p -> module_info -> params[x]->long_opt)
+                  NULLP_TEST_AND_FREE(available_module_p -> module_info -> params[x]->description)
+                  NULLP_TEST_AND_FREE(available_module_p -> module_info -> params[x]->argument_type)
                   x++;
                }
                free(available_module_p -> module_info -> params);
@@ -4000,10 +3860,7 @@ add_module_on_path:
             free(available_module_p);
             available_module_p = m_p;
          }
-         if (p_p -> path != NULL) {
-            free(p_p -> path);
-            p_p -> path = NULL;
-         }
+         NULLP_TEST_AND_FREE(p_p -> path)
          free(p_p);
          p_p = NULL;
          continue;
@@ -4016,17 +3873,13 @@ add_module_on_path:
 
    /* clean up */
    clean_up:
-   if (buffer != NULL) {
-      free(buffer);
-      buffer = NULL;
-   }
+   NULLP_TEST_AND_FREE(buffer)
    if (args != NULL)  {
       for (x=0; x<3; x++) {
-         if (args[x] != NULL) {
-            free(args[x]);
-         }
+         NULLP_TEST_AND_FREE(args[x])
       }
       free(args);
+      args = NULL;
    }
    VERBOSE(N_STDOUT, "--- Modules auto-detection finished ---\n");
 }
@@ -4066,10 +3919,7 @@ int reload_configuration(const int choice, xmlNodePtr * node)
                   }
                   config_vars->doc_tree_ptr = xmlParseFile(config_file);
                }
-               if (backup_file_name != NULL) {
-                  free(backup_file_name);
-                  backup_file_name = NULL;
-               }
+               NULLP_TEST_AND_FREE(backup_file_name)
             }
             if (config_vars->doc_tree_ptr == NULL) {
                fprintf(stderr,"Document not parsed successfully. \n");
@@ -4198,12 +4048,8 @@ int reload_configuration(const int choice, xmlNodePtr * node)
    while (ptr != NULL) {
       p = ptr;
       ptr = ptr->next;
-      if (p->profile_name != NULL) {
-         free(p->profile_name);
-      }
-      if (p != NULL) {
-         free(p);
-      }
+      NULLP_TEST_AND_FREE(p->profile_name)
+      NULLP_TEST_AND_FREE(p)
    }
    first_profile_ptr = NULL;
    actual_profile_ptr = NULL;
@@ -4679,10 +4525,7 @@ void generate_backup_config_file()
       }
       // Create file with information about generated backup file
       create_shutdown_info(&backup_file_name);
-      if (backup_file_name != NULL) {
-         free(backup_file_name);
-         backup_file_name = NULL;
-      }
+      NULLP_TEST_AND_FREE(backup_file_name)
    }
 
    xmlFreeDoc(document_ptr);
