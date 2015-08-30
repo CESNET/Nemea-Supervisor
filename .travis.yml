@@ -9,6 +9,22 @@ branches:
   only:
     - master
 
+env:
+  global:
+   # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
+   #   via the "travis encrypt" command using the project repo's public key
+   - secure: "nd8h6mITEDV4fO8PKJXX2RUEuIRM/wC9g3qVnxhKAOBXOoQq0uXdRR/aWiVxxU2/+KMGFu7u5oYKzXfArsYfc3vbKjGUMcqZLbZvMl2wZRVSnCbESlB4lFXeb5pslQjE7cWoP9yD9iqx4n+p4iOE3XusrY628yWxEXyyEkVemNNRmwGnBAF9phs8cTZqec2AU+aX7o5tOkdV+2w5p2pPCD/PgQLdLDdD8feklUhe7s+f7fVQQNwsBQsQd0RekvEqyjRTQlQFkfFyljsulSA0P7qaFraK/roSCtfnaI0qug7EaIJ0KimVqmJkXfTOE8908zMIj4OuA12LIu0b75CM/chX1LrgvftSQviUGg9r0umgu5pYSLXZ21YZNA1F84xnILMejHgPGhJ9bApvSC8+Rr/SS4hUw90eY1+ZNuEbKOGQsC1D6YDH0vh02s4EzRDdrrl2JbD/TRjHzbqgKUvM76MpKrSH30blW8GtTiUEtzNXxZ2mgfdw24eJWI8PIWBdQodIsN5M9A9R2q14e8fy8qApWPKS1ruJigFuxIXuKXu2DB9dn2uh0v/qb4c8gqILWDlpYO8HTTkFczn0pJMNxj1VXECH1pvZhcdLXEp9kqvvimPlxzyi81r4jJxE0H/w5EpZIUgOv24fwQ/tWwZvOG/XkO4V3CUkIaOLwMpK9g8="
+
+addons:
+  coverity_scan:
+    project:
+      name: "CESNET/Nemea-Supervisor"
+      description: "Build submitted via Travis CI"
+    notification_email: svepemar@fit.cvut.cz
+    build_command_prepend: "( cd /tmp/fw; ./bootstrap.sh && ./configure -q --disable-tests --disable-examples --disable-common --disable-unirec --disable-python --prefix=/tmp/nfw && make -j5 install; ); ./bootstrap.sh && ./configure --disable-repobuild PKG_CONFIG_PATH=/tmp/nfw/lib/pkgconfig && ./configure;"
+    build_command:   "make -j 4"
+    branch_pattern: coverity
+
 addons:
   apt:
     sources:
