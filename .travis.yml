@@ -1,0 +1,29 @@
+language: c
+compiler:
+  - gcc
+  - clang
+os:
+  - linux
+
+branches:
+  only:
+    - master
+
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - gcc-c++
+      - autoconf
+      - pkg-config
+      - make
+      - automake
+      - libxml2-devel
+      - libxml2
+
+script:
+  - git clone https://github.com/CESNET/nemea-framework /tmp/fw
+  - ( cd /tmp/fw; ./bootstrap.sh && ./configure -q --disable-tests --prefix=/tmp/nfw && make -j5 install; )
+  - ./bootstrap.sh && ./configure PKG_CONFIG_PATH=/tmp/nfw/lib/pkgconfig && make clean && make check
+
