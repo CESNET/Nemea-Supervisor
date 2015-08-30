@@ -53,6 +53,14 @@ AC_DEFINE([HAVE_DISPLAY], 0, [Use display(1) to show image.])
 AC_MSG_WARN([We need ImageMagick...])
 fi
 
+AC_ARG_ENABLE(repobuild, AS_HELP_STRING([--disable-repobuild],
+                [disable local compilation without system installed Nemea libraries, default: yes]),
+[case "${enableval}" in
+        yes) repobuild=true ;;
+        no)  repobuild=false ;;
+        *)   AC_MSG_ERROR([bad value ${enableval} for --disable-repobuild]) ;;
+esac], [repobuild=true])
+
 # Checks for libraries.
 
 AX_LIBTRAP_CHECK
