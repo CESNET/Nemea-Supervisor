@@ -8,6 +8,7 @@ os:
 branches:
   only:
     - master
+    - coverity
 
 env:
   global:
