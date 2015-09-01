@@ -5,7 +5,7 @@ AC_PREREQ([2.63])
 AC_INIT([nemea-supervisor], [1.1.0], [svepemar@fit.cvut.cz])
 AC_CONFIG_SRCDIR([supervisor.c])
 AC_CONFIG_HEADERS([config.h])
-AM_INIT_AUTOMAKE([-Wall silent-rules])
+AM_INIT_AUTOMAKE([-Wall foreign silent-rules])
 RELEASE=1
 AC_SUBST(RELEASE)
 USERNAME=`git config --get user.name`
