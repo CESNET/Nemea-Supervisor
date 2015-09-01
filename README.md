@@ -1,11 +1,12 @@
 Supervisor:
-=================
+===========
 
 This module allows user to configure and monitor Nemea modules. User specifies modules
 in xml configuration file, which is input for the Supervisor.
 
 Example configuration of one module called flowcounter:
 
+```
 <module>
   <enabled>false</enabled>
   <params></params>
@@ -20,6 +21,7 @@ Example configuration of one module called flowcounter:
     </interface>
   </trapinterfaces>
 </module>
+```
 
 Every module contains unique name, path to binary file, parameters, enabled flag
 and trap interfaces. Enabled flag tells Supervisor to run or not to run module after
@@ -30,6 +32,7 @@ interface: port + number of clients) and optional note.
 The configuration file has been designed according to the data model of the Supervisor.
 Data model tree:
 
+```
 module: nemea
    +--rw nemea-supervisor
       +--rw modules
@@ -46,19 +49,29 @@ module: nemea
                +--rw type trapifc-type
                +--rw direction trapifc-direction
                +--rw params string
+```
 
-==================
+
 Supervisor can run in one of two basic modes:
 1) Interactive Mode:
-  ./supervisor -f config_file.xml
+
+```
+./supervisor -f config_file.xml
+```
 
 2) Daemon Mode:
   Supervisor is executed with `--daemon` and runs as a process in backround
   of the operating system.
-  ./supervisor -f config_file.xml --daemon
+
+```
+./supervisor -f config_file.xml --daemon
+```
 
   The activity of the running daemon can be controlled by a special thin client:
-  ./supervisor_cli (client for controlling the daemon)
+
+```
+./supervisor_cli
+```
 
   Both daemon and client supports `-s` to specify path to the UNIX socket
   that is used for communication between daemon and client.
@@ -67,10 +80,10 @@ Supervisor can run in one of two basic modes:
 
 
 Supervisor arguments:
- -f config_file.xml   xml file with initial configuration
- -L logs_path         optional path to Supervisor logs directory
+ -f config\_file.xml   xml file with initial configuration
+ -L logs\_path         optional path to Supervisor logs directory
                       (default /home/$user/supervisor_logs/)
- -s socket_path       optional path to unix socket used for communication
+ -s socket\_path       optional path to unix socket used for communication
                       with supervisor client (default /tmp/supervisor_daemon.sock)
  -v                   optional verbose flag used for enabling printing stats
                       about messages and CPU usage to "supervisor_log_statistics"
@@ -78,11 +91,12 @@ Supervisor arguments:
  --daemon             flag used for running Supervisor as a process in background
  -h                   program prints help and terminates
 
-==================
 User can do various operations with modules via Supervisor. After launch appears
 menu with available operations:
 
---------OPTIONS--------
+Options
+-------
+
 1. START ALL MODULES - starts all modules from loaded configuration
 2. STOP ALL MODULES - stops all modules from loaded configuration
 3. START MODULE - starts one specific module from loaded configuration
@@ -120,28 +134,38 @@ Supervisor also provides logs with different types of output:
           about messages and CPU usage.
 
 Statistics about Nemea modules:
-==================
+===============================
+
   Supervisor client has a special mode that is enabled by `-x`. It allows user
   to get statistics about message numbers and cpu usage of modules.
   In `-x` mode, client connects to the supervisor, receives and prints statistics,
   disconnects and terminates.
-  ./supervisor_cli -x
+```
+./supervisor_cli -x
+```
 
   Note: Supervisor daemon must be running.
 
 Output format - description:
-------------------------
+----------------------------
+
+```
 <module unique name>,<information type>,<statistics/identification>
+```
 
 For different "information type", the part "statistics/identification" differs.
 
 Example#1:
-  flowcounter1,in,0,1020229
+```
+flowcounter1,in,0,1020229
+```
 The example means: number of received messages (1020229) of input interface (in)
 with interface number (0) of the module (flowcounter1).
 
 Example#2:
-  traffic_repeater2,out,0,510114,392,2
+```
+traffic_repeater2,out,0,510114,392,2
+```
 The example means: number of sent messages (510114), number of sent buffers (392),
 number of executed "buffer auto-flushes" (2) of output interface (out)
 with interface number (0) of the module (traffic_repeater2).
@@ -153,7 +177,9 @@ of the module (flowcounter1).
 
 
 Overall Example of the output with statistics:
-------------------------
+----------------------------------------------
+
+```
 flowcounter1,in,0,1020229
 flowcounter2,in,0,507519
 flowcounter3,in,0,508817
@@ -176,4 +202,5 @@ traffic_repeater2,cpu,2,1
 nfreader1,cpu,7,1
 nfreader2,cpu,5,0
 traffic_merger3,cpu,5,2
+```
 
