@@ -14,7 +14,7 @@ env:
   global:
    # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
    #   via the "travis encrypt" command using the project repo's public key
-   - secure: "nd8h6mITEDV4fO8PKJXX2RUEuIRM/wC9g3qVnxhKAOBXOoQq0uXdRR/aWiVxxU2/+KMGFu7u5oYKzXfArsYfc3vbKjGUMcqZLbZvMl2wZRVSnCbESlB4lFXeb5pslQjE7cWoP9yD9iqx4n+p4iOE3XusrY628yWxEXyyEkVemNNRmwGnBAF9phs8cTZqec2AU+aX7o5tOkdV+2w5p2pPCD/PgQLdLDdD8feklUhe7s+f7fVQQNwsBQsQd0RekvEqyjRTQlQFkfFyljsulSA0P7qaFraK/roSCtfnaI0qug7EaIJ0KimVqmJkXfTOE8908zMIj4OuA12LIu0b75CM/chX1LrgvftSQviUGg9r0umgu5pYSLXZ21YZNA1F84xnILMejHgPGhJ9bApvSC8+Rr/SS4hUw90eY1+ZNuEbKOGQsC1D6YDH0vh02s4EzRDdrrl2JbD/TRjHzbqgKUvM76MpKrSH30blW8GtTiUEtzNXxZ2mgfdw24eJWI8PIWBdQodIsN5M9A9R2q14e8fy8qApWPKS1ruJigFuxIXuKXu2DB9dn2uh0v/qb4c8gqILWDlpYO8HTTkFczn0pJMNxj1VXECH1pvZhcdLXEp9kqvvimPlxzyi81r4jJxE0H/w5EpZIUgOv24fwQ/tWwZvOG/XkO4V3CUkIaOLwMpK9g8="
+   - secure: "GtahCqWmIzDDQDzvFeXWr6G8jT5LyFZZE6PAEYs9MXNMbPvT0533WvctVXXH+9/1rLpw07mZOlZNbFhC8+2Yq3UU6rM/U3kK/7SUii1iiA6YP9IaOx3REJUP895pwZCPnu/3s7bwGMLLLJB1EMKsQfwAJfXcLs/0C620U/u+egQaCyV70L9I+D6F3RvMcsBVLn4hNAC5+2Lli81e/LhA1RfUtyDU/DNJh3yzz9ZFw4DDFKii3ikZsacO/+eQgobixvcs1bQrylFBN7G3SFVoHxH76w7fLRPopQB4XmM7DzRfKF3qy7P/mOVJ9gZm+8p8QWTODYXAPH71XuSmw4BnAvYgL8OSQuzI0+y7F6NH4c+jlvzn4dLDQuZk8UrMSQsSoAG1VMKpdty4n/MNnSXY8qSJrQ+tFEywQZHldvS1ezVgSfodjPouFgl43ATK/BSpefUjkt+qTF+6FwTVTMo7pia1/dVVNZNvBiHIBRo7aCHZNgrnWesz5hhhKJ0wiLhEFCqedNiEbe8PZBN2eLx+P8kHs9xvCgbn3RanvoLq1Pmp9aeBI9yYRlS4qPVcsvaWXP1rAb+rxdKC2SfjaGNBEmqalXO+tNelPRI3bq6N1war+ZbAKLjjqJ3QSstFg9menLmjEy1l1jJ9Wls3wY4Q+hWKFqDwsAMFdmhcDBx/eRY="
 
 addons:
   coverity_scan:
@@ -22,7 +22,7 @@ addons:
       name: "CESNET/Nemea-Supervisor"
       description: "Build submitted via Travis CI"
     notification_email: svepemar@fit.cvut.cz
-    build_command_prepend: "( cd /tmp/fw; ./bootstrap.sh && ./configure -q --disable-tests --disable-examples --disable-common --disable-unirec --disable-python --prefix=/tmp/nfw && make -j5 install; ); ./bootstrap.sh && ./configure --disable-repobuild PKG_CONFIG_PATH=/tmp/nfw/lib/pkgconfig && ./configure;"
+    build_command_prepend: "( git clone https://github.com/CESNET/nemea-framework /tmp/fw; cd /tmp/fw; ./bootstrap.sh && ./configure -q --disable-tests --disable-examples --disable-common --disable-unirec --disable-python --prefix=/tmp/nfw && make -j5 install; ); ./bootstrap.sh && ./configure --disable-repobuild PKG_CONFIG_PATH=/tmp/nfw/lib/pkgconfig && ./configure;"
     build_command:   "make -j 4"
     branch_pattern: coverity
 
