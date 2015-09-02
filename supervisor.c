@@ -241,7 +241,8 @@ void print_module_ifc_stats(int module_number)
    printf("\n\toutput ifces: ");
    for (x = 0; x < running_modules[module_number].module_ifces_cnt; x++) {
       if (running_modules[module_number].module_ifces[x].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
-         printf("%" PRIu64 " %" PRIu64 " %" PRIu64 " | ", ((out_ifc_stats_t *) running_modules[module_number].module_ifces[x].ifc_data)->sent_msg_cnt,
+         printf("%" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 " | ", ((out_ifc_stats_t *) running_modules[module_number].module_ifces[x].ifc_data)->sent_msg_cnt,
+                                                                                          ((out_ifc_stats_t *) running_modules[module_number].module_ifces[x].ifc_data)->dropped_msg_cnt,
                                                                                           ((out_ifc_stats_t *) running_modules[module_number].module_ifces[x].ifc_data)->sent_buffer_cnt,
                                                                                           ((out_ifc_stats_t *) running_modules[module_number].module_ifces[x].ifc_data)->autoflush_cnt);
       }
@@ -359,13 +360,21 @@ int decode_cnts_from_json(char **data, int module_number)
             return -1;
          }
 
-         cnt = json_object_get(out_ifc_cnts, "messages");
+         cnt = json_object_get(out_ifc_cnts, "sent-messages");
          if (cnt == NULL) {
-            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an output interface json object (module %s).\n", get_stats_formated_time(), "messages", running_modules[module_number].module_name);
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an output interface json object (module %s).\n", get_stats_formated_time(), "sent-messages", running_modules[module_number].module_name);
             json_decref(json_struct);
             return -1;
          }
          ((out_ifc_stats_t *) running_modules[module_number].module_ifces[actual_ifc_index].ifc_data)->sent_msg_cnt = json_integer_value(cnt);
+
+         cnt = json_object_get(out_ifc_cnts, "dropped-messages");
+         if (cnt == NULL) {
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an output interface json object (module %s).\n", get_stats_formated_time(), "dropped-messages", running_modules[module_number].module_name);
+            json_decref(json_struct);
+            return -1;
+         }
+         ((out_ifc_stats_t *) running_modules[module_number].module_ifces[actual_ifc_index].ifc_data)->dropped_msg_cnt = json_integer_value(cnt);
 
          cnt = json_object_get(out_ifc_cnts, "buffers");
          if (cnt == NULL) {
@@ -2115,6 +2124,13 @@ void print_statistics(struct tm * timeinfo)
                }
             }
 
+            VERBOSE(STATISTICS,"CNT_DM:  ");
+            for (y = 0; y < running_modules[y].module_ifces_cnt; y++) {
+               if (running_modules[y].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
+                  VERBOSE(STATISTICS,"%"PRIu64"  ", ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->dropped_msg_cnt);
+               }
+            }
+
             VERBOSE(STATISTICS,"CNT_SB:  ");
             for (y = 0; y < running_modules[y].module_ifces_cnt; y++) {
                if (running_modules[y].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
@@ -2346,7 +2362,8 @@ char * make_formated_statistics()
          counter = 0;
          for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
             if (running_modules[x].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
-               ptr += sprintf(buffer + ptr, "%s,out,%d,%"PRIu64",%"PRIu64",%"PRIu64"\n", running_modules[x].module_name, counter, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_msg_cnt,
+               ptr += sprintf(buffer + ptr, "%s,out,%d,%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64"\n", running_modules[x].module_name, counter, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_msg_cnt,
+                                                                                                                                                                                                                           ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->dropped_msg_cnt,
                                                                                                                                                                                                                            ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_buffer_cnt,
                                                                                                                                                                                                                            ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->autoflush_cnt);
                counter++;
@@ -4685,6 +4702,7 @@ xmlDocPtr netconf_get_state_data()
                            snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((in_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->recv_msg_cnt);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "recv-msg-cnt", BAD_CAST buffer);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-msg-cnt", BAD_CAST "0");
+                           xmlNewChild(interface_elem, NULL, BAD_CAST "dropped-msg-cnt", BAD_CAST "0");
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-buffer-cnt", BAD_CAST "0");
                            xmlNewChild(interface_elem, NULL, BAD_CAST "autoflush-cnt", BAD_CAST "0");
                         } else if (running_modules[x].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
@@ -4693,6 +4711,9 @@ xmlDocPtr netconf_get_state_data()
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
                            snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_msg_cnt);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-msg-cnt", BAD_CAST buffer);
+                           memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
+                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->dropped_msg_cnt);
+                           xmlNewChild(interface_elem, NULL, BAD_CAST "dropped-msg-cnt", BAD_CAST buffer);
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
                            snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_buffer_cnt);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-buffer-cnt", BAD_CAST buffer);
@@ -4760,6 +4781,7 @@ xmlDocPtr netconf_get_state_data()
                            snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((in_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->recv_msg_cnt);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "recv-msg-cnt", BAD_CAST buffer);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-msg-cnt", BAD_CAST "0");
+                           xmlNewChild(interface_elem, NULL, BAD_CAST "dropped-msg-cnt", BAD_CAST "0");
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-buffer-cnt", BAD_CAST "0");
                            xmlNewChild(interface_elem, NULL, BAD_CAST "autoflush-cnt", BAD_CAST "0");
                         } else if (running_modules[x].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
@@ -4768,6 +4790,9 @@ xmlDocPtr netconf_get_state_data()
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
                            snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_msg_cnt);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-msg-cnt", BAD_CAST buffer);
+                           memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
+                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->dropped_msg_cnt);
+                           xmlNewChild(interface_elem, NULL, BAD_CAST "dropped-msg-cnt", BAD_CAST buffer);
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
                            snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_buffer_cnt);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-buffer-cnt", BAD_CAST buffer);
