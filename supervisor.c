@@ -241,7 +241,8 @@ void print_module_ifc_stats(int module_number)
    printf("\n\toutput ifces: ");
    for (x = 0; x < running_modules[module_number].module_ifces_cnt; x++) {
       if (running_modules[module_number].module_ifces[x].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
-         printf("%" PRIu64 " %" PRIu64 " %" PRIu64 " | ", ((out_ifc_stats_t *) running_modules[module_number].module_ifces[x].ifc_data)->sent_msg_cnt,
+         printf("%" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 " | ", ((out_ifc_stats_t *) running_modules[module_number].module_ifces[x].ifc_data)->sent_msg_cnt,
+                                                                                          ((out_ifc_stats_t *) running_modules[module_number].module_ifces[x].ifc_data)->dropped_msg_cnt,
                                                                                           ((out_ifc_stats_t *) running_modules[module_number].module_ifces[x].ifc_data)->sent_buffer_cnt,
                                                                                           ((out_ifc_stats_t *) running_modules[module_number].module_ifces[x].ifc_data)->autoflush_cnt);
       }
@@ -359,13 +360,21 @@ int decode_cnts_from_json(char **data, int module_number)
             return -1;
          }
 
-         cnt = json_object_get(out_ifc_cnts, "messages");
+         cnt = json_object_get(out_ifc_cnts, "sent-messages");
          if (cnt == NULL) {
-            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an output interface json object (module %s).\n", get_stats_formated_time(), "messages", running_modules[module_number].module_name);
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an output interface json object (module %s).\n", get_stats_formated_time(), "sent-messages", running_modules[module_number].module_name);
             json_decref(json_struct);
             return -1;
          }
          ((out_ifc_stats_t *) running_modules[module_number].module_ifces[actual_ifc_index].ifc_data)->sent_msg_cnt = json_integer_value(cnt);
+
+         cnt = json_object_get(out_ifc_cnts, "dropped-messages");
+         if (cnt == NULL) {
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an output interface json object (module %s).\n", get_stats_formated_time(), "dropped-messages", running_modules[module_number].module_name);
+            json_decref(json_struct);
+            return -1;
+         }
+         ((out_ifc_stats_t *) running_modules[module_number].module_ifces[actual_ifc_index].ifc_data)->dropped_msg_cnt = json_integer_value(cnt);
 
          cnt = json_object_get(out_ifc_cnts, "buffers");
          if (cnt == NULL) {
@@ -773,6 +782,7 @@ char **make_module_arguments(const int number_of_module)
          params_counter++;
 
          params[params_counter] = NULL;
+         NULLP_TEST_AND_FREE(buffer)
       }
 
       fprintf(stdout,"%s [INFO] Supervisor - executed command: %s", get_stats_formated_time(), running_modules[number_of_module].module_path);
@@ -787,6 +797,7 @@ char **make_module_arguments(const int number_of_module)
 
       fprintf(stdout,"\n");
       fprintf(stderr,"\n");
+      NULLP_TEST_AND_FREE(atr);
       return params;
    }
 
@@ -821,6 +832,7 @@ char **make_module_arguments(const int number_of_module)
                ptr+=2;
             } else {
                VERBOSE(MODULE_EVENT, "%s [WARNING] Wrong ifc_type in module %d (interface number %d).\n", get_stats_formated_time(), number_of_module, x);
+               NULLP_TEST_AND_FREE(atr)
                return NULL;
             }
             // Get interface params
@@ -830,6 +842,7 @@ char **make_module_arguments(const int number_of_module)
                   atr = (char *) realloc (atr, size_of_atr*sizeof(char));
                   memset(atr + ptr, 0, size_of_atr - ptr);
                }
+               // Compatible with previous format of libtrap -i parameter ("address,port" for one input interface)
                port = NULL;
                port = get_param_by_delimiter(running_modules[number_of_module].module_ifces[x].ifc_params, &addr, ',');
                if (port == NULL) {
@@ -838,6 +851,7 @@ char **make_module_arguments(const int number_of_module)
                   sprintf(atr + ptr,"%s:%s,", addr, port);
                }
                ptr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1;
+               NULLP_TEST_AND_FREE(addr)
             }
 
          }
@@ -914,6 +928,7 @@ char **make_module_arguments(const int number_of_module)
       params_counter++;
 
       params[params_counter] = NULL;
+      NULLP_TEST_AND_FREE(buffer)
    }
 
    fprintf(stdout,"%s [INFO] Supervisor - executed command: %s   %s   %s", get_stats_formated_time(), running_modules[number_of_module].module_path, params[1], params[2]);
@@ -928,6 +943,7 @@ char **make_module_arguments(const int number_of_module)
 
    fprintf(stdout,"\n");
    fprintf(stderr,"\n");
+   NULLP_TEST_AND_FREE(atr)
    return params;
 }
 
@@ -1749,7 +1765,7 @@ void free_available_modules_structs()
 
 void supervisor_termination(int stop_all_modules, int generate_backup)
 {
-   unsigned int x = 0, attemps = 0;
+   int x = 0, attemps = 0;
 
    // If daemon mode was initialized and supervisor caught a signal to terminate, set termination flag for client's threads
    if (daemon_mode_initialized  == TRUE && server_internals != NULL) {
@@ -1779,7 +1795,7 @@ void supervisor_termination(int stop_all_modules, int generate_backup)
 
          if (x == 0) {
             VERBOSE(N_STDOUT, "%s [SERVICE] pthread_join success: Service thread finished!\n", get_stats_formated_time())
-         } else if (((int) x) == -1) {
+         } else if (x == -1) {
             if (errno == EINVAL) {
                VERBOSE(N_STDOUT, "%s [ERROR] pthread_join: Not joinable thread!\n", get_stats_formated_time());
             } else if (errno == ESRCH) {
@@ -1792,7 +1808,7 @@ void supervisor_termination(int stop_all_modules, int generate_backup)
          if (generate_backup == TRUE) {
             generate_backup_config_file();
          } else {
-            for (x=0; ((unsigned int) x)<loaded_modules_cnt; x++) {
+            for (x = 0;  x < loaded_modules_cnt; x++) {
                if (running_modules[x].module_status == TRUE) {
                   VERBOSE(N_STDOUT, "%s [WARNING] Some modules are still running, gonna generate backup anyway!\n", get_stats_formated_time());
                   generate_backup_config_file();
@@ -1934,7 +1950,11 @@ void update_module_cpu_usage()
          memset(path,0,20*sizeof(char));
          sprintf(path,"/proc/%d/stat",running_modules[x].module_pid);
          proc_stat_fd = fopen(path,"r");
+         if (proc_stat_fd == NULL) {
+            continue;
+         }
          if (!fscanf(proc_stat_fd,"%*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %d %d", &utime , &stime)) {
+            fclose(proc_stat_fd);
             continue;
          }
          if (running_modules[x].total_cpu_usage_during_module_startup != -1) {
@@ -1965,7 +1985,6 @@ void update_module_mem_usage()
    for (x=0; x<loaded_modules_cnt; x++) {
       if (running_modules[x].module_status == TRUE) {
          memset(path,0,20*sizeof(char));
-         memset(buffer, 0, 1024*sizeof(char));
          sprintf(path,"/proc/%d/status",running_modules[x].module_pid);
          proc_status_fd = fopen(path,"r");
          if (proc_status_fd == NULL) {
@@ -1974,12 +1993,17 @@ void update_module_mem_usage()
 
          ret_val = fread(buffer, sizeof(char), 1000, proc_status_fd);
          if (ret_val < 1) {
+            fclose(proc_status_fd);
             continue;
          }
 
+         buffer[ret_val] = 0;
+
          match = strstr(buffer, "VmSize");
          if (match != NULL) {
-            sscanf(match, "%*[^' ']%*[' ']%d", &(running_modules[x].virtual_memory_usage));
+            if (sscanf(match, "%*[^' ']%*[' ']%d", &(running_modules[x].virtual_memory_usage)) < 1) {
+               running_modules[x].virtual_memory_usage = 0;
+            }
          }
          fclose(proc_status_fd);
       }
@@ -2112,6 +2136,13 @@ void print_statistics(struct tm * timeinfo)
             for (y = 0; y < running_modules[y].module_ifces_cnt; y++) {
                if (running_modules[y].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
                   VERBOSE(STATISTICS,"%"PRIu64"  ", ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_msg_cnt);
+               }
+            }
+
+            VERBOSE(STATISTICS,"CNT_DM:  ");
+            for (y = 0; y < running_modules[y].module_ifces_cnt; y++) {
+               if (running_modules[y].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
+                  VERBOSE(STATISTICS,"%"PRIu64"  ", ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->dropped_msg_cnt);
                }
             }
 
@@ -2346,7 +2377,8 @@ char * make_formated_statistics()
          counter = 0;
          for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
             if (running_modules[x].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
-               ptr += sprintf(buffer + ptr, "%s,out,%d,%"PRIu64",%"PRIu64",%"PRIu64"\n", running_modules[x].module_name, counter, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_msg_cnt,
+               ptr += sprintf(buffer + ptr, "%s,out,%d,%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64"\n", running_modules[x].module_name, counter, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_msg_cnt,
+                                                                                                                                                                                                                           ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->dropped_msg_cnt,
                                                                                                                                                                                                                            ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_buffer_cnt,
                                                                                                                                                                                                                            ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->autoflush_cnt);
                counter++;
@@ -2437,12 +2469,14 @@ int parse_program_arguments(int *argc, char **argv)
          verbose_flag = TRUE;
          break;
       case 'f':
+         NULLP_TEST_AND_FREE(config_file)
          config_file = strdup(optarg);
          break;
       case 'd':
          daemon_flag = TRUE;
          break;
       case 'L':
+         NULLP_TEST_AND_FREE(logs_path)
          logs_path = strdup(optarg);
          break;
       }
@@ -3874,13 +3908,11 @@ add_module_on_path:
    /* clean up */
    clean_up:
    NULLP_TEST_AND_FREE(buffer)
-   if (args != NULL)  {
-      for (x=0; x<3; x++) {
-         NULLP_TEST_AND_FREE(args[x])
-      }
-      free(args);
-      args = NULL;
+   for (x=0; x<3; x++) {
+      NULLP_TEST_AND_FREE(args[x])
    }
+   free(args);
+   args = NULL;
    VERBOSE(N_STDOUT, "--- Modules auto-detection finished ---\n");
 }
 
@@ -4098,7 +4130,7 @@ int reload_configuration(const int choice, xmlNodePtr * node)
                /* if return value equals 1, there is no more valid module elements -> break the module parsing loop
                *  return value 0 is success -> parse the module attributes
                */
-               if (reload_find_and_check_module_basic_elements(&config_vars) == -1) {
+               if (reload_find_and_check_module_basic_elements(&config_vars) == -1 || config_vars->current_module_idx < 0) {
                   // VERBOSE(N_STDOUT, "[WARNING] Reloading error - last module is invalid, breaking the loop.\n");
                   break;
                } else {
@@ -4685,6 +4717,7 @@ xmlDocPtr netconf_get_state_data()
                            snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((in_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->recv_msg_cnt);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "recv-msg-cnt", BAD_CAST buffer);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-msg-cnt", BAD_CAST "0");
+                           xmlNewChild(interface_elem, NULL, BAD_CAST "dropped-msg-cnt", BAD_CAST "0");
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-buffer-cnt", BAD_CAST "0");
                            xmlNewChild(interface_elem, NULL, BAD_CAST "autoflush-cnt", BAD_CAST "0");
                         } else if (running_modules[x].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
@@ -4693,6 +4726,9 @@ xmlDocPtr netconf_get_state_data()
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
                            snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_msg_cnt);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-msg-cnt", BAD_CAST buffer);
+                           memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
+                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->dropped_msg_cnt);
+                           xmlNewChild(interface_elem, NULL, BAD_CAST "dropped-msg-cnt", BAD_CAST buffer);
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
                            snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_buffer_cnt);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-buffer-cnt", BAD_CAST buffer);
@@ -4760,6 +4796,7 @@ xmlDocPtr netconf_get_state_data()
                            snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((in_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->recv_msg_cnt);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "recv-msg-cnt", BAD_CAST buffer);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-msg-cnt", BAD_CAST "0");
+                           xmlNewChild(interface_elem, NULL, BAD_CAST "dropped-msg-cnt", BAD_CAST "0");
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-buffer-cnt", BAD_CAST "0");
                            xmlNewChild(interface_elem, NULL, BAD_CAST "autoflush-cnt", BAD_CAST "0");
                         } else if (running_modules[x].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
@@ -4768,6 +4805,9 @@ xmlDocPtr netconf_get_state_data()
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
                            snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_msg_cnt);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-msg-cnt", BAD_CAST buffer);
+                           memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
+                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->dropped_msg_cnt);
+                           xmlNewChild(interface_elem, NULL, BAD_CAST "dropped-msg-cnt", BAD_CAST buffer);
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
                            snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_buffer_cnt);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-buffer-cnt", BAD_CAST buffer);

@@ -97,6 +97,7 @@ typedef struct in_ifc_stats_s {
 
 typedef struct out_ifc_stats_s {
    uint64_t sent_msg_cnt;
+   uint64_t dropped_msg_cnt;
    uint64_t sent_buffer_cnt;
    uint64_t autoflush_cnt;
 } out_ifc_stats_t;
