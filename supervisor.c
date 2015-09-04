@@ -1730,33 +1730,33 @@ void free_available_modules_structs()
    available_module_t * module_p2 = NULL;
 
    while (path_p1 != NULL) {
-      path_p2 = path_p1 -> next;
-      module_p1 = path_p1 -> modules;
+      path_p2 = path_p1->next;
+      module_p1 = path_p1->modules;
       while (module_p1 != NULL) {
-         module_p2 = module_p1 -> next;
-         NULLP_TEST_AND_FREE(module_p1 -> name)
-         if (module_p1 -> module_info != NULL) {
-            NULLP_TEST_AND_FREE(module_p1 -> module_info -> name)
-            NULLP_TEST_AND_FREE(module_p1 -> module_info -> description)
+         module_p2 = module_p1->next;
+         NULLP_TEST_AND_FREE(module_p1->name)
+         if (module_p1->module_info != NULL) {
+            NULLP_TEST_AND_FREE(module_p1->module_info->name)
+            NULLP_TEST_AND_FREE(module_p1->module_info->description)
             if (module_p1->module_info->params != NULL) {
                x=0;
-               while (module_p1 -> module_info->params[x] != NULL) {
-                  NULLP_TEST_AND_FREE(module_p1 -> module_info -> params[x]->long_opt)
-                  NULLP_TEST_AND_FREE(module_p1 -> module_info -> params[x]->description)
-                  NULLP_TEST_AND_FREE(module_p1 -> module_info -> params[x]->argument_type)
-                  NULLP_TEST_AND_FREE(module_p1 -> module_info -> params[x])
+               while (module_p1->module_info->params[x] != NULL) {
+                  NULLP_TEST_AND_FREE(module_p1->module_info->params[x]->long_opt)
+                  NULLP_TEST_AND_FREE(module_p1->module_info->params[x]->description)
+                  NULLP_TEST_AND_FREE(module_p1->module_info->params[x]->argument_type)
+                  NULLP_TEST_AND_FREE(module_p1->module_info->params[x])
                   x++;
                }
-               free(module_p1 -> module_info -> params);
+               free(module_p1->module_info->params);
                module_p1->module_info->params = NULL;
             }
-            free(module_p1 -> module_info);
+            free(module_p1->module_info);
             module_p1->module_info = NULL;
          }
          free(module_p1);
          module_p1 = module_p2;
       }
-      NULLP_TEST_AND_FREE(path_p1 -> path)
+      NULLP_TEST_AND_FREE(path_p1->path)
       free(path_p1);
       path_p1 = path_p2;
    }
@@ -3653,8 +3653,8 @@ void reload_process_availablemodules_element(reload_config_vars_t ** config_vars
    // Set valid variable of all previous paths to false to see which will be missing
    available_modules_path_p = first_available_modules_path;
    while (available_modules_path_p != NULL) {
-      available_modules_path_p -> is_valid = FALSE;
-      available_modules_path_p = available_modules_path_p -> next;
+      available_modules_path_p->is_valid = FALSE;
+      available_modules_path_p = available_modules_path_p->next;
    }
 
    // Set environment variable for modules to make decision about printing help in json format
@@ -3672,12 +3672,12 @@ void reload_process_availablemodules_element(reload_config_vars_t ** config_vars
                   found = FALSE;
                   available_modules_path_p = first_available_modules_path;
                   while (available_modules_path_p != NULL) {
-                     if (strcmp(available_modules_path_p -> path, (char *) key) == 0) {
-                        available_modules_path_p -> is_valid = TRUE;
+                     if (strcmp(available_modules_path_p->path, (char *) key) == 0) {
+                        available_modules_path_p->is_valid = TRUE;
                         found = TRUE;
                         break;
                      }
-                     available_modules_path_p = available_modules_path_p -> next;
+                     available_modules_path_p = available_modules_path_p->next;
                   }
                   if (found == TRUE) {
                      VERBOSE(N_STDOUT, "-> Path %s already searched.\n", (char *) key);
@@ -3696,11 +3696,11 @@ void reload_process_availablemodules_element(reload_config_vars_t ** config_vars
                         continue;
                      }
                      available_modules_path_p = (available_modules_path_t *) calloc (1, sizeof(available_modules_path_t));
-                     available_modules_path_p -> path = strdup((char *) key);
-                     available_modules_path_p -> is_valid = TRUE;
-                     available_modules_path_p -> next = first_available_modules_path;
+                     available_modules_path_p->path = strdup((char *) key);
+                     available_modules_path_p->is_valid = TRUE;
+                     available_modules_path_p->next = first_available_modules_path;
                      if (first_available_modules_path != NULL) {
-                        first_available_modules_path -> prev = available_modules_path_p;
+                        first_available_modules_path->prev = available_modules_path_p;
                      }
                      first_available_modules_path = available_modules_path_p;
                      xmlFree(key);
@@ -3718,10 +3718,10 @@ void reload_process_availablemodules_element(reload_config_vars_t ** config_vars
                      break;
                   } else {
                      memset(buffer, 0, size_of_buffer*sizeof(char));
-                     if (available_modules_path_p -> path[strlen(available_modules_path_p -> path) - 1] == '/') {
-                        sprintf(buffer, "%s%s", available_modules_path_p -> path, file->d_name);
+                     if (available_modules_path_p->path[strlen(available_modules_path_p->path) - 1] == '/') {
+                        sprintf(buffer, "%s%s", available_modules_path_p->path, file->d_name);
                      } else {
-                        sprintf(buffer, "%s/%s", available_modules_path_p -> path, file->d_name);
+                        sprintf(buffer, "%s/%s", available_modules_path_p->path, file->d_name);
                      }
                      if (stat(buffer, &file_stat) == -1) {
                          continue;
@@ -3740,12 +3740,12 @@ void reload_process_availablemodules_element(reload_config_vars_t ** config_vars
                                  // Fork process and execute binary
                                  proc = fork();
                                  if (proc == 0) { // Child
-                                    if ((strlen(file -> d_name) + 1) >= size_of_args0) {
-                                       size_of_args0 = 3*(strlen(file -> d_name) + 1)/2;
+                                    if ((strlen(file->d_name) + 1) >= size_of_args0) {
+                                       size_of_args0 = 3*(strlen(file->d_name) + 1)/2;
                                        args[0] = (char *) realloc (args[0], size_of_args0 * sizeof(char));
                                     }
                                     memset(args[0], 0, size_of_args0 * sizeof(char));
-                                    sprintf(args[0], "%s", file -> d_name);
+                                    sprintf(args[0], "%s", file->d_name);
                                     memset(args[1], 0, size_of_args1 * sizeof(char));
                                     sprintf(args[1], "-h");
                                     args[2] = NULL;
@@ -3827,28 +3827,28 @@ void reload_process_availablemodules_element(reload_config_vars_t ** config_vars
                            continue;
                         }
 add_module_on_path:
-                        if (available_modules_path_p -> modules == NULL) {
-                           available_modules_path_p -> modules = (available_module_t *) calloc (1, sizeof(available_module_t));
-                           available_modules_path_p -> modules -> name = strdup((char *) file -> d_name);
+                        if (available_modules_path_p->modules == NULL) {
+                           available_modules_path_p->modules = (available_module_t *) calloc (1, sizeof(available_module_t));
+                           available_modules_path_p->modules->name = strdup((char *) file->d_name);
                            if (module_info_p != NULL) {
-                              available_modules_path_p -> modules -> module_info = module_info_p;
+                              available_modules_path_p->modules->module_info = module_info_p;
                               module_info_p = NULL;
                            } else {
-                              available_modules_path_p -> modules -> module_info = NULL;
+                              available_modules_path_p->modules->module_info = NULL;
                            }
-                           available_modules_path_p -> modules -> next = NULL;
-                           available_module_p = available_modules_path_p -> modules;
+                           available_modules_path_p->modules->next = NULL;
+                           available_module_p = available_modules_path_p->modules;
                         } else {
-                           available_module_p -> next = (available_module_t *) calloc (1, sizeof(available_module_t));
-                           available_module_p = available_module_p -> next;
-                           available_module_p -> name = strdup((char *) file -> d_name);
+                           available_module_p->next = (available_module_t *) calloc (1, sizeof(available_module_t));
+                           available_module_p = available_module_p->next;
+                           available_module_p->name = strdup((char *) file->d_name);
                            if (module_info_p != NULL) {
-                              available_module_p -> module_info = module_info_p;
+                              available_module_p->module_info = module_info_p;
                               module_info_p = NULL;
                            } else {
-                              available_module_p -> module_info = NULL;
+                              available_module_p->module_info = NULL;
                            }
-                           available_module_p -> next = NULL;
+                           available_module_p->next = NULL;
                         }
                      }
                   }
@@ -3865,41 +3865,41 @@ add_module_on_path:
    available_modules_path_t * p_p = NULL;
    available_module_t * m_p = NULL;
    while (available_modules_path_p != NULL) {
-      if (available_modules_path_p -> is_valid == FALSE) {
-         VERBOSE(N_STDOUT, "-> Removing non-valid path %s.\n", available_modules_path_p -> path);
+      if (available_modules_path_p->is_valid == FALSE) {
+         VERBOSE(N_STDOUT, "-> Removing non-valid path %s.\n", available_modules_path_p->path);
          p_p = available_modules_path_p;
-         if (available_modules_path_p -> prev != NULL) {
-            available_modules_path_p -> prev -> next = available_modules_path_p -> next;
+         if (available_modules_path_p->prev != NULL) {
+            available_modules_path_p->prev->next = available_modules_path_p->next;
          } else {
-            first_available_modules_path = available_modules_path_p -> next;
+            first_available_modules_path = available_modules_path_p->next;
          }
-         available_modules_path_p = available_modules_path_p -> next;
-         available_module_p = p_p -> modules;
+         available_modules_path_p = available_modules_path_p->next;
+         available_module_p = p_p->modules;
          while (available_module_p != NULL) {
-            m_p = available_module_p -> next;
-            NULLP_TEST_AND_FREE(available_module_p -> name)
-            if (available_module_p -> module_info != NULL) {
-               NULLP_TEST_AND_FREE(available_module_p -> module_info -> name)
-               NULLP_TEST_AND_FREE(available_module_p -> module_info -> description)
+            m_p = available_module_p->next;
+            NULLP_TEST_AND_FREE(available_module_p->name)
+            if (available_module_p->module_info != NULL) {
+               NULLP_TEST_AND_FREE(available_module_p->module_info->name)
+               NULLP_TEST_AND_FREE(available_module_p->module_info->description)
                x=0;
-               while (available_module_p -> module_info->params[x] != NULL) {
-                  NULLP_TEST_AND_FREE(available_module_p -> module_info -> params[x]->long_opt)
-                  NULLP_TEST_AND_FREE(available_module_p -> module_info -> params[x]->description)
-                  NULLP_TEST_AND_FREE(available_module_p -> module_info -> params[x]->argument_type)
+               while (available_module_p->module_info->params[x] != NULL) {
+                  NULLP_TEST_AND_FREE(available_module_p->module_info->params[x]->long_opt)
+                  NULLP_TEST_AND_FREE(available_module_p->module_info->params[x]->description)
+                  NULLP_TEST_AND_FREE(available_module_p->module_info->params[x]->argument_type)
                   x++;
                }
-               free(available_module_p -> module_info -> params);
-               free(available_module_p -> module_info);
+               free(available_module_p->module_info->params);
+               free(available_module_p->module_info);
             }
             free(available_module_p);
             available_module_p = m_p;
          }
-         NULLP_TEST_AND_FREE(p_p -> path)
+         NULLP_TEST_AND_FREE(p_p->path)
          free(p_p);
          p_p = NULL;
          continue;
       }
-      available_modules_path_p = available_modules_path_p -> next;
+      available_modules_path_p = available_modules_path_p->next;
    }
 
    // Set environment variable for modules to make decision about printing help in text format
@@ -4197,7 +4197,7 @@ int reload_configuration(const int choice, xmlNodePtr * node)
                            config_vars->ifc_atr_elem = config_vars->ifc_elem->xmlChildrenNode;
 
                            // Check and reallocate (if needed) module's interfaces array
-                           reload_check_module_allocated_interfaces(config_vars -> current_module_idx, ifc_cnt);
+                           reload_check_module_allocated_interfaces(config_vars->current_module_idx, ifc_cnt);
 
                            while (config_vars->ifc_atr_elem != NULL) {
                               if ((!xmlStrcmp(config_vars->ifc_atr_elem->name,BAD_CAST "note"))) {
@@ -4631,17 +4631,17 @@ xmlDocPtr netconf_get_state_data()
       available_module_t * avail_path_modules = NULL;
 
       while (avail_path != NULL) {
-         avail_path_modules = avail_path -> modules;
+         avail_path_modules = avail_path->modules;
          while (avail_path_modules != NULL) {
             module_elem = xmlNewChild(modules_elem, NULL, "module", NULL);
-            xmlNewChild(module_elem, NULL, "name", BAD_CAST avail_path_modules -> name);
-            if (avail_path_modules -> module_info != NULL) {
-               xmlNewChild(module_elem, NULL, "description", BAD_CAST avail_path_modules -> module_info -> description);
+            xmlNewChild(module_elem, NULL, "name", BAD_CAST avail_path_modules->name);
+            if (avail_path_modules->module_info != NULL) {
+               xmlNewChild(module_elem, NULL, "description", BAD_CAST avail_path_modules->module_info->description);
                memset(buffer, 0, DEFAULT_SIZE_OF_BUFFER);
-               snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%d", avail_path_modules -> module_info -> num_ifc_in);
+               snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%d", avail_path_modules->module_info->num_ifc_in);
                xmlNewChild(module_elem, NULL, "number-in-ifc", BAD_CAST buffer);
                memset(buffer, 0, DEFAULT_SIZE_OF_BUFFER);
-               snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%d", avail_path_modules -> module_info -> num_ifc_out);
+               snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%d", avail_path_modules->module_info->num_ifc_out);
                xmlNewChild(module_elem, NULL, "number-out-ifc", BAD_CAST buffer);
 
                // Process module parameters
@@ -4649,24 +4649,24 @@ xmlDocPtr netconf_get_state_data()
                while (avail_path_modules->module_info->params[x] != NULL) {
                   param = xmlNewChild(module_elem, NULL, "parameter", NULL);
                   memset(buffer, 0, DEFAULT_SIZE_OF_BUFFER);
-                  sprintf(buffer, "-%c", avail_path_modules -> module_info -> params[x]->short_opt);
+                  sprintf(buffer, "-%c", avail_path_modules->module_info->params[x]->short_opt);
                   xmlNewChild(param, NULL, "short-opt", BAD_CAST buffer);
                   memset(buffer, 0, DEFAULT_SIZE_OF_BUFFER);
-                  sprintf(buffer, "--%s", avail_path_modules -> module_info -> params[x]->long_opt);
+                  sprintf(buffer, "--%s", avail_path_modules->module_info->params[x]->long_opt);
                   xmlNewChild(param, NULL, "long-opt", BAD_CAST buffer);
-                  xmlNewChild(param, NULL, "description", BAD_CAST avail_path_modules -> module_info -> params[x]->description);
-                  if (avail_path_modules -> module_info -> params[x]->param_required_argument == TRUE) {
+                  xmlNewChild(param, NULL, "description", BAD_CAST avail_path_modules->module_info->params[x]->description);
+                  if (avail_path_modules->module_info->params[x]->param_required_argument == TRUE) {
                      xmlNewChild(param, NULL, "mandatory-argument", BAD_CAST "true");
                   } else {
                      xmlNewChild(param, NULL, "mandatory-argument", BAD_CAST "false");
                   }
-                  xmlNewChild(param, NULL, "argument-type", BAD_CAST avail_path_modules -> module_info -> params[x]->argument_type);
+                  xmlNewChild(param, NULL, "argument-type", BAD_CAST avail_path_modules->module_info->params[x]->argument_type);
                   x++;
                }
             }
-            avail_path_modules = avail_path_modules -> next;
+            avail_path_modules = avail_path_modules->next;
          }
-         avail_path = avail_path -> next;
+         avail_path = avail_path->next;
       }
       }
 
