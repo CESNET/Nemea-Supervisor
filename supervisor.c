@@ -53,13 +53,11 @@
 #include "internal.h"
 
 #include <arpa/inet.h>
-#include <netdb.h>
 #include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
-#include <sys/un.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -79,71 +77,66 @@
 #include <grp.h>
 #include <langinfo.h>
 
-#define TRAP_PARAM               "-i" ///< Interface parameter for libtrap
-#define DEFAULT_MAX_RESTARTS_PER_MINUTE  3  ///< Maximum number of module restarts per minute
-#define SERVICE_IFC_CONN_ATTEMPTS_LIMIT 3 // Maximum count of connection attempts to service interface
-#define MAX_SERVICE_IFC_CONN_FAILS 3
+#define TRAP_PARAM   "-i" ///< Interface parameter for libtrap
+#define DEFAULT_MAX_RESTARTS_PER_MINUTE   3  ///< Maximum number of module restarts per minute
+#define SERVICE_IFC_CONN_ATTEMPTS_LIMIT   3 // Maximum count of connection attempts to service interface
+#define MAX_SERVICE_IFC_CONN_FAILS   3
 
 #define MODULES_UNIXSOCKET_PATH_FILENAME_FORMAT   "/tmp/trap-localhost-%s.sock" ///< Modules output interfaces socket, to which connects service thread.
-#define DEFAULT_DAEMON_SERVER_SOCKET  "/tmp/daemon_supervisor.sock"  ///<  Daemon server socket
-#define DEFAULT_NETCONF_SERVER_SOCKET "/tmp/netconf_supervisor.sock"  ///<  Netconf server socket
+#define DEFAULT_DAEMON_SERVER_SOCKET   "/tmp/daemon_supervisor.sock"  ///<  Daemon server socket
+#define DEFAULT_NETCONF_SERVER_SOCKET   "/tmp/netconf_supervisor.sock"  ///<  Netconf server socket
 
-#define NETCONF_DEFAULT_LOGSDIR_PATH "/tmp/netconf_supervisor_logs/"
-#define DAEMON_DEFAULT_LOGSDIR_PATH "/tmp/daemon_supervisor_logs/"
-#define INTERACTIVE_DEFAULT_LOGSDIR_PATH "/tmp/interactive_supervisor_logs/"
-#define BACKUP_FILE_PREFIX "/tmp/"
-#define BACKUP_FILE_SUFIX "_sup_backup_file.xml"
+#define NETCONF_DEFAULT_LOGSDIR_PATH   "/tmp/netconf_supervisor_logs/"
+#define DAEMON_DEFAULT_LOGSDIR_PATH   "/tmp/daemon_supervisor_logs/"
+#define INTERACTIVE_DEFAULT_LOGSDIR_PATH   "/tmp/interactive_supervisor_logs/"
+#define BACKUP_FILE_PREFIX   "/tmp/"
+#define BACKUP_FILE_SUFIX   "_sup_backup_file.xml"
 
-#define RET_ERROR    -1
+#define RET_ERROR   -1
 #define MAX_NUMBER_SUP_CLIENTS   5
-#define NUM_SERVICE_IFC_PERIODS 30
+#define NUM_SERVICE_IFC_PERIODS   30
 
 /*******GLOBAL VARIABLES*******/
-running_module_t *   running_modules = NULL;  ///< Information about running modules
+running_module_t *running_modules = NULL;  ///< Information about running modules
 
-unsigned int         running_modules_array_size = 0;  ///< Current size of running_modules array.
-unsigned int         loaded_modules_cnt = 0; ///< Current number of loaded modules.
-long int                last_total_cpu_usage = 0; // Variable with total cpu usage of whole operating system
+unsigned int running_modules_array_size = 0;  ///< Current size of running_modules array.
+unsigned int loaded_modules_cnt = 0; ///< Current number of loaded modules.
+long int last_total_cpu_usage = 0; // Variable with total cpu usage of whole operating system
 
 pthread_mutex_t running_modules_lock; ///< mutex for locking counters
-int         service_thread_continue = FALSE; ///< condition variable of main loop of the service_thread
-int         max_restarts_per_minute_config = DEFAULT_MAX_RESTARTS_PER_MINUTE;
+int service_thread_continue = FALSE; ///< condition variable of main loop of the service_thread
+int max_restarts_per_minute_config = DEFAULT_MAX_RESTARTS_PER_MINUTE;
 
-modules_profile_t * first_profile_ptr = NULL;
-modules_profile_t * actual_profile_ptr = NULL;
+modules_profile_t *first_profile_ptr = NULL;
+modules_profile_t *actual_profile_ptr = NULL;
 
-available_modules_path_t * first_available_modules_path = NULL;
+available_modules_path_t *first_available_modules_path = NULL;
 
-pthread_t   service_thread_id; ///< Service thread identificator.
-pthread_t   netconf_server_thread_id;
+pthread_t service_thread_id; ///< Service thread identificator.
+pthread_t netconf_server_thread_id;
 
-struct tm * init_time_info = NULL;
+struct tm *init_time_info = NULL;
 int service_stop_all_modules = FALSE;
 
 // supervisor flags
-int      supervisor_initialized = FALSE;
-int      service_thread_initialized = FALSE;
-int      daemon_mode_initialized = FALSE;
-int      verbose_flag = FALSE;     // -v messages and cpu_usage stats
-int      daemon_flag = FALSE;      // --daemon
-int      netconf_flag = FALSE;
-char *   config_file = NULL;
-char *   socket_path = NULL;
-char *   logs_path = NULL;
+int supervisor_initialized = FALSE;
+int service_thread_initialized = FALSE;
+int daemon_mode_initialized = FALSE;
+int verbose_flag = FALSE;     // -v messages and cpu_usage stats
+int daemon_flag = FALSE;      // --daemon
+int netconf_flag = FALSE;
+char *config_file = NULL;
+char *socket_path = NULL;
+char *logs_path = NULL;
 
-char *   statistics_file_path = NULL;
-char *   module_event_file_path = NULL;
-char *   supervisor_debug_log_file_path = NULL;
-char *   supervisor_log_file_path = NULL;
+char *statistics_file_path = NULL;
+char *module_event_file_path = NULL;
+char *supervisor_debug_log_file_path = NULL;
+char *supervisor_log_file_path = NULL;
 
-server_internals_t * server_internals = NULL;
+server_internals_t *server_internals = NULL;
 
 /**************************************/
-
-union tcpip_socket_addr {
-   struct addrinfo tcpip_addr; ///< used for TCPIP socket
-   struct sockaddr_un unix_addr; ///< used for path of UNIX socket
-};
 
 // Returns absolute path of the file / directory passed in file_name parameter
 char *get_absolute_file_path(char *file_name)
@@ -384,7 +377,7 @@ int decode_cnts_from_json(char **data, int module_number)
 }
 
 // TODO errors to stderr, code maintenance
-int convert_json_module_info(const char * json_str, trap_module_info_t ** info)
+int convert_json_module_info(const char *json_str, trap_module_info_t **info)
 {
    json_error_t error;
    json_t * json_struct = NULL;
@@ -394,7 +387,7 @@ int convert_json_module_info(const char * json_str, trap_module_info_t ** info)
    size_t index_arr = 0;
    int array_size = 0;
    json_struct = json_loads(json_str , 0, &error);
-   const char * str;
+   const char *str;
     if (!json_struct) {
         fprintf(stderr, "ERROR json string converting to json structure on line %d: %s\n", error.line, error.text);
         json_decref(json_struct);
@@ -408,7 +401,7 @@ int convert_json_module_info(const char * json_str, trap_module_info_t ** info)
    }
    str = json_string_value(value);
    if (str != NULL) {
-      (*info)->name = (char*) calloc (sizeof(char), strlen(str)+1);
+      (*info)->name = (char *) calloc(sizeof(char), strlen(str)+1);
       strcpy((*info)->name, str);
    }
 
@@ -420,7 +413,7 @@ int convert_json_module_info(const char * json_str, trap_module_info_t ** info)
    }
    str = json_string_value(value);
    if (str != NULL) {
-      (*info)->description = (char*) calloc (sizeof(char), strlen(str)+1);
+      (*info)->description = (char *) calloc(sizeof(char), strlen(str)+1);
       strcpy((*info)->description, str);
    }
 
@@ -447,13 +440,13 @@ int convert_json_module_info(const char * json_str, trap_module_info_t ** info)
       return -1;
    }
    array_size = json_array_size(value);
-   (*info)->params = (trap_module_info_parameter_t **) calloc (array_size + 1, sizeof(trap_module_info_parameter_t *));
+   (*info)->params = (trap_module_info_parameter_t **) calloc(array_size + 1, sizeof(trap_module_info_parameter_t *));
    if ((*info)->params == NULL) {
       json_decref(json_struct);
       return -2;
    }
    json_array_foreach(value, index_arr, array_value) {
-      (*info)->params[index_arr] = (trap_module_info_parameter_t *) calloc (1, sizeof(trap_module_info_parameter_t));
+      (*info)->params[index_arr] = (trap_module_info_parameter_t *) calloc(1, sizeof(trap_module_info_parameter_t));
       value2 = json_object_get(array_value, "short_opt");
       if (value2 == NULL) {
          fprintf(stderr, "ERROR during converting string from json structure short_opt\n");
@@ -473,7 +466,7 @@ int convert_json_module_info(const char * json_str, trap_module_info_t ** info)
       }
       str = json_string_value(value2);
       if (str != NULL) {
-         (*info)->params[index_arr]->long_opt = (char*) calloc (sizeof(char), strlen(str)+1);
+         (*info)->params[index_arr]->long_opt = (char *) calloc(sizeof(char), strlen(str)+1);
          strcpy((*info)->params[index_arr]->long_opt, str);
       }
 
@@ -485,7 +478,7 @@ int convert_json_module_info(const char * json_str, trap_module_info_t ** info)
       }
       str = json_string_value(value2);
       if (str != NULL) {
-         (*info)->params[index_arr]->description = (char*) calloc (sizeof(char), strlen(str)+1);
+         (*info)->params[index_arr]->description = (char *) calloc(sizeof(char), strlen(str)+1);
          strcpy((*info)->params[index_arr]->description, str);
       }
 
@@ -497,7 +490,7 @@ int convert_json_module_info(const char * json_str, trap_module_info_t ** info)
       }
       str = json_string_value(value2);
       if (str != NULL) {
-         (*info)->params[index_arr]->argument_type = (char*) calloc (sizeof(char), strlen(str)+1);
+         (*info)->params[index_arr]->argument_type = (char *) calloc(sizeof(char), strlen(str)+1);
          strcpy((*info)->params[index_arr]->argument_type, str);
       }
 
@@ -513,10 +506,10 @@ int convert_json_module_info(const char * json_str, trap_module_info_t ** info)
    return 0;
 }
 
-void print_xmlDoc_to_stream(xmlDocPtr doc_ptr, FILE * stream)
+void print_xmlDoc_to_stream(xmlDocPtr doc_ptr, FILE *stream)
 {
    if (doc_ptr != NULL && stream != NULL) {
-      xmlChar * formated_xml_output = NULL;
+      xmlChar *formated_xml_output = NULL;
       int size = 0;
       xmlDocDumpFormatMemory(doc_ptr, &formated_xml_output, &size, 1);
       if (formated_xml_output == NULL) {
@@ -528,14 +521,14 @@ void print_xmlDoc_to_stream(xmlDocPtr doc_ptr, FILE * stream)
    }
 }
 
-struct tm * get_sys_time()
+struct tm *get_sys_time()
 {
    time_t rawtime;
    time(&rawtime);
    return localtime(&rawtime);
 }
 
-char * get_stats_formated_time()
+char *get_stats_formated_time()
 {
    static char formated_time_buffer[DEFAULT_SIZE_OF_BUFFER];
    memset(formated_time_buffer,0,DEFAULT_SIZE_OF_BUFFER);
@@ -549,27 +542,27 @@ char * get_stats_formated_time()
 char **make_module_arguments(const int number_of_module)
 {
    unsigned int size_of_atr = DEFAULT_SIZE_OF_BUFFER;
-   char * atr = (char *) calloc (size_of_atr, sizeof(char));
+   char *atr = (char *) calloc(size_of_atr, sizeof(char));
    unsigned int x = 0, y = 0, act_dir = 0;
    int ptr = 0;
    int str_len = 0;
    unsigned int params_counter = 0;
-   char ** params = NULL;
+   char **params = NULL;
    char *addr = NULL;
    char *port = NULL;
 
    //binary without libtrap interfaces
    if (running_modules[number_of_module].module_ifces_cnt == 0) {
       if (running_modules[number_of_module].module_params == NULL) {
-         params = (char **) calloc (2,sizeof(char*));
+         params = (char **) calloc(2,sizeof(char *));
 
          str_len = strlen(running_modules[number_of_module].module_name);
-         params[0] = (char *) calloc (str_len+1, sizeof(char));   // binary name for exec
+         params[0] = (char *) calloc(str_len+1, sizeof(char));   // binary name for exec
          strncpy(params[0],running_modules[number_of_module].module_name, str_len+1);
          params[1] = NULL;
       } else {
          unsigned int size_of_buffer = DEFAULT_SIZE_OF_BUFFER;
-         char * buffer = (char *) calloc (size_of_buffer, sizeof(char));
+         char *buffer = (char *) calloc(size_of_buffer, sizeof(char));
          int num_module_params = 0;
          unsigned int module_params_length = strlen(running_modules[number_of_module].module_params);
 
@@ -580,9 +573,9 @@ char **make_module_arguments(const int number_of_module)
          }
          num_module_params++;
 
-         params = (char **) calloc (2+num_module_params,sizeof(char*));
+         params = (char **) calloc(2+num_module_params,sizeof(char *));
          str_len = strlen(running_modules[number_of_module].module_name);
-         params[0] = (char *) calloc (str_len+1, sizeof(char));   // binary name for exec
+         params[0] = (char *) calloc(str_len+1, sizeof(char));   // binary name for exec
          strncpy(params[0],running_modules[number_of_module].module_name, str_len+1);
 
          params_counter = 1;
@@ -590,7 +583,7 @@ char **make_module_arguments(const int number_of_module)
          y=0;
          for (x=0; x<module_params_length; x++) {
             if (running_modules[number_of_module].module_params[x] == 32) {
-               params[params_counter] = (char *) calloc (strlen(buffer)+1,sizeof(char));
+               params[params_counter] = (char *) calloc(strlen(buffer)+1,sizeof(char));
                sprintf(params[params_counter],"%s",buffer);
                params_counter++;
                memset(buffer,0,size_of_buffer);
@@ -605,7 +598,7 @@ char **make_module_arguments(const int number_of_module)
                y++;
             }
          }
-         params[params_counter] = (char *) calloc (strlen(buffer)+1,sizeof(char));
+         params[params_counter] = (char *) calloc(strlen(buffer)+1,sizeof(char));
          sprintf(params[params_counter],"%s",buffer);
          params_counter++;
 
@@ -689,22 +682,22 @@ char **make_module_arguments(const int number_of_module)
    memset(atr + ptr-1,0,1);
 
    if (running_modules[number_of_module].module_params == NULL) {
-      params = (char **) calloc (4,sizeof(char*));
+      params = (char **) calloc(4,sizeof(char *));
       str_len = strlen(running_modules[number_of_module].module_name);
-      params[0] = (char *) calloc (str_len+1, sizeof(char));   // binary name for exec
+      params[0] = (char *) calloc(str_len+1, sizeof(char));   // binary name for exec
       strncpy(params[0],running_modules[number_of_module].module_name, str_len+1);
       str_len = strlen(TRAP_PARAM);
-      params[1] = (char *) calloc (str_len+1,sizeof(char));    // libtrap param "-i"
+      params[1] = (char *) calloc(str_len+1,sizeof(char));    // libtrap param "-i"
       strncpy(params[1],TRAP_PARAM,str_len+1);
       str_len = strlen(atr);
-      params[2] = (char *) calloc (str_len+1,sizeof(char)); // atributes for "-i" param
+      params[2] = (char *) calloc(str_len+1,sizeof(char)); // atributes for "-i" param
       strncpy(params[2],atr,str_len+1);
 
       params[3] = NULL;
    } else {
       params_counter = 0;
       unsigned int size_of_buffer = DEFAULT_SIZE_OF_BUFFER;
-      char * buffer = (char *) calloc (size_of_buffer, sizeof(char));
+      char *buffer = (char *) calloc(size_of_buffer, sizeof(char));
       int num_module_params = 0;
       unsigned int module_params_length = strlen(running_modules[number_of_module].module_params);
 
@@ -715,9 +708,9 @@ char **make_module_arguments(const int number_of_module)
       }
       num_module_params++;
 
-      params = (char **) calloc (4+num_module_params,sizeof(char*));
+      params = (char **) calloc(4+num_module_params,sizeof(char *));
       str_len = strlen(running_modules[number_of_module].module_name);
-      params[params_counter] = (char *) calloc (str_len+1, sizeof(char));   // binary name for exec
+      params[params_counter] = (char *) calloc(str_len+1, sizeof(char));   // binary name for exec
       strncpy(params[params_counter],running_modules[number_of_module].module_name, str_len+1);
       params_counter++;
 
@@ -726,7 +719,7 @@ char **make_module_arguments(const int number_of_module)
          if (running_modules[number_of_module].module_params[x] == 32 && (x == (module_params_length-1))) {
             break;
          } else if (running_modules[number_of_module].module_params[x] == 32) {
-            params[params_counter] = (char *) calloc (strlen(buffer)+1,sizeof(char));
+            params[params_counter] = (char *) calloc(strlen(buffer)+1,sizeof(char));
             sprintf(params[params_counter],"%s",buffer);
             params_counter++;
             memset(buffer,0,size_of_buffer);
@@ -742,16 +735,16 @@ char **make_module_arguments(const int number_of_module)
          }
       }
 
-      params[params_counter] = (char *) calloc (strlen(buffer)+1,sizeof(char));
+      params[params_counter] = (char *) calloc(strlen(buffer)+1,sizeof(char));
       sprintf(params[params_counter],"%s",buffer);
       params_counter++;
 
       str_len = strlen(TRAP_PARAM);
-      params[params_counter] = (char *) calloc (str_len+1,sizeof(char));    // libtrap param "-i"
+      params[params_counter] = (char *) calloc(str_len+1,sizeof(char));    // libtrap param "-i"
       strncpy(params[params_counter],TRAP_PARAM,str_len+1);
       params_counter++;
       str_len = strlen(atr);
-      params[params_counter] = (char *) calloc (str_len+1,sizeof(char)); // atributes for "-i" param
+      params[params_counter] = (char *) calloc(str_len+1,sizeof(char)); // atributes for "-i" param
       strncpy(params[params_counter],atr,str_len+1);
       params_counter++;
 
@@ -778,7 +771,7 @@ char **make_module_arguments(const int number_of_module)
 int get_number_from_input_choosing_option()
 {
    int option = 0;
-   char * input_p = NULL;
+   char *input_p = NULL;
 
    input_p = get_input_from_stream(input_fd);
    if (input_p == NULL) {
@@ -795,14 +788,14 @@ int get_number_from_input_choosing_option()
 }
 
 /* Returns count of numbers in input (separated by commas) or -1 */
-int get_numbers_from_input_dis_enable_module(int ** array)
+int get_numbers_from_input_dis_enable_module(int **array)
 {
    int x = 0, module_nums_cnt = 0, is_num = FALSE;
-   int * module_nums = NULL;
-   char * input_p = NULL;
+   int *module_nums = NULL;
+   char *input_p = NULL;
    int error_input = FALSE;
 
-   module_nums = (int *) calloc (50, sizeof(int));
+   module_nums = (int *) calloc(50, sizeof(int));
    input_p = get_input_from_stream(input_fd);
 
    if (input_p == NULL) {
@@ -916,7 +909,7 @@ char *get_param_by_delimiter(const char *source, char **dest, const char delimit
 
 
 
-void print_statistics(struct tm * timeinfo)
+void print_statistics(struct tm *timeinfo)
 {
    unsigned int x = 0, y = 0;
    VERBOSE(STATISTICS,"------> %s", asctime(timeinfo));
@@ -986,10 +979,10 @@ void print_statistics_legend()
                         "\tCNT_AF - autoflush counter of one trap interface (OUTPUT IFC)\n");
 }
 
-char * make_formated_statistics()
+char *make_formated_statistics()
 {
    unsigned int size_of_buffer = 5*DEFAULT_SIZE_OF_BUFFER;
-   char * buffer = (char *) calloc (size_of_buffer, sizeof(char));
+   char *buffer = (char *) calloc(size_of_buffer, sizeof(char));
    unsigned int x, y, counter = 0;
    int ptr = 0;
 
@@ -1051,7 +1044,7 @@ char * make_formated_statistics()
    return buffer;
 }
 
-int find_loaded_module(char * name)
+int find_loaded_module(char *name)
 {
    unsigned int x;
    for (x=0; x<loaded_modules_cnt; x++) {
@@ -1069,7 +1062,7 @@ void generate_backup_config_file()
    modules_profile_t * ptr = first_profile_ptr;
    unsigned int x, y, backuped_modules = 0;
    char buffer[20];
-   const char * templ = "<?xml version=\"1.0\"?><nemea-supervisor xmlns=\"urn:cesnet:tmc:nemea:1.0\"></nemea-supervisor>";
+   const char *templ = "<?xml version=\"1.0\"?><nemea-supervisor xmlns=\"urn:cesnet:tmc:nemea:1.0\"></nemea-supervisor>";
    xmlDocPtr document_ptr = NULL;
    xmlNodePtr root_elem = NULL, modules = NULL, module = NULL, trapinterfaces = NULL, interface = NULL;
 
@@ -1236,7 +1229,7 @@ void generate_backup_config_file()
 long int get_total_cpu_usage()
 {
    long int new_total_cpu_usage = 0;
-   FILE * proc_stat_fd = fopen("/proc/stat","r");
+   FILE *proc_stat_fd = fopen("/proc/stat","r");
    int x = 0, num = 0;
 
    if (proc_stat_fd == NULL) {
@@ -1261,7 +1254,7 @@ void update_module_cpu_usage()
 {
    int utime = 0, stime = 0;
    unsigned int x = 0;
-   FILE * proc_stat_fd = NULL;
+   FILE *proc_stat_fd = NULL;
    char path[20];
    long int new_total_cpu_usage = get_total_cpu_usage();
    long int difference_total = new_total_cpu_usage - last_total_cpu_usage;
@@ -1299,8 +1292,8 @@ void update_module_cpu_usage()
 void update_module_mem_usage()
 {
    unsigned int x = 0;
-   FILE * proc_status_fd = NULL;
-   char * match = NULL;
+   FILE *proc_status_fd = NULL;
+   char *match = NULL;
    int ret_val = 0;
    char path[20];
    char buffer[1024];
@@ -1369,18 +1362,18 @@ int alloc_server_structures()
 {
    unsigned int x = 0;
 
-   server_internals = (server_internals_t *) calloc (1, sizeof(server_internals_t));
+   server_internals = (server_internals_t *) calloc(1, sizeof(server_internals_t));
    if (server_internals == NULL) {
       fprintf(stderr, "%s [ERROR] Could not allocate dameon_internals, cannot proceed without it!\n", get_stats_formated_time());
       return -1;
    }
-   server_internals->clients = (sup_client_t **) calloc (MAX_NUMBER_SUP_CLIENTS, sizeof(sup_client_t*));
+   server_internals->clients = (sup_client_t **) calloc(MAX_NUMBER_SUP_CLIENTS, sizeof(sup_client_t*));
    if (server_internals->clients == NULL) {
       fprintf(stderr, "%s [ERROR] Could not allocate structures for clients, cannot proceed without it!\n", get_stats_formated_time());
       return -1;
    }
    for (x = 0; x < MAX_NUMBER_SUP_CLIENTS; x++) {
-      server_internals->clients[x] = (sup_client_t *) calloc (1, sizeof(sup_client_t));
+      server_internals->clients[x] = (sup_client_t *) calloc(1, sizeof(sup_client_t));
       if (server_internals->clients[x] != NULL) {
          server_internals->clients[x]->client_sd = -1;
          server_internals->clients[x]->client_input_stream_fd = -1;
@@ -1507,7 +1500,7 @@ void server_routine()
                         server_internals->clients_cnt++;
                         pthread_mutex_unlock(&server_internals->lock);
                         // Serve the new client
-                        if (pthread_create(&server_internals->clients[x]->client_thread_id,  &clients_thread_attr, serve_sup_client_routine, (void*)(server_internals->clients[x])) != 0) {
+                        if (pthread_create(&server_internals->clients[x]->client_thread_id,  &clients_thread_attr, serve_sup_client_routine, (void *) (server_internals->clients[x])) != 0) {
                            VERBOSE(SUP_LOG, "%s [ERROR] Could not create client's thread.\n", get_stats_formated_time());
                            close(server_internals->clients[x]->client_sd);
                            server_internals->clients[x]->client_sd = -1;
@@ -1535,13 +1528,13 @@ void server_routine()
 }
 
 
-int daemon_get_code_from_client(sup_client_t ** cli)
+int daemon_get_code_from_client(sup_client_t **cli)
 {
    sup_client_t * client = *cli;
    int bytes_to_read = 0; // value can be also -1 <=> ioctl error
    int ret_val = 0;
    int request = -1;
-   char * buffer = NULL;
+   char *buffer = NULL;
    fd_set read_fds;
    struct timeval tv;
 
@@ -1614,7 +1607,7 @@ void send_options_to_client()
    VERBOSE(N_STDOUT, ANSI_YELLOW_BOLD "[INTERACTIVE] Your choice: " ANSI_ATTR_RESET);
 }
 
-int open_sup_client_streams(sup_client_t ** cli)
+int open_sup_client_streams(sup_client_t **cli)
 {
    // open input stream on client' s socket
    sup_client_t * client = *cli;
@@ -1641,7 +1634,7 @@ int open_sup_client_streams(sup_client_t ** cli)
    return 0;
 }
 
-void disconnect_sup_client(sup_client_t * client)
+void disconnect_sup_client(sup_client_t *client)
 {
    client->client_connected = FALSE;
    if (client->client_input_stream_fd >= 0) {
@@ -1666,7 +1659,7 @@ void disconnect_sup_client(sup_client_t * client)
    VERBOSE(SUP_LOG, "%s [INFO] Disconnected client. (client's ID: %d)\n", get_stats_formated_time(), client->client_id);
 }
 
-void * serve_sup_client_routine (void * arg)
+void *serve_sup_client_routine (void *arg)
 {
    sup_client_t * client = (sup_client_t *) arg;
    int bytes_to_read = 0; // value can be also -1 <=> ioctl error
@@ -1728,7 +1721,7 @@ void * serve_sup_client_routine (void * arg)
       VERBOSE(SUP_LOG, "%s [INFO] Got stats mode code. (client's ID: %d)\n", get_stats_formated_time(), client->client_id);
       update_module_cpu_usage();
       update_module_mem_usage();
-      char * stats_buffer = make_formated_statistics();
+      char *stats_buffer = make_formated_statistics();
       int buffer_len = strlen(stats_buffer);
       char stats_buffer2[buffer_len+1];
       memset(stats_buffer2,0,buffer_len+1);
@@ -2020,7 +2013,7 @@ void service_stop_modules_sigint()
 
 void service_stop_modules_sigkill()
 {
-   char * dest_port = NULL;
+   char *dest_port = NULL;
    char buffer[DEFAULT_SIZE_OF_BUFFER];
    unsigned int x, y;
    for (x=0; x<loaded_modules_cnt; x++) {
@@ -2179,7 +2172,7 @@ int service_send_data(int module_number, uint32_t size, void **data)
 
 void connect_to_module_service_ifc(int module, int num_ifc)
 {
-   char * dest_port = NULL;
+   char *dest_port = NULL;
    int sockfd = -1;
    union tcpip_socket_addr addr;
 
@@ -2238,7 +2231,7 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
 {
    service_msg_header_t *header = (service_msg_header_t *) calloc(1, sizeof(service_msg_header_t));
    uint32_t buffer_size = 256;
-   char * buffer = (char *) calloc(buffer_size, sizeof(char));
+   char *buffer = (char *) calloc(buffer_size, sizeof(char));
    int running_modules_cnt = 0;
    unsigned int x,y;
 
@@ -2492,7 +2485,7 @@ void interactive_stop_configuration()
 
 void interactive_set_module_enabled()
 {
-   int * modules_to_enable = NULL;
+   int *modules_to_enable = NULL;
    int x = 0, y = 0, modules_to_enable_cnt = 0, stopped_modules_counter = 0, matched_modules = 0, profile_printed = FALSE;
    modules_profile_t * ptr = first_profile_ptr;
 
@@ -2571,7 +2564,7 @@ void interactive_set_module_enabled()
 
 void interactive_stop_module()
 {
-   int * modules_to_stop = NULL;
+   int *modules_to_stop = NULL;
    int x = 0, y = 0, running_modules_counter = 0, modules_to_stop_cnt = 0, matched_modules = 0, profile_printed = FALSE;
    modules_profile_t * ptr = first_profile_ptr;
 
@@ -2927,7 +2920,7 @@ void supervisor_termination(int stop_all_modules, int generate_backup)
 
 void create_output_dir()
 {
-   char * buffer = NULL;
+   char *buffer = NULL;
    struct stat st = {0};
 
 logs_path_null:
@@ -2938,7 +2931,7 @@ logs_path_null:
          logs_path = strdup(DAEMON_DEFAULT_LOGSDIR_PATH);
       } else {
          if ((buffer = getenv("HOME")) != NULL) {
-            logs_path = (char *) calloc (strlen(buffer)+strlen("/supervisor_logs/")+1, sizeof(char));
+            logs_path = (char *) calloc(strlen(buffer)+strlen("/supervisor_logs/")+1, sizeof(char));
             sprintf(logs_path,"%s/supervisor_logs/", buffer);
          } else {
             logs_path = strdup(INTERACTIVE_DEFAULT_LOGSDIR_PATH);
@@ -2947,7 +2940,7 @@ logs_path_null:
    }
 
    if (logs_path[strlen(logs_path)-1] != '/') {
-      buffer = (char *) calloc (strlen(logs_path)+2, sizeof(char));
+      buffer = (char *) calloc(strlen(logs_path)+2, sizeof(char));
       sprintf(buffer, "%s/", logs_path);
       free(logs_path);
       logs_path = buffer;
@@ -2979,11 +2972,11 @@ void create_output_files_strings()
    free_output_file_strings_and_streams();
 
    if (logs_path != NULL) {
-      supervisor_debug_log_file_path = (char *) calloc (strlen(logs_path)+strlen("supervisor_debug_log")+1, sizeof(char));
+      supervisor_debug_log_file_path = (char *) calloc(strlen(logs_path)+strlen("supervisor_debug_log")+1, sizeof(char));
       sprintf(supervisor_debug_log_file_path, "%ssupervisor_debug_log", logs_path);
-      statistics_file_path = (char *) calloc (strlen(logs_path)+strlen("supervisor_log_statistics")+1, sizeof(char));
+      statistics_file_path = (char *) calloc(strlen(logs_path)+strlen("supervisor_log_statistics")+1, sizeof(char));
       sprintf(statistics_file_path, "%ssupervisor_log_statistics", logs_path);
-      module_event_file_path = (char *) calloc (strlen(logs_path)+strlen("supervisor_log_module_event")+1, sizeof(char));
+      module_event_file_path = (char *) calloc(strlen(logs_path)+strlen("supervisor_log_module_event")+1, sizeof(char));
       sprintf(module_event_file_path, "%ssupervisor_log_module_event", logs_path);
 
       supervisor_debug_log_fd = fopen(supervisor_debug_log_file_path, "a");
@@ -3007,7 +3000,7 @@ void create_output_files_strings()
       }
 
       if (netconf_flag || daemon_flag) {
-         supervisor_log_file_path = (char *) calloc (strlen(logs_path)+strlen("supervisor_log")+1, sizeof(char));
+         supervisor_log_file_path = (char *) calloc(strlen(logs_path)+strlen("supervisor_log")+1, sizeof(char));
          sprintf(supervisor_log_file_path, "%ssupervisor_log", logs_path);
 
          supervisor_log_fd = fopen (supervisor_log_file_path, "a");
@@ -3228,9 +3221,9 @@ int parse_program_arguments(int *argc, char **argv)
  * Reload function and functions used by reload *
  *****************************************************************/
 
-void reload_process_supervisor_element(reload_config_vars_t ** config_vars)
+void reload_process_supervisor_element(reload_config_vars_t **config_vars)
 {
-   xmlChar * key = NULL;
+   xmlChar *key = NULL;
    int x = 0, number = 0;
 
    while ((*config_vars)->module_elem != NULL) {
@@ -3278,16 +3271,16 @@ void reload_process_supervisor_element(reload_config_vars_t ** config_vars)
    return;
 }
 
-void reload_process_module_atribute(reload_config_vars_t ** config_vars, char ** module_ifc_atr)
+void reload_process_module_atribute(reload_config_vars_t **config_vars, char **module_ifc_atr)
 {
-   xmlChar * key = NULL;
+   xmlChar *key = NULL;
 
    key = xmlNodeListGetString((*config_vars)->doc_tree_ptr, (*config_vars)->module_atr_elem->xmlChildrenNode, 1);
    if ((*config_vars)->new_module == FALSE) {
       if (*module_ifc_atr != NULL && key != NULL) {
          if (xmlStrcmp(key, BAD_CAST *module_ifc_atr) != 0) {
             VERBOSE(N_STDOUT, "[WARNING] %s's attribute \"%s\" has been changed (%s -> %s), gonna update it.\n",
-               running_modules[(*config_vars)->current_module_idx].module_name, (char *)(*config_vars)->module_atr_elem->name,
+               running_modules[(*config_vars)->current_module_idx].module_name, (char *) (*config_vars)->module_atr_elem->name,
                *module_ifc_atr, (char *)key);
             running_modules[(*config_vars)->current_module_idx].module_modified_by_reload = TRUE;
             if (*module_ifc_atr != NULL) {
@@ -3300,12 +3293,12 @@ void reload_process_module_atribute(reload_config_vars_t ** config_vars, char **
          // new one and old one NULL -> OK
       } else if (*module_ifc_atr == NULL) {
          VERBOSE(N_STDOUT, "[WARNING] %s's attribute \"%s\" should be empty, gonna update it.\n",
-               running_modules[(*config_vars)->current_module_idx].module_name, (char *)(*config_vars)->module_atr_elem->name);
+               running_modules[(*config_vars)->current_module_idx].module_name, (char *) (*config_vars)->module_atr_elem->name);
          running_modules[(*config_vars)->current_module_idx].module_modified_by_reload = TRUE;
          *module_ifc_atr = (char *) xmlStrdup(key);
       } else if (key == NULL) {
          VERBOSE(N_STDOUT, "[WARNING] %s's attribute \"%s\" shouldn't be empty, gonna update it.\n",
-               running_modules[(*config_vars)->current_module_idx].module_name, (char *)(*config_vars)->module_atr_elem->name);
+               running_modules[(*config_vars)->current_module_idx].module_name, (char *) (*config_vars)->module_atr_elem->name);
          running_modules[(*config_vars)->current_module_idx].module_modified_by_reload = TRUE;
          if (*module_ifc_atr != NULL) {
             free(*module_ifc_atr);
@@ -3328,10 +3321,10 @@ void reload_process_module_atribute(reload_config_vars_t ** config_vars, char **
    return;
 }
 
-int reload_process_module_interface_atribute(reload_config_vars_t ** config_vars, char ** module_ifc_atr)
+int reload_process_module_interface_atribute(reload_config_vars_t **config_vars, char **module_ifc_atr)
 {
    int str_len = 0;
-   xmlChar * key = NULL;
+   xmlChar *key = NULL;
 
    key = xmlNodeListGetString((*config_vars)->doc_tree_ptr, (*config_vars)->ifc_atr_elem->xmlChildrenNode, 1);
    if ((*config_vars)->module_ifc_insert == FALSE) {
@@ -3388,7 +3381,7 @@ int reload_process_module_interface_atribute(reload_config_vars_t ** config_vars
          *module_ifc_atr = NULL;
       } else {
          str_len = strlen((char *) key);
-         *module_ifc_atr = (char *) calloc (str_len+1, sizeof(char));
+         *module_ifc_atr = (char *) calloc(str_len+1, sizeof(char));
          strncpy(*module_ifc_atr , (char *) key, str_len+1);
 
          if (key != NULL) {
@@ -3401,7 +3394,7 @@ int reload_process_module_interface_atribute(reload_config_vars_t ** config_vars
    return 0;
 }
 
-void reload_check_modules_interfaces_count(reload_config_vars_t  ** config_vars)
+void reload_check_modules_interfaces_count(reload_config_vars_t  **config_vars)
 {
    int original_module_ifc_cnt = running_modules[(*config_vars)->current_module_idx].module_ifces_cnt;
    int new_module_ifc_cnt = 0;
@@ -3429,12 +3422,12 @@ void reload_check_modules_interfaces_count(reload_config_vars_t  ** config_vars)
    return;
 }
 
-int reload_find_and_check_module_basic_elements(reload_config_vars_t ** config_vars)
+int reload_find_and_check_module_basic_elements(reload_config_vars_t **config_vars)
 {
    int move_to_next_module = FALSE;
    int ret_val = 0;
    int last_module = FALSE;
-   xmlChar * key = NULL;
+   xmlChar *key = NULL;
    int basic_elements[3], name_elem_idx = 0, path_elem_idx = 1, trapifc_elem_idx = 2;
    memset(basic_elements, 0, 3*sizeof(int));
 
@@ -3550,11 +3543,11 @@ int reload_find_and_check_module_basic_elements(reload_config_vars_t ** config_v
    return 0;
 }
 
-int reload_find_and_check_modules_profile_basic_elements(reload_config_vars_t ** config_vars)
+int reload_find_and_check_modules_profile_basic_elements(reload_config_vars_t **config_vars)
 {
    int new_profile_enabled = FALSE;
-   char * new_profile_name = NULL;
-   xmlChar * key = NULL;
+   char *new_profile_name = NULL;
+   xmlChar *key = NULL;
    int basic_elements[2], name_elem_idx = 0, enabled_elem_idx = 1;
    memset(basic_elements, 0, 2*sizeof(int));
 
@@ -3620,13 +3613,13 @@ int reload_find_and_check_modules_profile_basic_elements(reload_config_vars_t **
       return -1;
    } else { // Valid profile -> allocate it
       if (first_profile_ptr == NULL) {
-         first_profile_ptr = (modules_profile_t *) calloc (1, sizeof(modules_profile_t));
+         first_profile_ptr = (modules_profile_t *) calloc(1, sizeof(modules_profile_t));
          first_profile_ptr->profile_name = new_profile_name;
          first_profile_ptr->profile_enabled = new_profile_enabled;
          first_profile_ptr->next = NULL;
          actual_profile_ptr = first_profile_ptr;
       } else {
-         modules_profile_t * ptr = (modules_profile_t *) calloc (1, sizeof(modules_profile_t));
+         modules_profile_t * ptr = (modules_profile_t *) calloc(1, sizeof(modules_profile_t));
          ptr->profile_name = new_profile_name;
          ptr->profile_enabled = new_profile_enabled;
          ptr->next = NULL;
@@ -3637,7 +3630,7 @@ int reload_find_and_check_modules_profile_basic_elements(reload_config_vars_t **
    return 0;
 }
 
-void reload_count_module_interfaces(reload_config_vars_t ** config_vars)
+void reload_count_module_interfaces(reload_config_vars_t **config_vars)
 {
    int x = 0;
 
@@ -3705,7 +3698,7 @@ void check_running_modules_allocated_memory()
    if (running_modules_array_size == 0) {
       loaded_modules_cnt = 0;
       running_modules_array_size = RUNNING_MODULES_ARRAY_START_SIZE;
-      running_modules = (running_module_t *) calloc (running_modules_array_size,sizeof(running_module_t));
+      running_modules = (running_module_t *) calloc(running_modules_array_size,sizeof(running_module_t));
       for (x=0; x<running_modules_array_size; x++) {
          running_modules[x].module_ifces = (interface_t *) calloc(IFCES_ARRAY_START_SIZE, sizeof(interface_t));
          running_modules[x].module_running = FALSE;
@@ -3720,7 +3713,7 @@ void check_running_modules_allocated_memory()
       memset(running_modules + origin_size,0,(origin_size/2)*sizeof(running_module_t));
 
       for (x=loaded_modules_cnt; x<running_modules_array_size; x++) {
-         running_modules[x].module_ifces = (interface_t *) calloc (IFCES_ARRAY_START_SIZE, sizeof(interface_t));
+         running_modules[x].module_ifces = (interface_t *) calloc(IFCES_ARRAY_START_SIZE, sizeof(interface_t));
          running_modules[x].module_running = FALSE;
          running_modules[x].module_ifces_array_size = IFCES_ARRAY_START_SIZE;
          running_modules[x].module_ifces_cnt = 0;
@@ -3728,9 +3721,9 @@ void check_running_modules_allocated_memory()
    }
 }
 
-void reload_resolve_module_enabled(reload_config_vars_t ** config_vars, const int modules_got_profile)
+void reload_resolve_module_enabled(reload_config_vars_t **config_vars, const int modules_got_profile)
 {
-   xmlChar * key = NULL;
+   xmlChar *key = NULL;
    int config_module_enabled = FALSE;
    int profile_and_module_enabled_anded = FALSE;
 
@@ -3781,7 +3774,7 @@ void reload_resolve_module_enabled(reload_config_vars_t ** config_vars, const in
    return;
 }
 
-char const * sperm(__mode_t mode)
+char const *sperm(__mode_t mode)
 {
     static char local_buff[16] = {0};
     int i = 0;
@@ -3818,13 +3811,13 @@ char const * sperm(__mode_t mode)
 }
 
 
-void reload_process_availablemodules_element(reload_config_vars_t ** config_vars)
+void reload_process_availablemodules_element(reload_config_vars_t **config_vars)
 {
    VERBOSE(N_STDOUT, "--- Modules auto-detection ---\n");
    int found = FALSE, ret_val = 0, wait_cnt = 0, status = 0, signalll = 2, x = 0, received_bytes = 0;
    uint32_t size_of_buffer = 20*DEFAULT_SIZE_OF_BUFFER;
    uint32_t size_of_args0 = DEFAULT_SIZE_OF_BUFFER, size_of_args1 = DEFAULT_SIZE_OF_BUFFER;
-   xmlChar * key = NULL;
+   xmlChar *key = NULL;
    DIR * bin_dir_str = NULL;
    struct dirent * file = NULL;
    struct stat file_stat;
@@ -3835,11 +3828,11 @@ void reload_process_availablemodules_element(reload_config_vars_t ** config_vars
    available_modules_path_t * available_modules_path_p = NULL;
    available_module_t * available_module_p = NULL;
 
-   const char * perm = NULL;
-   char * buffer = (char *) calloc (size_of_buffer, sizeof(char));
-   char ** args = (char **) calloc (4, sizeof(char *));
-   args[0] = (char *) calloc (size_of_args0, sizeof(char));
-   args[1] = (char *) calloc (size_of_args1, sizeof(char));
+   const char *perm = NULL;
+   char *buffer = (char *) calloc(size_of_buffer, sizeof(char));
+   char **args = (char **) calloc(4, sizeof(char *));
+   args[0] = (char *) calloc(size_of_args0, sizeof(char));
+   args[1] = (char *) calloc(size_of_args1, sizeof(char));
    args[2] = NULL;
    args[3] = NULL;
 
@@ -3891,7 +3884,7 @@ void reload_process_availablemodules_element(reload_config_vars_t ** config_vars
                         (*config_vars)->module_atr_elem = (*config_vars)->module_atr_elem->next;
                         continue;
                      }
-                     available_modules_path_p = (available_modules_path_t *) calloc (1, sizeof(available_modules_path_t));
+                     available_modules_path_p = (available_modules_path_t *) calloc(1, sizeof(available_modules_path_t));
                      available_modules_path_p->path = strdup((char *) key);
                      available_modules_path_p->is_valid = TRUE;
                      available_modules_path_p->next = first_available_modules_path;
@@ -3978,7 +3971,7 @@ void reload_process_availablemodules_element(reload_config_vars_t ** config_vars
 
                                     close(pipe_fd[1]);
                                     close(pipe_fd[0]);
-                                    module_info_p = (trap_module_info_t *) calloc (1, sizeof(trap_module_info_t));
+                                    module_info_p = (trap_module_info_t *) calloc(1, sizeof(trap_module_info_t));
                                     if (convert_json_module_info(buffer, &module_info_p) != 0) {
                                        free(module_info_p);
                                        module_info_p = NULL;
@@ -4024,7 +4017,7 @@ void reload_process_availablemodules_element(reload_config_vars_t ** config_vars
                         }
 add_module_on_path:
                         if (available_modules_path_p->modules == NULL) {
-                           available_modules_path_p->modules = (available_module_t *) calloc (1, sizeof(available_module_t));
+                           available_modules_path_p->modules = (available_module_t *) calloc(1, sizeof(available_module_t));
                            available_modules_path_p->modules->name = strdup((char *) file->d_name);
                            if (module_info_p != NULL) {
                               available_modules_path_p->modules->module_info = module_info_p;
@@ -4035,7 +4028,7 @@ add_module_on_path:
                            available_modules_path_p->modules->next = NULL;
                            available_module_p = available_modules_path_p->modules;
                         } else {
-                           available_module_p->next = (available_module_t *) calloc (1, sizeof(available_module_t));
+                           available_module_p->next = (available_module_t *) calloc(1, sizeof(available_module_t));
                            available_module_p = available_module_p->next;
                            available_module_p->name = strdup((char *) file->d_name);
                            if (module_info_p != NULL) {
@@ -4113,7 +4106,7 @@ add_module_on_path:
 }
 
 
-int reload_configuration(const int choice, xmlNodePtr * node)
+int reload_configuration(const int choice, xmlNodePtr *node)
 {
    pthread_mutex_lock(&running_modules_lock);
 
@@ -4124,10 +4117,10 @@ int reload_configuration(const int choice, xmlNodePtr * node)
    unsigned int original_loaded_modules_cnt = loaded_modules_cnt;
    int already_loaded_modules_found[loaded_modules_cnt];
    memset(already_loaded_modules_found, 0, loaded_modules_cnt*sizeof(int));
-   char * buffer = NULL;
+   char *buffer = NULL;
    int ifc_cnt = 0;
-   reload_config_vars_t * config_vars = (reload_config_vars_t *) calloc (1, sizeof(reload_config_vars_t));
-   xmlChar * key = NULL;
+   reload_config_vars_t * config_vars = (reload_config_vars_t *) calloc(1, sizeof(reload_config_vars_t));
+   xmlChar *key = NULL;
 
    switch (choice) {
       case RELOAD_INIT_LOAD_CONFIG: {
@@ -4602,14 +4595,14 @@ void check_duplicated_ports()
  *****************************************************************/
 
 #ifdef nemea_plugin
-void * netconf_server_routine_thread(void *arg)
+void *netconf_server_routine_thread(void *arg)
 {
    server_routine();
    pthread_exit(EXIT_SUCCESS);
 }
 
 // Nemea plugin initialization method
-int netconf_supervisor_initialization(xmlNodePtr * running)
+int netconf_supervisor_initialization(xmlNodePtr *running)
 {
    pthread_attr_t attr;
    pthread_attr_init(&attr);
@@ -4646,7 +4639,7 @@ xmlDocPtr netconf_get_state_data()
    modules_profile_t * ptr = first_profile_ptr;
    unsigned int x = 0, y = 0, modules_with_profile = 0;
    char buffer[DEFAULT_SIZE_OF_BUFFER];
-   const char * template = "<?xml version=\"1.0\"?><nemea-supervisor xmlns=\"urn:cesnet:tmc:nemea:1.0\"></nemea-supervisor>";
+   const char *template = "<?xml version=\"1.0\"?><nemea-supervisor xmlns=\"urn:cesnet:tmc:nemea:1.0\"></nemea-supervisor>";
    xmlDocPtr doc_tree_ptr = NULL;
    xmlNodePtr root_elem = NULL, modules_elem = NULL, module_elem = NULL, trapinterfaces_elem = NULL, interface_elem = NULL;
    xmlNodePtr avail_modules = NULL, binpaths = NULL, param = NULL;

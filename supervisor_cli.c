@@ -61,19 +61,19 @@
 #include <fcntl.h>
 #include <signal.h>
 
-#define DEFAULT_DAEMON_SERVER_SOCKET  "/tmp/daemon_supervisor.sock"  ///<  Daemon server socket
+#define DEFAULT_DAEMON_SERVER_SOCKET   "/tmp/daemon_supervisor.sock"  ///<  Daemon server socket
 
 typedef struct client_internals_s {
-   FILE *   supervisor_input_stream;
-   FILE *   supervisor_output_stream;
-   int         supervisor_input_stream_fd;
-   int         supervisor_sd;
-   int         connected;
+   FILE *supervisor_input_stream;
+   FILE *supervisor_output_stream;
+   int supervisor_input_stream_fd;
+   int supervisor_sd;
+   int connected;
 } client_internals_t;
 
 /***** GLOBAL VARIABLES *****/
 
-client_internals_t * client_internals = NULL;
+client_internals_t *client_internals = NULL;
 
 /***** ************************** *****/
 
@@ -134,7 +134,7 @@ int main(int argc, char **argv)
    }
    int bytes_to_read = 0; // value can be also -1 <=> ioctl error
    int x = 0, ret_val = 0;
-   char * buffer = NULL;
+   char *buffer = NULL;
    char *socket_path = NULL;
    int just_stats_flag = FALSE;
    int reload_command_flag = FALSE;
@@ -176,7 +176,7 @@ int main(int argc, char **argv)
       socket_path = DEFAULT_DAEMON_SERVER_SOCKET;
    }
 
-   if(connect_to_supervisor(socket_path) == EXIT_FAILURE){
+   if (connect_to_supervisor(socket_path) == EXIT_FAILURE) {
       fprintf(stderr, ANSI_RED_BOLD "[ERROR] Could not connect to supervisor!" ANSI_ATTR_RESET "\n");
       free_client_internals_variables();
       exit(EXIT_FAILURE);
@@ -185,21 +185,21 @@ int main(int argc, char **argv)
    }
 
    client_internals->supervisor_input_stream = fdopen(client_internals->supervisor_sd, "r");
-   if(client_internals->supervisor_input_stream == NULL) {
+   if (client_internals->supervisor_input_stream == NULL) {
       fprintf(stderr, ANSI_RED_BOLD "[ERROR] Fdopen: could not open supervisor input stream!" ANSI_ATTR_RESET "\n");
       free_client_internals_variables();
       exit(EXIT_FAILURE);
    }
 
    client_internals->supervisor_output_stream = fdopen(client_internals->supervisor_sd, "w");
-   if(client_internals->supervisor_output_stream == NULL) {
+   if (client_internals->supervisor_output_stream == NULL) {
       fprintf(stderr, ANSI_RED_BOLD "[ERROR] Fdopen: could not open supervisor output stream!" ANSI_ATTR_RESET "\n");
       free_client_internals_variables();
       exit(EXIT_FAILURE);
    }
 
    client_internals->supervisor_input_stream_fd = fileno(client_internals->supervisor_input_stream);
-   if(client_internals->supervisor_input_stream_fd < 0) {
+   if (client_internals->supervisor_input_stream_fd < 0) {
       fprintf(stderr, ANSI_RED_BOLD "[ERROR] Fileno: could not get supervisor input stream descriptor!" ANSI_ATTR_RESET "\n");
       free_client_internals_variables();
       exit(EXIT_FAILURE);
@@ -208,7 +208,7 @@ int main(int argc, char **argv)
    fd_set read_fds;
    struct timeval tv;
 
-   if(just_stats_flag) {
+   if (just_stats_flag) {
       fprintf(client_internals->supervisor_output_stream,"%d\n", CLIENT_STATS_MODE_CODE);
    } else if (reload_command_flag) {
       fprintf(client_internals->supervisor_output_stream,"%d\n", CLIENT_RELOAD_MODE_CODE);
@@ -266,7 +266,7 @@ int main(int argc, char **argv)
                free_client_internals_variables();
                exit(EXIT_SUCCESS);
             } else {
-               for(x=0; x<bytes_to_read; x++) {
+               for (x=0; x<bytes_to_read; x++) {
                   printf("%c", (char) fgetc(client_internals->supervisor_input_stream));
                }
                fflush(stdout);

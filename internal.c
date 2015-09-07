@@ -47,13 +47,13 @@
 #include <string.h>
 #include <stdio_ext.h> // because of __fpurge(FILE * stream)
 
-FILE * input_fd = NULL;
-FILE * output_fd = NULL;
+FILE *input_fd = NULL;
+FILE *output_fd = NULL;
 
-FILE * supervisor_debug_log_fd = NULL;
-FILE * supervisor_log_fd = NULL;
-FILE * statistics_fd = NULL;
-FILE * module_event_fd = NULL;
+FILE *supervisor_debug_log_fd = NULL;
+FILE *supervisor_log_fd = NULL;
+FILE *statistics_fd = NULL;
+FILE *module_event_fd = NULL;
 
 char verbose_msg[4096];
 
@@ -97,12 +97,12 @@ void print_msg(int level, char *string)
    }
 }
 
-char * get_input_from_stream (FILE * stream)
+char *get_input_from_stream (FILE *stream)
 {
-   char * buffer = NULL,  * ret_val = NULL;
+   char *buffer = NULL,  *ret_val = NULL;
    int buffer_len = 0;
 
-   buffer = (char *) calloc (DEFAULT_SIZE_OF_BUFFER, sizeof(char));
+   buffer = (char *) calloc(DEFAULT_SIZE_OF_BUFFER, sizeof(char));
    ret_val = fgets(buffer, DEFAULT_SIZE_OF_BUFFER, stream);
    if (ret_val == NULL) {
       VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] There is no input!\n" ANSI_ATTR_RESET);

@@ -45,35 +45,35 @@
 #ifndef SUPERVISOR_API_H
 #define SUPERVISOR_API_H
 
-#define INTERACTIVE_MODE_CODE    1
-#define DAEMON_MODE_CODE           2
+#define INTERACTIVE_MODE_CODE   1
+#define DAEMON_MODE_CODE   2
 
 #include <libxml/tree.h>
 
-void 		supervisor_flags_initialization();
-int 		parse_program_arguments(int *argc, char **argv);
-int 		supervisor_initialization();
-void 		supervisor_termination(int stop_all_modules, int generate_backup);
+void supervisor_flags_initialization();
+int parse_program_arguments(int *argc, char **argv);
+int supervisor_initialization();
+void supervisor_termination(int stop_all_modules, int generate_backup);
 
 /* Interactive mode functions */
-void 		interactive_mode();
-int 		interactive_get_option();
-void 		interactive_start_configuration();
-void 		interactive_stop_configuration();
-void 		interactive_set_module_enabled();
-void 		interactive_stop_module();
-void 		interactive_show_running_modules_status();
-void 		interactive_show_available_modules();
-int 		reload_configuration(const int, xmlNodePtr *);
+void interactive_mode();
+int interactive_get_option();
+void interactive_start_configuration();
+void interactive_stop_configuration();
+void interactive_set_module_enabled();
+void interactive_stop_module();
+void interactive_show_running_modules_status();
+void interactive_show_available_modules();
+int reload_configuration(const int, xmlNodePtr *);
 
 /* Daemon mode functions */
-int 		daemon_mode_initialization();
-void 		server_routine();
+int daemon_mode_initialization();
+void server_routine();
 
 /* Netconf mode functions */
 #ifdef nemea_plugin
-int 		netconf_supervisor_initialization(xmlNodePtr * running);
-xmlDocPtr 	netconf_get_state_data();
+int netconf_supervisor_initialization(xmlNodePtr *running);
+xmlDocPtr netconf_get_state_data();
 #endif
 
 #endif

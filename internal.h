@@ -48,32 +48,32 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define TRUE                        1 ///< Bool true
-#define FALSE                       0 ///< Bool false
+#define TRUE   1 ///< Bool true
+#define FALSE   0 ///< Bool false
 
-#define STATISTICS      		1
-#define MODULE_EVENT    	2
-#define N_STDOUT     		3
-#define DEBUG 			4
-#define SUP_LOG 			5
+#define STATISTICS   1
+#define MODULE_EVENT   2
+#define N_STDOUT   3
+#define DEBUG   4
+#define SUP_LOG   5
 
-#define RELOAD_INIT_LOAD_CONFIG 		1
-#define RELOAD_CALLBACK_ROOT_ELEM 	2
-#define RELOAD_INTERACTIVE			3
-#define RELOAD_DEFAULT_CONFIG_FILE	4
+#define RELOAD_INIT_LOAD_CONFIG   1
+#define RELOAD_CALLBACK_ROOT_ELEM   2
+#define RELOAD_INTERACTIVE   3
+#define RELOAD_DEFAULT_CONFIG_FILE   4
 
-#define CLIENT_CONFIG_MODE_CODE 	789123
-#define CLIENT_STATS_MODE_CODE 		456987
-#define CLIENT_RELOAD_MODE_CODE 	115599
+#define CLIENT_CONFIG_MODE_CODE   789123
+#define CLIENT_STATS_MODE_CODE   456987
+#define CLIENT_RELOAD_MODE_CODE   115599
 
-#define ANSI_RED     		"\x1b[31m"
-#define ANSI_RED_BOLD     	"\x1b[31;1m"
-#define ANSI_CYAN 		"\x1b[36m"
-#define ANSI_CYAN_BOLD    	"\x1b[36;1m"
-#define ANSI_YELLOW  		"\x1b[33m"
-#define ANSI_YELLOW_BOLD  	"\x1b[33;1m"
-#define ANSI_ATTR_RESET   	"\x1b[0m"
-#define ANSI_BOLD 		"\x1b[1m"
+#define ANSI_RED   "\x1b[31m"
+#define ANSI_RED_BOLD   "\x1b[31;1m"
+#define ANSI_CYAN   "\x1b[36m"
+#define ANSI_CYAN_BOLD   "\x1b[36;1m"
+#define ANSI_YELLOW   "\x1b[33m"
+#define ANSI_YELLOW_BOLD   "\x1b[33;1m"
+#define ANSI_ATTR_RESET   "\x1b[0m"
+#define ANSI_BOLD   "\x1b[1m"
 
 #define DEFAULT_SIZE_OF_BUFFER   100
 
@@ -87,23 +87,23 @@
    } \
 } while (0);
 
-extern char * supervisor_debug_log_file_path;
-extern char * statistics_file_path;
-extern char * module_event_file_path;
-extern char * supervisor_log_file_path;
+extern char *supervisor_debug_log_file_path;
+extern char *statistics_file_path;
+extern char *module_event_file_path;
+extern char *supervisor_log_file_path;
 
-extern FILE * input_fd;
-extern FILE * output_fd;
+extern FILE *input_fd;
+extern FILE *output_fd;
 
-extern FILE * supervisor_debug_log_fd;
-extern FILE * supervisor_log_fd;
-extern FILE * statistics_fd;
-extern FILE * module_event_fd;
+extern FILE *supervisor_debug_log_fd;
+extern FILE *supervisor_log_fd;
+extern FILE *statistics_fd;
+extern FILE *module_event_fd;
 
 extern char verbose_msg[4096];
 
 void print_msg(int level, char *string);
-char * get_input_from_stream (FILE * stream);
+char *get_input_from_stream(FILE *stream);
 
 #define VERBOSE(level, format, args...) if (1) { \
    snprintf(verbose_msg, 4095, format, ##args); \

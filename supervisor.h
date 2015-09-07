@@ -45,6 +45,10 @@
 #ifndef SUPERVISOR_H
 #define SUPERVISOR_H
 
+#include <sys/un.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
 #include <inttypes.h>
 #include <time.h>
 #include <unistd.h>
@@ -67,26 +71,26 @@
 #include <limits.h>
 
 #ifndef PERM_LOGSDIR
-#define PERM_LOGSDIR    (S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH) ///< Permissions of directory with stdout and stderr logs of modules
+#define PERM_LOGSDIR   (S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH) ///< Permissions of directory with stdout and stderr logs of modules
 #endif
 
 #ifndef PERM_LOGFILE
-#define PERM_LOGFILE    (S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH) ///< Permissions of files with stdout and stderr logs of module
+#define PERM_LOGFILE   (S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH) ///< Permissions of files with stdout and stderr logs of module
 #endif
 
-#define RUNNING_MODULES_ARRAY_START_SIZE  10 ///< Initial size of allocated running_modules array.
-#define IFCES_ARRAY_START_SIZE            5 ///< Initial size of allocated interface_t array of every module.
+#define RUNNING_MODULES_ARRAY_START_SIZE   10 ///< Initial size of allocated running_modules array.
+#define IFCES_ARRAY_START_SIZE   5 ///< Initial size of allocated interface_t array of every module.
 
-#define IN_MODULE_IFC_DIRECTION                  1  ///< Constant for input module interface direction
-#define OUT_MODULE_IFC_DIRECTION              2  ///< Constant for output module interface direction
-#define SERVICE_MODULE_IFC_DIRECTION       3  ///< Constant for service module interface direction
+#define IN_MODULE_IFC_DIRECTION   1  ///< Constant for input module interface direction
+#define OUT_MODULE_IFC_DIRECTION   2  ///< Constant for output module interface direction
+#define SERVICE_MODULE_IFC_DIRECTION   3  ///< Constant for service module interface direction
 
-#define TCP_MODULE_IFC_TYPE                        1  ///< Constant for tcp module interface type
-#define UNIXSOCKET_MODULE_IFC_TYPE         2  ///< Constant for unixsocket module interface type
-#define SERVICE_MODULE_IFC_TYPE                3  ///< Constant for service module interface type
-#define FILE_MODULE_IFC_TYPE                       4 ///< Constant for file module interface type
+#define TCP_MODULE_IFC_TYPE   1  ///< Constant for tcp module interface type
+#define UNIXSOCKET_MODULE_IFC_TYPE   2  ///< Constant for unixsocket module interface type
+#define SERVICE_MODULE_IFC_TYPE   3  ///< Constant for service module interface type
+#define FILE_MODULE_IFC_TYPE   4 ///< Constant for file module interface type
 
-#define INVALID_MODULE_IFC_ATTR                -1  ///< Constant for invalid module interface attribute
+#define INVALID_MODULE_IFC_ATTR   -1  ///< Constant for invalid module interface attribute
 
 /***********STRUCTURES***********/
 
@@ -105,108 +109,108 @@ typedef struct out_ifc_stats_s {
 
 /** Structure with information about one loaded interface of module */
 typedef struct interface_s {
-   char     *ifc_note; ///< Interface note
-   char     *ifc_type; ///< Interface type (TCP / UNIXSOCKET / SERVICE)
-   char     *ifc_params; ///< Interface parameters (input interface ~ address, port; output interface ~ port, number of connections; service interface ~ port, number of connections)
-   char     *ifc_direction; ///< Interface direction (IN / OUT / SERVICE)
-   int         int_ifc_direction; ///< Integer value of interface direction - for faster comparison
-   int         int_ifc_type; ///< Integer value of interface type - for faster comparison
-   void     *ifc_data;
+   char *ifc_note; ///< Interface note
+   char *ifc_type; ///< Interface type (TCP / UNIXSOCKET / SERVICE)
+   char *ifc_params; ///< Interface parameters (input interface ~ address, port; output interface ~ port, number of connections; service interface ~ port, number of connections)
+   char *ifc_direction; ///< Interface direction (IN / OUT / SERVICE)
+   int int_ifc_direction; ///< Integer value of interface direction - for faster comparison
+   int int_ifc_type; ///< Integer value of interface type - for faster comparison
+   void *ifc_data;
 } interface_t;
 
 
 /** Structure with information about one running module */
 typedef struct running_module_s {
-   int            module_enabled; ///< TRUE if module is enabled, else FALSE.   /*** RELOAD ***/
-   char          *module_name; ///< Module name (loaded from config file).   /*** RELOAD ***/
-   char          *module_params; ///< Module parameter (loaded from config file).   /*** RELOAD ***/
-   char          *module_path; ///< Path to module from current directory   /*** RELOAD ***/
+   int module_enabled; ///< TRUE if module is enabled, else FALSE.   /*** RELOAD ***/
+   char *module_name; ///< Module name (loaded from config file).   /*** RELOAD ***/
+   char *module_params; ///< Module parameter (loaded from config file).   /*** RELOAD ***/
+   char *module_path; ///< Path to module from current directory   /*** RELOAD ***/
 
    interface_t   *module_ifces; ///< Array of interface_t structures with information about every loaded interface of module   /*** RELOAD ***/
-   unsigned int   module_ifces_cnt; ///< Number of modules loaded interfaces.   /*** RELOAD ***/
-   unsigned int   module_num_out_ifc; ///< Number of modules output interfaces.   /*** RELOAD ***/
-   unsigned int   module_num_in_ifc; ///< Number of modules input interfaces.   /*** RELOAD ***/
-   int            module_ifces_array_size; ///< Number of allocated interface_t structures by module.   /*** RELOAD ***/
+   unsigned int module_ifces_cnt; ///< Number of modules loaded interfaces.   /*** RELOAD ***/
+   unsigned int module_num_out_ifc; ///< Number of modules output interfaces.   /*** RELOAD ***/
+   unsigned int module_num_in_ifc; ///< Number of modules input interfaces.   /*** RELOAD ***/
+   int module_ifces_array_size; ///< Number of allocated interface_t structures by module.   /*** RELOAD ***/
 
-   int            module_served_by_service_thread; ///< TRUE if module was added to graph struct by sevice thread, FALSE on start.   /*** RELOAD ***/
-   int            module_modified_by_reload;   /*** RELOAD ***/
-   char *         modules_profile;   /*** RELOAD ***/
-   int            module_is_my_child;   /*** RELOAD ***/
-   int            remove_module;   /*** RELOAD ***/
-   int            init_module;   /*** RELOAD ***/
+   int module_served_by_service_thread; ///< TRUE if module was added to graph struct by sevice thread, FALSE on start.   /*** RELOAD ***/
+   int module_modified_by_reload;   /*** RELOAD ***/
+   char *modules_profile;   /*** RELOAD ***/
+   int module_is_my_child;   /*** RELOAD ***/
+   int remove_module;   /*** RELOAD ***/
+   int init_module;   /*** RELOAD ***/
 
-   int            module_status; ///< Module status (TRUE ~ running, FALSE ~ stopped)   /*** SERVICE ***/
-   int            module_running; ///< TRUE after first start of module, else FALSE.   /*** RELOAD/ALLOCATION ***/
-   int            module_restart_cnt; ///< Number of module restarts.   /*** INIT ***/
-   int            module_restart_timer;  ///< Timer used for monitoring max number of restarts/minute.   /*** INIT ***/
-   int            module_max_restarts_per_minute;   /*** RELOAD ***/
-   pid_t          module_pid; ///< Modules process PID.   /*** RELOAD/START ***/
-   int            sent_sigint;   /*** INIT ***/
+   int module_status; ///< Module status (TRUE ~ running, FALSE ~ stopped)   /*** SERVICE ***/
+   int module_running; ///< TRUE after first start of module, else FALSE.   /*** RELOAD/ALLOCATION ***/
+   int module_restart_cnt; ///< Number of module restarts.   /*** INIT ***/
+   int module_restart_timer;  ///< Timer used for monitoring max number of restarts/minute.   /*** INIT ***/
+   int module_max_restarts_per_minute;   /*** RELOAD ***/
+   pid_t module_pid; ///< Modules process PID.   /*** RELOAD/START ***/
+   int sent_sigint;   /*** INIT ***/
 
-   unsigned int   virtual_memory_usage;   /*** INIT ***/
+   unsigned int virtual_memory_usage;   /*** INIT ***/
 
-   long int       total_cpu_usage_during_module_startup;   /*** INIT ***/
-   int            last_period_cpu_usage_kernel_mode; ///< Percentage of CPU usage in last period in kernel mode.   /*** INIT ***/
-   int            last_period_cpu_usage_user_mode; ///< Percentage of CPU usage in last period in user mode.   /*** INIT ***/
-   int            last_period_percent_cpu_usage_kernel_mode; ///< Percentage of CPU usage in current period in kernel mode.   /*** INIT ***/
-   int            last_period_percent_cpu_usage_user_mode; ///< Percentage of CPU usage in current period in user mode.   /*** INIT ***/
-   int            overall_percent_module_cpu_usage_kernel_mode;   /*** INIT ***/
-   int            overall_percent_module_cpu_usage_user_mode;   /*** INIT ***/
+   long int total_cpu_usage_during_module_startup;   /*** INIT ***/
+   int last_period_cpu_usage_kernel_mode; ///< Percentage of CPU usage in last period in kernel mode.   /*** INIT ***/
+   int last_period_cpu_usage_user_mode; ///< Percentage of CPU usage in last period in user mode.   /*** INIT ***/
+   int last_period_percent_cpu_usage_kernel_mode; ///< Percentage of CPU usage in current period in kernel mode.   /*** INIT ***/
+   int last_period_percent_cpu_usage_user_mode; ///< Percentage of CPU usage in current period in user mode.   /*** INIT ***/
+   int overall_percent_module_cpu_usage_kernel_mode;   /*** INIT ***/
+   int overall_percent_module_cpu_usage_user_mode;   /*** INIT ***/
 
-   int            module_has_service_ifc; ///< if module has service interface ~ TRUE, else ~ FALSE   /*** RELOAD ***/
-   int            module_service_sd; ///< Socket descriptor of the service connection.   /*** INIT ***/
-   int            module_service_ifc_isconnected; ///< if supervisor is connected to module ~ TRUE, else ~ FALSE   /*** INIT ***/
-   int            module_service_ifc_conn_attempts; // Count of supervisor's connection attempts to module's service interface    /*** INIT ***/
-   int            module_service_ifc_conn_fails;   /*** INIT ***/
-   int            module_service_ifc_conn_block;   /*** INIT ***/
-   int            module_service_ifc_timer;   /*** INIT ***/
+   int module_has_service_ifc; ///< if module has service interface ~ TRUE, else ~ FALSE   /*** RELOAD ***/
+   int module_service_sd; ///< Socket descriptor of the service connection.   /*** INIT ***/
+   int module_service_ifc_isconnected; ///< if supervisor is connected to module ~ TRUE, else ~ FALSE   /*** INIT ***/
+   int module_service_ifc_conn_attempts; // Count of supervisor's connection attempts to module's service interface    /*** INIT ***/
+   int module_service_ifc_conn_fails;   /*** INIT ***/
+   int module_service_ifc_conn_block;   /*** INIT ***/
+   int module_service_ifc_timer;   /*** INIT ***/
 } running_module_t;
 
 
 typedef struct modules_profile_s modules_profile_t;
 
 struct modules_profile_s {
-   char * profile_name;
-   int    profile_enabled;
-   modules_profile_t * next;
+   char *profile_name;
+   int profile_enabled;
+   modules_profile_t *next;
 };
 
 
 typedef struct sup_client_s {
-   FILE *         client_input_stream;
-   FILE *         client_output_stream;
-   int               client_input_stream_fd;
-   int               client_sd;
-   int               client_connected;
-   int               client_id;
-   pthread_t   client_thread_id;
+   FILE *client_input_stream;
+   FILE *client_output_stream;
+   int client_input_stream_fd;
+   int client_sd;
+   int client_connected;
+   int client_id;
+   pthread_t client_thread_id;
 } sup_client_t;
 
 
 typedef struct server_internals_s {
-   sup_client_t **         clients;
-   int                            clients_cnt;
-   int                            server_sd;
-   int                            daemon_terminated;
-   uint16_t                   next_client_id;
-   int                            config_mode_active;
-   pthread_mutex_t     lock;
+   sup_client_t **clients;
+   int clients_cnt;
+   int server_sd;
+   int daemon_terminated;
+   uint16_t next_client_id;
+   int config_mode_active;
+   pthread_mutex_t lock;
 } server_internals_t;
 
 
 typedef struct reload_config_vars_s {
-   xmlDocPtr       doc_tree_ptr;
-   xmlNodePtr     current_node;
-   xmlNodePtr     module_elem;
-   xmlNodePtr     module_atr_elem;
-   xmlNodePtr     ifc_elem;
-   xmlNodePtr     ifc_atr_elem;
-   int                   current_module_idx;
-   int                   new_module;
-   int                   module_ifc_insert;
-   int                   inserted_modules;
-   int                   removed_modules;
-   int                   modified_modules;
+   xmlDocPtr doc_tree_ptr;
+   xmlNodePtr current_node;
+   xmlNodePtr module_elem;
+   xmlNodePtr module_atr_elem;
+   xmlNodePtr ifc_elem;
+   xmlNodePtr ifc_atr_elem;
+   int current_module_idx;
+   int new_module;
+   int module_ifc_insert;
+   int inserted_modules;
+   int removed_modules;
+   int modified_modules;
 } reload_config_vars_t;
 
 
@@ -214,18 +218,23 @@ typedef struct available_module_s available_module_t;
 typedef struct available_modules_path_s available_modules_path_t;
 
 struct available_modules_path_s {
-   int                              is_valid;
-   char *                         path;
-   available_module_t *    modules;
-   available_modules_path_t * next;
-   available_modules_path_t * prev;
+   int is_valid;
+   char *path;
+   available_module_t *modules;
+   available_modules_path_t *next;
+   available_modules_path_t *prev;
 };
 
 
 struct available_module_s {
-   char *                              name;
-   trap_module_info_t *  module_info;
-   available_module_t *   next;
+   char *name;
+   trap_module_info_t *module_info;
+   available_module_t *next;
+};
+
+union tcpip_socket_addr {
+   struct addrinfo tcpip_addr; ///< used for TCPIP socket
+   struct sockaddr_un unix_addr; ///< used for path of UNIX socket
 };
 
 /***********FUNCTIONS***********/
@@ -396,19 +405,19 @@ char *create_backup_file_path();
 void create_shutdown_info(char **backup_file_path);
 void print_module_ifc_stats(int module_number);
 int decode_cnts_from_json(char **data, int module_number);
-int convert_json_module_info(const char * json_str, trap_module_info_t ** info);
-void print_xmlDoc_to_stream(xmlDocPtr doc_ptr, FILE * stream);
-struct tm * get_sys_time();
-char * get_stats_formated_time();
+int convert_json_module_info(const char * json_str, trap_module_info_t **info);
+void print_xmlDoc_to_stream(xmlDocPtr doc_ptr, FILE *stream);
+struct tm *get_sys_time();
+char *get_stats_formated_time();
 char **make_module_arguments(const int number_of_module);
 int get_number_from_input_choosing_option();
-int get_numbers_from_input_dis_enable_module(int ** array);
+int get_numbers_from_input_dis_enable_module(int **array);
 void init_module_variables(int module_number);
 char *get_param_by_delimiter(const char *source, char **dest, const char delimiter);
-void print_statistics(struct tm * timeinfo);
+void print_statistics(struct tm *timeinfo);
 void print_statistics_legend();
-char * make_formated_statistics();
-int find_loaded_module(char * name);
+char *make_formated_statistics();
+int find_loaded_module(char *name);
 void generate_backup_config_file();
 /**@}*/
 
@@ -424,8 +433,8 @@ void generate_backup_config_file();
 /**
  *
  */
-void * netconf_server_routine_thread(void *arg);
-int netconf_supervisor_initialization(xmlNodePtr * running);
+void *netconf_server_routine_thread(void *arg);
+int netconf_supervisor_initialization(xmlNodePtr *running);
 xmlDocPtr netconf_get_state_data();
 /**@}*/
 
@@ -441,19 +450,19 @@ xmlDocPtr netconf_get_state_data();
 /**
  *
  */
-void reload_process_supervisor_element(reload_config_vars_t ** config_vars);
-void reload_process_module_atribute(reload_config_vars_t ** config_vars, char ** module_ifc_atr);
-int reload_process_module_interface_atribute(reload_config_vars_t ** config_vars, char ** module_ifc_atr);
-void reload_check_modules_interfaces_count(reload_config_vars_t  ** config_vars);
-int reload_find_and_check_module_basic_elements(reload_config_vars_t ** config_vars);
-int reload_find_and_check_modules_profile_basic_elements(reload_config_vars_t ** config_vars);
-void reload_count_module_interfaces(reload_config_vars_t ** config_vars);
+void reload_process_supervisor_element(reload_config_vars_t **config_vars);
+void reload_process_module_atribute(reload_config_vars_t **config_vars, char **module_ifc_atr);
+int reload_process_module_interface_atribute(reload_config_vars_t **config_vars, char **module_ifc_atr);
+void reload_check_modules_interfaces_count(reload_config_vars_t  **config_vars);
+int reload_find_and_check_module_basic_elements(reload_config_vars_t **config_vars);
+int reload_find_and_check_modules_profile_basic_elements(reload_config_vars_t **config_vars);
+void reload_count_module_interfaces(reload_config_vars_t **config_vars);
 void reload_check_module_allocated_interfaces(const int running_module_idx, const int ifc_cnt);
 void check_running_modules_allocated_memory();
-void reload_resolve_module_enabled(reload_config_vars_t ** config_vars, const int modules_got_profile);
+void reload_resolve_module_enabled(reload_config_vars_t **config_vars, const int modules_got_profile);
 char const * sperm(__mode_t mode);
-void reload_process_availablemodules_element(reload_config_vars_t ** config_vars);
-int reload_configuration(const int choice, xmlNodePtr * node);
+void reload_process_availablemodules_element(reload_config_vars_t **config_vars);
+int reload_configuration(const int choice, xmlNodePtr *node);
 void check_missing_interface_attributes();
 void check_duplicated_ports();
 /**@}*/
@@ -580,11 +589,11 @@ int alloc_server_structures();
 int create_server_socket();
 int daemon_mode_initialization();
 void server_routine();
-int daemon_get_code_from_client(sup_client_t ** cli);
+int daemon_get_code_from_client(sup_client_t **cli);
 void send_options_to_client();
-int open_sup_client_streams(sup_client_t ** cli);
-void disconnect_sup_client(sup_client_t * client);
-void * serve_sup_client_routine (void * arg);
+int open_sup_client_streams(sup_client_t **cli);
+void disconnect_sup_client(sup_client_t *client);
+void *serve_sup_client_routine (void *arg);
 /**@}*/
 
 #endif

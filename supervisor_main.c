@@ -88,7 +88,7 @@ void interactive_mode()
 }
 
 
-int main (int argc, char * argv [])
+int main (int argc, char *argv [])
 {
    int ret_val = 0;
 
