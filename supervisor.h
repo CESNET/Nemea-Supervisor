@@ -232,7 +232,7 @@ struct available_module_s {
 
 /** Function prints list of loaded modules with their params and all their interfaces with params.
  */
-void interactive_show_available_modules ();
+void interactive_show_available_modules();
 
 /** Function creates array of strings for function execvp() before executing new module (its process).
  * @param[in] number_of_module Index to running_modules array.
@@ -362,7 +362,7 @@ void print_help();
  * @param[in] d_sd Daemon socket descriptor.
  * @return Returns clients socket descriptor, -1 if error.
  */
-int daemon_get_client ();
+int daemon_get_client();
 
 /** Function creates input and output filestream via supervisor_cli socket. After that it represents main loop function.
  * @param[in] arg Daemon socket descriptor.
@@ -379,5 +379,212 @@ void free_module_interfaces_on_index(int index);
 
 int reload_configuration(const int choice, xmlNodePtr * node);
 
-#endif
 
+
+/**
+ * \defgroup GROUP_NAME short_description
+ *
+ * TODO group description.
+ * @{
+ */
+
+/**
+ *
+ */
+char *get_absolute_file_path(char *file_name);
+char *create_backup_file_path();
+void create_shutdown_info(char **backup_file_path);
+void print_module_ifc_stats(int module_number);
+int decode_cnts_from_json(char **data, int module_number);
+int convert_json_module_info(const char * json_str, trap_module_info_t ** info);
+void print_xmlDoc_to_stream(xmlDocPtr doc_ptr, FILE * stream);
+struct tm * get_sys_time();
+char * get_stats_formated_time();
+char **make_module_arguments(const int number_of_module);
+int get_number_from_input_choosing_option();
+int get_numbers_from_input_dis_enable_module(int ** array);
+void init_module_variables(int module_number);
+char *get_param_by_delimiter(const char *source, char **dest, const char delimiter);
+void print_statistics(struct tm * timeinfo);
+void print_statistics_legend();
+char * make_formated_statistics();
+int find_loaded_module(char * name);
+void generate_backup_config_file();
+/**@}*/
+
+
+
+/**
+ * \defgroup GROUP_NAME short_description
+ *
+ * TODO group description.
+ * @{
+ */
+
+/**
+ *
+ */
+void * netconf_server_routine_thread(void *arg);
+int netconf_supervisor_initialization(xmlNodePtr * running);
+xmlDocPtr netconf_get_state_data();
+/**@}*/
+
+
+
+ /**
+ * \defgroup GROUP_NAME short_description
+ *
+ * TODO group description.
+ * @{
+ */
+
+/**
+ *
+ */
+void reload_process_supervisor_element(reload_config_vars_t ** config_vars);
+void reload_process_module_atribute(reload_config_vars_t ** config_vars, char ** module_ifc_atr);
+int reload_process_module_interface_atribute(reload_config_vars_t ** config_vars, char ** module_ifc_atr);
+void reload_check_modules_interfaces_count(reload_config_vars_t  ** config_vars);
+int reload_find_and_check_module_basic_elements(reload_config_vars_t ** config_vars);
+int reload_find_and_check_modules_profile_basic_elements(reload_config_vars_t ** config_vars);
+void reload_count_module_interfaces(reload_config_vars_t ** config_vars);
+void reload_check_module_allocated_interfaces(const int running_module_idx, const int ifc_cnt);
+void check_running_modules_allocated_memory();
+void reload_resolve_module_enabled(reload_config_vars_t ** config_vars, const int modules_got_profile);
+char const * sperm(__mode_t mode);
+void reload_process_availablemodules_element(reload_config_vars_t ** config_vars);
+int reload_configuration(const int choice, xmlNodePtr * node);
+void check_missing_interface_attributes();
+void check_duplicated_ports();
+/**@}*/
+
+
+
+ /**
+ * \defgroup GROUP_NAME short_description
+ *
+ * TODO group description.
+ * @{
+ */
+
+/**
+ *
+ */
+void create_output_dir();
+void create_output_files_strings();
+void supervisor_signal_handler(int catched_signal);
+void supervisor_flags_initialization();
+int supervisor_initialization();
+int start_service_thread();
+int parse_program_arguments(int *argc, char **argv);
+/**@}*/
+
+
+
+ /**
+ * \defgroup GROUP_NAME short_description
+ *
+ * TODO group description.
+ * @{
+ */
+
+/**
+ *
+ */
+void free_module_on_index(int index);
+void free_module_interfaces_on_index(int index);
+void free_output_file_strings_and_streams();
+void free_module_and_shift_array(const int module_idx);
+void free_available_modules_structs();
+void supervisor_termination(int stop_all_modules, int generate_backup);
+/**@}*/
+
+
+
+ /**
+ * \defgroup GROUP_NAME short_description
+ *
+ * TODO group description.
+ * @{
+ */
+
+/**
+ *
+ */
+void interactive_show_available_modules();
+int interactive_get_option();
+void interactive_start_configuration();
+void interactive_stop_configuration();
+void interactive_set_module_enabled();
+void interactive_stop_module();
+void interactive_show_running_modules_status();
+/**@}*/
+
+
+
+/**
+ * \defgroup GROUP_NAME short_description
+ *
+ * TODO group description.
+ * @{
+ */
+
+/**
+ *
+ */
+void re_start_module(const int module_number);
+void disconnect_service_ifc(const int module_idx);
+int service_update_module_status();
+void service_clean_after_children();
+void service_stop_modules_sigint();
+void service_stop_modules_sigkill();
+void service_restart_modules();
+void service_connect_to_modules();
+int service_recv_data(int module_number, uint32_t size, void **data);
+int service_send_data(int module_number, uint32_t size, void **data);
+void connect_to_module_service_ifc(int module, int num_ifc);
+void *service_thread_routine(void *arg __attribute__ ((unused)));
+/**@}*/
+
+
+
+/**
+ * \defgroup GROUP_NAME short_description
+ *
+ * TODO group description.
+ * @{
+ */
+
+/**
+ *
+ */
+long int get_total_cpu_usage();
+void update_module_cpu_usage();
+void update_module_mem_usage();
+/**@}*/
+
+
+
+/**
+ * \defgroup GROUP_NAME short_description
+ *
+ * TODO group description.
+ * @{
+ */
+
+/**
+ *
+ */
+int create_daemon_process();
+int alloc_server_structures();
+int create_server_socket();
+int daemon_mode_initialization();
+void server_routine();
+int daemon_get_code_from_client(sup_client_t ** cli);
+void send_options_to_client();
+int open_sup_client_streams(sup_client_t ** cli);
+void disconnect_sup_client(sup_client_t * client);
+void * serve_sup_client_routine (void * arg);
+/**@}*/
+
+#endif

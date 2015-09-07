@@ -145,21 +145,6 @@ union tcpip_socket_addr {
    struct sockaddr_un unix_addr; ///< used for path of UNIX socket
 };
 
-void reload_check_module_allocated_interfaces(const int running_module_idx, const int ifc_cnt);
-void disconnect_service_ifc(const int module_idx);
-void * serve_sup_client_routine (void * arg);
-void check_running_modules_allocated_memory();
-long int get_total_cpu_usage();
-int start_service_thread();
-int parse_program_arguments(int *argc, char **argv);
-void server_routine();
-char *get_param_by_delimiter(const char *source, char **dest, const char delimiter);
-void free_output_file_strings_and_streams();
-void generate_backup_config_file();
-char * get_stats_formated_time();
-void check_duplicated_ports();
-void check_missing_interface_attributes();
-
 // Returns absolute path of the file / directory passed in file_name parameter
 char *get_absolute_file_path(char *file_name)
 {
@@ -399,7 +384,8 @@ int decode_cnts_from_json(char **data, int module_number)
 }
 
 // TODO errors to stderr, code maintenance
-int convert_json_module_info(const char * json_str, trap_module_info_t ** info) {
+int convert_json_module_info(const char * json_str, trap_module_info_t ** info)
+{
    json_error_t error;
    json_t * json_struct = NULL;
    json_t * value;
@@ -542,104 +528,6 @@ void print_xmlDoc_to_stream(xmlDocPtr doc_ptr, FILE * stream)
    }
 }
 
-void create_output_dir()
-{
-   char * buffer = NULL;
-   struct stat st = {0};
-
-logs_path_null:
-   if (logs_path == NULL) {
-      if (netconf_flag == TRUE) {
-         logs_path = strdup(NETCONF_DEFAULT_LOGSDIR_PATH);
-      } else if (daemon_flag == TRUE) {
-         logs_path = strdup(DAEMON_DEFAULT_LOGSDIR_PATH);
-      } else {
-         if ((buffer = getenv("HOME")) != NULL) {
-            logs_path = (char *) calloc (strlen(buffer)+strlen("/supervisor_logs/")+1, sizeof(char));
-            sprintf(logs_path,"%s/supervisor_logs/", buffer);
-         } else {
-            logs_path = strdup(INTERACTIVE_DEFAULT_LOGSDIR_PATH);
-         }
-      }
-   }
-
-   if (logs_path[strlen(logs_path)-1] != '/') {
-      buffer = (char *) calloc (strlen(logs_path)+2, sizeof(char));
-      sprintf(buffer, "%s/", logs_path);
-      free(logs_path);
-      logs_path = buffer;
-   }
-
-   // Check and create output directory
-   if (stat(logs_path, &st) == -1) {
-      if (errno == EACCES) {
-         // Don't have permissions to acces this directory, use default directory according to executed mode of supervisor
-         NULLP_TEST_AND_FREE(logs_path)
-         goto logs_path_null;
-      }
-      // Directory does not exist, try to create it
-      if (mkdir(logs_path, PERM_LOGSDIR) == -1) {
-         if (errno == EACCES) {
-            // Don't have permissions to some folder in logs_path, use default directory according to executed mode of supervisor
-            NULLP_TEST_AND_FREE(logs_path)
-            goto logs_path_null;
-         }
-      }
-   } else if (S_ISDIR(st.st_mode) == FALSE) { // Check whether the file is a directory
-      NULLP_TEST_AND_FREE(logs_path)
-      goto logs_path_null;
-   }
-}
-
-void create_output_files_strings()
-{
-   free_output_file_strings_and_streams();
-
-   if (logs_path != NULL) {
-      supervisor_debug_log_file_path = (char *) calloc (strlen(logs_path)+strlen("supervisor_debug_log")+1, sizeof(char));
-      sprintf(supervisor_debug_log_file_path, "%ssupervisor_debug_log", logs_path);
-      statistics_file_path = (char *) calloc (strlen(logs_path)+strlen("supervisor_log_statistics")+1, sizeof(char));
-      sprintf(statistics_file_path, "%ssupervisor_log_statistics", logs_path);
-      module_event_file_path = (char *) calloc (strlen(logs_path)+strlen("supervisor_log_module_event")+1, sizeof(char));
-      sprintf(module_event_file_path, "%ssupervisor_log_module_event", logs_path);
-
-      supervisor_debug_log_fd = fopen(supervisor_debug_log_file_path, "a");
-      if (supervisor_debug_log_fd == NULL) {
-         fprintf(stderr, "%s [ERROR] Could not open supervisor_debug_log file stream!\n",get_stats_formated_time());
-      } else {
-         fprintf(supervisor_debug_log_fd,"-------------------- %s --------------------\n", get_stats_formated_time());
-      }
-      statistics_fd = fopen(statistics_file_path, "a");
-      if (statistics_fd == NULL) {
-         fprintf(stderr, "%s [ERROR] Could not open supervisor_log_statistics file stream!\n",get_stats_formated_time());
-      } else {
-         VERBOSE(STATISTICS,"-------------------- %s --------------------\n", get_stats_formated_time());
-         print_statistics_legend();
-      }
-      module_event_fd = fopen(module_event_file_path, "a");
-      if (module_event_fd == NULL) {
-         fprintf(stderr, "%s [ERROR] Could not open supervisor_log_module_event file stream!\n",get_stats_formated_time());
-      } else {
-         VERBOSE(MODULE_EVENT,"-------------------- %s --------------------\n", get_stats_formated_time());
-      }
-
-      if (netconf_flag || daemon_flag) {
-         supervisor_log_file_path = (char *) calloc (strlen(logs_path)+strlen("supervisor_log")+1, sizeof(char));
-         sprintf(supervisor_log_file_path, "%ssupervisor_log", logs_path);
-
-         supervisor_log_fd = fopen (supervisor_log_file_path, "a");
-         if (supervisor_log_fd == NULL) {
-            fprintf(stderr, "%s [ERROR] Could not open supervisor_log file stream!\n",get_stats_formated_time());
-         } else {
-            fprintf(supervisor_log_fd,"-------------------- %s --------------------\n", get_stats_formated_time());
-         }
-         if (server_internals->clients_cnt == 0) {
-            output_fd = supervisor_log_fd;
-         }
-      }
-   }
-}
-
 struct tm * get_sys_time()
 {
    time_t rawtime;
@@ -657,66 +545,6 @@ char * get_stats_formated_time()
 
    return formated_time_buffer;
 }
-
-void interactive_show_available_modules ()
-{
-   unsigned int x = 0, y = 0, already_printed_modules = 0;
-   modules_profile_t * ptr = first_profile_ptr;
-
-   if (loaded_modules_cnt == 0) {
-      VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] No module is loaded.\n" ANSI_ATTR_RESET);
-      return;
-   }
-
-   VERBOSE(N_STDOUT,"[PRINTING CONFIGURATION]\n");
-
-   while (ptr != NULL) {
-      VERBOSE(N_STDOUT, ANSI_BOLD "Profile: %s\n" ANSI_ATTR_RESET, ptr->profile_name);
-      for (x=0; x<loaded_modules_cnt; x++) {
-         if (running_modules[x].modules_profile != NULL) {
-            if (running_modules[x].modules_profile == ptr->profile_name) {
-               if (running_modules[x].module_enabled == TRUE) {
-                  VERBOSE(N_STDOUT, "   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s (" ANSI_RED_BOLD "enabled" ANSI_ATTR_RESET "):\n", x, running_modules[x].module_name);
-               } else {
-                  VERBOSE(N_STDOUT, "   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s (" ANSI_RED "disabled" ANSI_ATTR_RESET "):\n", x, running_modules[x].module_name);
-               }
-               VERBOSE(N_STDOUT, "      " ANSI_BOLD "PATH:" ANSI_ATTR_RESET " %s\n", (running_modules[x].module_path == NULL ? "none" : running_modules[x].module_path));
-               VERBOSE(N_STDOUT, "      " ANSI_BOLD "PARAMS:" ANSI_ATTR_RESET " %s\n", (running_modules[x].module_params == NULL ? "none" : running_modules[x].module_params));
-               for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
-                  VERBOSE(N_STDOUT,"      " ANSI_BOLD "IFC%d:" ANSI_ATTR_RESET "  %s; %s; %s; %s\n", y, (running_modules[x].module_ifces[y].ifc_direction == NULL ? "none" : running_modules[x].module_ifces[y].ifc_direction),
-                                                                                                   (running_modules[x].module_ifces[y].ifc_type == NULL ? "none" : running_modules[x].module_ifces[y].ifc_type),
-                                                                                                   (running_modules[x].module_ifces[y].ifc_params == NULL ? "none" : running_modules[x].module_ifces[y].ifc_params),
-                                                                                                   (running_modules[x].module_ifces[y].ifc_note == NULL ? "none" : running_modules[x].module_ifces[y].ifc_note));
-               }
-               already_printed_modules++;
-            }
-         }
-      }
-      ptr = ptr->next;
-   }
-
-   if (already_printed_modules < loaded_modules_cnt) {
-      VERBOSE(N_STDOUT, ANSI_BOLD "Modules without profile:\n" ANSI_ATTR_RESET);
-      for (x=0; x<loaded_modules_cnt; x++) {
-         if (running_modules[x].modules_profile == NULL) {
-            if (running_modules[x].module_enabled == TRUE) {
-               VERBOSE(N_STDOUT, "   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s (" ANSI_RED_BOLD "enabled" ANSI_ATTR_RESET "):\n", x, running_modules[x].module_name);
-            } else {
-               VERBOSE(N_STDOUT, "   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s (" ANSI_RED "disabled" ANSI_ATTR_RESET "):\n", x, running_modules[x].module_name);
-            }
-            VERBOSE(N_STDOUT, "      " ANSI_BOLD "PATH:" ANSI_ATTR_RESET " %s\n", (running_modules[x].module_path == NULL ? "none" : running_modules[x].module_path));
-            VERBOSE(N_STDOUT, "      " ANSI_BOLD "PARAMS:" ANSI_ATTR_RESET " %s\n", (running_modules[x].module_params == NULL ? "none" : running_modules[x].module_params));
-            for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
-               VERBOSE(N_STDOUT,"      " ANSI_BOLD "IFC%d:" ANSI_ATTR_RESET "  %s; %s; %s; %s\n", y, (running_modules[x].module_ifces[y].ifc_direction == NULL ? "none" : running_modules[x].module_ifces[y].ifc_direction),
-                                                                                                (running_modules[x].module_ifces[y].ifc_type == NULL ? "none" : running_modules[x].module_ifces[y].ifc_type),
-                                                                                                (running_modules[x].module_ifces[y].ifc_params == NULL ? "none" : running_modules[x].module_ifces[y].ifc_params),
-                                                                                                (running_modules[x].module_ifces[y].ifc_note == NULL ? "none" : running_modules[x].module_ifces[y].ifc_note));
-            }
-         }
-      }
-   }
-}
-
 
 char **make_module_arguments(const int number_of_module)
 {
@@ -947,7 +775,7 @@ char **make_module_arguments(const int number_of_module)
    return params;
 }
 
-int get_number_from_input_choosing_option ()
+int get_number_from_input_choosing_option()
 {
    int option = 0;
    char * input_p = NULL;
@@ -1023,24 +851,6 @@ int get_numbers_from_input_dis_enable_module(int ** array)
    return ++module_nums_cnt;
 }
 
-
-int interactive_get_option()
-{
-   usleep(50000); // Solved bugged output - without this sleep, escape codes in output were not sometimes reseted on time and they were applied also on this menu
-   VERBOSE(N_STDOUT, ANSI_CYAN_BOLD "--------OPTIONS--------\n" ANSI_ATTR_RESET);
-   VERBOSE(N_STDOUT, ANSI_CYAN "1. START ALL MODULES\n");
-   VERBOSE(N_STDOUT, "2. STOP ALL MODULES\n");
-   VERBOSE(N_STDOUT, "3. START MODULE\n");
-   VERBOSE(N_STDOUT, "4. STOP MODULE\n");
-   VERBOSE(N_STDOUT, "5. STARTED MODULES STATUS\n");
-   VERBOSE(N_STDOUT, "6. AVAILABLE MODULES\n");
-   VERBOSE(N_STDOUT, "7. RELOAD CONFIGURATION\n");
-   VERBOSE(N_STDOUT, "8. STOP SUPERVISOR\n" ANSI_ATTR_RESET);
-   VERBOSE(N_STDOUT, ANSI_YELLOW_BOLD "[INTERACTIVE] Your choice: " ANSI_ATTR_RESET);
-
-   return get_number_from_input_choosing_option();
-}
-
 void init_module_variables(int module_number)
 {
    uint x = 0;
@@ -1079,812 +889,6 @@ void init_module_variables(int module_number)
    running_modules[module_number].module_service_ifc_timer = 0;
 }
 
-void re_start_module(const int module_number)
-{
-   uint x = 0;
-
-   if (running_modules[module_number].module_running == FALSE) {
-      VERBOSE(MODULE_EVENT,"%s [START] Starting module %s.\n", get_stats_formated_time(), running_modules[module_number].module_name);
-      #ifdef nemea_plugin
-         netconf_notify(MODULE_EVENT_STARTED,running_modules[module_number].module_name);
-      #endif
-      // In case that reloading configuration changes module (its interfaces), module_running is set to FALSE and interfaces data are freed
-      for (x = 0; x < running_modules[module_number].module_ifces_cnt; x++) {
-         NULLP_TEST_AND_FREE(running_modules[module_number].module_ifces[x].ifc_data)
-      }
-      running_modules[module_number].module_running = TRUE;
-   } else {
-      #ifdef nemea_plugin
-         netconf_notify(MODULE_EVENT_RESTARTED,running_modules[module_number].module_name);
-      #endif
-      VERBOSE(MODULE_EVENT,"%s [RESTART] Restarting module %s\n", get_stats_formated_time(), running_modules[module_number].module_name);
-   }
-
-   char log_path_stdout[200];
-   char log_path_stderr[200];
-   memset(log_path_stderr,0,200);
-   memset(log_path_stdout,0,200);
-
-   sprintf(log_path_stdout,"%s%s_stdout",logs_path, running_modules[module_number].module_name);
-   sprintf(log_path_stderr,"%s%s_stderr",logs_path, running_modules[module_number].module_name);
-
-   init_module_variables(module_number);
-
-   time_t rawtime;
-   struct tm * timeinfo;
-   time ( &rawtime );
-   timeinfo = localtime ( &rawtime );
-
-   fflush(stdout);
-   running_modules[module_number].module_pid = fork();
-   if (running_modules[module_number].module_pid == 0) {
-      int fd_stdout = open(log_path_stdout, O_RDWR | O_CREAT | O_APPEND, PERM_LOGFILE);
-      int fd_stderr = open(log_path_stderr, O_RDWR | O_CREAT | O_APPEND, PERM_LOGFILE);
-      if (fd_stdout != -1) {
-         dup2(fd_stdout,1); //stdout
-         close(fd_stdout);
-      }
-      if (fd_stderr != -1) {
-         dup2(fd_stderr,2); //stderr
-         close(fd_stderr);
-      }
-      setsid(); // important for sending SIGINT to supervisor.. modules can't receive the signal too !!!
-      fprintf(stdout,"---> %s", asctime (timeinfo));
-      fprintf(stderr,"---> %s", asctime (timeinfo));
-      if (running_modules[module_number].module_path == NULL) {
-         VERBOSE(N_STDOUT,"%s [ERROR] Starting module: module path is missing!\n", get_stats_formated_time());
-         running_modules[module_number].module_enabled = FALSE;
-      } else {
-         char **params = make_module_arguments(module_number);
-         if (params == NULL) {
-            goto execute_fail;
-         }
-         // TODO make_module_arguments - if it fails (comparing types and directions etc.) create exit label
-         // TODO check values of ifc type and direction during reload
-         fflush(stdout);
-         fflush(stderr);
-         execvp(running_modules[module_number].module_path, params);
-execute_fail:
-         exit(EXIT_FAILURE);
-      }
-      VERBOSE(MODULE_EVENT,"%s [ERROR] Module execution: could not execute %s binary! (possible reason - wrong module binary path)\n", get_stats_formated_time(), running_modules[module_number].module_name);
-      running_modules[module_number].module_enabled = FALSE;
-      exit(EXIT_FAILURE);
-   } else if (running_modules[module_number].module_pid == -1) {
-      running_modules[module_number].module_status = FALSE;
-      running_modules[module_number].module_restart_cnt++;
-      VERBOSE(N_STDOUT,"%s [ERROR] Fork: could not fork supervisor process!\n", get_stats_formated_time());
-   } else {
-      running_modules[module_number].module_is_my_child = TRUE;
-      running_modules[module_number].module_status = TRUE;
-      running_modules[module_number].module_restart_cnt++;
-      if (running_modules[module_number].module_restart_cnt == 1) {
-         running_modules[module_number].module_restart_timer = 0;
-      }
-   }
-}
-
-// Returns a number of running modules
-int service_update_module_status()
-{
-   unsigned int x, some_module_running = 0;
-
-   for (x=0; x<loaded_modules_cnt; x++) {
-      if (running_modules[x].module_pid > 0) {
-         if (kill(running_modules[x].module_pid, 0) == -1) {
-            if (errno == EINVAL) {
-               VERBOSE(MODULE_EVENT,"%s [STOP] kill -0: ernno EINVAL\n", get_stats_formated_time());
-            }
-            if (errno == EPERM) {
-               VERBOSE(MODULE_EVENT,"%s [STOP] kill -0: errno EPERM\n", get_stats_formated_time());
-            }
-            if (errno == ESRCH) {
-               VERBOSE(MODULE_EVENT,"%s [STOP] kill -0: module %s (PID: %d) is not running !\n", get_stats_formated_time(), running_modules[x].module_name, running_modules[x].module_pid);
-            }
-            if (running_modules[x].module_service_sd != -1) {
-                  close(running_modules[x].module_service_sd);
-                  running_modules[x].module_service_sd = -1;
-            }
-            running_modules[x].module_status = FALSE;
-            running_modules[x].module_service_ifc_isconnected = FALSE;
-            running_modules[x].module_pid = 0;
-         } else {
-            running_modules[x].module_status = TRUE;
-            some_module_running++;
-         }
-      }
-   }
-   return some_module_running;
-}
-
-void service_clean_after_children()
-{
-   pid_t result;
-   unsigned int x;
-   int status;
-
-   for (x=0; x<loaded_modules_cnt; x++) {
-      if (running_modules[x].module_pid > 0 && running_modules[x].module_is_my_child) {
-         result = waitpid(running_modules[x].module_pid , &status, WNOHANG);
-         if (result == 0) {
-           // Child still alive, nothing to do here!
-         } else if (result == -1) {
-           // Error
-            if (errno == ECHILD) {
-               VERBOSE(MODULE_EVENT, "%s [CLEAN] waitpid: module %s (PID: %d) is not my child!\n", get_stats_formated_time(), running_modules[x].module_name, running_modules[x].module_pid);
-               running_modules[x].module_is_my_child = FALSE;
-            }
-         } else {
-           // Child exited
-            VERBOSE(MODULE_EVENT, "%s [CLEAN] waitpid: module %s (PID: %d) is my child and is not alive anymore!\n", get_stats_formated_time(), running_modules[x].module_name, running_modules[x].module_pid);
-         }
-      }
-   }
-}
-
-void supervisor_signal_handler(int catched_signal)
-{
-   switch (catched_signal) {
-   case SIGPIPE:
-      break;
-
-   case SIGTERM:
-      VERBOSE(N_STDOUT,"%s [SIGNAL HANDLER] SIGTERM catched -> I'm going to terminate my self !\n", get_stats_formated_time());
-      supervisor_termination(TRUE, FALSE);
-      exit(EXIT_SUCCESS);
-      break;
-
-   case SIGINT:
-      VERBOSE(N_STDOUT,"%s [SIGNAL HANDLER] SIGINT catched -> I'm going to terminate my self !\n", get_stats_formated_time());
-      supervisor_termination(FALSE, TRUE);
-      exit(EXIT_SUCCESS);
-      break;
-
-   case SIGQUIT:
-      VERBOSE(N_STDOUT,"%s [SIGNAL HANDLER] SIGQUIT catched -> I'm going to terminate my self !\n", get_stats_formated_time());
-      supervisor_termination(FALSE, TRUE);
-      exit(EXIT_SUCCESS);
-      break;
-
-   case SIGSEGV:
-      VERBOSE(N_STDOUT,"%s [SIGNAL HANDLER] Ouch, SIGSEGV catched -> I'm going to terminate my self !\n", get_stats_formated_time());
-      supervisor_termination(FALSE, TRUE);
-      exit(EXIT_FAILURE);
-      break;
-   }
-}
-
-void supervisor_flags_initialization()
-{
-   supervisor_initialized = FALSE;
-   service_thread_initialized = FALSE;
-   daemon_mode_initialized = FALSE;
-
-   logs_path = NULL;
-   config_file = NULL;
-   socket_path = NULL;
-
-   verbose_flag = FALSE;
-   daemon_flag = FALSE;
-   netconf_flag = FALSE;
-}
-
-int supervisor_initialization()
-{
-   init_time_info = get_sys_time();
-
-   input_fd = stdin;
-   output_fd = stdout;
-
-   // Check and create (if it doesn't exist) directory for all output (started modules and also supervisor's) according to the logs_path
-   create_output_dir();
-   // Create strings with supervisor's output files names and get their file descriptors
-   create_output_files_strings();
-
-   // Allocate running_modules memory
-   running_modules_array_size = 0;
-   check_running_modules_allocated_memory();
-
-   // Initialize main mutex
-   pthread_mutex_init(&running_modules_lock,NULL);
-
-   // Load startup configuration
-   if (netconf_flag == FALSE) {
-      VERBOSE(N_STDOUT,"[INIT LOADING CONFIGURATION]\n");
-      reload_configuration(RELOAD_INIT_LOAD_CONFIG, NULL);
-   }
-
-   // Create a new thread doing service routine
-   VERBOSE(N_STDOUT,"[SERVICE] Starting service thread.\n");
-   if (start_service_thread() != 0) {
-      service_thread_initialized = FALSE;
-   } else {
-      service_thread_initialized = TRUE;
-   }
-
-   /************ SIGNAL HANDLING *************/
-   if (netconf_flag == FALSE) {
-      struct sigaction sig_action;
-      sig_action.sa_handler = supervisor_signal_handler;
-      sig_action.sa_flags = 0;
-      sigemptyset(&sig_action.sa_mask);
-
-      if (sigaction(SIGPIPE,&sig_action,NULL) == -1) {
-         VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGPIPE !\n", get_stats_formated_time());
-      }
-      if (sigaction(SIGINT,&sig_action,NULL) == -1) {
-         VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGINT !\n", get_stats_formated_time());
-      }
-      if (sigaction(SIGTERM,&sig_action,NULL) == -1) {
-         VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGTERM !\n", get_stats_formated_time());
-      }
-      if (sigaction(SIGSEGV,&sig_action,NULL) == -1) {
-         VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGSEGV !\n", get_stats_formated_time());
-      }
-      if (sigaction(SIGQUIT,&sig_action,NULL) == -1) {
-         VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGQUIT !\n", get_stats_formated_time());
-      }
-   }
-   /****************************************/
-
-   supervisor_initialized = TRUE;
-   if (service_thread_initialized == TRUE) {
-      return 0;
-   } else {
-      return -1;
-   }
-}
-
-
-void interactive_start_configuration()
-{
-   pthread_mutex_lock(&running_modules_lock);
-   VERBOSE(MODULE_EVENT,"%s [START] Starting configuration...\n", get_stats_formated_time());
-   unsigned int x = 0;
-   for (x=0; x<loaded_modules_cnt; x++) {
-      if (running_modules[x].module_enabled == FALSE) {
-         running_modules[x].module_restart_cnt = -1;
-         running_modules[x].module_enabled = TRUE;
-      }
-   }
-   pthread_mutex_unlock(&running_modules_lock);
-}
-
-
-void interactive_stop_configuration()
-{
-   unsigned int x = 0;
-   pthread_mutex_lock(&running_modules_lock);
-   VERBOSE(MODULE_EVENT,"%s [STOP] Stopping configuration...\n", get_stats_formated_time());
-   for (x=0; x<loaded_modules_cnt; x++) {
-      if (running_modules[x].module_enabled) {
-         running_modules[x].module_enabled = FALSE;
-      }
-   }
-   pthread_mutex_unlock(&running_modules_lock);
-}
-
-
-void interactive_set_module_enabled()
-{
-   int * modules_to_enable = NULL;
-   int x = 0, y = 0, modules_to_enable_cnt = 0, stopped_modules_counter = 0, matched_modules = 0, profile_printed = FALSE;
-   modules_profile_t * ptr = first_profile_ptr;
-
-   if (loaded_modules_cnt == 0) {
-      VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] No module is loaded.\n" ANSI_ATTR_RESET);
-      return;
-   }
-
-   pthread_mutex_lock(&running_modules_lock);
-   VERBOSE(N_STDOUT, "[LIST OF STOPPED MODULES]\n");
-   while (ptr != NULL) {
-      profile_printed = FALSE;
-      for (x=0; x<loaded_modules_cnt; x++) {
-         if (running_modules[x].modules_profile != NULL) {
-            if (running_modules[x].modules_profile == ptr->profile_name) {
-               if (running_modules[x].module_status == FALSE) {
-                  if (profile_printed == FALSE) {
-                     VERBOSE(N_STDOUT, ANSI_BOLD "Profile: %s\n" ANSI_ATTR_RESET, ptr->profile_name);
-                     profile_printed = TRUE;
-                  }
-                  VERBOSE(N_STDOUT, "   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s " ANSI_RED_BOLD "stopped" ANSI_ATTR_RESET "\n",x, running_modules[x].module_name);
-                  stopped_modules_counter++;
-               }
-               matched_modules++;
-            }
-         }
-      }
-      ptr = ptr->next;
-   }
-
-   if (matched_modules < loaded_modules_cnt) {
-      profile_printed = FALSE;
-      for (x=0; x<loaded_modules_cnt; x++) {
-         if (running_modules[x].modules_profile == NULL) {
-            if (running_modules[x].module_status == FALSE) {
-               if (profile_printed == FALSE) {
-                  VERBOSE(N_STDOUT, ANSI_BOLD "Modules without profile:\n" ANSI_ATTR_RESET);
-                  profile_printed = TRUE;
-               }
-               VERBOSE(N_STDOUT, "   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s " ANSI_RED_BOLD "stopped" ANSI_ATTR_RESET "\n",x, running_modules[x].module_name);
-               stopped_modules_counter++;
-            }
-         }
-      }
-   }
-
-   if (stopped_modules_counter == 0) {
-      VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] All modules are running.\n" ANSI_ATTR_RESET);
-      pthread_mutex_unlock(&running_modules_lock);
-      return;
-   }
-
-   VERBOSE(N_STDOUT, ANSI_YELLOW_BOLD "[INTERACTIVE] Type in module numbers (one number or more separated by comma): " ANSI_ATTR_RESET);
-   modules_to_enable_cnt = get_numbers_from_input_dis_enable_module(&modules_to_enable);
-
-   if (modules_to_enable_cnt != RET_ERROR) {
-      for (y=0; y<modules_to_enable_cnt; y++) {
-         x = modules_to_enable[y];
-         if (x>=loaded_modules_cnt || x<0) {
-            VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Number %d is not valid module number!\n" ANSI_ATTR_RESET, x);
-            continue;
-         } else if (running_modules[x].module_enabled == TRUE) {
-            VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Module %s is already enabled.\n" ANSI_ATTR_RESET, running_modules[x].module_name);
-         } else {
-            running_modules[x].module_enabled = TRUE;
-            running_modules[x].module_restart_cnt = -1;
-            VERBOSE(MODULE_EVENT, "%s [ENABLED] Module %s set to enabled.\n", get_stats_formated_time(), running_modules[x].module_name);
-         }
-      }
-      free(modules_to_enable);
-      modules_to_enable = NULL;
-   }
-
-   pthread_mutex_unlock(&running_modules_lock);
-}
-
-void service_stop_modules_sigint()
-{
-   unsigned int x;
-   for (x=0; x<loaded_modules_cnt; x++) {
-      if (running_modules[x].module_status && running_modules[x].module_enabled == FALSE && running_modules[x].sent_sigint == FALSE) {
-         #ifdef nemea_plugin
-            netconf_notify(MODULE_EVENT_STOPPED,running_modules[x].module_name);
-         #endif
-         VERBOSE(MODULE_EVENT, "%s [STOP] Stopping module %s... sending SIGINT\n", get_stats_formated_time(), running_modules[x].module_name);
-         kill(running_modules[x].module_pid,2);
-         running_modules[x].sent_sigint = TRUE;
-      }
-   }
-}
-
-void service_stop_modules_sigkill()
-{
-   char * dest_port = NULL;
-   char buffer[DEFAULT_SIZE_OF_BUFFER];
-   unsigned int x, y;
-   for (x=0; x<loaded_modules_cnt; x++) {
-      if (running_modules[x].module_status && running_modules[x].module_enabled == FALSE && running_modules[x].sent_sigint == TRUE) {
-         VERBOSE(MODULE_EVENT, "%s [STOP] Stopping module %s... sending SIGKILL\n", get_stats_formated_time(), running_modules[x].module_name);
-         kill(running_modules[x].module_pid,9);
-         for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
-            if (running_modules[x].module_ifces[y].int_ifc_type == SERVICE_MODULE_IFC_TYPE || ((running_modules[x].module_ifces[y].int_ifc_type == UNIXSOCKET_MODULE_IFC_TYPE)
-                                                                                          && (running_modules[x].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION))) {
-               if (running_modules[x].module_ifces[y].ifc_params == NULL) {
-                  continue;
-               }
-               memset(buffer, 0, DEFAULT_SIZE_OF_BUFFER);
-               get_param_by_delimiter(running_modules[x].module_ifces[y].ifc_params, &dest_port, ',');
-               sprintf(buffer,MODULES_UNIXSOCKET_PATH_FILENAME_FORMAT,dest_port);
-               VERBOSE(MODULE_EVENT, "%s [CLEAN] Deleting socket %s - module %s\n", get_stats_formated_time(), buffer, running_modules[x].module_name);
-               unlink(buffer);
-               NULLP_TEST_AND_FREE(dest_port)
-            }
-         }
-      }
-   }
-}
-
-void interactive_stop_module()
-{
-   int * modules_to_stop = NULL;
-   int x = 0, y = 0, running_modules_counter = 0, modules_to_stop_cnt = 0, matched_modules = 0, profile_printed = FALSE;
-   modules_profile_t * ptr = first_profile_ptr;
-
-   if (loaded_modules_cnt == 0) {
-      VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] No module is loaded.\n" ANSI_ATTR_RESET);
-      return;
-   }
-
-   pthread_mutex_lock(&running_modules_lock);
-   VERBOSE(N_STDOUT, "[LIST OF RUNNING MODULES]\n");
-   while (ptr != NULL) {
-      profile_printed = FALSE;
-      for (x=0; x<loaded_modules_cnt; x++) {
-         if (running_modules[x].modules_profile != NULL) {
-            if (running_modules[x].modules_profile == ptr->profile_name) {
-               if (running_modules[x].module_status == TRUE) {
-                  if (profile_printed == FALSE) {
-                     VERBOSE(N_STDOUT, ANSI_BOLD "Profile: %s\n" ANSI_ATTR_RESET, ptr->profile_name);
-                     profile_printed = TRUE;
-                  }
-                  VERBOSE(N_STDOUT, "   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s " ANSI_RED_BOLD "running" ANSI_ATTR_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
-                  running_modules_counter++;
-               }
-               matched_modules++;
-            }
-         }
-      }
-      ptr = ptr->next;
-   }
-
-   if (matched_modules < loaded_modules_cnt) {
-      profile_printed = FALSE;
-      for (x=0; x<loaded_modules_cnt; x++) {
-         if (running_modules[x].modules_profile == NULL) {
-            if (running_modules[x].module_status == TRUE) {
-               if (profile_printed == FALSE) {
-                  VERBOSE(N_STDOUT, ANSI_BOLD "Modules without profile:\n" ANSI_ATTR_RESET);
-                  profile_printed = TRUE;
-               }
-               VERBOSE(N_STDOUT, "   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s " ANSI_RED_BOLD "running" ANSI_ATTR_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
-               running_modules_counter++;
-            }
-         }
-      }
-   }
-
-   if (running_modules_counter == 0) {
-      VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] All modules are stopped.\n" ANSI_ATTR_RESET);
-      pthread_mutex_unlock(&running_modules_lock);
-      return;
-   }
-
-   VERBOSE(N_STDOUT, ANSI_YELLOW_BOLD "[INTERACTIVE] Type in module numbers (one number or more separated by comma): " ANSI_ATTR_RESET);
-   modules_to_stop_cnt = get_numbers_from_input_dis_enable_module(&modules_to_stop);
-
-   if (modules_to_stop_cnt != RET_ERROR) {
-      for (y=0; y<modules_to_stop_cnt; y++) {
-         x = modules_to_stop[y];
-         if (x>=loaded_modules_cnt || x<0) {
-            VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Number %d is not valid module number!\n" ANSI_ATTR_RESET, x);
-            continue;
-         } else if (running_modules[x].module_enabled == FALSE) {
-            VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Module %s is already disabled.\n" ANSI_ATTR_RESET, running_modules[x].module_name);
-         } else {
-            running_modules[x].module_enabled = FALSE;
-            VERBOSE(MODULE_EVENT, "%s [DISABLED] Module %s set to disabled.\n", get_stats_formated_time(), running_modules[x].module_name);
-         }
-      }
-      free(modules_to_stop);
-      modules_to_stop = NULL;
-   }
-   pthread_mutex_unlock(&running_modules_lock);
-}
-
-
-void service_restart_modules()
-{
-   unsigned int x = 0;
-   int max_restarts = 0;
-
-   for (x=0; x<loaded_modules_cnt; x++) {
-      if (++running_modules[x].module_restart_timer >= NUM_SERVICE_IFC_PERIODS) {
-         running_modules[x].module_restart_timer = 0;
-         running_modules[x].module_restart_cnt = 0;
-      }
-
-      // TODO why assigning this value in every service thread cycle???
-      if (running_modules[x].module_max_restarts_per_minute > -1) {
-         max_restarts = running_modules[x].module_max_restarts_per_minute;
-      } else {
-         max_restarts = max_restarts_per_minute_config;
-      }
-
-      if (running_modules[x].module_enabled == TRUE && running_modules[x].module_status == FALSE && (running_modules[x].module_restart_cnt == max_restarts)) {
-         VERBOSE(MODULE_EVENT,"%s [RESTART] Module: %s was restarted %d times per minute and it is down again. I set it disabled.\n", get_stats_formated_time(), running_modules[x].module_name, max_restarts);
-         running_modules[x].module_enabled = FALSE;
-         #ifdef nemea_plugin
-            netconf_notify(MODULE_EVENT_DISABLED,running_modules[x].module_name);
-         #endif
-      } else if (running_modules[x].module_status == FALSE && running_modules[x].module_enabled == TRUE) {
-         re_start_module(x);
-      }
-   }
-}
-
-
-void service_connect_to_modules()
-{
-   uint x = 0, y = 0;
-
-    for (x = 0; x < loaded_modules_cnt; x++) {
-         // If supervisor couldn't connect to service interface or too many errors during sending/receiving occurred, connecting is blocked
-         if (running_modules[x].module_service_ifc_conn_block == TRUE) {
-            continue;
-         }
-
-         // Check whether the module has service interface and is running
-         if (running_modules[x].module_has_service_ifc == TRUE && running_modules[x].module_status == TRUE) {
-
-            if (++running_modules[x].module_service_ifc_timer >= NUM_SERVICE_IFC_PERIODS) {
-               running_modules[x].module_service_ifc_timer = 0;
-               running_modules[x].module_service_ifc_conn_fails = 0;
-            }
-
-            if (running_modules[x].module_service_ifc_conn_fails >= MAX_SERVICE_IFC_CONN_FAILS) {
-               VERBOSE(MODULE_EVENT, "%s [WARNING] Module %s reached %d errors during connections -> it is blocked.\n", get_stats_formated_time(), running_modules[x].module_name, MAX_SERVICE_IFC_CONN_FAILS);
-               running_modules[x].module_service_ifc_conn_block = TRUE;
-               continue;
-            }
-
-            // Check connection between module and supervisor, if they are not connected and number of attempts <= 3, try to connect
-            if (running_modules[x].module_service_ifc_isconnected == FALSE) {
-               y=0;
-               while (1) {
-                  if (running_modules[x].module_ifces[y].int_ifc_type == SERVICE_MODULE_IFC_TYPE) {
-                     break;
-                  }
-                  y++;
-               }
-
-               // Check module socket descriptor, closed socket has descriptor set to -1
-               if (running_modules[x].module_service_sd != -1) {
-                  close(running_modules[x].module_service_sd);
-                  running_modules[x].module_service_sd = -1;
-               }
-               connect_to_module_service_ifc(x,y);
-            }
-         }
-      }
-}
-
-void interactive_show_running_modules_status()
-{
-   unsigned int x = 0, already_printed_modules = 0;
-   modules_profile_t * ptr = first_profile_ptr;
-
-   if (loaded_modules_cnt == 0) {
-      VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] No module is loaded.\n" ANSI_ATTR_RESET);
-      return;
-   }
-
-   while (ptr != NULL) {
-      VERBOSE(N_STDOUT, ANSI_BOLD "Profile: %s\n" ANSI_ATTR_RESET, ptr->profile_name);
-      for (x=0; x<loaded_modules_cnt; x++) {
-         if (running_modules[x].modules_profile != NULL) {
-            if (running_modules[x].modules_profile == ptr->profile_name && running_modules[x].module_status == TRUE) {
-               VERBOSE(N_STDOUT,"   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s " ANSI_RED_BOLD "running" ANSI_ATTR_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
-               already_printed_modules++;
-            } else if (running_modules[x].modules_profile == ptr->profile_name) {
-               VERBOSE(N_STDOUT,"   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s " ANSI_RED "stopped" ANSI_ATTR_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
-               already_printed_modules++;
-            }
-         }
-      }
-      ptr = ptr->next;
-   }
-
-   if (already_printed_modules < loaded_modules_cnt) {
-      VERBOSE(N_STDOUT, ANSI_BOLD "Modules without profile:\n" ANSI_ATTR_RESET);
-      for (x=0; x<loaded_modules_cnt; x++) {
-         if (running_modules[x].modules_profile == NULL) {
-            if (running_modules[x].module_status == TRUE) {
-               VERBOSE(N_STDOUT,"   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s " ANSI_RED_BOLD "running" ANSI_ATTR_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
-            } else {
-               VERBOSE(N_STDOUT,"   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s " ANSI_RED "stopped" ANSI_ATTR_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
-            }
-         }
-      }
-   }
-}
-
-void free_output_file_strings_and_streams()
-{
-   NULLP_TEST_AND_FREE(statistics_file_path)
-   NULLP_TEST_AND_FREE(module_event_file_path)
-   NULLP_TEST_AND_FREE(supervisor_debug_log_file_path)
-   NULLP_TEST_AND_FREE(supervisor_log_file_path)
-
-   if (supervisor_debug_log_fd != NULL) {
-      fclose(supervisor_debug_log_fd);
-      supervisor_debug_log_fd = NULL;
-   }
-   if (supervisor_log_fd != NULL) {
-      fclose(supervisor_log_fd);
-      supervisor_log_fd = NULL;
-   }
-   if (statistics_fd != NULL) {
-      fclose(statistics_fd);
-      statistics_fd = NULL;
-   }
-   if (module_event_fd != NULL) {
-      fclose(module_event_fd);
-      module_event_fd = NULL;
-   }
-}
-
-void free_module_and_shift_array(const int module_idx)
-{
-   int y = 0;
-
-   free_module_on_index(module_idx);
-   running_modules[module_idx].module_ifces_cnt = 0;
-   running_modules[module_idx].module_num_out_ifc = 0;
-   running_modules[module_idx].module_num_in_ifc = 0;
-   running_modules[module_idx].module_ifces_array_size = 0;
-   for (y=module_idx; y<(loaded_modules_cnt-1); y++) {
-      memcpy(&running_modules[y], &running_modules[y+1], sizeof(running_module_t));
-   }
-   loaded_modules_cnt--;
-   memset(&running_modules[loaded_modules_cnt], 0, sizeof(running_module_t));
-}
-
-void free_available_modules_structs()
-{
-   int x = 0;
-   available_modules_path_t * path_p1 = first_available_modules_path;
-   available_modules_path_t * path_p2 = NULL;
-   available_module_t * module_p1 = NULL;
-   available_module_t * module_p2 = NULL;
-
-   while (path_p1 != NULL) {
-      path_p2 = path_p1->next;
-      module_p1 = path_p1->modules;
-      while (module_p1 != NULL) {
-         module_p2 = module_p1->next;
-         NULLP_TEST_AND_FREE(module_p1->name)
-         if (module_p1->module_info != NULL) {
-            NULLP_TEST_AND_FREE(module_p1->module_info->name)
-            NULLP_TEST_AND_FREE(module_p1->module_info->description)
-            if (module_p1->module_info->params != NULL) {
-               x=0;
-               while (module_p1->module_info->params[x] != NULL) {
-                  NULLP_TEST_AND_FREE(module_p1->module_info->params[x]->long_opt)
-                  NULLP_TEST_AND_FREE(module_p1->module_info->params[x]->description)
-                  NULLP_TEST_AND_FREE(module_p1->module_info->params[x]->argument_type)
-                  NULLP_TEST_AND_FREE(module_p1->module_info->params[x])
-                  x++;
-               }
-               free(module_p1->module_info->params);
-               module_p1->module_info->params = NULL;
-            }
-            free(module_p1->module_info);
-            module_p1->module_info = NULL;
-         }
-         free(module_p1);
-         module_p1 = module_p2;
-      }
-      NULLP_TEST_AND_FREE(path_p1->path)
-      free(path_p1);
-      path_p1 = path_p2;
-   }
-   first_available_modules_path = NULL;
-}
-
-void supervisor_termination(int stop_all_modules, int generate_backup)
-{
-   int x = 0, attemps = 0;
-
-   // If daemon mode was initialized and supervisor caught a signal to terminate, set termination flag for client's threads
-   if (daemon_mode_initialized  == TRUE && server_internals != NULL) {
-      pthread_mutex_lock(&server_internals->lock);
-      server_internals->daemon_terminated = TRUE;
-      pthread_mutex_unlock(&server_internals->lock);
-      if (netconf_flag == TRUE) {
-         sleep(1); // Wait for server thread
-      }
-   }
-
-   // If supervisor was initialized, than proceed termination, else just check allocated memory from program argument parsing
-   if (supervisor_initialized == TRUE) {
-      // If service thread was created successfully, check running modules, terminate service thread and (if needed) generate backup file
-      if (service_thread_initialized == TRUE) {
-         if (stop_all_modules == TRUE) {
-            interactive_stop_configuration();
-            service_stop_all_modules = TRUE;
-         } else {
-            service_stop_all_modules = FALSE;
-         }
-
-         VERBOSE(N_STDOUT,"%s [SERVICE] Aborting service thread!\n", get_stats_formated_time());
-         service_thread_continue = FALSE;
-
-         x = pthread_join(service_thread_id, NULL);
-
-         if (x == 0) {
-            VERBOSE(N_STDOUT, "%s [SERVICE] pthread_join success: Service thread finished!\n", get_stats_formated_time())
-         } else if (x == -1) {
-            if (errno == EINVAL) {
-               VERBOSE(N_STDOUT, "%s [ERROR] pthread_join: Not joinable thread!\n", get_stats_formated_time());
-            } else if (errno == ESRCH) {
-               VERBOSE(N_STDOUT, "%s [ERROR] pthread_join: No thread with this ID found!\n", get_stats_formated_time());
-            } else if ( errno == EDEADLK) {
-               VERBOSE(N_STDOUT, "%s [ERROR] pthread_join: Deadlock in service thread detected!\n", get_stats_formated_time());
-            }
-         }
-
-         if (generate_backup == TRUE) {
-            generate_backup_config_file();
-         } else {
-            for (x = 0;  x < loaded_modules_cnt; x++) {
-               if (running_modules[x].module_status == TRUE) {
-                  VERBOSE(N_STDOUT, "%s [WARNING] Some modules are still running, gonna generate backup anyway!\n", get_stats_formated_time());
-                  generate_backup_config_file();
-                  break;
-               }
-            }
-         }
-      }
-
-      for (x = 0; x < running_modules_array_size; x++) {
-         free_module_on_index(x);
-      }
-
-      NULLP_TEST_AND_FREE(running_modules)
-
-      modules_profile_t * ptr = first_profile_ptr;
-      modules_profile_t * p = NULL;
-      while (ptr != NULL) {
-         p = ptr;
-         ptr = ptr->next;
-         NULLP_TEST_AND_FREE(p->profile_name)
-         NULLP_TEST_AND_FREE(p)
-      }
-   }
-
-   // If daemon_mode_initialization call was successful, cleanup after daemon
-   if (daemon_mode_initialized == TRUE) {
-      if (server_internals != NULL) {
-         if (server_internals->clients != NULL) {
-            // Wait for daemon clients threads
-            VERBOSE(SUP_LOG, "%s [INFO] Waiting for client's threads to terminate.\n", get_stats_formated_time());
-            for (x = 0; x < MAX_NUMBER_SUP_CLIENTS; x++) {
-               // After 2 unsuccessful attempts terminate
-               if (attemps >= 2) {
-                  VERBOSE(SUP_LOG, "%s [INFO] Enough waiting, gonna terminate anyway.\n", get_stats_formated_time());
-                  break;
-               }
-               // If any client is still connected, wait 300 ms and check all clients again
-               if (server_internals->clients[x]->client_connected == TRUE) {
-                  attemps++;
-                  x = -1;
-                  usleep(300000);
-                  VERBOSE(SUP_LOG, "...\n");
-               }
-            }
-            if (attemps < 2) {
-               VERBOSE(SUP_LOG, "%s [INFO] All client's threads terminated.\n", get_stats_formated_time());
-            }
-            for (x = 0; x < MAX_NUMBER_SUP_CLIENTS; x++) {
-               NULLP_TEST_AND_FREE(server_internals->clients[x])
-            }
-            free(server_internals->clients);
-            server_internals->clients = NULL;
-         }
-
-         if (server_internals->server_sd > 0) {
-            close(server_internals->server_sd);
-            server_internals->server_sd = 0;
-         }
-         free(server_internals);
-         server_internals = NULL;
-         unlink(socket_path);
-      }
-   }
-
-   // Free available modules linked list
-   free_available_modules_structs();
-
-   if (supervisor_initialized == TRUE) {
-      free_output_file_strings_and_streams();
-   }
-
-   NULLP_TEST_AND_FREE(config_file)
-   NULLP_TEST_AND_FREE(logs_path)
-}
-
 char *get_param_by_delimiter(const char *source, char **dest, const char delimiter)
 {
    char *param_end = NULL;
@@ -1909,6 +913,325 @@ char *get_param_by_delimiter(const char *source, char **dest, const char delimit
    strncpy(*dest, source, param_size);
    return param_end + 1;
 }
+
+
+
+void print_statistics(struct tm * timeinfo)
+{
+   unsigned int x = 0, y = 0;
+   VERBOSE(STATISTICS,"------> %s", asctime(timeinfo));
+   for (x = 0; x < loaded_modules_cnt; x++) {
+      if (running_modules[x].module_status) {
+         VERBOSE(STATISTICS,"NAME:  %s; PID: %d; | ",  running_modules[x].module_name, running_modules[x].module_pid);
+         if (running_modules[x].module_has_service_ifc && running_modules[x].module_service_ifc_isconnected) {
+
+            VERBOSE(STATISTICS,"CNT_RM:  ");
+            for (y = 0; y < running_modules[y].module_ifces_cnt; y++) {
+               if (running_modules[y].module_ifces[y].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
+                  VERBOSE(STATISTICS,"%"PRIu64"  ", ((in_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->recv_msg_cnt);
+               }
+            }
+
+            VERBOSE(STATISTICS,"CNT_RB:  ");
+            for (y = 0; y < running_modules[y].module_ifces_cnt; y++) {
+               if (running_modules[y].module_ifces[y].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
+                  VERBOSE(STATISTICS,"%"PRIu64"  ", ((in_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->recv_buffer_cnt);
+               }
+            }
+
+            VERBOSE(STATISTICS,"CNT_SM:  ");
+            for (y = 0; y < running_modules[y].module_ifces_cnt; y++) {
+               if (running_modules[y].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
+                  VERBOSE(STATISTICS,"%"PRIu64"  ", ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_msg_cnt);
+               }
+            }
+
+            VERBOSE(STATISTICS,"CNT_DM:  ");
+            for (y = 0; y < running_modules[y].module_ifces_cnt; y++) {
+               if (running_modules[y].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
+                  VERBOSE(STATISTICS,"%"PRIu64"  ", ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->dropped_msg_cnt);
+               }
+            }
+
+            VERBOSE(STATISTICS,"CNT_SB:  ");
+            for (y = 0; y < running_modules[y].module_ifces_cnt; y++) {
+               if (running_modules[y].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
+                  VERBOSE(STATISTICS,"%"PRIu64"  ", ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_buffer_cnt);
+               }
+            }
+
+            VERBOSE(STATISTICS,"CNT_AF:  ");
+            for (y = 0; y < running_modules[y].module_ifces_cnt; y++) {
+               if (running_modules[y].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
+                  VERBOSE(STATISTICS,"%"PRIu64"  ", ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->autoflush_cnt);
+               }
+            }
+         }
+         VERBOSE(STATISTICS,"\n");
+      }
+   }
+}
+
+void print_statistics_legend()
+{
+   VERBOSE(STATISTICS,"Legend CPU stats:\n"
+                        "\tO_S - overall kernel mode percentage (overall system)\n"
+                        "\tO_U - overall user mode percentage (overall user)\n"
+                        "\tP_S - periodic kernel mode percentage (periodic system)\n"
+                        "\tP_U - periodic user mode percentage (periodic user)\n"
+                        "Legend messages stats:\n"
+                        "\tCNT_RM - counter of received messages of one trap interface (INPUT IFC)\n"
+                        "\tCNT_SM - counter of sent messages of one trap interface (OUTPUT IFC)\n"
+                        "\tCNT_SB - send buffer counter of one trap interface (OUTPUT IFC)\n"
+                        "\tCNT_AF - autoflush counter of one trap interface (OUTPUT IFC)\n");
+}
+
+char * make_formated_statistics()
+{
+   unsigned int size_of_buffer = 5*DEFAULT_SIZE_OF_BUFFER;
+   char * buffer = (char *) calloc (size_of_buffer, sizeof(char));
+   unsigned int x, y, counter = 0;
+   int ptr = 0;
+
+   for (x=0; x<loaded_modules_cnt; x++) {
+      if (running_modules[x].module_status == TRUE && running_modules[x].module_has_service_ifc == TRUE && running_modules[x].module_service_ifc_isconnected == TRUE) {
+         counter = 0;
+         for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
+            if (running_modules[x].module_ifces[y].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
+               ptr += sprintf(buffer + ptr, "%s,in,%d,%"PRIu64",%"PRIu64"\n", running_modules[x].module_name, counter, ((in_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->recv_msg_cnt,
+                                                                                                                                                                                                      ((in_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->recv_buffer_cnt);
+               counter++;
+               if (strlen(buffer) >= (3*size_of_buffer)/5) {
+                  size_of_buffer += size_of_buffer/2;
+                  buffer = (char *) realloc (buffer, size_of_buffer * sizeof(char));
+                  memset(buffer + ptr, 0, size_of_buffer - ptr);
+               }
+            }
+         }
+         counter = 0;
+         for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
+            if (running_modules[x].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
+               ptr += sprintf(buffer + ptr, "%s,out,%d,%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64"\n", running_modules[x].module_name, counter, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_msg_cnt,
+                                                                                                                                                                                                                           ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->dropped_msg_cnt,
+                                                                                                                                                                                                                           ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_buffer_cnt,
+                                                                                                                                                                                                                           ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->autoflush_cnt);
+               counter++;
+               if (strlen(buffer) >= (3*size_of_buffer)/5) {
+                  size_of_buffer += size_of_buffer/2;
+                  buffer = (char *) realloc (buffer, size_of_buffer * sizeof(char));
+                  memset(buffer + ptr, 0, size_of_buffer - ptr);
+               }
+            }
+         }
+      }
+   }
+
+   for (x=0; x<loaded_modules_cnt; x++) {
+      if (running_modules[x].module_status == TRUE) {
+         ptr += sprintf(buffer + ptr, "%s,cpu,%d,%d\n", running_modules[x].module_name, running_modules[x].last_period_percent_cpu_usage_kernel_mode, running_modules[x].last_period_percent_cpu_usage_user_mode);
+         if (strlen(buffer) >= (3*size_of_buffer)/5) {
+            size_of_buffer += size_of_buffer/2;
+            buffer = (char *) realloc (buffer, size_of_buffer * sizeof(char));
+            memset(buffer + ptr, 0, size_of_buffer - ptr);
+         }
+      }
+   }
+
+   for (x=0; x<loaded_modules_cnt; x++) {
+      if (running_modules[x].module_status == TRUE) {
+         ptr += sprintf(buffer + ptr, "%s,mem,%d\n", running_modules[x].module_name, running_modules[x].virtual_memory_usage);
+         if (strlen(buffer) >= (3*size_of_buffer)/5) {
+            size_of_buffer += size_of_buffer/2;
+            buffer = (char *) realloc (buffer, size_of_buffer * sizeof(char));
+            memset(buffer + ptr, 0, size_of_buffer - ptr);
+         }
+      }
+   }
+
+   return buffer;
+}
+
+int find_loaded_module(char * name)
+{
+   unsigned int x;
+   for (x=0; x<loaded_modules_cnt; x++) {
+      if (strcmp(running_modules[x].module_name, name) == 0) {
+         return x;
+      }
+   }
+   return -1;
+}
+
+void generate_backup_config_file()
+{
+   FILE *backup_file_fd = NULL;
+   char *backup_file_name = NULL;
+   modules_profile_t * ptr = first_profile_ptr;
+   unsigned int x, y, backuped_modules = 0;
+   char buffer[20];
+   const char * templ = "<?xml version=\"1.0\"?><nemea-supervisor xmlns=\"urn:cesnet:tmc:nemea:1.0\"></nemea-supervisor>";
+   xmlDocPtr document_ptr = NULL;
+   xmlNodePtr root_elem = NULL, modules = NULL, module = NULL, trapinterfaces = NULL, interface = NULL;
+
+   document_ptr = xmlParseMemory(templ, strlen(templ));
+   if (document_ptr == NULL) {
+      return;
+   }
+   root_elem = xmlDocGetRootElement(document_ptr);
+   xmlNewProp (root_elem, BAD_CAST "lock", NULL);
+   if (daemon_flag) {
+      xmlNewProp (root_elem, BAD_CAST "daemon", BAD_CAST "true");
+      xmlNewProp (root_elem, BAD_CAST "socket_path", BAD_CAST socket_path);
+   } else {
+      xmlNewProp (root_elem, BAD_CAST "daemon", BAD_CAST "false");
+      xmlNewProp (root_elem, BAD_CAST "socket_path", BAD_CAST NULL);
+   }
+
+   modules = xmlNewChild(root_elem, NULL, BAD_CAST "supervisor", BAD_CAST NULL);
+   if (verbose_flag) {
+      xmlNewChild(modules, NULL, BAD_CAST "verbose", BAD_CAST "true");
+   } else {
+      xmlNewChild(modules, NULL, BAD_CAST "verbose", BAD_CAST "false");
+   }
+   memset(buffer,0,20);
+   sprintf(buffer, "%d", max_restarts_per_minute_config);
+   xmlNewChild(modules, NULL, BAD_CAST "module-restarts", BAD_CAST buffer);
+   xmlNewChild(modules, NULL, BAD_CAST "logs-directory", BAD_CAST logs_path);
+
+   if (xmlAddChild(root_elem, modules) == NULL) {
+      xmlFree(modules);
+   }
+
+   // backup modules with profile name
+   while (ptr != NULL) {
+      if (ptr->profile_name != NULL) {
+         modules = xmlNewChild(root_elem, NULL, BAD_CAST "modules", NULL);
+         xmlNewChild(modules, NULL, BAD_CAST "name", BAD_CAST ptr->profile_name);
+         if (ptr->profile_enabled) {
+            xmlNewChild(modules, NULL, BAD_CAST "enabled", BAD_CAST "true");
+         } else {
+            xmlNewChild(modules, NULL, BAD_CAST "enabled", BAD_CAST "false");
+         }
+         for (x=0; x<loaded_modules_cnt; x++) {
+            if (running_modules[x].modules_profile != NULL) {
+               if (strcmp(running_modules[x].modules_profile, ptr->profile_name) == 0) {
+                  module = xmlNewChild(modules, NULL, BAD_CAST "module", NULL);
+
+                  memset(buffer,0,20);
+                  sprintf(buffer, "%d", running_modules[x].module_pid);
+                  xmlNewProp (module, BAD_CAST "module_pid", BAD_CAST buffer);
+
+                  xmlNewChild(module, NULL, BAD_CAST "name", BAD_CAST running_modules[x].module_name);
+                  xmlNewChild(module, NULL, BAD_CAST "path", BAD_CAST running_modules[x].module_path);
+                  xmlNewChild(module, NULL, BAD_CAST "params", BAD_CAST running_modules[x].module_params);
+                  if (running_modules[x].module_enabled) {
+                     xmlNewChild(module, NULL, BAD_CAST "enabled", BAD_CAST "true");
+                  } else {
+                     xmlNewChild(module, NULL, BAD_CAST "enabled", BAD_CAST "false");
+                  }
+                  trapinterfaces = xmlNewChild(module, NULL, BAD_CAST "trapinterfaces", NULL);
+
+                  for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
+                     interface = xmlNewChild(trapinterfaces, NULL, BAD_CAST "interface", NULL);
+                     xmlNewChild(interface, NULL, BAD_CAST "note", BAD_CAST running_modules[x].module_ifces[y].ifc_note);
+                     xmlNewChild(interface, NULL, BAD_CAST "params", BAD_CAST running_modules[x].module_ifces[y].ifc_params);
+                     xmlNewChild(interface, NULL, BAD_CAST "direction", BAD_CAST running_modules[x].module_ifces[y].ifc_direction);
+                     xmlNewChild(interface, NULL, BAD_CAST "type", BAD_CAST running_modules[x].module_ifces[y].ifc_type);
+
+                     if (xmlAddChild(trapinterfaces, interface) == NULL) {
+                        xmlFree(interface);
+                     }
+                  }
+
+
+                  if (xmlAddChild(modules, module) == NULL) {
+                     xmlFree(module);
+                  }
+                  backuped_modules++;
+               }
+            }
+         }
+
+         if (xmlAddChild(root_elem, modules) == NULL) {
+            xmlFree(modules);
+         }
+      }
+      ptr = ptr->next;
+   }
+
+   //backup modules without profile name
+   if (backuped_modules < loaded_modules_cnt) {
+      modules = xmlNewChild(root_elem, NULL, BAD_CAST "modules", NULL);
+      for (x=0; x<loaded_modules_cnt; x++) {
+         if (running_modules[x].modules_profile == NULL) {
+            module = xmlNewChild(modules, NULL, BAD_CAST "module", NULL);
+
+            memset(buffer,0,20);
+            sprintf(buffer, "%d", running_modules[x].module_pid);
+            xmlNewProp (module, BAD_CAST "module_pid", BAD_CAST buffer);
+
+            xmlNewChild(module, NULL, BAD_CAST "name", BAD_CAST running_modules[x].module_name);
+            xmlNewChild(module, NULL, BAD_CAST "path", BAD_CAST running_modules[x].module_path);
+            xmlNewChild(module, NULL, BAD_CAST "params", BAD_CAST running_modules[x].module_params);
+            if (running_modules[x].module_enabled) {
+               xmlNewChild(module, NULL, BAD_CAST "enabled", BAD_CAST "true");
+            } else {
+               xmlNewChild(module, NULL, BAD_CAST "enabled", BAD_CAST "false");
+            }
+            trapinterfaces = xmlNewChild(module, NULL, BAD_CAST "trapinterfaces", NULL);
+
+            for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
+               interface = xmlNewChild(trapinterfaces, NULL, BAD_CAST "interface", NULL);
+               xmlNewChild(interface, NULL, BAD_CAST "note", BAD_CAST running_modules[x].module_ifces[y].ifc_note);
+               xmlNewChild(interface, NULL, BAD_CAST "params", BAD_CAST running_modules[x].module_ifces[y].ifc_params);
+               xmlNewChild(interface, NULL, BAD_CAST "direction", BAD_CAST running_modules[x].module_ifces[y].ifc_direction);
+               xmlNewChild(interface, NULL, BAD_CAST "type", BAD_CAST running_modules[x].module_ifces[y].ifc_type);
+
+               if (xmlAddChild(trapinterfaces, interface) == NULL) {
+                  xmlFree(interface);
+               }
+            }
+
+            if (xmlAddChild(modules, module) == NULL) {
+               xmlFree(module);
+            }
+         }
+      }
+
+      if (xmlAddChild(root_elem, modules) == NULL) {
+         xmlFree(modules);
+      }
+   }
+
+   backup_file_name = create_backup_file_path();
+   if (backup_file_name == NULL) {
+      VERBOSE(N_STDOUT, "%s [ERROR] Could not create backup file name!\n", get_stats_formated_time());
+   } else {
+      backup_file_fd = fopen(backup_file_name,"w");
+      if (backup_file_fd != NULL) {
+         if (xmlDocFormatDump(backup_file_fd, document_ptr, 1) == -1) {
+            VERBOSE(N_STDOUT, "%s [ERROR] Could not save backup file!\n", get_stats_formated_time());
+         } else {
+            VERBOSE(N_STDOUT, "%s [WARNING] Phew, backup file saved !!\n", get_stats_formated_time());
+         }
+         fclose(backup_file_fd);
+      } else {
+         VERBOSE(N_STDOUT, "%s [ERROR] Could not open backup file!\n", get_stats_formated_time());
+      }
+      // Create file with information about generated backup file
+      create_shutdown_info(&backup_file_name);
+      NULLP_TEST_AND_FREE(backup_file_name)
+   }
+
+   xmlFreeDoc(document_ptr);
+   xmlCleanupParser();
+}
+
+
+
+/*****************************************************************
+ * Functions for getting statistics *
+ *****************************************************************/
 
 long int get_total_cpu_usage()
 {
@@ -2010,498 +1333,11 @@ void update_module_mem_usage()
    }
 }
 
-int service_recv_data(int module_number, uint32_t size, void **data)
-{
-   int num_of_timeouts = 0;
-   int total_receved = 0;
-   int last_receved = 0;
-
-   while (total_receved < size) {
-      last_receved = recv(running_modules[module_number].module_service_sd, (*data) + total_receved, size - total_receved, MSG_DONTWAIT);
-      if (last_receved == 0) {
-         VERBOSE(STATISTICS,"! Modules service thread closed its socket, im done !\n");
-         return -1;
-      } else if (last_receved == -1) {
-         if (errno == EAGAIN  || errno == EWOULDBLOCK) {
-            num_of_timeouts++;
-            if (num_of_timeouts >= 3) {
-               return -1;
-            } else {
-               usleep(25000);
-               continue;
-            }
-         }
-         VERBOSE(MODULE_EVENT,"%s [SERVICE] Error while receiving from module %d_%s !\n", get_stats_formated_time(), module_number, running_modules[module_number].module_name);
-         return -1;
-      }
-      total_receved += last_receved;
-   }
-   return 0;
-}
-
-int service_send_data(int module_number, uint32_t size, void **data)
-{
-   int num_of_timeouts = 0, total_sent = 0, last_sent = 0;
-
-   while (total_sent < size) {
-      last_sent = send(running_modules[module_number].module_service_sd, (*data) + total_sent, size - total_sent, MSG_DONTWAIT);
-      if (last_sent == -1) {
-         if (errno == EAGAIN  || errno == EWOULDBLOCK) {
-            num_of_timeouts++;
-            if (num_of_timeouts >= 3) {
-               return -1;
-            } else {
-               usleep(25000);
-               continue;
-            }
-         }
-         VERBOSE(MODULE_EVENT,"%s [SERVICE] Error while sending to module %d_%s !\n", get_stats_formated_time(), module_number, running_modules[module_number].module_name);
-         return -1;
-      }
-      total_sent += last_sent;
-   }
-   return 0;
-}
-
-void connect_to_module_service_ifc(int module, int num_ifc)
-{
-   char * dest_port = NULL;
-   int sockfd = -1;
-   union tcpip_socket_addr addr;
-
-   // Increase counter of connection attempts to the service interface
-   running_modules[module].module_service_ifc_conn_attempts++;
-
-   if (running_modules[module].module_service_ifc_conn_attempts > SERVICE_IFC_CONN_ATTEMPTS_LIMIT) {
-      VERBOSE(MODULE_EVENT,"%s [WARNING] Connection attempts to service interface of module %s exceeded %d, enough trying!\n", get_stats_formated_time(), running_modules[module].module_name, SERVICE_IFC_CONN_ATTEMPTS_LIMIT);
-      running_modules[module].module_service_ifc_conn_block = TRUE;
-      return;
-   }
-
-   if (running_modules[module].module_ifces[num_ifc].ifc_params == NULL) {
-      running_modules[module].module_service_ifc_isconnected = FALSE;
-      return;
-   }
-   get_param_by_delimiter(running_modules[module].module_ifces[num_ifc].ifc_params, &dest_port, ',');
-   VERBOSE(MODULE_EVENT,"%s [SERVICE] Connecting to module %s on port %s...\n", get_stats_formated_time(), running_modules[module].module_name, dest_port);
-
-   memset(&addr, 0, sizeof(addr));
-
-   addr.unix_addr.sun_family = AF_UNIX;
-   snprintf(addr.unix_addr.sun_path, sizeof(addr.unix_addr.sun_path) - 1, MODULES_UNIXSOCKET_PATH_FILENAME_FORMAT, dest_port);
-   sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
-   if (sockfd == -1) {
-      VERBOSE(MODULE_EVENT,"%s [SERVICE] Error while opening socket for connection with module %s.\n", get_stats_formated_time(), running_modules[module].module_name);
-      running_modules[module].module_service_ifc_isconnected = FALSE;
-      NULLP_TEST_AND_FREE(dest_port)
-      return;
-   }
-   if (connect(sockfd, (struct sockaddr *) &addr.unix_addr, sizeof(addr.unix_addr)) == -1) {
-      VERBOSE(MODULE_EVENT,"%s [SERVICE] Error while connecting to module %s on port %s\n", get_stats_formated_time(), running_modules[module].module_name, dest_port);
-      running_modules[module].module_service_ifc_isconnected = FALSE;
-      NULLP_TEST_AND_FREE(dest_port)
-      close(sockfd);
-      return;
-   }
-   running_modules[module].module_service_sd = sockfd;
-   running_modules[module].module_service_ifc_isconnected = TRUE;
-   VERBOSE(MODULE_EVENT,"%s [SERVICE] Connected to module %s.\n", get_stats_formated_time(), running_modules[module].module_name);
-   NULLP_TEST_AND_FREE(dest_port)
-}
-
-void print_statistics(struct tm * timeinfo)
-{
-   unsigned int x = 0, y = 0;
-   VERBOSE(STATISTICS,"------> %s", asctime(timeinfo));
-   for (x = 0; x < loaded_modules_cnt; x++) {
-      if (running_modules[x].module_status) {
-         VERBOSE(STATISTICS,"NAME:  %s; PID: %d; | ",  running_modules[x].module_name, running_modules[x].module_pid);
-         if (running_modules[x].module_has_service_ifc && running_modules[x].module_service_ifc_isconnected) {
-
-            VERBOSE(STATISTICS,"CNT_RM:  ");
-            for (y = 0; y < running_modules[y].module_ifces_cnt; y++) {
-               if (running_modules[y].module_ifces[y].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
-                  VERBOSE(STATISTICS,"%"PRIu64"  ", ((in_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->recv_msg_cnt);
-               }
-            }
-
-            VERBOSE(STATISTICS,"CNT_RB:  ");
-            for (y = 0; y < running_modules[y].module_ifces_cnt; y++) {
-               if (running_modules[y].module_ifces[y].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
-                  VERBOSE(STATISTICS,"%"PRIu64"  ", ((in_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->recv_buffer_cnt);
-               }
-            }
-
-            VERBOSE(STATISTICS,"CNT_SM:  ");
-            for (y = 0; y < running_modules[y].module_ifces_cnt; y++) {
-               if (running_modules[y].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
-                  VERBOSE(STATISTICS,"%"PRIu64"  ", ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_msg_cnt);
-               }
-            }
-
-            VERBOSE(STATISTICS,"CNT_DM:  ");
-            for (y = 0; y < running_modules[y].module_ifces_cnt; y++) {
-               if (running_modules[y].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
-                  VERBOSE(STATISTICS,"%"PRIu64"  ", ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->dropped_msg_cnt);
-               }
-            }
-
-            VERBOSE(STATISTICS,"CNT_SB:  ");
-            for (y = 0; y < running_modules[y].module_ifces_cnt; y++) {
-               if (running_modules[y].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
-                  VERBOSE(STATISTICS,"%"PRIu64"  ", ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_buffer_cnt);
-               }
-            }
-
-            VERBOSE(STATISTICS,"CNT_AF:  ");
-            for (y = 0; y < running_modules[y].module_ifces_cnt; y++) {
-               if (running_modules[y].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
-                  VERBOSE(STATISTICS,"%"PRIu64"  ", ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->autoflush_cnt);
-               }
-            }
-         }
-         VERBOSE(STATISTICS,"\n");
-      }
-   }
-}
-
-void disconnect_service_ifc(const int module_idx)
-{
-   if ((running_modules[module_idx].module_has_service_ifc == TRUE) && (running_modules[module_idx].module_service_ifc_isconnected == TRUE)) {
-      VERBOSE(MODULE_EVENT,"%s [SERVICE] Disconnecting from module %s\n", get_stats_formated_time(), running_modules[module_idx].module_name);
-      if (running_modules[module_idx].module_service_sd != -1) {
-         close(running_modules[module_idx].module_service_sd);
-         running_modules[module_idx].module_service_sd = -1;
-      }
-      running_modules[module_idx].module_service_ifc_isconnected = FALSE;
-   }
-
-   running_modules[module_idx].module_service_ifc_conn_fails++;
-
-   if (running_modules[module_idx].module_service_ifc_conn_fails == 1) {
-      running_modules[module_idx].module_service_ifc_timer = 0;
-   }
-}
-
-void print_statistics_legend()
-{
-   VERBOSE(STATISTICS,"Legend CPU stats:\n"
-                        "\tO_S - overall kernel mode percentage (overall system)\n"
-                        "\tO_U - overall user mode percentage (overall user)\n"
-                        "\tP_S - periodic kernel mode percentage (periodic system)\n"
-                        "\tP_U - periodic user mode percentage (periodic user)\n"
-                        "Legend messages stats:\n"
-                        "\tCNT_RM - counter of received messages of one trap interface (INPUT IFC)\n"
-                        "\tCNT_SM - counter of sent messages of one trap interface (OUTPUT IFC)\n"
-                        "\tCNT_SB - send buffer counter of one trap interface (OUTPUT IFC)\n"
-                        "\tCNT_AF - autoflush counter of one trap interface (OUTPUT IFC)\n");
-}
-
-#define SERVICE_GET_COM 10
-#define SERVICE_SET_COM 11
-#define SERVICE_OK_REPLY 12
-
-typedef struct service_msg_header_s {
-   uint8_t com;
-   uint32_t data_size;
-} service_msg_header_t;
 
 
-void *service_thread_routine(void *arg __attribute__ ((unused)))
-{
-   service_msg_header_t *header = (service_msg_header_t *) calloc(1, sizeof(service_msg_header_t));
-   uint32_t buffer_size = 256;
-   char * buffer = (char *) calloc(buffer_size, sizeof(char));
-   int running_modules_cnt = 0;
-   unsigned int x,y;
-
-   time_t rawtime;
-   struct tm * timeinfo;
-
-   while (TRUE) {
-      pthread_mutex_lock(&running_modules_lock);
-      time(&rawtime);
-      timeinfo = localtime(&rawtime);
-
-      running_modules_cnt = service_update_module_status();
-      if (service_thread_continue == FALSE) {
-         if (service_stop_all_modules == FALSE) {
-            VERBOSE(N_STDOUT, "%s [WARNING] I let modules continue running!\n", get_stats_formated_time());
-            break;
-         } else if (running_modules_cnt == 0) {
-            VERBOSE(N_STDOUT, "%s [WARNING] I stopped all modules!\n", get_stats_formated_time());
-            break;
-         }
-      }
-      service_restart_modules();
-      service_stop_modules_sigint();
-
-      pthread_mutex_unlock(&running_modules_lock);
-      sleep(1);
-      pthread_mutex_lock(&running_modules_lock);
-
-      service_clean_after_children();
-      running_modules_cnt = service_update_module_status();
-      service_stop_modules_sigkill();
-      service_clean_after_children();
-
-      for (y=0; y<loaded_modules_cnt; y++) {
-         if (running_modules[y].module_served_by_service_thread == FALSE) {
-            if (running_modules[y].remove_module == TRUE) {
-               if (running_modules[y].module_status == FALSE) {
-                  free_module_and_shift_array(y);
-               }
-            } else if (running_modules[y].init_module == TRUE) {
-               if (running_modules[y].module_status == FALSE) {
-                  running_modules[y].module_enabled = TRUE;
-                  running_modules[y].module_restart_cnt = -1;
-                  running_modules[y].init_module = FALSE;
-                  running_modules[y].module_served_by_service_thread = TRUE;
-               } else {
-                  disconnect_service_ifc(y);
-               }
-            } else {
-               running_modules[y].module_served_by_service_thread = TRUE;
-            }
-         }
-      }
-
-      // Update status of every module before sending a request for their stats
-      running_modules_cnt = service_update_module_status();
-
-      // Set request header
-      header->com = SERVICE_GET_COM;
-      header->data_size = 0;
-
-      // Handle connection between supervisor and modules via service interface
-      service_connect_to_modules();
-
-      for (x=0;x<loaded_modules_cnt;x++) {
-         // If the module and supervisor are connected via service interface, request for stats is sent
-         if (running_modules[x].module_service_ifc_isconnected == TRUE) {
-            if (service_send_data(x, sizeof(service_msg_header_t), (void **) &header) == -1) {
-               VERBOSE(MODULE_EVENT,"%s [SERVICE] Error while sending request to module %d_%s.\n", get_stats_formated_time(), x, running_modules[x].module_name);
-               disconnect_service_ifc(x);
-            }
-         }
-      }
-
-      // Update status of every module before receiving their stats
-      running_modules_cnt = service_update_module_status();
-
-      for (x=0;x<loaded_modules_cnt;x++) {
-         // Check whether the module is running and is connected with supervisor via service interface
-         if (running_modules[x].module_has_service_ifc == TRUE && running_modules[x].module_status == TRUE && running_modules[x].module_service_ifc_isconnected == TRUE) {
-            // Receive reply header
-            if (service_recv_data(x, sizeof(service_msg_header_t), (void **) &header) == -1) {
-               VERBOSE(MODULE_EVENT, "%s [SERVICE] Error while receiving reply header from module %d_%s.\n", get_stats_formated_time(), x, running_modules[x].module_name);
-               disconnect_service_ifc(x);
-               continue;
-            }
-
-            // Check if the reply is OK
-            if (header->com != SERVICE_OK_REPLY) {
-               VERBOSE(MODULE_EVENT, "%s [SERVICE] Wrong reply from module %d_%s.\n", get_stats_formated_time(), x, running_modules[x].module_name);
-               disconnect_service_ifc(x);
-               continue;
-            }
-
-            memset(buffer, 0, buffer_size);
-            if (header->data_size > buffer_size) {
-               // Reallocate buffer for incoming data
-               buffer_size += buffer_size / 2;
-               buffer = (char *) realloc(buffer, buffer_size * sizeof(char));
-               memset(buffer + (2 * (buffer_size / 3)), 0, (buffer_size / 3) * sizeof(char));
-            }
-
-            // Receive module stats in json format
-            if (service_recv_data(x, header->data_size, (void **) &buffer) == -1) {
-               VERBOSE(MODULE_EVENT, "%s [SERVICE] Error while receiving stats from module %d_%s.\n", get_stats_formated_time(), x, running_modules[x].module_name);
-               disconnect_service_ifc(x);
-               continue;
-            }
-
-            // Decode json and save stats into module structure
-            if (decode_cnts_from_json(&buffer, x) == -1) {
-               VERBOSE(MODULE_EVENT, "%s [SERVICE] Error while receiving stats from module %d_%s.\n", get_stats_formated_time(), x, running_modules[x].module_name);
-               disconnect_service_ifc(x);
-               continue;
-            }
-         }
-      }
-
-      pthread_mutex_unlock(&running_modules_lock);
-
-      if ((verbose_flag == TRUE) && (running_modules_cnt > 0)) {
-         print_statistics(timeinfo);
-      }
-
-      if (service_thread_continue == TRUE) {
-         sleep(1);
-      }
-   }
-
-   // Disconnect from running modules
-   for (x=0;x<loaded_modules_cnt;x++) {
-      disconnect_service_ifc(x);
-   }
-
-   NULLP_TEST_AND_FREE(buffer)
-   NULLP_TEST_AND_FREE(header)
-
-   pthread_exit(EXIT_SUCCESS);
-}
-
-char * make_formated_statistics()
-{
-   unsigned int size_of_buffer = 5*DEFAULT_SIZE_OF_BUFFER;
-   char * buffer = (char *) calloc (size_of_buffer, sizeof(char));
-   unsigned int x, y, counter = 0;
-   int ptr = 0;
-
-   for (x=0; x<loaded_modules_cnt; x++) {
-      if (running_modules[x].module_status == TRUE && running_modules[x].module_has_service_ifc == TRUE && running_modules[x].module_service_ifc_isconnected == TRUE) {
-         counter = 0;
-         for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
-            if (running_modules[x].module_ifces[y].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
-               ptr += sprintf(buffer + ptr, "%s,in,%d,%"PRIu64",%"PRIu64"\n", running_modules[x].module_name, counter, ((in_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->recv_msg_cnt,
-                                                                                                                                                                                                      ((in_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->recv_buffer_cnt);
-               counter++;
-               if (strlen(buffer) >= (3*size_of_buffer)/5) {
-                  size_of_buffer += size_of_buffer/2;
-                  buffer = (char *) realloc (buffer, size_of_buffer * sizeof(char));
-                  memset(buffer + ptr, 0, size_of_buffer - ptr);
-               }
-            }
-         }
-         counter = 0;
-         for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
-            if (running_modules[x].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
-               ptr += sprintf(buffer + ptr, "%s,out,%d,%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64"\n", running_modules[x].module_name, counter, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_msg_cnt,
-                                                                                                                                                                                                                           ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->dropped_msg_cnt,
-                                                                                                                                                                                                                           ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_buffer_cnt,
-                                                                                                                                                                                                                           ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->autoflush_cnt);
-               counter++;
-               if (strlen(buffer) >= (3*size_of_buffer)/5) {
-                  size_of_buffer += size_of_buffer/2;
-                  buffer = (char *) realloc (buffer, size_of_buffer * sizeof(char));
-                  memset(buffer + ptr, 0, size_of_buffer - ptr);
-               }
-            }
-         }
-      }
-   }
-
-   for (x=0; x<loaded_modules_cnt; x++) {
-      if (running_modules[x].module_status == TRUE) {
-         ptr += sprintf(buffer + ptr, "%s,cpu,%d,%d\n", running_modules[x].module_name, running_modules[x].last_period_percent_cpu_usage_kernel_mode, running_modules[x].last_period_percent_cpu_usage_user_mode);
-         if (strlen(buffer) >= (3*size_of_buffer)/5) {
-            size_of_buffer += size_of_buffer/2;
-            buffer = (char *) realloc (buffer, size_of_buffer * sizeof(char));
-            memset(buffer + ptr, 0, size_of_buffer - ptr);
-         }
-      }
-   }
-
-   for (x=0; x<loaded_modules_cnt; x++) {
-      if (running_modules[x].module_status == TRUE) {
-         ptr += sprintf(buffer + ptr, "%s,mem,%d\n", running_modules[x].module_name, running_modules[x].virtual_memory_usage);
-         if (strlen(buffer) >= (3*size_of_buffer)/5) {
-            size_of_buffer += size_of_buffer/2;
-            buffer = (char *) realloc (buffer, size_of_buffer * sizeof(char));
-            memset(buffer + ptr, 0, size_of_buffer - ptr);
-         }
-      }
-   }
-
-   return buffer;
-}
-
-int start_service_thread()
-{
-   service_stop_all_modules = FALSE;
-   service_thread_continue = TRUE;
-   pthread_attr_t attr;
-   pthread_attr_init(&attr);
-   pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-
-   return pthread_create(&service_thread_id,  &attr, service_thread_routine, NULL);
-}
-
-int parse_program_arguments(int *argc, char **argv)
-{
-   /******/
-   static struct option long_options[] = {
-      {"daemon", no_argument, 0, 'd'},
-      {"config-file",  required_argument,    0, 'f'},
-      {"help", no_argument,           0,  'h' },
-      {"verbose",  no_argument,       0,  'v' },
-      {"daemon-socket",  required_argument,  0, 's'},
-      {"logs-path",  required_argument,  0, 'L'},
-      {0, 0, 0, 0}
-   };
-   /******/
-
-   char c = 0;
-   int option_index = 0;
-
-   while (1) {
-      option_index = 0;
-      c = getopt_long(*argc, argv, "df:hvs:L:", long_options, &option_index);
-      if (c == -1) {
-         break;
-      }
-
-      switch (c) {
-      case ':':
-         fprintf(stderr, "Wrong arguments, use \"supervisor -h\" for help.\n");
-         return -1;
-      case '?':
-         fprintf(stderr, "Unknown option, use \"supervisor -h\" for help.\n");
-         return -1;
-      case 'h':
-         printf("Usage: supervisor [-d|--daemon] -f|--config-file=path [-h|--help] [-v|--verbose] [-L|--logs-path] [-s|--daemon-socket=path]\n");
-         return -1;
-      case 's':
-         socket_path = optarg;
-         break;
-      case 'v':
-         verbose_flag = TRUE;
-         break;
-      case 'f':
-         NULLP_TEST_AND_FREE(config_file)
-         config_file = strdup(optarg);
-         break;
-      case 'd':
-         daemon_flag = TRUE;
-         break;
-      case 'L':
-         NULLP_TEST_AND_FREE(logs_path)
-         logs_path = strdup(optarg);
-         break;
-      }
-   }
-
-   if (socket_path == NULL) {
-      /* socket_path was not set by user, use default value. */
-      socket_path = DEFAULT_DAEMON_SERVER_SOCKET;
-   }
-   if (config_file == NULL) {
-      fprintf(stderr, "Missing required config file (-f|--config-file).\n");
-      return -1;
-   }
-   if (strstr(config_file, ".xml") == NULL) {
-      NULLP_TEST_AND_FREE(config_file)
-      fprintf(stderr, "File does not have expected .xml extension.\n");
-      return -1;
-   }
-
-   if (daemon_flag == TRUE) {
-      return DAEMON_MODE_CODE;
-   } else {
-      return INTERACTIVE_MODE_CODE;
-   }
-}
+/*****************************************************************
+ * Daemon mode functions *
+ *****************************************************************/
 
 int create_daemon_process()
 {
@@ -3000,16 +1836,861 @@ void * serve_sup_client_routine (void * arg)
    pthread_exit(EXIT_SUCCESS);
 }
 
-int find_loaded_module(char * name)
+
+
+/*****************************************************************
+ * Service thread functions *
+ *****************************************************************/
+
+void re_start_module(const int module_number)
+{
+   uint x = 0;
+
+   if (running_modules[module_number].module_running == FALSE) {
+      VERBOSE(MODULE_EVENT,"%s [START] Starting module %s.\n", get_stats_formated_time(), running_modules[module_number].module_name);
+      #ifdef nemea_plugin
+         netconf_notify(MODULE_EVENT_STARTED,running_modules[module_number].module_name);
+      #endif
+      // In case that reloading configuration changes module (its interfaces), module_running is set to FALSE and interfaces data are freed
+      for (x = 0; x < running_modules[module_number].module_ifces_cnt; x++) {
+         NULLP_TEST_AND_FREE(running_modules[module_number].module_ifces[x].ifc_data)
+      }
+      running_modules[module_number].module_running = TRUE;
+   } else {
+      #ifdef nemea_plugin
+         netconf_notify(MODULE_EVENT_RESTARTED,running_modules[module_number].module_name);
+      #endif
+      VERBOSE(MODULE_EVENT,"%s [RESTART] Restarting module %s\n", get_stats_formated_time(), running_modules[module_number].module_name);
+   }
+
+   char log_path_stdout[200];
+   char log_path_stderr[200];
+   memset(log_path_stderr,0,200);
+   memset(log_path_stdout,0,200);
+
+   sprintf(log_path_stdout,"%s%s_stdout",logs_path, running_modules[module_number].module_name);
+   sprintf(log_path_stderr,"%s%s_stderr",logs_path, running_modules[module_number].module_name);
+
+   init_module_variables(module_number);
+
+   time_t rawtime;
+   struct tm * timeinfo;
+   time ( &rawtime );
+   timeinfo = localtime ( &rawtime );
+
+   fflush(stdout);
+   running_modules[module_number].module_pid = fork();
+   if (running_modules[module_number].module_pid == 0) {
+      int fd_stdout = open(log_path_stdout, O_RDWR | O_CREAT | O_APPEND, PERM_LOGFILE);
+      int fd_stderr = open(log_path_stderr, O_RDWR | O_CREAT | O_APPEND, PERM_LOGFILE);
+      if (fd_stdout != -1) {
+         dup2(fd_stdout,1); //stdout
+         close(fd_stdout);
+      }
+      if (fd_stderr != -1) {
+         dup2(fd_stderr,2); //stderr
+         close(fd_stderr);
+      }
+      setsid(); // important for sending SIGINT to supervisor.. modules can't receive the signal too !!!
+      fprintf(stdout,"---> %s", asctime (timeinfo));
+      fprintf(stderr,"---> %s", asctime (timeinfo));
+      if (running_modules[module_number].module_path == NULL) {
+         VERBOSE(N_STDOUT,"%s [ERROR] Starting module: module path is missing!\n", get_stats_formated_time());
+         running_modules[module_number].module_enabled = FALSE;
+      } else {
+         char **params = make_module_arguments(module_number);
+         if (params == NULL) {
+            goto execute_fail;
+         }
+         // TODO make_module_arguments - if it fails (comparing types and directions etc.) create exit label
+         // TODO check values of ifc type and direction during reload
+         fflush(stdout);
+         fflush(stderr);
+         execvp(running_modules[module_number].module_path, params);
+execute_fail:
+         exit(EXIT_FAILURE);
+      }
+      VERBOSE(MODULE_EVENT,"%s [ERROR] Module execution: could not execute %s binary! (possible reason - wrong module binary path)\n", get_stats_formated_time(), running_modules[module_number].module_name);
+      running_modules[module_number].module_enabled = FALSE;
+      exit(EXIT_FAILURE);
+   } else if (running_modules[module_number].module_pid == -1) {
+      running_modules[module_number].module_status = FALSE;
+      running_modules[module_number].module_restart_cnt++;
+      VERBOSE(N_STDOUT,"%s [ERROR] Fork: could not fork supervisor process!\n", get_stats_formated_time());
+   } else {
+      running_modules[module_number].module_is_my_child = TRUE;
+      running_modules[module_number].module_status = TRUE;
+      running_modules[module_number].module_restart_cnt++;
+      if (running_modules[module_number].module_restart_cnt == 1) {
+         running_modules[module_number].module_restart_timer = 0;
+      }
+   }
+}
+
+void disconnect_service_ifc(const int module_idx)
+{
+   if ((running_modules[module_idx].module_has_service_ifc == TRUE) && (running_modules[module_idx].module_service_ifc_isconnected == TRUE)) {
+      VERBOSE(MODULE_EVENT,"%s [SERVICE] Disconnecting from module %s\n", get_stats_formated_time(), running_modules[module_idx].module_name);
+      if (running_modules[module_idx].module_service_sd != -1) {
+         close(running_modules[module_idx].module_service_sd);
+         running_modules[module_idx].module_service_sd = -1;
+      }
+      running_modules[module_idx].module_service_ifc_isconnected = FALSE;
+   }
+
+   running_modules[module_idx].module_service_ifc_conn_fails++;
+
+   if (running_modules[module_idx].module_service_ifc_conn_fails == 1) {
+      running_modules[module_idx].module_service_ifc_timer = 0;
+   }
+}
+
+// Returns a number of running modules
+int service_update_module_status()
+{
+   unsigned int x, some_module_running = 0;
+
+   for (x=0; x<loaded_modules_cnt; x++) {
+      if (running_modules[x].module_pid > 0) {
+         if (kill(running_modules[x].module_pid, 0) == -1) {
+            if (errno == EINVAL) {
+               VERBOSE(MODULE_EVENT,"%s [STOP] kill -0: ernno EINVAL\n", get_stats_formated_time());
+            }
+            if (errno == EPERM) {
+               VERBOSE(MODULE_EVENT,"%s [STOP] kill -0: errno EPERM\n", get_stats_formated_time());
+            }
+            if (errno == ESRCH) {
+               VERBOSE(MODULE_EVENT,"%s [STOP] kill -0: module %s (PID: %d) is not running !\n", get_stats_formated_time(), running_modules[x].module_name, running_modules[x].module_pid);
+            }
+            if (running_modules[x].module_service_sd != -1) {
+                  close(running_modules[x].module_service_sd);
+                  running_modules[x].module_service_sd = -1;
+            }
+            running_modules[x].module_status = FALSE;
+            running_modules[x].module_service_ifc_isconnected = FALSE;
+            running_modules[x].module_pid = 0;
+         } else {
+            running_modules[x].module_status = TRUE;
+            some_module_running++;
+         }
+      }
+   }
+   return some_module_running;
+}
+
+void service_clean_after_children()
+{
+   pid_t result;
+   unsigned int x;
+   int status;
+
+   for (x=0; x<loaded_modules_cnt; x++) {
+      if (running_modules[x].module_pid > 0 && running_modules[x].module_is_my_child) {
+         result = waitpid(running_modules[x].module_pid , &status, WNOHANG);
+         if (result == 0) {
+           // Child still alive, nothing to do here!
+         } else if (result == -1) {
+           // Error
+            if (errno == ECHILD) {
+               VERBOSE(MODULE_EVENT, "%s [CLEAN] waitpid: module %s (PID: %d) is not my child!\n", get_stats_formated_time(), running_modules[x].module_name, running_modules[x].module_pid);
+               running_modules[x].module_is_my_child = FALSE;
+            }
+         } else {
+           // Child exited
+            VERBOSE(MODULE_EVENT, "%s [CLEAN] waitpid: module %s (PID: %d) is my child and is not alive anymore!\n", get_stats_formated_time(), running_modules[x].module_name, running_modules[x].module_pid);
+         }
+      }
+   }
+}
+
+void service_stop_modules_sigint()
 {
    unsigned int x;
    for (x=0; x<loaded_modules_cnt; x++) {
-      if (strcmp(running_modules[x].module_name, name) == 0) {
-         return x;
+      if (running_modules[x].module_status && running_modules[x].module_enabled == FALSE && running_modules[x].sent_sigint == FALSE) {
+         #ifdef nemea_plugin
+            netconf_notify(MODULE_EVENT_STOPPED,running_modules[x].module_name);
+         #endif
+         VERBOSE(MODULE_EVENT, "%s [STOP] Stopping module %s... sending SIGINT\n", get_stats_formated_time(), running_modules[x].module_name);
+         kill(running_modules[x].module_pid,2);
+         running_modules[x].sent_sigint = TRUE;
       }
    }
-   return -1;
 }
+
+void service_stop_modules_sigkill()
+{
+   char * dest_port = NULL;
+   char buffer[DEFAULT_SIZE_OF_BUFFER];
+   unsigned int x, y;
+   for (x=0; x<loaded_modules_cnt; x++) {
+      if (running_modules[x].module_status && running_modules[x].module_enabled == FALSE && running_modules[x].sent_sigint == TRUE) {
+         VERBOSE(MODULE_EVENT, "%s [STOP] Stopping module %s... sending SIGKILL\n", get_stats_formated_time(), running_modules[x].module_name);
+         kill(running_modules[x].module_pid,9);
+         for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
+            if (running_modules[x].module_ifces[y].int_ifc_type == SERVICE_MODULE_IFC_TYPE || ((running_modules[x].module_ifces[y].int_ifc_type == UNIXSOCKET_MODULE_IFC_TYPE)
+                                                                                          && (running_modules[x].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION))) {
+               if (running_modules[x].module_ifces[y].ifc_params == NULL) {
+                  continue;
+               }
+               memset(buffer, 0, DEFAULT_SIZE_OF_BUFFER);
+               get_param_by_delimiter(running_modules[x].module_ifces[y].ifc_params, &dest_port, ',');
+               sprintf(buffer,MODULES_UNIXSOCKET_PATH_FILENAME_FORMAT,dest_port);
+               VERBOSE(MODULE_EVENT, "%s [CLEAN] Deleting socket %s - module %s\n", get_stats_formated_time(), buffer, running_modules[x].module_name);
+               unlink(buffer);
+               NULLP_TEST_AND_FREE(dest_port)
+            }
+         }
+      }
+   }
+}
+
+
+
+void service_restart_modules()
+{
+   unsigned int x = 0;
+   int max_restarts = 0;
+
+   for (x=0; x<loaded_modules_cnt; x++) {
+      if (++running_modules[x].module_restart_timer >= NUM_SERVICE_IFC_PERIODS) {
+         running_modules[x].module_restart_timer = 0;
+         running_modules[x].module_restart_cnt = 0;
+      }
+
+      // TODO why assigning this value in every service thread cycle???
+      if (running_modules[x].module_max_restarts_per_minute > -1) {
+         max_restarts = running_modules[x].module_max_restarts_per_minute;
+      } else {
+         max_restarts = max_restarts_per_minute_config;
+      }
+
+      if (running_modules[x].module_enabled == TRUE && running_modules[x].module_status == FALSE && (running_modules[x].module_restart_cnt == max_restarts)) {
+         VERBOSE(MODULE_EVENT,"%s [RESTART] Module: %s was restarted %d times per minute and it is down again. I set it disabled.\n", get_stats_formated_time(), running_modules[x].module_name, max_restarts);
+         running_modules[x].module_enabled = FALSE;
+         #ifdef nemea_plugin
+            netconf_notify(MODULE_EVENT_DISABLED,running_modules[x].module_name);
+         #endif
+      } else if (running_modules[x].module_status == FALSE && running_modules[x].module_enabled == TRUE) {
+         re_start_module(x);
+      }
+   }
+}
+
+
+void service_connect_to_modules()
+{
+   uint x = 0, y = 0;
+
+    for (x = 0; x < loaded_modules_cnt; x++) {
+         // If supervisor couldn't connect to service interface or too many errors during sending/receiving occurred, connecting is blocked
+         if (running_modules[x].module_service_ifc_conn_block == TRUE) {
+            continue;
+         }
+
+         // Check whether the module has service interface and is running
+         if (running_modules[x].module_has_service_ifc == TRUE && running_modules[x].module_status == TRUE) {
+
+            if (++running_modules[x].module_service_ifc_timer >= NUM_SERVICE_IFC_PERIODS) {
+               running_modules[x].module_service_ifc_timer = 0;
+               running_modules[x].module_service_ifc_conn_fails = 0;
+            }
+
+            if (running_modules[x].module_service_ifc_conn_fails >= MAX_SERVICE_IFC_CONN_FAILS) {
+               VERBOSE(MODULE_EVENT, "%s [WARNING] Module %s reached %d errors during connections -> it is blocked.\n", get_stats_formated_time(), running_modules[x].module_name, MAX_SERVICE_IFC_CONN_FAILS);
+               running_modules[x].module_service_ifc_conn_block = TRUE;
+               continue;
+            }
+
+            // Check connection between module and supervisor, if they are not connected and number of attempts <= 3, try to connect
+            if (running_modules[x].module_service_ifc_isconnected == FALSE) {
+               y=0;
+               while (1) {
+                  if (running_modules[x].module_ifces[y].int_ifc_type == SERVICE_MODULE_IFC_TYPE) {
+                     break;
+                  }
+                  y++;
+               }
+
+               // Check module socket descriptor, closed socket has descriptor set to -1
+               if (running_modules[x].module_service_sd != -1) {
+                  close(running_modules[x].module_service_sd);
+                  running_modules[x].module_service_sd = -1;
+               }
+               connect_to_module_service_ifc(x,y);
+            }
+         }
+      }
+}
+
+
+int service_recv_data(int module_number, uint32_t size, void **data)
+{
+   int num_of_timeouts = 0;
+   int total_receved = 0;
+   int last_receved = 0;
+
+   while (total_receved < size) {
+      last_receved = recv(running_modules[module_number].module_service_sd, (*data) + total_receved, size - total_receved, MSG_DONTWAIT);
+      if (last_receved == 0) {
+         VERBOSE(STATISTICS,"! Modules service thread closed its socket, im done !\n");
+         return -1;
+      } else if (last_receved == -1) {
+         if (errno == EAGAIN  || errno == EWOULDBLOCK) {
+            num_of_timeouts++;
+            if (num_of_timeouts >= 3) {
+               return -1;
+            } else {
+               usleep(25000);
+               continue;
+            }
+         }
+         VERBOSE(MODULE_EVENT,"%s [SERVICE] Error while receiving from module %d_%s !\n", get_stats_formated_time(), module_number, running_modules[module_number].module_name);
+         return -1;
+      }
+      total_receved += last_receved;
+   }
+   return 0;
+}
+
+int service_send_data(int module_number, uint32_t size, void **data)
+{
+   int num_of_timeouts = 0, total_sent = 0, last_sent = 0;
+
+   while (total_sent < size) {
+      last_sent = send(running_modules[module_number].module_service_sd, (*data) + total_sent, size - total_sent, MSG_DONTWAIT);
+      if (last_sent == -1) {
+         if (errno == EAGAIN  || errno == EWOULDBLOCK) {
+            num_of_timeouts++;
+            if (num_of_timeouts >= 3) {
+               return -1;
+            } else {
+               usleep(25000);
+               continue;
+            }
+         }
+         VERBOSE(MODULE_EVENT,"%s [SERVICE] Error while sending to module %d_%s !\n", get_stats_formated_time(), module_number, running_modules[module_number].module_name);
+         return -1;
+      }
+      total_sent += last_sent;
+   }
+   return 0;
+}
+
+void connect_to_module_service_ifc(int module, int num_ifc)
+{
+   char * dest_port = NULL;
+   int sockfd = -1;
+   union tcpip_socket_addr addr;
+
+   // Increase counter of connection attempts to the service interface
+   running_modules[module].module_service_ifc_conn_attempts++;
+
+   if (running_modules[module].module_service_ifc_conn_attempts > SERVICE_IFC_CONN_ATTEMPTS_LIMIT) {
+      VERBOSE(MODULE_EVENT,"%s [WARNING] Connection attempts to service interface of module %s exceeded %d, enough trying!\n", get_stats_formated_time(), running_modules[module].module_name, SERVICE_IFC_CONN_ATTEMPTS_LIMIT);
+      running_modules[module].module_service_ifc_conn_block = TRUE;
+      return;
+   }
+
+   if (running_modules[module].module_ifces[num_ifc].ifc_params == NULL) {
+      running_modules[module].module_service_ifc_isconnected = FALSE;
+      return;
+   }
+   get_param_by_delimiter(running_modules[module].module_ifces[num_ifc].ifc_params, &dest_port, ',');
+   VERBOSE(MODULE_EVENT,"%s [SERVICE] Connecting to module %s on port %s...\n", get_stats_formated_time(), running_modules[module].module_name, dest_port);
+
+   memset(&addr, 0, sizeof(addr));
+
+   addr.unix_addr.sun_family = AF_UNIX;
+   snprintf(addr.unix_addr.sun_path, sizeof(addr.unix_addr.sun_path) - 1, MODULES_UNIXSOCKET_PATH_FILENAME_FORMAT, dest_port);
+   sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
+   if (sockfd == -1) {
+      VERBOSE(MODULE_EVENT,"%s [SERVICE] Error while opening socket for connection with module %s.\n", get_stats_formated_time(), running_modules[module].module_name);
+      running_modules[module].module_service_ifc_isconnected = FALSE;
+      NULLP_TEST_AND_FREE(dest_port)
+      return;
+   }
+   if (connect(sockfd, (struct sockaddr *) &addr.unix_addr, sizeof(addr.unix_addr)) == -1) {
+      VERBOSE(MODULE_EVENT,"%s [SERVICE] Error while connecting to module %s on port %s\n", get_stats_formated_time(), running_modules[module].module_name, dest_port);
+      running_modules[module].module_service_ifc_isconnected = FALSE;
+      NULLP_TEST_AND_FREE(dest_port)
+      close(sockfd);
+      return;
+   }
+   running_modules[module].module_service_sd = sockfd;
+   running_modules[module].module_service_ifc_isconnected = TRUE;
+   VERBOSE(MODULE_EVENT,"%s [SERVICE] Connected to module %s.\n", get_stats_formated_time(), running_modules[module].module_name);
+   NULLP_TEST_AND_FREE(dest_port)
+}
+
+
+#define SERVICE_GET_COM 10
+#define SERVICE_SET_COM 11
+#define SERVICE_OK_REPLY 12
+
+typedef struct service_msg_header_s {
+   uint8_t com;
+   uint32_t data_size;
+} service_msg_header_t;
+
+
+void *service_thread_routine(void *arg __attribute__ ((unused)))
+{
+   service_msg_header_t *header = (service_msg_header_t *) calloc(1, sizeof(service_msg_header_t));
+   uint32_t buffer_size = 256;
+   char * buffer = (char *) calloc(buffer_size, sizeof(char));
+   int running_modules_cnt = 0;
+   unsigned int x,y;
+
+   time_t rawtime;
+   struct tm * timeinfo;
+
+   while (TRUE) {
+      pthread_mutex_lock(&running_modules_lock);
+      time(&rawtime);
+      timeinfo = localtime(&rawtime);
+
+      running_modules_cnt = service_update_module_status();
+      if (service_thread_continue == FALSE) {
+         if (service_stop_all_modules == FALSE) {
+            VERBOSE(N_STDOUT, "%s [WARNING] I let modules continue running!\n", get_stats_formated_time());
+            break;
+         } else if (running_modules_cnt == 0) {
+            VERBOSE(N_STDOUT, "%s [WARNING] I stopped all modules!\n", get_stats_formated_time());
+            break;
+         }
+      }
+      service_restart_modules();
+      service_stop_modules_sigint();
+
+      pthread_mutex_unlock(&running_modules_lock);
+      sleep(1);
+      pthread_mutex_lock(&running_modules_lock);
+
+      service_clean_after_children();
+      running_modules_cnt = service_update_module_status();
+      service_stop_modules_sigkill();
+      service_clean_after_children();
+
+      for (y=0; y<loaded_modules_cnt; y++) {
+         if (running_modules[y].module_served_by_service_thread == FALSE) {
+            if (running_modules[y].remove_module == TRUE) {
+               if (running_modules[y].module_status == FALSE) {
+                  free_module_and_shift_array(y);
+               }
+            } else if (running_modules[y].init_module == TRUE) {
+               if (running_modules[y].module_status == FALSE) {
+                  running_modules[y].module_enabled = TRUE;
+                  running_modules[y].module_restart_cnt = -1;
+                  running_modules[y].init_module = FALSE;
+                  running_modules[y].module_served_by_service_thread = TRUE;
+               } else {
+                  disconnect_service_ifc(y);
+               }
+            } else {
+               running_modules[y].module_served_by_service_thread = TRUE;
+            }
+         }
+      }
+
+      // Update status of every module before sending a request for their stats
+      running_modules_cnt = service_update_module_status();
+
+      // Set request header
+      header->com = SERVICE_GET_COM;
+      header->data_size = 0;
+
+      // Handle connection between supervisor and modules via service interface
+      service_connect_to_modules();
+
+      for (x=0;x<loaded_modules_cnt;x++) {
+         // If the module and supervisor are connected via service interface, request for stats is sent
+         if (running_modules[x].module_service_ifc_isconnected == TRUE) {
+            if (service_send_data(x, sizeof(service_msg_header_t), (void **) &header) == -1) {
+               VERBOSE(MODULE_EVENT,"%s [SERVICE] Error while sending request to module %d_%s.\n", get_stats_formated_time(), x, running_modules[x].module_name);
+               disconnect_service_ifc(x);
+            }
+         }
+      }
+
+      // Update status of every module before receiving their stats
+      running_modules_cnt = service_update_module_status();
+
+      for (x=0;x<loaded_modules_cnt;x++) {
+         // Check whether the module is running and is connected with supervisor via service interface
+         if (running_modules[x].module_has_service_ifc == TRUE && running_modules[x].module_status == TRUE && running_modules[x].module_service_ifc_isconnected == TRUE) {
+            // Receive reply header
+            if (service_recv_data(x, sizeof(service_msg_header_t), (void **) &header) == -1) {
+               VERBOSE(MODULE_EVENT, "%s [SERVICE] Error while receiving reply header from module %d_%s.\n", get_stats_formated_time(), x, running_modules[x].module_name);
+               disconnect_service_ifc(x);
+               continue;
+            }
+
+            // Check if the reply is OK
+            if (header->com != SERVICE_OK_REPLY) {
+               VERBOSE(MODULE_EVENT, "%s [SERVICE] Wrong reply from module %d_%s.\n", get_stats_formated_time(), x, running_modules[x].module_name);
+               disconnect_service_ifc(x);
+               continue;
+            }
+
+            memset(buffer, 0, buffer_size);
+            if (header->data_size > buffer_size) {
+               // Reallocate buffer for incoming data
+               buffer_size += buffer_size / 2;
+               buffer = (char *) realloc(buffer, buffer_size * sizeof(char));
+               memset(buffer + (2 * (buffer_size / 3)), 0, (buffer_size / 3) * sizeof(char));
+            }
+
+            // Receive module stats in json format
+            if (service_recv_data(x, header->data_size, (void **) &buffer) == -1) {
+               VERBOSE(MODULE_EVENT, "%s [SERVICE] Error while receiving stats from module %d_%s.\n", get_stats_formated_time(), x, running_modules[x].module_name);
+               disconnect_service_ifc(x);
+               continue;
+            }
+
+            // Decode json and save stats into module structure
+            if (decode_cnts_from_json(&buffer, x) == -1) {
+               VERBOSE(MODULE_EVENT, "%s [SERVICE] Error while receiving stats from module %d_%s.\n", get_stats_formated_time(), x, running_modules[x].module_name);
+               disconnect_service_ifc(x);
+               continue;
+            }
+         }
+      }
+
+      pthread_mutex_unlock(&running_modules_lock);
+
+      if ((verbose_flag == TRUE) && (running_modules_cnt > 0)) {
+         print_statistics(timeinfo);
+      }
+
+      if (service_thread_continue == TRUE) {
+         sleep(1);
+      }
+   }
+
+   // Disconnect from running modules
+   for (x=0;x<loaded_modules_cnt;x++) {
+      disconnect_service_ifc(x);
+   }
+
+   NULLP_TEST_AND_FREE(buffer)
+   NULLP_TEST_AND_FREE(header)
+
+   pthread_exit(EXIT_SUCCESS);
+}
+
+
+
+/*****************************************************************
+ * Interactive methods *
+ *****************************************************************/
+
+void interactive_show_available_modules()
+{
+   unsigned int x = 0, y = 0, already_printed_modules = 0;
+   modules_profile_t * ptr = first_profile_ptr;
+
+   if (loaded_modules_cnt == 0) {
+      VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] No module is loaded.\n" ANSI_ATTR_RESET);
+      return;
+   }
+
+   VERBOSE(N_STDOUT,"[PRINTING CONFIGURATION]\n");
+
+   while (ptr != NULL) {
+      VERBOSE(N_STDOUT, ANSI_BOLD "Profile: %s\n" ANSI_ATTR_RESET, ptr->profile_name);
+      for (x=0; x<loaded_modules_cnt; x++) {
+         if (running_modules[x].modules_profile != NULL) {
+            if (running_modules[x].modules_profile == ptr->profile_name) {
+               if (running_modules[x].module_enabled == TRUE) {
+                  VERBOSE(N_STDOUT, "   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s (" ANSI_RED_BOLD "enabled" ANSI_ATTR_RESET "):\n", x, running_modules[x].module_name);
+               } else {
+                  VERBOSE(N_STDOUT, "   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s (" ANSI_RED "disabled" ANSI_ATTR_RESET "):\n", x, running_modules[x].module_name);
+               }
+               VERBOSE(N_STDOUT, "      " ANSI_BOLD "PATH:" ANSI_ATTR_RESET " %s\n", (running_modules[x].module_path == NULL ? "none" : running_modules[x].module_path));
+               VERBOSE(N_STDOUT, "      " ANSI_BOLD "PARAMS:" ANSI_ATTR_RESET " %s\n", (running_modules[x].module_params == NULL ? "none" : running_modules[x].module_params));
+               for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
+                  VERBOSE(N_STDOUT,"      " ANSI_BOLD "IFC%d:" ANSI_ATTR_RESET "  %s; %s; %s; %s\n", y, (running_modules[x].module_ifces[y].ifc_direction == NULL ? "none" : running_modules[x].module_ifces[y].ifc_direction),
+                                                                                                   (running_modules[x].module_ifces[y].ifc_type == NULL ? "none" : running_modules[x].module_ifces[y].ifc_type),
+                                                                                                   (running_modules[x].module_ifces[y].ifc_params == NULL ? "none" : running_modules[x].module_ifces[y].ifc_params),
+                                                                                                   (running_modules[x].module_ifces[y].ifc_note == NULL ? "none" : running_modules[x].module_ifces[y].ifc_note));
+               }
+               already_printed_modules++;
+            }
+         }
+      }
+      ptr = ptr->next;
+   }
+
+   if (already_printed_modules < loaded_modules_cnt) {
+      VERBOSE(N_STDOUT, ANSI_BOLD "Modules without profile:\n" ANSI_ATTR_RESET);
+      for (x=0; x<loaded_modules_cnt; x++) {
+         if (running_modules[x].modules_profile == NULL) {
+            if (running_modules[x].module_enabled == TRUE) {
+               VERBOSE(N_STDOUT, "   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s (" ANSI_RED_BOLD "enabled" ANSI_ATTR_RESET "):\n", x, running_modules[x].module_name);
+            } else {
+               VERBOSE(N_STDOUT, "   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s (" ANSI_RED "disabled" ANSI_ATTR_RESET "):\n", x, running_modules[x].module_name);
+            }
+            VERBOSE(N_STDOUT, "      " ANSI_BOLD "PATH:" ANSI_ATTR_RESET " %s\n", (running_modules[x].module_path == NULL ? "none" : running_modules[x].module_path));
+            VERBOSE(N_STDOUT, "      " ANSI_BOLD "PARAMS:" ANSI_ATTR_RESET " %s\n", (running_modules[x].module_params == NULL ? "none" : running_modules[x].module_params));
+            for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
+               VERBOSE(N_STDOUT,"      " ANSI_BOLD "IFC%d:" ANSI_ATTR_RESET "  %s; %s; %s; %s\n", y, (running_modules[x].module_ifces[y].ifc_direction == NULL ? "none" : running_modules[x].module_ifces[y].ifc_direction),
+                                                                                                (running_modules[x].module_ifces[y].ifc_type == NULL ? "none" : running_modules[x].module_ifces[y].ifc_type),
+                                                                                                (running_modules[x].module_ifces[y].ifc_params == NULL ? "none" : running_modules[x].module_ifces[y].ifc_params),
+                                                                                                (running_modules[x].module_ifces[y].ifc_note == NULL ? "none" : running_modules[x].module_ifces[y].ifc_note));
+            }
+         }
+      }
+   }
+}
+
+int interactive_get_option()
+{
+   usleep(50000); // Solved bugged output - without this sleep, escape codes in output were not sometimes reseted on time and they were applied also on this menu
+   VERBOSE(N_STDOUT, ANSI_CYAN_BOLD "--------OPTIONS--------\n" ANSI_ATTR_RESET);
+   VERBOSE(N_STDOUT, ANSI_CYAN "1. START ALL MODULES\n");
+   VERBOSE(N_STDOUT, "2. STOP ALL MODULES\n");
+   VERBOSE(N_STDOUT, "3. START MODULE\n");
+   VERBOSE(N_STDOUT, "4. STOP MODULE\n");
+   VERBOSE(N_STDOUT, "5. STARTED MODULES STATUS\n");
+   VERBOSE(N_STDOUT, "6. AVAILABLE MODULES\n");
+   VERBOSE(N_STDOUT, "7. RELOAD CONFIGURATION\n");
+   VERBOSE(N_STDOUT, "8. STOP SUPERVISOR\n" ANSI_ATTR_RESET);
+   VERBOSE(N_STDOUT, ANSI_YELLOW_BOLD "[INTERACTIVE] Your choice: " ANSI_ATTR_RESET);
+
+   return get_number_from_input_choosing_option();
+}
+
+void interactive_start_configuration()
+{
+   pthread_mutex_lock(&running_modules_lock);
+   VERBOSE(MODULE_EVENT,"%s [START] Starting configuration...\n", get_stats_formated_time());
+   unsigned int x = 0;
+   for (x=0; x<loaded_modules_cnt; x++) {
+      if (running_modules[x].module_enabled == FALSE) {
+         running_modules[x].module_restart_cnt = -1;
+         running_modules[x].module_enabled = TRUE;
+      }
+   }
+   pthread_mutex_unlock(&running_modules_lock);
+}
+
+
+void interactive_stop_configuration()
+{
+   unsigned int x = 0;
+   pthread_mutex_lock(&running_modules_lock);
+   VERBOSE(MODULE_EVENT,"%s [STOP] Stopping configuration...\n", get_stats_formated_time());
+   for (x=0; x<loaded_modules_cnt; x++) {
+      if (running_modules[x].module_enabled) {
+         running_modules[x].module_enabled = FALSE;
+      }
+   }
+   pthread_mutex_unlock(&running_modules_lock);
+}
+
+
+void interactive_set_module_enabled()
+{
+   int * modules_to_enable = NULL;
+   int x = 0, y = 0, modules_to_enable_cnt = 0, stopped_modules_counter = 0, matched_modules = 0, profile_printed = FALSE;
+   modules_profile_t * ptr = first_profile_ptr;
+
+   if (loaded_modules_cnt == 0) {
+      VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] No module is loaded.\n" ANSI_ATTR_RESET);
+      return;
+   }
+
+   pthread_mutex_lock(&running_modules_lock);
+   VERBOSE(N_STDOUT, "[LIST OF STOPPED MODULES]\n");
+   while (ptr != NULL) {
+      profile_printed = FALSE;
+      for (x=0; x<loaded_modules_cnt; x++) {
+         if (running_modules[x].modules_profile != NULL) {
+            if (running_modules[x].modules_profile == ptr->profile_name) {
+               if (running_modules[x].module_status == FALSE) {
+                  if (profile_printed == FALSE) {
+                     VERBOSE(N_STDOUT, ANSI_BOLD "Profile: %s\n" ANSI_ATTR_RESET, ptr->profile_name);
+                     profile_printed = TRUE;
+                  }
+                  VERBOSE(N_STDOUT, "   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s " ANSI_RED_BOLD "stopped" ANSI_ATTR_RESET "\n",x, running_modules[x].module_name);
+                  stopped_modules_counter++;
+               }
+               matched_modules++;
+            }
+         }
+      }
+      ptr = ptr->next;
+   }
+
+   if (matched_modules < loaded_modules_cnt) {
+      profile_printed = FALSE;
+      for (x=0; x<loaded_modules_cnt; x++) {
+         if (running_modules[x].modules_profile == NULL) {
+            if (running_modules[x].module_status == FALSE) {
+               if (profile_printed == FALSE) {
+                  VERBOSE(N_STDOUT, ANSI_BOLD "Modules without profile:\n" ANSI_ATTR_RESET);
+                  profile_printed = TRUE;
+               }
+               VERBOSE(N_STDOUT, "   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s " ANSI_RED_BOLD "stopped" ANSI_ATTR_RESET "\n",x, running_modules[x].module_name);
+               stopped_modules_counter++;
+            }
+         }
+      }
+   }
+
+   if (stopped_modules_counter == 0) {
+      VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] All modules are running.\n" ANSI_ATTR_RESET);
+      pthread_mutex_unlock(&running_modules_lock);
+      return;
+   }
+
+   VERBOSE(N_STDOUT, ANSI_YELLOW_BOLD "[INTERACTIVE] Type in module numbers (one number or more separated by comma): " ANSI_ATTR_RESET);
+   modules_to_enable_cnt = get_numbers_from_input_dis_enable_module(&modules_to_enable);
+
+   if (modules_to_enable_cnt != RET_ERROR) {
+      for (y=0; y<modules_to_enable_cnt; y++) {
+         x = modules_to_enable[y];
+         if (x>=loaded_modules_cnt || x<0) {
+            VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Number %d is not valid module number!\n" ANSI_ATTR_RESET, x);
+            continue;
+         } else if (running_modules[x].module_enabled == TRUE) {
+            VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Module %s is already enabled.\n" ANSI_ATTR_RESET, running_modules[x].module_name);
+         } else {
+            running_modules[x].module_enabled = TRUE;
+            running_modules[x].module_restart_cnt = -1;
+            VERBOSE(MODULE_EVENT, "%s [ENABLED] Module %s set to enabled.\n", get_stats_formated_time(), running_modules[x].module_name);
+         }
+      }
+      free(modules_to_enable);
+      modules_to_enable = NULL;
+   }
+
+   pthread_mutex_unlock(&running_modules_lock);
+}
+
+void interactive_stop_module()
+{
+   int * modules_to_stop = NULL;
+   int x = 0, y = 0, running_modules_counter = 0, modules_to_stop_cnt = 0, matched_modules = 0, profile_printed = FALSE;
+   modules_profile_t * ptr = first_profile_ptr;
+
+   if (loaded_modules_cnt == 0) {
+      VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] No module is loaded.\n" ANSI_ATTR_RESET);
+      return;
+   }
+
+   pthread_mutex_lock(&running_modules_lock);
+   VERBOSE(N_STDOUT, "[LIST OF RUNNING MODULES]\n");
+   while (ptr != NULL) {
+      profile_printed = FALSE;
+      for (x=0; x<loaded_modules_cnt; x++) {
+         if (running_modules[x].modules_profile != NULL) {
+            if (running_modules[x].modules_profile == ptr->profile_name) {
+               if (running_modules[x].module_status == TRUE) {
+                  if (profile_printed == FALSE) {
+                     VERBOSE(N_STDOUT, ANSI_BOLD "Profile: %s\n" ANSI_ATTR_RESET, ptr->profile_name);
+                     profile_printed = TRUE;
+                  }
+                  VERBOSE(N_STDOUT, "   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s " ANSI_RED_BOLD "running" ANSI_ATTR_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
+                  running_modules_counter++;
+               }
+               matched_modules++;
+            }
+         }
+      }
+      ptr = ptr->next;
+   }
+
+   if (matched_modules < loaded_modules_cnt) {
+      profile_printed = FALSE;
+      for (x=0; x<loaded_modules_cnt; x++) {
+         if (running_modules[x].modules_profile == NULL) {
+            if (running_modules[x].module_status == TRUE) {
+               if (profile_printed == FALSE) {
+                  VERBOSE(N_STDOUT, ANSI_BOLD "Modules without profile:\n" ANSI_ATTR_RESET);
+                  profile_printed = TRUE;
+               }
+               VERBOSE(N_STDOUT, "   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s " ANSI_RED_BOLD "running" ANSI_ATTR_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
+               running_modules_counter++;
+            }
+         }
+      }
+   }
+
+   if (running_modules_counter == 0) {
+      VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] All modules are stopped.\n" ANSI_ATTR_RESET);
+      pthread_mutex_unlock(&running_modules_lock);
+      return;
+   }
+
+   VERBOSE(N_STDOUT, ANSI_YELLOW_BOLD "[INTERACTIVE] Type in module numbers (one number or more separated by comma): " ANSI_ATTR_RESET);
+   modules_to_stop_cnt = get_numbers_from_input_dis_enable_module(&modules_to_stop);
+
+   if (modules_to_stop_cnt != RET_ERROR) {
+      for (y=0; y<modules_to_stop_cnt; y++) {
+         x = modules_to_stop[y];
+         if (x>=loaded_modules_cnt || x<0) {
+            VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Number %d is not valid module number!\n" ANSI_ATTR_RESET, x);
+            continue;
+         } else if (running_modules[x].module_enabled == FALSE) {
+            VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Module %s is already disabled.\n" ANSI_ATTR_RESET, running_modules[x].module_name);
+         } else {
+            running_modules[x].module_enabled = FALSE;
+            VERBOSE(MODULE_EVENT, "%s [DISABLED] Module %s set to disabled.\n", get_stats_formated_time(), running_modules[x].module_name);
+         }
+      }
+      free(modules_to_stop);
+      modules_to_stop = NULL;
+   }
+   pthread_mutex_unlock(&running_modules_lock);
+}
+
+void interactive_show_running_modules_status()
+{
+   unsigned int x = 0, already_printed_modules = 0;
+   modules_profile_t * ptr = first_profile_ptr;
+
+   if (loaded_modules_cnt == 0) {
+      VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] No module is loaded.\n" ANSI_ATTR_RESET);
+      return;
+   }
+
+   while (ptr != NULL) {
+      VERBOSE(N_STDOUT, ANSI_BOLD "Profile: %s\n" ANSI_ATTR_RESET, ptr->profile_name);
+      for (x=0; x<loaded_modules_cnt; x++) {
+         if (running_modules[x].modules_profile != NULL) {
+            if (running_modules[x].modules_profile == ptr->profile_name && running_modules[x].module_status == TRUE) {
+               VERBOSE(N_STDOUT,"   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s " ANSI_RED_BOLD "running" ANSI_ATTR_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
+               already_printed_modules++;
+            } else if (running_modules[x].modules_profile == ptr->profile_name) {
+               VERBOSE(N_STDOUT,"   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s " ANSI_RED "stopped" ANSI_ATTR_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
+               already_printed_modules++;
+            }
+         }
+      }
+      ptr = ptr->next;
+   }
+
+   if (already_printed_modules < loaded_modules_cnt) {
+      VERBOSE(N_STDOUT, ANSI_BOLD "Modules without profile:\n" ANSI_ATTR_RESET);
+      for (x=0; x<loaded_modules_cnt; x++) {
+         if (running_modules[x].modules_profile == NULL) {
+            if (running_modules[x].module_status == TRUE) {
+               VERBOSE(N_STDOUT,"   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s " ANSI_RED_BOLD "running" ANSI_ATTR_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
+            } else {
+               VERBOSE(N_STDOUT,"   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s " ANSI_RED "stopped" ANSI_ATTR_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
+            }
+         }
+      }
+   }
+}
+
+
+
+/*****************************************************************
+ * Supervisor termination and clean up functions *
+ *****************************************************************/
 
 void free_module_on_index(int index)
 {
@@ -3032,6 +2713,520 @@ void free_module_interfaces_on_index(int index)
       NULLP_TEST_AND_FREE(running_modules[index].module_ifces[y].ifc_data)
    }
 }
+
+void free_output_file_strings_and_streams()
+{
+   NULLP_TEST_AND_FREE(statistics_file_path)
+   NULLP_TEST_AND_FREE(module_event_file_path)
+   NULLP_TEST_AND_FREE(supervisor_debug_log_file_path)
+   NULLP_TEST_AND_FREE(supervisor_log_file_path)
+
+   if (supervisor_debug_log_fd != NULL) {
+      fclose(supervisor_debug_log_fd);
+      supervisor_debug_log_fd = NULL;
+   }
+   if (supervisor_log_fd != NULL) {
+      fclose(supervisor_log_fd);
+      supervisor_log_fd = NULL;
+   }
+   if (statistics_fd != NULL) {
+      fclose(statistics_fd);
+      statistics_fd = NULL;
+   }
+   if (module_event_fd != NULL) {
+      fclose(module_event_fd);
+      module_event_fd = NULL;
+   }
+}
+
+void free_module_and_shift_array(const int module_idx)
+{
+   int y = 0;
+
+   free_module_on_index(module_idx);
+   running_modules[module_idx].module_ifces_cnt = 0;
+   running_modules[module_idx].module_num_out_ifc = 0;
+   running_modules[module_idx].module_num_in_ifc = 0;
+   running_modules[module_idx].module_ifces_array_size = 0;
+   for (y=module_idx; y<(loaded_modules_cnt-1); y++) {
+      memcpy(&running_modules[y], &running_modules[y+1], sizeof(running_module_t));
+   }
+   loaded_modules_cnt--;
+   memset(&running_modules[loaded_modules_cnt], 0, sizeof(running_module_t));
+}
+
+void free_available_modules_structs()
+{
+   int x = 0;
+   available_modules_path_t * path_p1 = first_available_modules_path;
+   available_modules_path_t * path_p2 = NULL;
+   available_module_t * module_p1 = NULL;
+   available_module_t * module_p2 = NULL;
+
+   while (path_p1 != NULL) {
+      path_p2 = path_p1->next;
+      module_p1 = path_p1->modules;
+      while (module_p1 != NULL) {
+         module_p2 = module_p1->next;
+         NULLP_TEST_AND_FREE(module_p1->name)
+         if (module_p1->module_info != NULL) {
+            NULLP_TEST_AND_FREE(module_p1->module_info->name)
+            NULLP_TEST_AND_FREE(module_p1->module_info->description)
+            if (module_p1->module_info->params != NULL) {
+               x=0;
+               while (module_p1->module_info->params[x] != NULL) {
+                  NULLP_TEST_AND_FREE(module_p1->module_info->params[x]->long_opt)
+                  NULLP_TEST_AND_FREE(module_p1->module_info->params[x]->description)
+                  NULLP_TEST_AND_FREE(module_p1->module_info->params[x]->argument_type)
+                  NULLP_TEST_AND_FREE(module_p1->module_info->params[x])
+                  x++;
+               }
+               free(module_p1->module_info->params);
+               module_p1->module_info->params = NULL;
+            }
+            free(module_p1->module_info);
+            module_p1->module_info = NULL;
+         }
+         free(module_p1);
+         module_p1 = module_p2;
+      }
+      NULLP_TEST_AND_FREE(path_p1->path)
+      free(path_p1);
+      path_p1 = path_p2;
+   }
+   first_available_modules_path = NULL;
+}
+
+void supervisor_termination(int stop_all_modules, int generate_backup)
+{
+   int x = 0, attemps = 0;
+
+   // If daemon mode was initialized and supervisor caught a signal to terminate, set termination flag for client's threads
+   if (daemon_mode_initialized  == TRUE && server_internals != NULL) {
+      pthread_mutex_lock(&server_internals->lock);
+      server_internals->daemon_terminated = TRUE;
+      pthread_mutex_unlock(&server_internals->lock);
+      if (netconf_flag == TRUE) {
+         sleep(1); // Wait for server thread
+      }
+   }
+
+   // If supervisor was initialized, than proceed termination, else just check allocated memory from program argument parsing
+   if (supervisor_initialized == TRUE) {
+      // If service thread was created successfully, check running modules, terminate service thread and (if needed) generate backup file
+      if (service_thread_initialized == TRUE) {
+         if (stop_all_modules == TRUE) {
+            interactive_stop_configuration();
+            service_stop_all_modules = TRUE;
+         } else {
+            service_stop_all_modules = FALSE;
+         }
+
+         VERBOSE(N_STDOUT,"%s [SERVICE] Aborting service thread!\n", get_stats_formated_time());
+         service_thread_continue = FALSE;
+
+         x = pthread_join(service_thread_id, NULL);
+
+         if (x == 0) {
+            VERBOSE(N_STDOUT, "%s [SERVICE] pthread_join success: Service thread finished!\n", get_stats_formated_time())
+         } else if (x == -1) {
+            if (errno == EINVAL) {
+               VERBOSE(N_STDOUT, "%s [ERROR] pthread_join: Not joinable thread!\n", get_stats_formated_time());
+            } else if (errno == ESRCH) {
+               VERBOSE(N_STDOUT, "%s [ERROR] pthread_join: No thread with this ID found!\n", get_stats_formated_time());
+            } else if ( errno == EDEADLK) {
+               VERBOSE(N_STDOUT, "%s [ERROR] pthread_join: Deadlock in service thread detected!\n", get_stats_formated_time());
+            }
+         }
+
+         if (generate_backup == TRUE) {
+            generate_backup_config_file();
+         } else {
+            for (x = 0;  x < loaded_modules_cnt; x++) {
+               if (running_modules[x].module_status == TRUE) {
+                  VERBOSE(N_STDOUT, "%s [WARNING] Some modules are still running, gonna generate backup anyway!\n", get_stats_formated_time());
+                  generate_backup_config_file();
+                  break;
+               }
+            }
+         }
+      }
+
+      for (x = 0; x < running_modules_array_size; x++) {
+         free_module_on_index(x);
+      }
+
+      NULLP_TEST_AND_FREE(running_modules)
+
+      modules_profile_t * ptr = first_profile_ptr;
+      modules_profile_t * p = NULL;
+      while (ptr != NULL) {
+         p = ptr;
+         ptr = ptr->next;
+         NULLP_TEST_AND_FREE(p->profile_name)
+         NULLP_TEST_AND_FREE(p)
+      }
+   }
+
+   // If daemon_mode_initialization call was successful, cleanup after daemon
+   if (daemon_mode_initialized == TRUE) {
+      if (server_internals != NULL) {
+         if (server_internals->clients != NULL) {
+            // Wait for daemon clients threads
+            VERBOSE(SUP_LOG, "%s [INFO] Waiting for client's threads to terminate.\n", get_stats_formated_time());
+            for (x = 0; x < MAX_NUMBER_SUP_CLIENTS; x++) {
+               // After 2 unsuccessful attempts terminate
+               if (attemps >= 2) {
+                  VERBOSE(SUP_LOG, "%s [INFO] Enough waiting, gonna terminate anyway.\n", get_stats_formated_time());
+                  break;
+               }
+               // If any client is still connected, wait 300 ms and check all clients again
+               if (server_internals->clients[x]->client_connected == TRUE) {
+                  attemps++;
+                  x = -1;
+                  usleep(300000);
+                  VERBOSE(SUP_LOG, "...\n");
+               }
+            }
+            if (attemps < 2) {
+               VERBOSE(SUP_LOG, "%s [INFO] All client's threads terminated.\n", get_stats_formated_time());
+            }
+            for (x = 0; x < MAX_NUMBER_SUP_CLIENTS; x++) {
+               NULLP_TEST_AND_FREE(server_internals->clients[x])
+            }
+            free(server_internals->clients);
+            server_internals->clients = NULL;
+         }
+
+         if (server_internals->server_sd > 0) {
+            close(server_internals->server_sd);
+            server_internals->server_sd = 0;
+         }
+         free(server_internals);
+         server_internals = NULL;
+         unlink(socket_path);
+      }
+   }
+
+   // Free available modules linked list
+   free_available_modules_structs();
+
+   if (supervisor_initialized == TRUE) {
+      free_output_file_strings_and_streams();
+   }
+
+   NULLP_TEST_AND_FREE(config_file)
+   NULLP_TEST_AND_FREE(logs_path)
+}
+
+
+
+/*****************************************************************
+ * Supervisor initialization functions *
+ *****************************************************************/
+
+void create_output_dir()
+{
+   char * buffer = NULL;
+   struct stat st = {0};
+
+logs_path_null:
+   if (logs_path == NULL) {
+      if (netconf_flag == TRUE) {
+         logs_path = strdup(NETCONF_DEFAULT_LOGSDIR_PATH);
+      } else if (daemon_flag == TRUE) {
+         logs_path = strdup(DAEMON_DEFAULT_LOGSDIR_PATH);
+      } else {
+         if ((buffer = getenv("HOME")) != NULL) {
+            logs_path = (char *) calloc (strlen(buffer)+strlen("/supervisor_logs/")+1, sizeof(char));
+            sprintf(logs_path,"%s/supervisor_logs/", buffer);
+         } else {
+            logs_path = strdup(INTERACTIVE_DEFAULT_LOGSDIR_PATH);
+         }
+      }
+   }
+
+   if (logs_path[strlen(logs_path)-1] != '/') {
+      buffer = (char *) calloc (strlen(logs_path)+2, sizeof(char));
+      sprintf(buffer, "%s/", logs_path);
+      free(logs_path);
+      logs_path = buffer;
+   }
+
+   // Check and create output directory
+   if (stat(logs_path, &st) == -1) {
+      if (errno == EACCES) {
+         // Don't have permissions to acces this directory, use default directory according to executed mode of supervisor
+         NULLP_TEST_AND_FREE(logs_path)
+         goto logs_path_null;
+      }
+      // Directory does not exist, try to create it
+      if (mkdir(logs_path, PERM_LOGSDIR) == -1) {
+         if (errno == EACCES) {
+            // Don't have permissions to some folder in logs_path, use default directory according to executed mode of supervisor
+            NULLP_TEST_AND_FREE(logs_path)
+            goto logs_path_null;
+         }
+      }
+   } else if (S_ISDIR(st.st_mode) == FALSE) { // Check whether the file is a directory
+      NULLP_TEST_AND_FREE(logs_path)
+      goto logs_path_null;
+   }
+}
+
+void create_output_files_strings()
+{
+   free_output_file_strings_and_streams();
+
+   if (logs_path != NULL) {
+      supervisor_debug_log_file_path = (char *) calloc (strlen(logs_path)+strlen("supervisor_debug_log")+1, sizeof(char));
+      sprintf(supervisor_debug_log_file_path, "%ssupervisor_debug_log", logs_path);
+      statistics_file_path = (char *) calloc (strlen(logs_path)+strlen("supervisor_log_statistics")+1, sizeof(char));
+      sprintf(statistics_file_path, "%ssupervisor_log_statistics", logs_path);
+      module_event_file_path = (char *) calloc (strlen(logs_path)+strlen("supervisor_log_module_event")+1, sizeof(char));
+      sprintf(module_event_file_path, "%ssupervisor_log_module_event", logs_path);
+
+      supervisor_debug_log_fd = fopen(supervisor_debug_log_file_path, "a");
+      if (supervisor_debug_log_fd == NULL) {
+         fprintf(stderr, "%s [ERROR] Could not open supervisor_debug_log file stream!\n",get_stats_formated_time());
+      } else {
+         fprintf(supervisor_debug_log_fd,"-------------------- %s --------------------\n", get_stats_formated_time());
+      }
+      statistics_fd = fopen(statistics_file_path, "a");
+      if (statistics_fd == NULL) {
+         fprintf(stderr, "%s [ERROR] Could not open supervisor_log_statistics file stream!\n",get_stats_formated_time());
+      } else {
+         VERBOSE(STATISTICS,"-------------------- %s --------------------\n", get_stats_formated_time());
+         print_statistics_legend();
+      }
+      module_event_fd = fopen(module_event_file_path, "a");
+      if (module_event_fd == NULL) {
+         fprintf(stderr, "%s [ERROR] Could not open supervisor_log_module_event file stream!\n",get_stats_formated_time());
+      } else {
+         VERBOSE(MODULE_EVENT,"-------------------- %s --------------------\n", get_stats_formated_time());
+      }
+
+      if (netconf_flag || daemon_flag) {
+         supervisor_log_file_path = (char *) calloc (strlen(logs_path)+strlen("supervisor_log")+1, sizeof(char));
+         sprintf(supervisor_log_file_path, "%ssupervisor_log", logs_path);
+
+         supervisor_log_fd = fopen (supervisor_log_file_path, "a");
+         if (supervisor_log_fd == NULL) {
+            fprintf(stderr, "%s [ERROR] Could not open supervisor_log file stream!\n",get_stats_formated_time());
+         } else {
+            fprintf(supervisor_log_fd,"-------------------- %s --------------------\n", get_stats_formated_time());
+         }
+         if (server_internals->clients_cnt == 0) {
+            output_fd = supervisor_log_fd;
+         }
+      }
+   }
+}
+
+void supervisor_signal_handler(int catched_signal)
+{
+   switch (catched_signal) {
+   case SIGPIPE:
+      break;
+
+   case SIGTERM:
+      VERBOSE(N_STDOUT,"%s [SIGNAL HANDLER] SIGTERM catched -> I'm going to terminate my self !\n", get_stats_formated_time());
+      supervisor_termination(TRUE, FALSE);
+      exit(EXIT_SUCCESS);
+      break;
+
+   case SIGINT:
+      VERBOSE(N_STDOUT,"%s [SIGNAL HANDLER] SIGINT catched -> I'm going to terminate my self !\n", get_stats_formated_time());
+      supervisor_termination(FALSE, TRUE);
+      exit(EXIT_SUCCESS);
+      break;
+
+   case SIGQUIT:
+      VERBOSE(N_STDOUT,"%s [SIGNAL HANDLER] SIGQUIT catched -> I'm going to terminate my self !\n", get_stats_formated_time());
+      supervisor_termination(FALSE, TRUE);
+      exit(EXIT_SUCCESS);
+      break;
+
+   case SIGSEGV:
+      VERBOSE(N_STDOUT,"%s [SIGNAL HANDLER] Ouch, SIGSEGV catched -> I'm going to terminate my self !\n", get_stats_formated_time());
+      supervisor_termination(FALSE, TRUE);
+      exit(EXIT_FAILURE);
+      break;
+   }
+}
+
+void supervisor_flags_initialization()
+{
+   supervisor_initialized = FALSE;
+   service_thread_initialized = FALSE;
+   daemon_mode_initialized = FALSE;
+
+   logs_path = NULL;
+   config_file = NULL;
+   socket_path = NULL;
+
+   verbose_flag = FALSE;
+   daemon_flag = FALSE;
+   netconf_flag = FALSE;
+}
+
+int supervisor_initialization()
+{
+   init_time_info = get_sys_time();
+
+   input_fd = stdin;
+   output_fd = stdout;
+
+   // Check and create (if it doesn't exist) directory for all output (started modules and also supervisor's) according to the logs_path
+   create_output_dir();
+   // Create strings with supervisor's output files names and get their file descriptors
+   create_output_files_strings();
+
+   // Allocate running_modules memory
+   running_modules_array_size = 0;
+   check_running_modules_allocated_memory();
+
+   // Initialize main mutex
+   pthread_mutex_init(&running_modules_lock,NULL);
+
+   // Load startup configuration
+   if (netconf_flag == FALSE) {
+      VERBOSE(N_STDOUT,"[INIT LOADING CONFIGURATION]\n");
+      reload_configuration(RELOAD_INIT_LOAD_CONFIG, NULL);
+   }
+
+   // Create a new thread doing service routine
+   VERBOSE(N_STDOUT,"[SERVICE] Starting service thread.\n");
+   if (start_service_thread() != 0) {
+      service_thread_initialized = FALSE;
+   } else {
+      service_thread_initialized = TRUE;
+   }
+
+   /************ SIGNAL HANDLING *************/
+   if (netconf_flag == FALSE) {
+      struct sigaction sig_action;
+      sig_action.sa_handler = supervisor_signal_handler;
+      sig_action.sa_flags = 0;
+      sigemptyset(&sig_action.sa_mask);
+
+      if (sigaction(SIGPIPE,&sig_action,NULL) == -1) {
+         VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGPIPE !\n", get_stats_formated_time());
+      }
+      if (sigaction(SIGINT,&sig_action,NULL) == -1) {
+         VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGINT !\n", get_stats_formated_time());
+      }
+      if (sigaction(SIGTERM,&sig_action,NULL) == -1) {
+         VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGTERM !\n", get_stats_formated_time());
+      }
+      if (sigaction(SIGSEGV,&sig_action,NULL) == -1) {
+         VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGSEGV !\n", get_stats_formated_time());
+      }
+      if (sigaction(SIGQUIT,&sig_action,NULL) == -1) {
+         VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGQUIT !\n", get_stats_formated_time());
+      }
+   }
+   /****************************************/
+
+   supervisor_initialized = TRUE;
+   if (service_thread_initialized == TRUE) {
+      return 0;
+   } else {
+      return -1;
+   }
+}
+
+int start_service_thread()
+{
+   service_stop_all_modules = FALSE;
+   service_thread_continue = TRUE;
+   pthread_attr_t attr;
+   pthread_attr_init(&attr);
+   pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+
+   return pthread_create(&service_thread_id,  &attr, service_thread_routine, NULL);
+}
+
+int parse_program_arguments(int *argc, char **argv)
+{
+   /******/
+   static struct option long_options[] = {
+      {"daemon", no_argument, 0, 'd'},
+      {"config-file",  required_argument,    0, 'f'},
+      {"help", no_argument,           0,  'h' },
+      {"verbose",  no_argument,       0,  'v' },
+      {"daemon-socket",  required_argument,  0, 's'},
+      {"logs-path",  required_argument,  0, 'L'},
+      {0, 0, 0, 0}
+   };
+   /******/
+
+   char c = 0;
+   int option_index = 0;
+
+   while (1) {
+      option_index = 0;
+      c = getopt_long(*argc, argv, "df:hvs:L:", long_options, &option_index);
+      if (c == -1) {
+         break;
+      }
+
+      switch (c) {
+      case ':':
+         fprintf(stderr, "Wrong arguments, use \"supervisor -h\" for help.\n");
+         return -1;
+      case '?':
+         fprintf(stderr, "Unknown option, use \"supervisor -h\" for help.\n");
+         return -1;
+      case 'h':
+         printf("Usage: supervisor [-d|--daemon] -f|--config-file=path [-h|--help] [-v|--verbose] [-L|--logs-path] [-s|--daemon-socket=path]\n");
+         return -1;
+      case 's':
+         socket_path = optarg;
+         break;
+      case 'v':
+         verbose_flag = TRUE;
+         break;
+      case 'f':
+         NULLP_TEST_AND_FREE(config_file)
+         config_file = strdup(optarg);
+         break;
+      case 'd':
+         daemon_flag = TRUE;
+         break;
+      case 'L':
+         NULLP_TEST_AND_FREE(logs_path)
+         logs_path = strdup(optarg);
+         break;
+      }
+   }
+
+   if (socket_path == NULL) {
+      /* socket_path was not set by user, use default value. */
+      socket_path = DEFAULT_DAEMON_SERVER_SOCKET;
+   }
+   if (config_file == NULL) {
+      fprintf(stderr, "Missing required config file (-f|--config-file).\n");
+      return -1;
+   }
+   if (strstr(config_file, ".xml") == NULL) {
+      NULLP_TEST_AND_FREE(config_file)
+      fprintf(stderr, "File does not have expected .xml extension.\n");
+      return -1;
+   }
+
+   if (daemon_flag == TRUE) {
+      return DAEMON_MODE_CODE;
+   } else {
+      return INTERACTIVE_MODE_CODE;
+   }
+}
+
+
+
+/*****************************************************************
+ * Reload function and functions used by reload *
+ *****************************************************************/
 
 void reload_process_supervisor_element(reload_config_vars_t ** config_vars)
 {
@@ -3586,7 +3781,8 @@ void reload_resolve_module_enabled(reload_config_vars_t ** config_vars, const in
    return;
 }
 
-char const * sperm(__mode_t mode) {
+char const * sperm(__mode_t mode)
+{
     static char local_buff[16] = {0};
     int i = 0;
     // user permissions
@@ -4399,173 +4595,15 @@ void check_duplicated_ports()
    }
 }
 
-void generate_backup_config_file()
-{
-   FILE *backup_file_fd = NULL;
-   char *backup_file_name = NULL;
-   modules_profile_t * ptr = first_profile_ptr;
-   unsigned int x, y, backuped_modules = 0;
-   char buffer[20];
-   const char * templ = "<?xml version=\"1.0\"?><nemea-supervisor xmlns=\"urn:cesnet:tmc:nemea:1.0\"></nemea-supervisor>";
-   xmlDocPtr document_ptr = NULL;
-   xmlNodePtr root_elem = NULL, modules = NULL, module = NULL, trapinterfaces = NULL, interface = NULL;
-
-   document_ptr = xmlParseMemory(templ, strlen(templ));
-   if (document_ptr == NULL) {
-      return;
-   }
-   root_elem = xmlDocGetRootElement(document_ptr);
-   xmlNewProp (root_elem, BAD_CAST "lock", NULL);
-   if (daemon_flag) {
-      xmlNewProp (root_elem, BAD_CAST "daemon", BAD_CAST "true");
-      xmlNewProp (root_elem, BAD_CAST "socket_path", BAD_CAST socket_path);
-   } else {
-      xmlNewProp (root_elem, BAD_CAST "daemon", BAD_CAST "false");
-      xmlNewProp (root_elem, BAD_CAST "socket_path", BAD_CAST NULL);
-   }
-
-   modules = xmlNewChild(root_elem, NULL, BAD_CAST "supervisor", BAD_CAST NULL);
-   if (verbose_flag) {
-      xmlNewChild(modules, NULL, BAD_CAST "verbose", BAD_CAST "true");
-   } else {
-      xmlNewChild(modules, NULL, BAD_CAST "verbose", BAD_CAST "false");
-   }
-   memset(buffer,0,20);
-   sprintf(buffer, "%d", max_restarts_per_minute_config);
-   xmlNewChild(modules, NULL, BAD_CAST "module-restarts", BAD_CAST buffer);
-   xmlNewChild(modules, NULL, BAD_CAST "logs-directory", BAD_CAST logs_path);
-
-   if (xmlAddChild(root_elem, modules) == NULL) {
-      xmlFree(modules);
-   }
-
-   // backup modules with profile name
-   while (ptr != NULL) {
-      if (ptr->profile_name != NULL) {
-         modules = xmlNewChild(root_elem, NULL, BAD_CAST "modules", NULL);
-         xmlNewChild(modules, NULL, BAD_CAST "name", BAD_CAST ptr->profile_name);
-         if (ptr->profile_enabled) {
-            xmlNewChild(modules, NULL, BAD_CAST "enabled", BAD_CAST "true");
-         } else {
-            xmlNewChild(modules, NULL, BAD_CAST "enabled", BAD_CAST "false");
-         }
-         for (x=0; x<loaded_modules_cnt; x++) {
-            if (running_modules[x].modules_profile != NULL) {
-               if (strcmp(running_modules[x].modules_profile, ptr->profile_name) == 0) {
-                  module = xmlNewChild(modules, NULL, BAD_CAST "module", NULL);
-
-                  memset(buffer,0,20);
-                  sprintf(buffer, "%d", running_modules[x].module_pid);
-                  xmlNewProp (module, BAD_CAST "module_pid", BAD_CAST buffer);
-
-                  xmlNewChild(module, NULL, BAD_CAST "name", BAD_CAST running_modules[x].module_name);
-                  xmlNewChild(module, NULL, BAD_CAST "path", BAD_CAST running_modules[x].module_path);
-                  xmlNewChild(module, NULL, BAD_CAST "params", BAD_CAST running_modules[x].module_params);
-                  if (running_modules[x].module_enabled) {
-                     xmlNewChild(module, NULL, BAD_CAST "enabled", BAD_CAST "true");
-                  } else {
-                     xmlNewChild(module, NULL, BAD_CAST "enabled", BAD_CAST "false");
-                  }
-                  trapinterfaces = xmlNewChild(module, NULL, BAD_CAST "trapinterfaces", NULL);
-
-                  for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
-                     interface = xmlNewChild(trapinterfaces, NULL, BAD_CAST "interface", NULL);
-                     xmlNewChild(interface, NULL, BAD_CAST "note", BAD_CAST running_modules[x].module_ifces[y].ifc_note);
-                     xmlNewChild(interface, NULL, BAD_CAST "params", BAD_CAST running_modules[x].module_ifces[y].ifc_params);
-                     xmlNewChild(interface, NULL, BAD_CAST "direction", BAD_CAST running_modules[x].module_ifces[y].ifc_direction);
-                     xmlNewChild(interface, NULL, BAD_CAST "type", BAD_CAST running_modules[x].module_ifces[y].ifc_type);
-
-                     if (xmlAddChild(trapinterfaces, interface) == NULL) {
-                        xmlFree(interface);
-                     }
-                  }
 
 
-                  if (xmlAddChild(modules, module) == NULL) {
-                     xmlFree(module);
-                  }
-                  backuped_modules++;
-               }
-            }
-         }
-
-         if (xmlAddChild(root_elem, modules) == NULL) {
-            xmlFree(modules);
-         }
-      }
-      ptr = ptr->next;
-   }
-
-   //backup modules without profile name
-   if (backuped_modules < loaded_modules_cnt) {
-      modules = xmlNewChild(root_elem, NULL, BAD_CAST "modules", NULL);
-      for (x=0; x<loaded_modules_cnt; x++) {
-         if (running_modules[x].modules_profile == NULL) {
-            module = xmlNewChild(modules, NULL, BAD_CAST "module", NULL);
-
-            memset(buffer,0,20);
-            sprintf(buffer, "%d", running_modules[x].module_pid);
-            xmlNewProp (module, BAD_CAST "module_pid", BAD_CAST buffer);
-
-            xmlNewChild(module, NULL, BAD_CAST "name", BAD_CAST running_modules[x].module_name);
-            xmlNewChild(module, NULL, BAD_CAST "path", BAD_CAST running_modules[x].module_path);
-            xmlNewChild(module, NULL, BAD_CAST "params", BAD_CAST running_modules[x].module_params);
-            if (running_modules[x].module_enabled) {
-               xmlNewChild(module, NULL, BAD_CAST "enabled", BAD_CAST "true");
-            } else {
-               xmlNewChild(module, NULL, BAD_CAST "enabled", BAD_CAST "false");
-            }
-            trapinterfaces = xmlNewChild(module, NULL, BAD_CAST "trapinterfaces", NULL);
-
-            for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
-               interface = xmlNewChild(trapinterfaces, NULL, BAD_CAST "interface", NULL);
-               xmlNewChild(interface, NULL, BAD_CAST "note", BAD_CAST running_modules[x].module_ifces[y].ifc_note);
-               xmlNewChild(interface, NULL, BAD_CAST "params", BAD_CAST running_modules[x].module_ifces[y].ifc_params);
-               xmlNewChild(interface, NULL, BAD_CAST "direction", BAD_CAST running_modules[x].module_ifces[y].ifc_direction);
-               xmlNewChild(interface, NULL, BAD_CAST "type", BAD_CAST running_modules[x].module_ifces[y].ifc_type);
-
-               if (xmlAddChild(trapinterfaces, interface) == NULL) {
-                  xmlFree(interface);
-               }
-            }
-
-            if (xmlAddChild(modules, module) == NULL) {
-               xmlFree(module);
-            }
-         }
-      }
-
-      if (xmlAddChild(root_elem, modules) == NULL) {
-         xmlFree(modules);
-      }
-   }
-
-   backup_file_name = create_backup_file_path();
-   if (backup_file_name == NULL) {
-      VERBOSE(N_STDOUT, "%s [ERROR] Could not create backup file name!\n", get_stats_formated_time());
-   } else {
-      backup_file_fd = fopen(backup_file_name,"w");
-      if (backup_file_fd != NULL) {
-         if (xmlDocFormatDump(backup_file_fd, document_ptr, 1) == -1) {
-            VERBOSE(N_STDOUT, "%s [ERROR] Could not save backup file!\n", get_stats_formated_time());
-         } else {
-            VERBOSE(N_STDOUT, "%s [WARNING] Phew, backup file saved !!\n", get_stats_formated_time());
-         }
-         fclose(backup_file_fd);
-      } else {
-         VERBOSE(N_STDOUT, "%s [ERROR] Could not open backup file!\n", get_stats_formated_time());
-      }
-      // Create file with information about generated backup file
-      create_shutdown_info(&backup_file_name);
-      NULLP_TEST_AND_FREE(backup_file_name)
-   }
-
-   xmlFreeDoc(document_ptr);
-   xmlCleanupParser();
-}
+/*****************************************************************
+ * Netconf functions *
+ *****************************************************************/
 
 #ifdef nemea_plugin
-void * netconf_server_routine_thread(void *arg) {
+void * netconf_server_routine_thread(void *arg)
+{
    server_routine();
    pthread_exit(EXIT_SUCCESS);
 }
