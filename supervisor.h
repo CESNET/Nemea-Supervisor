@@ -387,7 +387,6 @@ char *get_absolute_file_path(char *file_name);
 char *create_backup_file_path();
 void create_shutdown_info(char **backup_file_path);
 void print_module_ifc_stats(int module_number);
-int decode_cnts_from_json(char **data, int module_number);
 int convert_json_module_info(const char * json_str, trap_module_info_t **info);
 void print_xmlDoc_to_stream(xmlDocPtr doc_ptr, FILE *stream);
 struct tm *get_sys_time();
@@ -515,27 +514,109 @@ void interactive_show_running_modules_status();
 
 
 /**
- * \defgroup GROUP_NAME short_description
+ * \defgroup service_functions Functions used by service thread
  *
- * TODO group description.
+ * These functions are used in service thread routine which takes care of modules
+ * status (enabled modules has to run and disabled modules has to be stopped).
+ * Besides, it connects to modules with service interface and receives their statistics
+ * in JSON format which are decoded and saved to modules structures.
  * @{
  */
 
 /**
+ * Function checks the status of every module (whether it is running or not).
  *
+ * @return Returns a number of running modules (a non-negative number).
  */
-void re_start_module(const int module_number);
-void disconnect_service_ifc(const int module_idx);
-int service_update_module_status();
+int service_check_modules_status();
+
+/**
+ * Function starts stopped modules which are enabled (they should run).
+ * Part of this function is also restart limit checking of every module which is being stared.
+ */
+void service_update_modules_status();
+
+/**
+ * Creates a new process and executes modules binary with all needed parameters.
+ * It also redirects stdout and stderr of the new process.
+ *
+ * @param[in] module_idx Index to array of modules (array of structures).
+ */
+void service_start_module(const int module_idx);
+
+/**
+ * Function cleans up after finished children processes of stopped modules.
+ */
 void service_clean_after_children();
+
+/**
+ * Function tries to stop running modules which are disabled using SIGINT signal.
+ */
 void service_stop_modules_sigint();
+
+/**
+ * Function stops running modules which are disabled using SIGKILL signal.
+ * Used only if the module does not responds to SIGINT signal.
+ */
 void service_stop_modules_sigkill();
-void service_restart_modules();
-void service_connect_to_modules();
-int service_recv_data(int module_number, uint32_t size, void **data);
-int service_send_data(int module_number, uint32_t size, void **data);
-void connect_to_module_service_ifc(int module, int num_ifc);
+
+/**
+ * Function checks connections between supervisor and service interface of every module.
+ * It also checks number of errors during the connection with every module and if the limit of errors is reached,
+ * it blocks the connection.
+ */
+void service_check_connections();
+
+/**
+ * Connects to service interface of the specified module.
+ * It also checks number of connection attempts and if the limit is reached, connection is blocked.
+ *
+ * @param[in] module_idx Index to array of modules (array of structures).
+ * @param[in] ifc_idx Index to array of modules interfaces.
+ */
+void service_connect_to_module(int module_idx, int ifc_idx);
+
+/**
+ * Closes the connection with service interface of the specified module.
+ *
+ * @param[in] module_idx Index to array of modules (array of structures).
+ */
+void service_disconnect_from_module(const int module_idx);
+
+/**
+ * Function receives the data from a service interface of the specified module and saves it to the output parameter data.
+ *
+ * @param[in] module_idx Index to array of modules (array of structures).
+ * @param[in] size Number of bytes to receive.
+ * @param[out] data Already allocated memory used for saving the data.
+ * @return Returns 0 if success, otherwise -1.
+ */
+int service_recv_data(int module_idx, uint32_t size, void **data);
+
+/**
+ * Function sends the data to a service interface of the specified module.
+ *
+ * @param[in] module_idx Index to array of modules (array of structures).
+ * @param[in] size Number of bytes to send.
+ * @param[in] data Memory with the data.
+ * @return Returns 0 if success, otherwise -1.
+ */
+int service_send_data(int module_idx, uint32_t size, void **data);
+
+/**
+ * Service thread routine is periodically checking and updating modules status
+ * and connection with the modules. It also receives statistics from modules service interface.
+ */
 void *service_thread_routine(void *arg __attribute__ ((unused)));
+
+/**
+ * Function decodes the data in JSON format and saves the statistics to specified modules structure.
+ *
+ * @param[in] data Memory with the data in JSON format.
+ * @param[in] module_idx Index to array of modules (array of structures).
+ * @return Returns 0 if success, otherwise -1.
+ */
+int service_decode_module_stats(char **data, int module_idx);
 /**@}*/
 
 

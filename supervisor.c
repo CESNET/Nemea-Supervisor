@@ -195,7 +195,7 @@ void create_shutdown_info(char **backup_file_path)
    fprintf(info_file_fd, "Supervisor shutdown info:\n==========================\n\n");
    fprintf(info_file_fd, "Date and time: %s\n", get_stats_formated_time());
    fprintf(info_file_fd, "Number of modules in configuration: %d\n", loaded_modules_cnt);
-   fprintf(info_file_fd, "Number of running modules: %d\n", service_update_module_status());
+   fprintf(info_file_fd, "Number of running modules: %d\n", service_check_modules_status());
    fprintf(info_file_fd, "Logs directory: %s\n", get_absolute_file_path(logs_path));
    fprintf(info_file_fd, "Configuration file: %s\n\n", get_absolute_file_path(config_file));
    fprintf(info_file_fd, "Run supervisor with this configuration file to load generated backup file. It will connect to running modules.\n");
@@ -225,155 +225,6 @@ void print_module_ifc_stats(int module_number)
                                                                                           ((out_ifc_stats_t *) running_modules[module_number].module_ifces[x].ifc_data)->autoflush_cnt);
       }
    }
-}
-
-int decode_cnts_from_json(char **data, int module_number)
-{
-   uint x = 0;
-   int actual_ifc_index = 0;
-   size_t arr_idx = 0;
-
-   json_error_t error;
-   json_t *json_struct = NULL;
-
-   json_t *in_ifces_arr = NULL;
-   json_t *out_ifces_arr = NULL;
-   json_t *in_ifc_cnts  = NULL;
-   json_t *out_ifc_cnts = NULL;
-   json_t *cnt = NULL;
-
-   /***********************************/
-
-   // Parse received modules counters in json format
-   json_struct = json_loads(*data , 0, &error);
-    if (json_struct == NULL) {
-        VERBOSE(MODULE_EVENT, "%s [ERROR] Could not convert modules (%s) stats to json structure on line %d: %s\n", get_stats_formated_time(), running_modules[module_number].module_name, error.line, error.text);
-        return -1;
-    }
-
-    // Check whether the root elem is a json object
-    if (json_is_object(json_struct) == 0) {
-      VERBOSE(MODULE_EVENT, "%s [ERROR] Root elem is not a json object (module %s).\n", get_stats_formated_time(), running_modules[module_number].module_name);
-      json_decref(json_struct);
-      return -1;
-    }
-
-
-    if (running_modules[module_number].module_num_in_ifc > 0) {
-      // Get value of the key "in" from json root elem (it should be an array of json objects - every object contains counters of one input interface)
-      in_ifces_arr = json_object_get(json_struct, "in");
-      if (in_ifces_arr == NULL) {
-         VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"in\" from root json object while parsing modules stats (module %s).\n", get_stats_formated_time(), running_modules[module_number].module_name);
-         json_decref(json_struct);
-         return -1;
-      }
-
-      if (json_is_array(in_ifces_arr) == 0) {
-         VERBOSE(MODULE_EVENT, "%s [ERROR] Value of key \"in\" is not a json array (module %s).\n", get_stats_formated_time(), running_modules[module_number].module_name);
-         json_decref(json_struct);
-         return -1;
-      }
-
-      actual_ifc_index = -1;
-      json_array_foreach(in_ifces_arr, arr_idx, in_ifc_cnts) {
-         // Find index of next input interface in modules structure
-         for (x = actual_ifc_index + 1; x < running_modules[module_number].module_ifces_cnt; x++) {
-            if (running_modules[module_number].module_ifces[x].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
-               actual_ifc_index = x;
-            }
-         }
-
-         if (json_is_object(in_ifc_cnts) == 0) {
-            VERBOSE(MODULE_EVENT, "%s [ERROR] Counters of an input interface are not a json object in received json structure (module %s).\n", get_stats_formated_time(), running_modules[module_number].module_name);
-            json_decref(json_struct);
-            return -1;
-         }
-
-         cnt = json_object_get(in_ifc_cnts, "messages");
-         if (cnt == NULL) {
-            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an input interface json object (module %s).\n", get_stats_formated_time(), "messages", running_modules[module_number].module_name);
-            json_decref(json_struct);
-            return -1;
-         }
-         ((in_ifc_stats_t *) running_modules[module_number].module_ifces[actual_ifc_index].ifc_data)->recv_msg_cnt = json_integer_value(cnt);
-
-         cnt = json_object_get(in_ifc_cnts, "buffers");
-         if (cnt == NULL) {
-            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an input interface json object (module %s).\n", get_stats_formated_time(), "buffers", running_modules[module_number].module_name);
-            json_decref(json_struct);
-            return -1;
-         }
-         ((in_ifc_stats_t *) running_modules[module_number].module_ifces[actual_ifc_index].ifc_data)->recv_buffer_cnt = json_integer_value(cnt);
-      }
-   }
-
-
-   if (running_modules[module_number].module_num_out_ifc > 0) {
-      // Get value of the key "out" from json root elem (it should be an array of json objects - every object contains counters of one output interface)
-      out_ifces_arr = json_object_get(json_struct, "out");
-      if (out_ifces_arr == NULL) {
-         VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"out\" from root json object while parsing modules stats (module %s).\n", get_stats_formated_time(), running_modules[module_number].module_name);
-         json_decref(json_struct);
-         return -1;
-      }
-
-      if (json_is_array(out_ifces_arr) == 0) {
-         VERBOSE(MODULE_EVENT, "%s [ERROR] Value of key \"out\" is not a json array (module %s).\n", get_stats_formated_time(), running_modules[module_number].module_name);
-         json_decref(json_struct);
-         return -1;
-      }
-
-      actual_ifc_index = -1;
-      json_array_foreach(out_ifces_arr, arr_idx, out_ifc_cnts) {
-         // Find index of next output interface in modules structure
-         for (x = actual_ifc_index + 1; x < running_modules[module_number].module_ifces_cnt; x++) {
-            if (running_modules[module_number].module_ifces[x].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
-               actual_ifc_index = x;
-            }
-         }
-
-         if (json_is_object(out_ifc_cnts) == 0) {
-            VERBOSE(MODULE_EVENT, "%s [ERROR] Counters of an output interface are not a json object in received json structure (module %s).\n", get_stats_formated_time(), running_modules[module_number].module_name);
-            json_decref(json_struct);
-            return -1;
-         }
-
-         cnt = json_object_get(out_ifc_cnts, "sent-messages");
-         if (cnt == NULL) {
-            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an output interface json object (module %s).\n", get_stats_formated_time(), "sent-messages", running_modules[module_number].module_name);
-            json_decref(json_struct);
-            return -1;
-         }
-         ((out_ifc_stats_t *) running_modules[module_number].module_ifces[actual_ifc_index].ifc_data)->sent_msg_cnt = json_integer_value(cnt);
-
-         cnt = json_object_get(out_ifc_cnts, "dropped-messages");
-         if (cnt == NULL) {
-            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an output interface json object (module %s).\n", get_stats_formated_time(), "dropped-messages", running_modules[module_number].module_name);
-            json_decref(json_struct);
-            return -1;
-         }
-         ((out_ifc_stats_t *) running_modules[module_number].module_ifces[actual_ifc_index].ifc_data)->dropped_msg_cnt = json_integer_value(cnt);
-
-         cnt = json_object_get(out_ifc_cnts, "buffers");
-         if (cnt == NULL) {
-            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an output interface json object (module %s).\n", get_stats_formated_time(), "buffers", running_modules[module_number].module_name);
-            json_decref(json_struct);
-            return -1;
-         }
-         ((out_ifc_stats_t *) running_modules[module_number].module_ifces[actual_ifc_index].ifc_data)->sent_buffer_cnt = json_integer_value(cnt);
-
-         cnt = json_object_get(out_ifc_cnts, "autoflushes");
-         if (cnt == NULL) {
-            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an output interface json object (module %s).\n", get_stats_formated_time(), "autoflushes", running_modules[module_number].module_name);
-            json_decref(json_struct);
-            return -1;
-         }
-         ((out_ifc_stats_t *) running_modules[module_number].module_ifces[actual_ifc_index].ifc_data)->autoflush_cnt = json_integer_value(cnt);
-      }
-   }
-
-   json_decref(json_struct);
-   return 0;
 }
 
 // TODO errors to stderr, code maintenance
@@ -1835,25 +1686,25 @@ void *daemon_serve_client_routine (void *cli)
  * Service thread functions *
  *****************************************************************/
 
-void re_start_module(const int module_number)
+void service_start_module(const int module_idx)
 {
    uint x = 0;
 
-   if (running_modules[module_number].module_running == FALSE) {
-      VERBOSE(MODULE_EVENT,"%s [START] Starting module %s.\n", get_stats_formated_time(), running_modules[module_number].module_name);
+   if (running_modules[module_idx].module_running == FALSE) {
+      VERBOSE(MODULE_EVENT,"%s [START] Starting module %s.\n", get_stats_formated_time(), running_modules[module_idx].module_name);
       #ifdef nemea_plugin
-         netconf_notify(MODULE_EVENT_STARTED,running_modules[module_number].module_name);
+         netconf_notify(MODULE_EVENT_STARTED,running_modules[module_idx].module_name);
       #endif
       // In case that reloading configuration changes module (its interfaces), module_running is set to FALSE and interfaces data are freed
-      for (x = 0; x < running_modules[module_number].module_ifces_cnt; x++) {
-         NULLP_TEST_AND_FREE(running_modules[module_number].module_ifces[x].ifc_data)
+      for (x = 0; x < running_modules[module_idx].module_ifces_cnt; x++) {
+         NULLP_TEST_AND_FREE(running_modules[module_idx].module_ifces[x].ifc_data)
       }
-      running_modules[module_number].module_running = TRUE;
+      running_modules[module_idx].module_running = TRUE;
    } else {
       #ifdef nemea_plugin
-         netconf_notify(MODULE_EVENT_RESTARTED,running_modules[module_number].module_name);
+         netconf_notify(MODULE_EVENT_RESTARTED,running_modules[module_idx].module_name);
       #endif
-      VERBOSE(MODULE_EVENT,"%s [RESTART] Restarting module %s\n", get_stats_formated_time(), running_modules[module_number].module_name);
+      VERBOSE(MODULE_EVENT,"%s [RESTART] Restarting module %s\n", get_stats_formated_time(), running_modules[module_idx].module_name);
    }
 
    char log_path_stdout[200];
@@ -1861,10 +1712,10 @@ void re_start_module(const int module_number)
    memset(log_path_stderr,0,200);
    memset(log_path_stdout,0,200);
 
-   sprintf(log_path_stdout,"%s%s_stdout",logs_path, running_modules[module_number].module_name);
-   sprintf(log_path_stderr,"%s%s_stderr",logs_path, running_modules[module_number].module_name);
+   sprintf(log_path_stdout,"%s%s_stdout",logs_path, running_modules[module_idx].module_name);
+   sprintf(log_path_stderr,"%s%s_stderr",logs_path, running_modules[module_idx].module_name);
 
-   init_module_variables(module_number);
+   init_module_variables(module_idx);
 
    time_t rawtime;
    struct tm * timeinfo;
@@ -1872,8 +1723,8 @@ void re_start_module(const int module_number)
    timeinfo = localtime ( &rawtime );
 
    fflush(stdout);
-   running_modules[module_number].module_pid = fork();
-   if (running_modules[module_number].module_pid == 0) {
+   running_modules[module_idx].module_pid = fork();
+   if (running_modules[module_idx].module_pid == 0) {
       int fd_stdout = open(log_path_stdout, O_RDWR | O_CREAT | O_APPEND, PERM_LOGFILE);
       int fd_stderr = open(log_path_stderr, O_RDWR | O_CREAT | O_APPEND, PERM_LOGFILE);
       if (fd_stdout != -1) {
@@ -1887,11 +1738,11 @@ void re_start_module(const int module_number)
       setsid(); // important for sending SIGINT to supervisor.. modules can't receive the signal too !!!
       fprintf(stdout,"---> %s", asctime (timeinfo));
       fprintf(stderr,"---> %s", asctime (timeinfo));
-      if (running_modules[module_number].module_path == NULL) {
+      if (running_modules[module_idx].module_path == NULL) {
          VERBOSE(N_STDOUT,"%s [ERROR] Starting module: module path is missing!\n", get_stats_formated_time());
-         running_modules[module_number].module_enabled = FALSE;
+         running_modules[module_idx].module_enabled = FALSE;
       } else {
-         char **params = make_module_arguments(module_number);
+         char **params = make_module_arguments(module_idx);
          if (params == NULL) {
             goto execute_fail;
          }
@@ -1899,28 +1750,28 @@ void re_start_module(const int module_number)
          // TODO check values of ifc type and direction during reload
          fflush(stdout);
          fflush(stderr);
-         execvp(running_modules[module_number].module_path, params);
+         execvp(running_modules[module_idx].module_path, params);
 execute_fail:
          exit(EXIT_FAILURE);
       }
-      VERBOSE(MODULE_EVENT,"%s [ERROR] Module execution: could not execute %s binary! (possible reason - wrong module binary path)\n", get_stats_formated_time(), running_modules[module_number].module_name);
-      running_modules[module_number].module_enabled = FALSE;
+      VERBOSE(MODULE_EVENT,"%s [ERROR] Module execution: could not execute %s binary! (possible reason - wrong module binary path)\n", get_stats_formated_time(), running_modules[module_idx].module_name);
+      running_modules[module_idx].module_enabled = FALSE;
       exit(EXIT_FAILURE);
-   } else if (running_modules[module_number].module_pid == -1) {
-      running_modules[module_number].module_status = FALSE;
-      running_modules[module_number].module_restart_cnt++;
+   } else if (running_modules[module_idx].module_pid == -1) {
+      running_modules[module_idx].module_status = FALSE;
+      running_modules[module_idx].module_restart_cnt++;
       VERBOSE(N_STDOUT,"%s [ERROR] Fork: could not fork supervisor process!\n", get_stats_formated_time());
    } else {
-      running_modules[module_number].module_is_my_child = TRUE;
-      running_modules[module_number].module_status = TRUE;
-      running_modules[module_number].module_restart_cnt++;
-      if (running_modules[module_number].module_restart_cnt == 1) {
-         running_modules[module_number].module_restart_timer = 0;
+      running_modules[module_idx].module_is_my_child = TRUE;
+      running_modules[module_idx].module_status = TRUE;
+      running_modules[module_idx].module_restart_cnt++;
+      if (running_modules[module_idx].module_restart_cnt == 1) {
+         running_modules[module_idx].module_restart_timer = 0;
       }
    }
 }
 
-void disconnect_service_ifc(const int module_idx)
+void service_disconnect_from_module(const int module_idx)
 {
    if ((running_modules[module_idx].module_has_service_ifc == TRUE) && (running_modules[module_idx].module_service_ifc_isconnected == TRUE)) {
       VERBOSE(MODULE_EVENT,"%s [SERVICE] Disconnecting from module %s\n", get_stats_formated_time(), running_modules[module_idx].module_name);
@@ -1939,7 +1790,7 @@ void disconnect_service_ifc(const int module_idx)
 }
 
 // Returns a number of running modules
-int service_update_module_status()
+int service_check_modules_status()
 {
    unsigned int x, some_module_running = 0;
 
@@ -2040,7 +1891,7 @@ void service_stop_modules_sigkill()
 
 
 
-void service_restart_modules()
+void service_update_modules_status()
 {
    unsigned int x = 0;
    int max_restarts = 0;
@@ -2065,13 +1916,13 @@ void service_restart_modules()
             netconf_notify(MODULE_EVENT_DISABLED,running_modules[x].module_name);
          #endif
       } else if (running_modules[x].module_status == FALSE && running_modules[x].module_enabled == TRUE) {
-         re_start_module(x);
+         service_start_module(x);
       }
    }
 }
 
 
-void service_connect_to_modules()
+void service_check_connections()
 {
    uint x = 0, y = 0;
 
@@ -2110,21 +1961,21 @@ void service_connect_to_modules()
                   close(running_modules[x].module_service_sd);
                   running_modules[x].module_service_sd = -1;
                }
-               connect_to_module_service_ifc(x,y);
+               service_connect_to_module(x,y);
             }
          }
       }
 }
 
 
-int service_recv_data(int module_number, uint32_t size, void **data)
+int service_recv_data(int module_idx, uint32_t size, void **data)
 {
    int num_of_timeouts = 0;
    int total_receved = 0;
    int last_receved = 0;
 
    while (total_receved < size) {
-      last_receved = recv(running_modules[module_number].module_service_sd, (*data) + total_receved, size - total_receved, MSG_DONTWAIT);
+      last_receved = recv(running_modules[module_idx].module_service_sd, (*data) + total_receved, size - total_receved, MSG_DONTWAIT);
       if (last_receved == 0) {
          VERBOSE(STATISTICS,"! Modules service thread closed its socket, im done !\n");
          return -1;
@@ -2138,7 +1989,7 @@ int service_recv_data(int module_number, uint32_t size, void **data)
                continue;
             }
          }
-         VERBOSE(MODULE_EVENT,"%s [SERVICE] Error while receiving from module %d_%s !\n", get_stats_formated_time(), module_number, running_modules[module_number].module_name);
+         VERBOSE(MODULE_EVENT,"%s [SERVICE] Error while receiving from module %d_%s !\n", get_stats_formated_time(), module_idx, running_modules[module_idx].module_name);
          return -1;
       }
       total_receved += last_receved;
@@ -2146,12 +1997,12 @@ int service_recv_data(int module_number, uint32_t size, void **data)
    return 0;
 }
 
-int service_send_data(int module_number, uint32_t size, void **data)
+int service_send_data(int module_idx, uint32_t size, void **data)
 {
    int num_of_timeouts = 0, total_sent = 0, last_sent = 0;
 
    while (total_sent < size) {
-      last_sent = send(running_modules[module_number].module_service_sd, (*data) + total_sent, size - total_sent, MSG_DONTWAIT);
+      last_sent = send(running_modules[module_idx].module_service_sd, (*data) + total_sent, size - total_sent, MSG_DONTWAIT);
       if (last_sent == -1) {
          if (errno == EAGAIN  || errno == EWOULDBLOCK) {
             num_of_timeouts++;
@@ -2162,7 +2013,7 @@ int service_send_data(int module_number, uint32_t size, void **data)
                continue;
             }
          }
-         VERBOSE(MODULE_EVENT,"%s [SERVICE] Error while sending to module %d_%s !\n", get_stats_formated_time(), module_number, running_modules[module_number].module_name);
+         VERBOSE(MODULE_EVENT,"%s [SERVICE] Error while sending to module %d_%s !\n", get_stats_formated_time(), module_idx, running_modules[module_idx].module_name);
          return -1;
       }
       total_sent += last_sent;
@@ -2170,7 +2021,7 @@ int service_send_data(int module_number, uint32_t size, void **data)
    return 0;
 }
 
-void connect_to_module_service_ifc(int module, int num_ifc)
+void service_connect_to_module(int module, int num_ifc)
 {
    char *dest_port = NULL;
    int sockfd = -1;
@@ -2243,7 +2094,7 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
       time(&rawtime);
       timeinfo = localtime(&rawtime);
 
-      running_modules_cnt = service_update_module_status();
+      running_modules_cnt = service_check_modules_status();
       if (service_thread_continue == FALSE) {
          if (service_stop_all_modules == FALSE) {
             VERBOSE(N_STDOUT, "%s [WARNING] I let modules continue running!\n", get_stats_formated_time());
@@ -2253,7 +2104,7 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
             break;
          }
       }
-      service_restart_modules();
+      service_update_modules_status();
       service_stop_modules_sigint();
 
       pthread_mutex_unlock(&running_modules_lock);
@@ -2261,7 +2112,7 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
       pthread_mutex_lock(&running_modules_lock);
 
       service_clean_after_children();
-      running_modules_cnt = service_update_module_status();
+      running_modules_cnt = service_check_modules_status();
       service_stop_modules_sigkill();
       service_clean_after_children();
 
@@ -2278,7 +2129,7 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
                   running_modules[y].init_module = FALSE;
                   running_modules[y].module_served_by_service_thread = TRUE;
                } else {
-                  disconnect_service_ifc(y);
+                  service_disconnect_from_module(y);
                }
             } else {
                running_modules[y].module_served_by_service_thread = TRUE;
@@ -2287,27 +2138,27 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
       }
 
       // Update status of every module before sending a request for their stats
-      running_modules_cnt = service_update_module_status();
+      running_modules_cnt = service_check_modules_status();
 
       // Set request header
       header->com = SERVICE_GET_COM;
       header->data_size = 0;
 
       // Handle connection between supervisor and modules via service interface
-      service_connect_to_modules();
+      service_check_connections();
 
       for (x=0;x<loaded_modules_cnt;x++) {
          // If the module and supervisor are connected via service interface, request for stats is sent
          if (running_modules[x].module_service_ifc_isconnected == TRUE) {
             if (service_send_data(x, sizeof(service_msg_header_t), (void **) &header) == -1) {
                VERBOSE(MODULE_EVENT,"%s [SERVICE] Error while sending request to module %d_%s.\n", get_stats_formated_time(), x, running_modules[x].module_name);
-               disconnect_service_ifc(x);
+               service_disconnect_from_module(x);
             }
          }
       }
 
       // Update status of every module before receiving their stats
-      running_modules_cnt = service_update_module_status();
+      running_modules_cnt = service_check_modules_status();
 
       for (x=0;x<loaded_modules_cnt;x++) {
          // Check whether the module is running and is connected with supervisor via service interface
@@ -2315,14 +2166,14 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
             // Receive reply header
             if (service_recv_data(x, sizeof(service_msg_header_t), (void **) &header) == -1) {
                VERBOSE(MODULE_EVENT, "%s [SERVICE] Error while receiving reply header from module %d_%s.\n", get_stats_formated_time(), x, running_modules[x].module_name);
-               disconnect_service_ifc(x);
+               service_disconnect_from_module(x);
                continue;
             }
 
             // Check if the reply is OK
             if (header->com != SERVICE_OK_REPLY) {
                VERBOSE(MODULE_EVENT, "%s [SERVICE] Wrong reply from module %d_%s.\n", get_stats_formated_time(), x, running_modules[x].module_name);
-               disconnect_service_ifc(x);
+               service_disconnect_from_module(x);
                continue;
             }
 
@@ -2337,14 +2188,14 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
             // Receive module stats in json format
             if (service_recv_data(x, header->data_size, (void **) &buffer) == -1) {
                VERBOSE(MODULE_EVENT, "%s [SERVICE] Error while receiving stats from module %d_%s.\n", get_stats_formated_time(), x, running_modules[x].module_name);
-               disconnect_service_ifc(x);
+               service_disconnect_from_module(x);
                continue;
             }
 
             // Decode json and save stats into module structure
-            if (decode_cnts_from_json(&buffer, x) == -1) {
+            if (service_decode_module_stats(&buffer, x) == -1) {
                VERBOSE(MODULE_EVENT, "%s [SERVICE] Error while receiving stats from module %d_%s.\n", get_stats_formated_time(), x, running_modules[x].module_name);
-               disconnect_service_ifc(x);
+               service_disconnect_from_module(x);
                continue;
             }
          }
@@ -2363,13 +2214,162 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
 
    // Disconnect from running modules
    for (x=0;x<loaded_modules_cnt;x++) {
-      disconnect_service_ifc(x);
+      service_disconnect_from_module(x);
    }
 
    NULLP_TEST_AND_FREE(buffer)
    NULLP_TEST_AND_FREE(header)
 
    pthread_exit(EXIT_SUCCESS);
+}
+
+int service_decode_module_stats(char **data, int module_idx)
+{
+   uint x = 0;
+   int actual_ifc_index = 0;
+   size_t arr_idx = 0;
+
+   json_error_t error;
+   json_t *json_struct = NULL;
+
+   json_t *in_ifces_arr = NULL;
+   json_t *out_ifces_arr = NULL;
+   json_t *in_ifc_cnts  = NULL;
+   json_t *out_ifc_cnts = NULL;
+   json_t *cnt = NULL;
+
+   /***********************************/
+
+   // Parse received modules counters in json format
+   json_struct = json_loads(*data , 0, &error);
+    if (json_struct == NULL) {
+        VERBOSE(MODULE_EVENT, "%s [ERROR] Could not convert modules (%s) stats to json structure on line %d: %s\n", get_stats_formated_time(), running_modules[module_idx].module_name, error.line, error.text);
+        return -1;
+    }
+
+    // Check whether the root elem is a json object
+    if (json_is_object(json_struct) == 0) {
+      VERBOSE(MODULE_EVENT, "%s [ERROR] Root elem is not a json object (module %s).\n", get_stats_formated_time(), running_modules[module_idx].module_name);
+      json_decref(json_struct);
+      return -1;
+    }
+
+
+    if (running_modules[module_idx].module_num_in_ifc > 0) {
+      // Get value of the key "in" from json root elem (it should be an array of json objects - every object contains counters of one input interface)
+      in_ifces_arr = json_object_get(json_struct, "in");
+      if (in_ifces_arr == NULL) {
+         VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"in\" from root json object while parsing modules stats (module %s).\n", get_stats_formated_time(), running_modules[module_idx].module_name);
+         json_decref(json_struct);
+         return -1;
+      }
+
+      if (json_is_array(in_ifces_arr) == 0) {
+         VERBOSE(MODULE_EVENT, "%s [ERROR] Value of key \"in\" is not a json array (module %s).\n", get_stats_formated_time(), running_modules[module_idx].module_name);
+         json_decref(json_struct);
+         return -1;
+      }
+
+      actual_ifc_index = -1;
+      json_array_foreach(in_ifces_arr, arr_idx, in_ifc_cnts) {
+         // Find index of next input interface in modules structure
+         for (x = actual_ifc_index + 1; x < running_modules[module_idx].module_ifces_cnt; x++) {
+            if (running_modules[module_idx].module_ifces[x].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
+               actual_ifc_index = x;
+            }
+         }
+
+         if (json_is_object(in_ifc_cnts) == 0) {
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Counters of an input interface are not a json object in received json structure (module %s).\n", get_stats_formated_time(), running_modules[module_idx].module_name);
+            json_decref(json_struct);
+            return -1;
+         }
+
+         cnt = json_object_get(in_ifc_cnts, "messages");
+         if (cnt == NULL) {
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an input interface json object (module %s).\n", get_stats_formated_time(), "messages", running_modules[module_idx].module_name);
+            json_decref(json_struct);
+            return -1;
+         }
+         ((in_ifc_stats_t *) running_modules[module_idx].module_ifces[actual_ifc_index].ifc_data)->recv_msg_cnt = json_integer_value(cnt);
+
+         cnt = json_object_get(in_ifc_cnts, "buffers");
+         if (cnt == NULL) {
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an input interface json object (module %s).\n", get_stats_formated_time(), "buffers", running_modules[module_idx].module_name);
+            json_decref(json_struct);
+            return -1;
+         }
+         ((in_ifc_stats_t *) running_modules[module_idx].module_ifces[actual_ifc_index].ifc_data)->recv_buffer_cnt = json_integer_value(cnt);
+      }
+   }
+
+
+   if (running_modules[module_idx].module_num_out_ifc > 0) {
+      // Get value of the key "out" from json root elem (it should be an array of json objects - every object contains counters of one output interface)
+      out_ifces_arr = json_object_get(json_struct, "out");
+      if (out_ifces_arr == NULL) {
+         VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"out\" from root json object while parsing modules stats (module %s).\n", get_stats_formated_time(), running_modules[module_idx].module_name);
+         json_decref(json_struct);
+         return -1;
+      }
+
+      if (json_is_array(out_ifces_arr) == 0) {
+         VERBOSE(MODULE_EVENT, "%s [ERROR] Value of key \"out\" is not a json array (module %s).\n", get_stats_formated_time(), running_modules[module_idx].module_name);
+         json_decref(json_struct);
+         return -1;
+      }
+
+      actual_ifc_index = -1;
+      json_array_foreach(out_ifces_arr, arr_idx, out_ifc_cnts) {
+         // Find index of next output interface in modules structure
+         for (x = actual_ifc_index + 1; x < running_modules[module_idx].module_ifces_cnt; x++) {
+            if (running_modules[module_idx].module_ifces[x].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
+               actual_ifc_index = x;
+            }
+         }
+
+         if (json_is_object(out_ifc_cnts) == 0) {
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Counters of an output interface are not a json object in received json structure (module %s).\n", get_stats_formated_time(), running_modules[module_idx].module_name);
+            json_decref(json_struct);
+            return -1;
+         }
+
+         cnt = json_object_get(out_ifc_cnts, "sent-messages");
+         if (cnt == NULL) {
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an output interface json object (module %s).\n", get_stats_formated_time(), "sent-messages", running_modules[module_idx].module_name);
+            json_decref(json_struct);
+            return -1;
+         }
+         ((out_ifc_stats_t *) running_modules[module_idx].module_ifces[actual_ifc_index].ifc_data)->sent_msg_cnt = json_integer_value(cnt);
+
+         cnt = json_object_get(out_ifc_cnts, "dropped-messages");
+         if (cnt == NULL) {
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an output interface json object (module %s).\n", get_stats_formated_time(), "dropped-messages", running_modules[module_idx].module_name);
+            json_decref(json_struct);
+            return -1;
+         }
+         ((out_ifc_stats_t *) running_modules[module_idx].module_ifces[actual_ifc_index].ifc_data)->dropped_msg_cnt = json_integer_value(cnt);
+
+         cnt = json_object_get(out_ifc_cnts, "buffers");
+         if (cnt == NULL) {
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an output interface json object (module %s).\n", get_stats_formated_time(), "buffers", running_modules[module_idx].module_name);
+            json_decref(json_struct);
+            return -1;
+         }
+         ((out_ifc_stats_t *) running_modules[module_idx].module_ifces[actual_ifc_index].ifc_data)->sent_buffer_cnt = json_integer_value(cnt);
+
+         cnt = json_object_get(out_ifc_cnts, "autoflushes");
+         if (cnt == NULL) {
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an output interface json object (module %s).\n", get_stats_formated_time(), "autoflushes", running_modules[module_idx].module_name);
+            json_decref(json_struct);
+            return -1;
+         }
+         ((out_ifc_stats_t *) running_modules[module_idx].module_ifces[actual_ifc_index].ifc_data)->autoflush_cnt = json_integer_value(cnt);
+      }
+   }
+
+   json_decref(json_struct);
+   return 0;
 }
 
 
