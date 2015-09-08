@@ -1332,7 +1332,7 @@ void update_module_mem_usage()
  * Daemon mode functions *
  *****************************************************************/
 
-int create_daemon_process()
+int daemon_init_process()
 {
    pid_t process_id = 0;
    pid_t sid = 0;
@@ -1358,7 +1358,7 @@ int create_daemon_process()
    return 0;
 }
 
-int alloc_server_structures()
+int daemon_init_structures()
 {
    unsigned int x = 0;
 
@@ -1388,7 +1388,7 @@ int alloc_server_structures()
    return 0;
 }
 
-int create_server_socket()
+int daemon_init_socket()
 {
    union tcpip_socket_addr addr;
    memset(&addr, 0, sizeof(addr));
@@ -1427,18 +1427,18 @@ int daemon_mode_initialization()
 {
    fflush(stdout);
 
-   // create daemon
-   if (create_daemon_process() != 0) {
+   // initialize daemon process
+   if (daemon_init_process() != 0) {
       return -1;
    }
 
    // allocate structures needed by daemon process
-   if (alloc_server_structures() != 0) {
+   if (daemon_init_structures() != 0) {
       return -1;
    }
 
    // create socket
-   if (create_server_socket() != 0) {
+   if (daemon_init_socket() != 0) {
       return -1;
    }
 
@@ -1447,7 +1447,7 @@ int daemon_mode_initialization()
 }
 
 
-void server_routine()
+void daemon_mode_server_routine()
 {
    last_total_cpu_usage = get_total_cpu_usage();
    unsigned int x = 0;
@@ -1500,7 +1500,7 @@ void server_routine()
                         server_internals->clients_cnt++;
                         pthread_mutex_unlock(&server_internals->lock);
                         // Serve the new client
-                        if (pthread_create(&server_internals->clients[x]->client_thread_id,  &clients_thread_attr, serve_sup_client_routine, (void *) (server_internals->clients[x])) != 0) {
+                        if (pthread_create(&server_internals->clients[x]->client_thread_id,  &clients_thread_attr, daemon_serve_client_routine, (void *) (server_internals->clients[x])) != 0) {
                            VERBOSE(SUP_LOG, "%s [ERROR] Could not create client's thread.\n", get_stats_formated_time());
                            close(server_internals->clients[x]->client_sd);
                            server_internals->clients[x]->client_sd = -1;
@@ -1591,7 +1591,7 @@ int daemon_get_code_from_client(sup_client_t **cli)
       }
 }
 
-void send_options_to_client()
+void daemon_send_options_to_client()
 {
    usleep(50000); // Solved bugged output - without this sleep, escape codes in output were not sometimes reseted on time and they were applied also on this menu
    VERBOSE(N_STDOUT, ANSI_CYAN_BOLD "--------OPTIONS--------\n" ANSI_ATTR_RESET);
@@ -1607,7 +1607,7 @@ void send_options_to_client()
    VERBOSE(N_STDOUT, ANSI_YELLOW_BOLD "[INTERACTIVE] Your choice: " ANSI_ATTR_RESET);
 }
 
-int open_sup_client_streams(sup_client_t **cli)
+int daemon_open_client_streams(sup_client_t **cli)
 {
    // open input stream on client' s socket
    sup_client_t * client = *cli;
@@ -1634,34 +1634,34 @@ int open_sup_client_streams(sup_client_t **cli)
    return 0;
 }
 
-void disconnect_sup_client(sup_client_t *client)
+void daemon_disconnect_client(sup_client_t *cli)
 {
-   client->client_connected = FALSE;
-   if (client->client_input_stream_fd >= 0) {
-      close(client->client_input_stream_fd);
-      client->client_input_stream_fd = -1;
+   cli->client_connected = FALSE;
+   if (cli->client_input_stream_fd >= 0) {
+      close(cli->client_input_stream_fd);
+      cli->client_input_stream_fd = -1;
    }
-   if (client->client_input_stream != NULL) {
-      fclose(client->client_input_stream);
-      client->client_input_stream = NULL;
+   if (cli->client_input_stream != NULL) {
+      fclose(cli->client_input_stream);
+      cli->client_input_stream = NULL;
    }
-   if (client->client_output_stream != NULL) {
-      fclose(client->client_output_stream);
-      client->client_output_stream = NULL;
+   if (cli->client_output_stream != NULL) {
+      fclose(cli->client_output_stream);
+      cli->client_output_stream = NULL;
    }
-   if (client->client_sd >= 0) {
-      close(client->client_sd);
-      client->client_sd = -1;
+   if (cli->client_sd >= 0) {
+      close(cli->client_sd);
+      cli->client_sd = -1;
    }
    pthread_mutex_lock(&server_internals->lock);
    server_internals->clients_cnt--;
    pthread_mutex_unlock(&server_internals->lock);
-   VERBOSE(SUP_LOG, "%s [INFO] Disconnected client. (client's ID: %d)\n", get_stats_formated_time(), client->client_id);
+   VERBOSE(SUP_LOG, "%s [INFO] Disconnected client. (client's ID: %d)\n", get_stats_formated_time(), cli->client_id);
 }
 
-void *serve_sup_client_routine (void *arg)
+void *daemon_serve_client_routine (void *cli)
 {
-   sup_client_t * client = (sup_client_t *) arg;
+   sup_client_t * client = (sup_client_t *) cli;
    int bytes_to_read = 0; // value can be also -1 <=> ioctl error
    int ret_val = 0, nine_cnt = 0;
    int request = -1;
@@ -1669,8 +1669,8 @@ void *serve_sup_client_routine (void *arg)
    struct timeval tv;
 
    // Open client's streams
-   if (open_sup_client_streams(&client) != 0) {
-      disconnect_sup_client(client);
+   if (daemon_open_client_streams(&client) != 0) {
+      daemon_disconnect_client(client);
       pthread_exit(EXIT_SUCCESS);
    }
 
@@ -1678,17 +1678,17 @@ void *serve_sup_client_routine (void *arg)
    switch (daemon_get_code_from_client(&client)) {
    case -3: // timeout
       VERBOSE(SUP_LOG, "[ERROR] Timeout, client has not sent mode-code -> gonna wait for new client\n");
-      disconnect_sup_client(client);
+      daemon_disconnect_client(client);
       pthread_exit(EXIT_SUCCESS);
 
    case -2: // client has disconnected
       VERBOSE(SUP_LOG, "[ERROR] Client has disconnected -> gonna wait for new client\n");
-      disconnect_sup_client(client);
+      daemon_disconnect_client(client);
       pthread_exit(EXIT_SUCCESS);
 
    case -1: // another error while receiving mode-code from client
       VERBOSE(SUP_LOG, "[ERROR] Error while waiting for a mode-code from client -> gonna wait for new client\n");
-      disconnect_sup_client(client);
+      daemon_disconnect_client(client);
       pthread_exit(EXIT_SUCCESS);
 
    case CLIENT_CONFIG_MODE_CODE: // normal client configure mode -> continue to options loop
@@ -1699,7 +1699,7 @@ void *serve_sup_client_routine (void *arg)
          fprintf(client->client_output_stream, ANSI_RED_BOLD "[WARNING] Another client is connected to supervisor in configuration mode, you have to wait.\n" ANSI_ATTR_RESET);
          fflush(client->client_output_stream);
          pthread_mutex_unlock(&server_internals->lock);
-         disconnect_sup_client(client);
+         daemon_disconnect_client(client);
          pthread_exit(EXIT_SUCCESS);
       } else {
          VERBOSE(SUP_LOG, "%s [INFO] Got configuration mode code. (client's ID: %d)\n", get_stats_formated_time(), client->client_id);
@@ -1708,12 +1708,12 @@ void *serve_sup_client_routine (void *arg)
       pthread_mutex_unlock(&server_internals->lock);
       output_fd = client->client_output_stream;
       input_fd = client->client_input_stream;
-      send_options_to_client();
+      daemon_send_options_to_client();
       break;
 
    case CLIENT_RELOAD_MODE_CODE: // just reload configuration and wait for new client
       VERBOSE(SUP_LOG, "%s [INFO] Got reload mode code. (client's ID: %d)\n", get_stats_formated_time(), client->client_id);
-      disconnect_sup_client(client);
+      daemon_disconnect_client(client);
       reload_configuration(RELOAD_DEFAULT_CONFIG_FILE, NULL);
       pthread_exit(EXIT_SUCCESS);
 
@@ -1730,12 +1730,12 @@ void *serve_sup_client_routine (void *arg)
       fflush(client->client_output_stream);
       NULLP_TEST_AND_FREE(stats_buffer)
       VERBOSE(SUP_LOG, "%s [INFO] Stats sent to client. (client's ID: %d)\n", get_stats_formated_time(), client->client_id);
-      disconnect_sup_client(client);
+      daemon_disconnect_client(client);
       pthread_exit(EXIT_SUCCESS);
    }
 
    default: // just in case of unknown return value.. clean up and wait for new client
-      disconnect_sup_client(client);
+      daemon_disconnect_client(client);
       pthread_exit(EXIT_SUCCESS);
    }
 
@@ -1756,7 +1756,7 @@ void *serve_sup_client_routine (void *arg)
          pthread_mutex_lock(&server_internals->lock);
          server_internals->config_mode_active = FALSE;
          pthread_mutex_unlock(&server_internals->lock);
-         disconnect_sup_client(client);
+         daemon_disconnect_client(client);
          pthread_exit(EXIT_SUCCESS);
       } else if (ret_val != 0) {
          if (FD_ISSET(client->client_input_stream_fd, &read_fds)) {
@@ -1767,7 +1767,7 @@ void *serve_sup_client_routine (void *arg)
                pthread_mutex_lock(&server_internals->lock);
                server_internals->config_mode_active = FALSE;
                pthread_mutex_unlock(&server_internals->lock);
-               disconnect_sup_client(client);
+               daemon_disconnect_client(client);
                pthread_exit(EXIT_SUCCESS);
             }
 
@@ -1808,14 +1808,14 @@ void *serve_sup_client_routine (void *arg)
                break;
             }
             if (nine_cnt == 0 && !(server_internals->daemon_terminated) && client->client_connected) {
-               send_options_to_client();
+               daemon_send_options_to_client();
             }
          }
       } else {
          if (nine_cnt > 0) {
             VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Wrong input!\n" ANSI_ATTR_RESET);
             nine_cnt = 0;
-            send_options_to_client();
+            daemon_send_options_to_client();
          }
       }
    }
@@ -1825,7 +1825,7 @@ void *serve_sup_client_routine (void *arg)
    pthread_mutex_lock(&server_internals->lock);
    server_internals->config_mode_active = FALSE;
    pthread_mutex_unlock(&server_internals->lock);
-   disconnect_sup_client(client);
+   daemon_disconnect_client(client);
    pthread_exit(EXIT_SUCCESS);
 }
 
@@ -4597,7 +4597,7 @@ void check_duplicated_ports()
 #ifdef nemea_plugin
 void *netconf_server_routine_thread(void *arg)
 {
-   server_routine();
+   daemon_mode_server_routine();
    pthread_exit(EXIT_SUCCESS);
 }
 
@@ -4611,10 +4611,10 @@ int netconf_supervisor_initialization(xmlNodePtr *running)
    netconf_flag = TRUE;
    socket_path = DEFAULT_NETCONF_SERVER_SOCKET;
 
-   if (alloc_server_structures() != 0) {
+   if (daemon_init_structures() != 0) {
       return -1;
    }
-   if (create_server_socket() != 0) {
+   if (daemon_init_socket() != 0) {
       return -1;
    }
    daemon_mode_initialized = TRUE;

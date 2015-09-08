@@ -68,7 +68,7 @@ int reload_configuration(const int, xmlNodePtr *);
 
 /* Daemon mode functions */
 int daemon_mode_initialization();
-void server_routine();
+void daemon_mode_server_routine();
 
 /* Netconf mode functions */
 #ifdef nemea_plugin

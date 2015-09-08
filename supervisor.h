@@ -361,23 +361,6 @@ int parse_program_arguments(int *argc, char **argv);
  */
 void print_help();
 
-/** Function creates daemon socket, initialize daemon and redirect stdout.
- * @param[out] d_sd Socket descriptor of the created socket.
- * @return 0 if success, else error;
- */
-// int daemon_init();
-
-/** Function accepts new connection from supervisor_cli.
- * @param[in] d_sd Daemon socket descriptor.
- * @return Returns clients socket descriptor, -1 if error.
- */
-int daemon_get_client();
-
-/** Function creates input and output filestream via supervisor_cli socket. After that it represents main loop function.
- * @param[in] arg Daemon socket descriptor.
- */
-// void server_routine();
-
 int get_shorter_string_length(char * first, char * second);
 
 int find_loaded_module(char * name);
@@ -575,25 +558,88 @@ void update_module_mem_usage();
 
 
 /**
- * \defgroup GROUP_NAME short_description
+ * \defgroup daemon_functions Supervisor daemon mode functions
  *
- * TODO group description.
+ * Set of functions used by supervisor while running as a daemon process.
+ * It behaves as a server and serves incoming supervisor clients and their requests.
+ * The request can be: reloading configuration (reloading the configuration file),
+ * receiving modules statistics (their interfaces counters) or changing configuration
+ * (start / stop module, check modules status etc.).
+ *
  * @{
  */
 
 /**
+ * Creates a new process and disconnects it from terminal (daemon process).
  *
+ * @return Returns 0 if success, otherwise -1.
  */
-int create_daemon_process();
-int alloc_server_structures();
-int create_server_socket();
+int daemon_init_process();
+
+/**
+ * Allocates needed structures and variables (clients array etc.)
+ *
+ * @return Returns 0 if success, otherwise -1.
+ */
+int daemon_init_structures();
+
+/**
+ * Creates and binds a socket for incoming connections.
+ *
+ * @return Returns 0 if success, otherwise -1.
+ */
+int daemon_init_socket();
+
+/**
+ * Function initializes daemon process, structures and socket using daemon_init_{process,structures,socket} functions.
+ *
+ * @return Returns 0 if success, otherwise -1.
+ */
 int daemon_mode_initialization();
-void server_routine();
+
+/**
+ * Server routine for daemon process (acceptor thread).
+ * It accepts a new incoming connection and starts a serving thread (if there is a space for another client).
+ */
+void daemon_mode_server_routine();
+
+/**
+ * Tries to receive initial data from a new client and reads a mode code.
+ *
+ * @param[in] cli Structure with clients private data.
+ * @return If success, it returns mode code (client wants to configure, reload configuration or receive stats about modules).
+ * Otherwise it returns negative value (-3 timeout, -2 client disconnection, -1 another error).
+ */
 int daemon_get_code_from_client(sup_client_t **cli);
-void send_options_to_client();
-int open_sup_client_streams(sup_client_t **cli);
-void disconnect_sup_client(sup_client_t *client);
-void *serve_sup_client_routine (void *arg);
+
+/**
+ * Function sends options to a client during configuration mode (a menu with options the client can choose from - start or stop module etc.).
+ */
+void daemon_send_options_to_client();
+
+/**
+ * Function opens input and output streams for a new client.
+ *
+ * @param[in] cli Structure with clients private data.
+ * @return Returns 0 if success, otherwise -1.
+ */
+int daemon_open_client_streams(sup_client_t **cli);
+
+/**
+ * Function disconnects a client and makes needed clean up (closing streams etc.).
+ *
+ * @param[in] cli Structure with clients private data.
+ */
+void daemon_disconnect_client(sup_client_t *cli);
+
+/**
+ * Daemons routine for serving new incoming clients (every client gets a thread doing this routine).
+ * This routine opens clients streams, receives a mode code from the client and according to the the received mode code
+ * it performs required operations.
+ *
+ * @param[in] cli Structure with clients private data.
+ */
+void *daemon_serve_client_routine (void *cli);
 /**@}*/
 
 #endif

@@ -103,7 +103,7 @@ int main (int argc, char *argv [])
          // Initialize supervisor's structures, service thread, output, signal handler and load startup configuration
          if (supervisor_initialization() == 0) {
             // Start server routine
-            server_routine();
+            daemon_mode_server_routine();
          }
       }
    } else if (ret_val == INTERACTIVE_MODE_CODE) {
