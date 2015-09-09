@@ -9,8 +9,12 @@ supervisor_cli_SOURCES= supervisor_cli.c internal.h internal.c
 doc_DATA=README.md
 EXTRA_DIST = supervisor_config.xml nemea-supervisor README.md
 sysconf_DATA = supervisor_config.xml
-initdir=${sysconfdir}/../init.d
 init_SCRIPTS=nemea-supervisor
+
+if HAVE_SYSTEMD
+systemddir=@SYSTEMD_UNIT_DIR@
+systemd_DATA=nemea-supervisor.service
+endif
 
 if MAKE_RPMS
 RPMDIR = RPMBUILD

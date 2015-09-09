@@ -29,6 +29,8 @@ AC_ARG_ENABLE([debug],
               CXXFLAGS="-Wall -O3 $CXXFLAGS"])
 AM_CONDITIONAL(DEBUG, test x"$debug" = x"true")
 
+AC_DEFINE_DIR(initdir, [sysconfdir]/init.d, [Path to init.d (init script)])
+
 # Checks for programs.
 AC_PROG_CC
 AM_PROG_CC_C_O
@@ -76,7 +78,13 @@ AC_TYPE_PID_T
 AC_FUNC_FORK
 AC_CHECK_FUNCS([dup2 memset mkdir])
 
-AC_CONFIG_FILES([Makefile nemea-supervisor.spec nemea-supervisor munin/Makefile])
+PKG_CHECK_MODULES([systemd], [systemd], [
+SYSTEMD_UNIT_DIR=$(pkg-config --variable=systemdsystemunitdir systemd)
+AC_SUBST(SYSTEMD_UNIT_DIR)
+AM_CONDITIONAL([HAVE_SYSTEMD], [true])
+], [AM_CONDITIONAL([HAVE_SYSTEMD], [false])])
+
+AC_CONFIG_FILES([Makefile nemea-supervisor.spec nemea-supervisor nemea-supervisor.service munin/Makefile])
 AC_OUTPUT
 echo
 echo
