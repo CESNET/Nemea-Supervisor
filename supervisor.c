@@ -568,19 +568,22 @@ void init_module_variables(int module_number)
    uint x = 0;
    // Allocate needed structures for every modules interface according to its direction or memset if they are already allocated
    for (x = 0; x < running_modules[module_number].module_ifces_cnt; x++) {
-      if (running_modules[module_number].module_ifces[x].ifc_data == NULL) {
-         if (running_modules[module_number].module_ifces[x].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
+      if (running_modules[module_number].module_ifces[x].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
+         if (running_modules[module_number].module_ifces[x].ifc_data == NULL) {
             running_modules[module_number].module_ifces[x].ifc_data = (void *) calloc(1, sizeof(in_ifc_stats_t));
-         } else if (running_modules[module_number].module_ifces[x].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
-            running_modules[module_number].module_ifces[x].ifc_data = (void *) calloc(1, sizeof(out_ifc_stats_t));
-         }
-         running_modules[module_number].module_running = TRUE;
-      } else {
-         if (running_modules[module_number].module_ifces[x].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
+            running_modules[module_number].module_running = TRUE;
+         } else {
             memset(running_modules[module_number].module_ifces[x].ifc_data, 0, sizeof(in_ifc_stats_t));
-         } else if (running_modules[module_number].module_ifces[x].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
+         }
+      } else if (running_modules[module_number].module_ifces[x].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
+         if (running_modules[module_number].module_ifces[x].ifc_data == NULL) {
+            running_modules[module_number].module_ifces[x].ifc_data = (void *) calloc(1, sizeof(out_ifc_stats_t));
+            running_modules[module_number].module_running = TRUE;
+         } else {
             memset(running_modules[module_number].module_ifces[x].ifc_data, 0, sizeof(out_ifc_stats_t));
          }
+      } else {
+         NULLP_TEST_AND_FREE(running_modules[module_number].module_ifces[x].ifc_data)
       }
    }
    // Initialize modules variables
@@ -1127,7 +1130,9 @@ int daemon_init_socket()
    }
 
    if (bind(server_internals->server_sd, (struct sockaddr *) &addr.unix_addr, sizeof(addr.unix_addr)) != -1) {
-      chmod(socket_path, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+      if (chmod(socket_path, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH) == -1) {
+         fprintf(stderr, "%s [WARNING] Failed to set permissions to socket (%s)\n", get_stats_formated_time(), socket_path);
+      }
    } else {
       fprintf(stderr,"%s [ERROR] Bind: could not bind the daemon socket!\n", get_stats_formated_time());
       return -1;
@@ -3784,7 +3789,7 @@ int reload_configuration(const int choice, xmlNodePtr *node)
          /* if return value equals -1, modules element doesn't have one valid name and enabled element -> it's children (module elements) won't have profile
          *  return value 0 means success -> modules children will have a profile
          */
-         if (reload_find_and_check_modules_profile_basic_elements(&config_vars) == 0) {
+         if (reload_find_and_check_modules_profile_basic_elements(&config_vars) == 0 && actual_profile_ptr != NULL) {
             VERBOSE(N_STDOUT, "[INFO] Found valid modules profile with name \"%s\" set to %s.\n", actual_profile_ptr->profile_name, (actual_profile_ptr->profile_enabled == TRUE ? "enabled" : "disabled"));
             modules_got_profile = TRUE;
          } else {
