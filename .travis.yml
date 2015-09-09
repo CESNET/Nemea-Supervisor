@@ -22,8 +22,8 @@ addons:
       name: "CESNET/Nemea-Supervisor"
       description: "Build submitted via Travis CI"
     notification_email: svepemar@fit.cvut.cz
-    build_command_prepend: "./bootstrap.sh && ./configure && make clean"
-    build_command:   "make -j 4"
+    build_command_prepend: "ACT_N_DIR=$PWD; cd /tmp/; git clone https://github.com/CESNET/nemea-framework; cd nemea-framework; ./bootstrap.sh && ./configure -q --disable-examples --disable-common --disable-unirec --disable-python && make -j5; cd $ACT_N_DIR; ./bootstrap.sh && ./configure -q && make clean;"
+    build_command:   "make"
     branch_pattern: coverity
 
 addons:
@@ -39,12 +39,5 @@ addons:
       - libxml2-devel
       - libxml2
 
-before_install:
-   - ( git clone https://github.com/CESNET/nemea-framework;
-      cd nemea-framework; ./bootstrap.sh && ./configure -q --prefix=/usr && make -j 10 && sudo make install; )
-
-
-
 script:
   - ./bootstrap.sh && ./configure --disable-repobuild && make check
-
