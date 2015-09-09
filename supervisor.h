@@ -213,25 +213,6 @@ typedef struct reload_config_vars_s {
    int modified_modules;
 } reload_config_vars_t;
 
-
-typedef struct available_module_s available_module_t;
-typedef struct available_modules_path_s available_modules_path_t;
-
-struct available_modules_path_s {
-   int is_valid;
-   char *path;
-   available_module_t *modules;
-   available_modules_path_t *next;
-   available_modules_path_t *prev;
-};
-
-
-struct available_module_s {
-   char *name;
-   trap_module_info_t *module_info;
-   available_module_t *next;
-};
-
 union tcpip_socket_addr {
    struct addrinfo tcpip_addr; ///< used for TCPIP socket
    struct sockaddr_un unix_addr; ///< used for path of UNIX socket
@@ -387,7 +368,6 @@ char *get_absolute_file_path(char *file_name);
 char *create_backup_file_path();
 void create_shutdown_info(char **backup_file_path);
 void print_module_ifc_stats(int module_number);
-int convert_json_module_info(const char * json_str, trap_module_info_t **info);
 void print_xmlDoc_to_stream(xmlDocPtr doc_ptr, FILE *stream);
 struct tm *get_sys_time();
 char *get_stats_formated_time();
@@ -442,8 +422,6 @@ void reload_count_module_interfaces(reload_config_vars_t **config_vars);
 void reload_check_module_allocated_interfaces(const int running_module_idx, const int ifc_cnt);
 void check_running_modules_allocated_memory();
 void reload_resolve_module_enabled(reload_config_vars_t **config_vars, const int modules_got_profile);
-char const * sperm(__mode_t mode);
-void reload_process_availablemodules_element(reload_config_vars_t **config_vars);
 int reload_configuration(const int choice, xmlNodePtr *node);
 void check_missing_interface_attributes();
 void check_duplicated_ports();
@@ -486,7 +464,6 @@ void free_module_on_index(int index);
 void free_module_interfaces_on_index(int index);
 void free_output_file_strings_and_streams();
 void free_module_and_shift_array(const int module_idx);
-void free_available_modules_structs();
 void supervisor_termination(int stop_all_modules, int generate_backup);
 /**@}*/
 

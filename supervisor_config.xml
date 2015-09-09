@@ -9,34 +9,6 @@
 	</supervisor>
         -->
 
-	<!-- <available-modules>
-		<search-paths>
-			<path>/usr/local/bin/</path>
-			<path>...</path>
-		</search-paths>
-		<modules>
-			<module>
-				<name>Flow-counter module</name>
-				<description>Example module for counting number of incoming flow records.</description>
-				<number-out-ifc>0</number-out-ifc>
-				<number-in-ifc>1</number-in-ifc>
-				<parameter>
-					<short-opt></short-opt>
-					<long-opt></long-opt>
-					<description></description>
-					<mandatory-argument></mandatory-argument>
-					<argument-type></argument-type>
-				</parameter>
-				<parameter>
-					...
-				</parameter>
-			</module>
-			<module>
-				...
-			</module>
-		</modules>
-	</available-modules> -->
-
 	<modules>
 		<name>test_profile</name>
 		<enabled>true</enabled>
