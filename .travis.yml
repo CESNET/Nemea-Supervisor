@@ -9,22 +9,11 @@ branches:
   only:
     - master
     - coverity
-
 env:
   global:
    # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
    #   via the "travis encrypt" command using the project repo's public key
-   - secure: "Ujd6l0d0udICuYV0vOUfsl4D1JFmJmp30Nrce9WHukUhdeUaF/Kx+i6GuSXT2WkItP8TD1i5SDlS7ZFkPGOo+XWN0Yb8TkF64mfK5JBnDByz/CwCSP5Pv3bw2896DsWIlnC4leI2fx4FVVqS3IQwyxOUW+e9fBkLjOCEhitEOkEFM36iGBJ1rsK/0Od3sJBROLfZ8/qZ8dlqRN4WJxho8I5zKKzHEWZHuf2m7bVUHTiQJ2GOLXOaGXB8P/oNUC9gcFRpePYotpd+LfGik78MUqR5TEvsTnO5nAIQiPJ15glShLWZ8dSuGSDLgzDVZRzej/f7iR6KUEKW/dBu+jdY0YeO2j8pwXSrqSCNNNcPTjgVA8lU0EmUMqoCJNiWhO+i4CkIkZ+IxB3DxHOv+R+kKuNAqP+oUDzbkTVUqufyHCWp9gDbJJxP2xtnWj9fRv9in6ASdNAxmLAh0BL7NQv7XugaUdQtdiyypsf3fEO4GmsHgPodGSdg5wG5Mi6brR7jJLKP4cJ8HNGX8kv7PBwBH7/pk0SzNS7k7kCWLLF7hVwu2lgwzh5ok12J1F6ecLwZHX8iCgwk7Sf1rGzbgxAxbiKsLn8TM6nSxeych0Ncy1Iz5zMFl6jnxVH9undxMYKH0OLxipuCxnKh7SqdzA1QVOGclfGOcBM68jEHwA1KgBg="
-
-addons:
-  coverity_scan:
-    project:
-      name: "CESNET/Nemea-Supervisor"
-      description: "Build submitted via Travis CI"
-    notification_email: svepemar@fit.cvut.cz
-    build_command_prepend: "ACT_N_DIR=$PWD; cd /tmp/; git clone https://github.com/CESNET/nemea-framework; cd nemea-framework; ./bootstrap.sh && ./configure -q --disable-examples --disable-common --disable-unirec --disable-python && make -j5; cd $ACT_N_DIR; ./bootstrap.sh && ./configure -q && make clean;"
-    build_command:   "make"
-    branch_pattern: coverity
+   - secure: "D2imBRzCuqhwU0SZiejdn7nh2TpYfcFfYNpta8KsQihbJ6v8qw8Um5oHP+KnksPGUGa4uDRCElUUxLq6ixEMwhCNazjXC1MnHhah+EQCkcmXN9bxpxHSRfyU/ydTqHn+hiNl19CgSPDwMankPR6GdP/2BgX+C5RkZaIt7MLkH3HQhQiXSXiboxzPRivPHrxtirojhvVHQpXaX0NB//rMpsuQ52SdJjNJ/9yT6L9fg3BVq6VhJ83nsY3LUQSWG5+rjhwTI2jXoSJUR7c9k+0eLaIsnJlNYeklgZwsiWmknEKWNFcgX9tOVTboHjkl0OasRyo+Ijow73Acnf55wDr7rvPqiGmipDZ/YjQNHIOF7vki6JQhEqrP4JVV3LPkqCok7LjOYb65/0zFmVU+pJOJVd8ZR09QxtC47VAlOqkyjL8yJimZey3oL7CKp6VuguCwm0ADjjiNR0Iph7jjhV5GoP4oMrbS2Z1hN9yzPSX3OHVAumnIzCrpDtI42mz9G0RjKSDXwTgpPn7FuNfwTy9DKwVB7vGWcU8XlEaJ0vLxGX+jz1eOCCMtDK3HyPGRFqmfzxaRzs3bDEyp91IbAi02Zk6TxfxDQKeH/OhmGDhM72aaRblk3yOtdUw/ApF6YNIRmfQefAID7Znf3SSRSmGwHnW+f9N63LpSL5Ms0w3E6Xc="
 
 addons:
   apt:
@@ -38,9 +27,18 @@ addons:
       - automake
       - libxml2-devel
       - libxml2
+  coverity_scan:
+    project:
+      name: "CESNET/Nemea-Supervisor"
+      description: "Nemea Supervisor - management and monitoring Nemea module"
+    notification_email: cejkat@cesnet.cz
+    build_command_prepend: "./bootstrap.sh;./configure;make clean"
+    build_command:   "make"
+    branch_pattern: coverity
 
 before_install:
    - ( git clone https://github.com/CESNET/nemea-framework; cd nemea-framework; ./bootstrap.sh && ./configure -q --prefix=/usr && make -j10 && sudo make install; )
 
 script:
   - ./bootstrap.sh && ./configure --disable-repobuild && make check
+
