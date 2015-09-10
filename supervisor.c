@@ -2759,9 +2759,11 @@ void create_output_dir()
 {
    char *buffer = NULL;
    struct stat st = {0};
+   uint8_t default_path = FALSE;
 
 logs_path_null:
    if (logs_path == NULL) {
+      default_path = TRUE;
       if (netconf_flag == TRUE) {
          logs_path = strdup(NETCONF_DEFAULT_LOGSDIR_PATH);
       } else if (daemon_flag == TRUE) {
@@ -2776,31 +2778,35 @@ logs_path_null:
       }
    }
 
-   if (logs_path[strlen(logs_path)-1] != '/') {
+   if (strlen(logs_path) > 0 && logs_path[strlen(logs_path)-1] != '/') {
       buffer = (char *) calloc(strlen(logs_path)+2, sizeof(char));
       sprintf(buffer, "%s/", logs_path);
       free(logs_path);
       logs_path = buffer;
    }
 
-   // Check and create output directory
-   if (stat(logs_path, &st) == -1) {
-      if (errno == EACCES) {
-         // Don't have permissions to acces this directory, use default directory according to executed mode of supervisor
+   if (mkdir(logs_path, PERM_LOGSDIR) == -1) {
+      if (errno == EACCES) { // Don't have permissions to some folder in logs_path, use default directory according to executed mode of supervisor
+         // TODO print warning
+      } else if (errno == EEXIST) { // logs_path already exists
+         if (stat(logs_path, &st) != -1) {
+            if (S_ISDIR(st.st_mode) != FALSE) { // Check whether the file is a directory
+               // TODO check access (W_OK)
+               return;
+            } else {
+               // TODO print warning
+            }
+         }
+      } else if (errno == ENOENT) { // Some prefix of the logs_path is not a directory, use default directory according to executed mode of supervisor
+         // TODO print warning
+      }
+      if (default_path == TRUE) { // Prevent cycling (don't need more attempts to create directory with default path)
+         NULLP_TEST_AND_FREE(logs_path)
+         return;
+      } else { // Gonna create logs directory with default path
          NULLP_TEST_AND_FREE(logs_path)
          goto logs_path_null;
       }
-      // Directory does not exist, try to create it
-      if (mkdir(logs_path, PERM_LOGSDIR) == -1) {
-         if (errno == EACCES) {
-            // Don't have permissions to some folder in logs_path, use default directory according to executed mode of supervisor
-            NULLP_TEST_AND_FREE(logs_path)
-            goto logs_path_null;
-         }
-      }
-   } else if (S_ISDIR(st.st_mode) == FALSE) { // Check whether the file is a directory
-      NULLP_TEST_AND_FREE(logs_path)
-      goto logs_path_null;
    }
 }
 
