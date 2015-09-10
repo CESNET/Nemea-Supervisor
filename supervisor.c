@@ -568,14 +568,7 @@ void init_module_variables(int module_number)
    uint x = 0;
    // Allocate needed structures for every modules interface according to its direction or memset if they are already allocated
    for (x = 0; x < running_modules[module_number].module_ifces_cnt; x++) {
-      if (running_modules[module_number].module_ifces[x].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
-         if (running_modules[module_number].module_ifces[x].ifc_data == NULL) {
-            running_modules[module_number].module_ifces[x].ifc_data = (void *) calloc(1, sizeof(in_ifc_stats_t));
-            running_modules[module_number].module_running = TRUE;
-         } else {
-            memset(running_modules[module_number].module_ifces[x].ifc_data, 0, sizeof(in_ifc_stats_t));
-         }
-      } else if (running_modules[module_number].module_ifces[x].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
+      if (running_modules[module_number].module_ifces[x].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
          if (running_modules[module_number].module_ifces[x].ifc_data == NULL) {
             running_modules[module_number].module_ifces[x].ifc_data = (void *) calloc(1, sizeof(out_ifc_stats_t));
             running_modules[module_number].module_running = TRUE;
@@ -586,6 +579,18 @@ void init_module_variables(int module_number)
          NULLP_TEST_AND_FREE(running_modules[module_number].module_ifces[x].ifc_data)
       }
    }
+
+   for (x = 0; x < running_modules[module_number].module_ifces_cnt; x++) {
+      if (running_modules[module_number].module_ifces[x].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
+         if (running_modules[module_number].module_ifces[x].ifc_data == NULL) {
+            running_modules[module_number].module_ifces[x].ifc_data = (void *) calloc(1, sizeof(in_ifc_stats_t));
+            running_modules[module_number].module_running = TRUE;
+         } else {
+            memset(running_modules[module_number].module_ifces[x].ifc_data, 0, sizeof(in_ifc_stats_t));
+         }
+      }
+   }
+
    // Initialize modules variables
    running_modules[module_number].sent_sigint = FALSE;
    running_modules[module_number].virtual_memory_usage = 0;
@@ -930,6 +935,10 @@ void generate_backup_config_file()
             VERBOSE(N_STDOUT, "%s [WARNING] Phew, backup file saved !!\n", get_stats_formated_time());
          }
          fclose(backup_file_fd);
+         // Set permissions to backup file to prevent problems during loading and deleting after supervisor restart
+         if (chmod(backup_file_name, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH) == -1) {
+            fprintf(stderr, "%s [WARNING] Failed to set permissions to backup file (%s)\n", get_stats_formated_time(), backup_file_name);
+         }
       } else {
          VERBOSE(N_STDOUT, "%s [ERROR] Could not open backup file!\n", get_stats_formated_time());
       }
@@ -3622,28 +3631,47 @@ int reload_configuration(const int choice, xmlNodePtr *node)
       case RELOAD_INIT_LOAD_CONFIG: {
             backup_file_name = create_backup_file_path();
             if (backup_file_name == NULL) {
+parse_default_config_file:
                config_vars->doc_tree_ptr = xmlParseFile(config_file);
-            } else {
-               if (access(backup_file_name, F_OK) != -1) {
-                  config_vars->doc_tree_ptr = xmlParseFile(backup_file_name);
-                  unlink(backup_file_name); // delete backup file after parsing, it wont be needed anymore
-                  VERBOSE(N_STDOUT, "%s [WARNING] I found backup file for this configuration file on path \"%s\" and I'm gonna load it!\n", get_stats_formated_time(), backup_file_name);
-               } else {
-                  if (errno == EACCES) {
-                     VERBOSE(N_STDOUT, "%s [WARNING] I don't have permissions to access backup file path \"%s\", I'm gonna load default config file!\n", get_stats_formated_time(), backup_file_name);
-                  } else if (errno == ENOENT) {
-                     VERBOSE(N_STDOUT, "%s [WARNING] Backup file with path \"%s\" does not exist, I'm gonna load default config file!\n", get_stats_formated_time(), backup_file_name);
+               if (config_vars->doc_tree_ptr == NULL) {
+                  if (access(config_file, R_OK) == -1) {
+                     if (errno == EACCES) {
+                        VERBOSE(N_STDOUT, "%s [WARNING] I don't have permissions to read config file with path \"%s\"!\n", get_stats_formated_time(), config_file);
+                     } else if (errno == ENOENT) {
+                        VERBOSE(N_STDOUT, "%s [WARNING] Config file with path \"%s\" does not exist!\n", get_stats_formated_time(), config_file);
+                     }
+                  } else {
+                     VERBOSE(N_STDOUT,"%s [WARNING] Config file with path \"%s\" was not parsed successfully!\n", get_stats_formated_time(), config_file);
                   }
-                  config_vars->doc_tree_ptr = xmlParseFile(config_file);
+                  pthread_mutex_unlock(&running_modules_lock);
+                  xmlCleanupParser();
+                  free(config_vars);
+                  return FALSE;
                }
-               NULLP_TEST_AND_FREE(backup_file_name)
+            } else {
+               config_vars->doc_tree_ptr = xmlParseFile(backup_file_name);
+               if (config_vars->doc_tree_ptr == NULL) {
+                  if (access(backup_file_name, R_OK) == -1) {
+                     if (errno == EACCES) {
+                        VERBOSE(N_STDOUT, "%s [WARNING] I don't have permissions to read backup file with path \"%s\", I'm gonna load default config file!\n", get_stats_formated_time(), backup_file_name);
+                     } else if (errno == ENOENT) {
+                        VERBOSE(N_STDOUT, "%s [WARNING] Backup file with path \"%s\" does not exist, I'm gonna load default config file!\n", get_stats_formated_time(), backup_file_name);
+                     }
+                  } else {
+                     VERBOSE(N_STDOUT,"%s [WARNING] Backup file with path \"%s\" was not parsed successfully, I'm gonna load default config file!\n", get_stats_formated_time(), backup_file_name);
+                  }
+                  goto parse_default_config_file;
+               } else {
+                  VERBOSE(N_STDOUT, "%s [WARNING] I found backup file for this configuration file on path \"%s\" and I'm gonna load it!\n", get_stats_formated_time(), backup_file_name);
+                  // delete backup file after parsing, it wont be needed anymore
+                  if (unlink(backup_file_name) == -1) {
+                     if (errno == EACCES) {
+                        VERBOSE(N_STDOUT, "%s [WARNING] I don't have permissions to delete backup file \"%s\"\n", get_stats_formated_time(), backup_file_name);
+                     }
+                  }
+               }
             }
-            if (config_vars->doc_tree_ptr == NULL) {
-               fprintf(stderr,"Document not parsed successfully. \n");
-               pthread_mutex_unlock(&running_modules_lock);
-               free(config_vars);
-               return FALSE;
-            }
+            NULLP_TEST_AND_FREE(backup_file_name)
             config_vars->current_node = xmlDocGetRootElement(config_vars->doc_tree_ptr);
          }
          break;
