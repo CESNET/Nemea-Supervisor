@@ -29,7 +29,7 @@ AC_ARG_ENABLE([debug],
               CXXFLAGS="-Wall -O3 $CXXFLAGS"])
 AM_CONDITIONAL(DEBUG, test x"$debug" = x"true")
 
-AC_DEFINE_DIR(initdir, [sysconfdir]/init.d, [Path to init.d (init script)])
+AC_DEFINE_DIR(initdir, [sysconfdir]/../init.d, [Path to init.d (init script)])
 
 # Checks for programs.
 AC_PROG_CC
