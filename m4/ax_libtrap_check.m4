@@ -39,9 +39,9 @@ AC_DEFUN([AX_LIBTRAP_CHECK], [
     elif test -d "$srcdir/../../libtrap"; then
       TRAPINC='$(top_srcdir)/../../libtrap/include'
       TRAPLIB='$(top_builddir)/../../libtrap/src/.libs'
-    elif test -d "/tmp/nemea-framework/libtrap"; then
-      TRAPINC='/tmp/nemea-framework/libtrap/include'
-      TRAPLIB='/tmp/nemea-framework/libtrap/src/.libs'
+    elif test -d "./nemea-framework/libtrap"; then
+      TRAPINC='./nemea-framework/libtrap/include'
+      TRAPLIB='./nemea-framework/libtrap/src/.libs'
     elif test -d "$srcdir/../nemea-framework/libtrap"; then
       TRAPINC='$(top_srcdir)/../nemea-framework/libtrap/include'
       TRAPLIB='$(top_builddir)/../nemea-framework/libtrap/src/.libs'

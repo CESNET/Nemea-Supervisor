@@ -32,7 +32,7 @@ addons:
       name: "CESNET/Nemea-Supervisor"
       description: "Nemea Supervisor - management and monitoring Nemea module"
     notification_email: cejkat@cesnet.cz
-    build_command_prepend: "./bootstrap.sh;./configure;make clean"
+    build_command_prepend: "./bootstrap.sh && ./configure -q && make clean"
     build_command:   "make"
     branch_pattern: coverity
 
