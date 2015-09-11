@@ -30,6 +30,7 @@ AC_ARG_ENABLE([debug],
 AM_CONDITIONAL(DEBUG, test x"$debug" = x"true")
 
 AC_DEFINE_DIR(initdir, [sysconfdir]/../init.d, [Path to init.d (init script)])
+AC_DEFINE_DIR(bindir, [bindir], [Path to binaries])
 
 # Checks for programs.
 AC_PROG_CC
