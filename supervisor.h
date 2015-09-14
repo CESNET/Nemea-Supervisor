@@ -444,7 +444,7 @@ void check_duplicated_ports();
 /**
  *
  */
-void create_output_dir();
+int create_output_dir();
 void create_output_files_strings();
 void supervisor_signal_handler(int catched_signal);
 void supervisor_flags_initialization();

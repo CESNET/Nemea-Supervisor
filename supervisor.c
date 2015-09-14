@@ -127,12 +127,14 @@ int service_stop_all_modules = FALSE;
 int supervisor_initialized = FALSE;
 int service_thread_initialized = FALSE;
 int daemon_mode_initialized = FALSE;
+int logs_paths_initialized = FALSE;
 int verbose_flag = FALSE;     // -v messages and cpu_usage stats
 int daemon_flag = FALSE;      // --daemon
 int netconf_flag = FALSE;
 char *config_file = NULL;
 char *socket_path = NULL;
 char *logs_path = NULL;
+char *modules_logs_path = NULL;
 
 char *statistics_file_path = NULL;
 char *module_event_file_path = NULL;
@@ -1608,8 +1610,10 @@ void service_start_module(const int module_idx)
    memset(log_path_stderr,0,200);
    memset(log_path_stdout,0,200);
 
-   sprintf(log_path_stdout,"%s%s_stdout",logs_path, running_modules[module_idx].module_name);
-   sprintf(log_path_stderr,"%s%s_stderr",logs_path, running_modules[module_idx].module_name);
+   if (modules_logs_path != NULL) {
+      sprintf(log_path_stdout,"%s%s_stdout",modules_logs_path, running_modules[module_idx].module_name);
+      sprintf(log_path_stderr,"%s%s_stderr",modules_logs_path, running_modules[module_idx].module_name);
+   }
 
    init_module_variables(module_idx);
 
@@ -2750,6 +2754,7 @@ void supervisor_termination(int stop_all_modules, int generate_backup)
 
    NULLP_TEST_AND_FREE(config_file)
    NULLP_TEST_AND_FREE(logs_path)
+   NULLP_TEST_AND_FREE(modules_logs_path)
 }
 
 
@@ -2758,15 +2763,18 @@ void supervisor_termination(int stop_all_modules, int generate_backup)
  * Supervisor initialization functions *
  *****************************************************************/
 
-void create_output_dir()
+#define CREATED_DEFAULT_LOGS   1
+#define CREATED_USER_DEFINED_LOGS   2
+
+int create_output_dir()
 {
    char *buffer = NULL;
    struct stat st = {0};
-   uint8_t default_path = FALSE;
+   uint8_t default_path_used = FALSE;
 
 logs_path_null:
    if (logs_path == NULL) {
-      default_path = TRUE;
+      default_path_used = TRUE;
       if (netconf_flag == TRUE) {
          logs_path = strdup(NETCONF_DEFAULT_LOGSDIR_PATH);
       } else if (daemon_flag == TRUE) {
@@ -2788,29 +2796,63 @@ logs_path_null:
       logs_path = buffer;
    }
 
+   // Create modules logs path
+   NULLP_TEST_AND_FREE(modules_logs_path)
+   if (asprintf(&modules_logs_path, "%smodules_logs/", logs_path) < 0) {
+      modules_logs_path = NULL;
+   }
+
    if (mkdir(logs_path, PERM_LOGSDIR) == -1) {
       if (errno == EACCES) { // Don't have permissions to some folder in logs_path, use default directory according to executed mode of supervisor
-         // TODO print warning
-      } else if (errno == EEXIST) { // logs_path already exists
-         if (stat(logs_path, &st) != -1) {
-            if (S_ISDIR(st.st_mode) != FALSE) { // Check whether the file is a directory
-               // TODO check access (W_OK)
-               return;
-            } else {
-               // TODO print warning
-            }
-         }
-      } else if (errno == ENOENT) { // Some prefix of the logs_path is not a directory, use default directory according to executed mode of supervisor
-         // TODO print warning
+         VERBOSE(N_STDOUT, "%s [ERROR] Don't have permissions to create a directory with path \"%s\".", get_stats_formated_time(), logs_path);
+      } else if (errno == EEXIST) { // logs_path already exists -> check whether it is a directory and create modules logs directory
+         goto modules_dir;
+      } else if (errno == ENOENT || errno == ENOTDIR) { // Some prefix of the logs_path is not a directory, use default directory according to executed mode of supervisor
+         VERBOSE(N_STDOUT, "%s [ERROR] Some prefix of the path \"%s\" is not a directory.", get_stats_formated_time(), logs_path);
       }
-      if (default_path == TRUE) { // Prevent cycling (don't need more attempts to create directory with default path)
-         NULLP_TEST_AND_FREE(logs_path)
-         return;
+      if (default_path_used == TRUE) { // Prevent cycling (don't need more attempts to create directory with default path)
+         goto fail_label;
       } else { // Gonna create logs directory with default path
          NULLP_TEST_AND_FREE(logs_path)
          goto logs_path_null;
       }
    }
+
+modules_dir:
+   if (mkdir(modules_logs_path, PERM_LOGSDIR) == -1) {
+      if (errno == EACCES) {
+         VERBOSE(N_STDOUT, "%s [ERROR] Don't have permissions to create a directory with path \"%s\".", get_stats_formated_time(), modules_logs_path);
+      } else if (errno == EEXIST) { // modules_logs_path already exists
+         goto success_label;
+      } else if (errno == ENOTDIR) {
+         VERBOSE(N_STDOUT, "%s [ERROR] The path \"%s\" is not a directory.", get_stats_formated_time(), logs_path);
+      }
+      if (default_path_used == TRUE) { // Prevent cycling (don't need more attempts to create directory with default path)
+         goto fail_label;
+      } else { // Gonna create logs directory with default path
+         NULLP_TEST_AND_FREE(logs_path)
+         goto logs_path_null;
+      }
+   }
+
+success_label:
+   if (stat(modules_logs_path, &st) != -1) { // Get info about modules logs path
+      if (S_ISDIR(st.st_mode) == FALSE) { // Check whether the file is a directory
+         NULLP_TEST_AND_FREE(modules_logs_path)
+         modules_logs_path = logs_path; // If not, use logs path instead
+      }
+   }
+   logs_paths_initialized = TRUE;
+   if (default_path_used == TRUE) {
+      return CREATED_DEFAULT_LOGS;
+   }
+   return CREATED_USER_DEFINED_LOGS;
+
+fail_label:
+   logs_paths_initialized = FALSE;
+   NULLP_TEST_AND_FREE(logs_path)
+   NULLP_TEST_AND_FREE(modules_logs_path)
+   return -1;
 }
 
 void create_output_files_strings()
@@ -2901,6 +2943,7 @@ void supervisor_flags_initialization()
    supervisor_initialized = FALSE;
    service_thread_initialized = FALSE;
    daemon_mode_initialized = FALSE;
+   logs_paths_initialized = FALSE;
 
    logs_path = NULL;
    config_file = NULL;
@@ -2985,6 +3028,14 @@ int supervisor_initialization()
    if (netconf_flag == FALSE) {
       VERBOSE(N_STDOUT,"[INIT LOADING CONFIGURATION]\n");
       reload_configuration(RELOAD_INIT_LOAD_CONFIG, NULL);
+   }
+
+   // Check and create (if it doesn't exist) directory for all output (started modules and also supervisor's) according to the logs_path
+   if (create_output_dir() != -1) {
+      // Create strings with supervisor's output files names and get their file descriptors
+      create_output_files_strings();
+      // Append content of tmp log files to already created logs
+      append_tmp_logs();
    }
 
    // Create a new thread doing service routine
@@ -3124,6 +3175,8 @@ void reload_process_supervisor_element(reload_config_vars_t **config_vars)
 {
    xmlChar *key = NULL;
    int x = 0, number = 0;
+   char *path_old = NULL;
+   char *path_new = NULL;
 
    while ((*config_vars)->module_elem != NULL) {
       if (!xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "verbose")) {
@@ -3150,14 +3203,28 @@ void reload_process_supervisor_element(reload_config_vars_t **config_vars)
          // Process supervisor's element "logs-directory"
          key = xmlNodeListGetString((*config_vars)->doc_tree_ptr, (*config_vars)->module_elem->xmlChildrenNode, 1);
          if (key != NULL) {
-            if (xmlStrcmp(key, BAD_CAST logs_path) != 0) {
-               if (logs_path != NULL) {
-                  free(logs_path);
-                  logs_path = NULL;
-               }
+            if (logs_paths_initialized == FALSE) { // Initial reloading (paths haven't been checked yet) - the logs path in the configuration file has bigger priority than the path from -L parameter
+               NULLP_TEST_AND_FREE(logs_path) // Free allocated string from -L parameter (if there was any)
                logs_path = (char *) xmlStrdup(key);
-               create_output_dir();
-               create_output_files_strings();
+            } else { // Reloading during runtime (supervisor has been initialized, logs paths are already created)
+               path_new = get_absolute_file_path((char *) key);
+               if (path_new == NULL) { // In case the new path does not exists, use it (if it won't be a valid path for logs - permissions etc., default logs path will be used)
+                  NULLP_TEST_AND_FREE(logs_path)
+                  logs_path = (char *) xmlStrdup(key);
+                  create_output_dir();
+                  create_output_files_strings();
+               } else {
+                  path_new = strdup(path_new);
+                  path_old = strdup(get_absolute_file_path(logs_path));
+                  if (strcmp(path_old, path_new) != 0) { // If it exists and it is not same as the current logs path, use it
+                     NULLP_TEST_AND_FREE(logs_path)
+                     logs_path = (char *) xmlStrdup(key);
+                     create_output_dir();
+                     create_output_files_strings();
+                  }
+                  NULLP_TEST_AND_FREE(path_new)
+                  NULLP_TEST_AND_FREE(path_old)
+               }
             }
          }
       }
