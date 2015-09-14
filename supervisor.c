@@ -86,6 +86,8 @@
 #define DEFAULT_DAEMON_SERVER_SOCKET   "/tmp/daemon_supervisor.sock"  ///<  Daemon server socket
 #define DEFAULT_NETCONF_SERVER_SOCKET   "/tmp/netconf_supervisor.sock"  ///<  Netconf server socket
 
+#define INIT_TMP_LOG_PATH   "/tmp/sup_tmp_log_file"
+#define INIT_TMP_DEBUG_LOG_PATH   "/tmp/sup_tmp_debug_log_file"
 #define NETCONF_DEFAULT_LOGSDIR_PATH   "/tmp/netconf_supervisor_logs/"
 #define DAEMON_DEFAULT_LOGSDIR_PATH   "/tmp/daemon_supervisor_logs/"
 #define INTERACTIVE_DEFAULT_LOGSDIR_PATH   "/tmp/interactive_supervisor_logs/"
@@ -1075,6 +1077,7 @@ int daemon_init_process()
    } else if (process_id > 0) {
       NULLP_TEST_AND_FREE(config_file)
       NULLP_TEST_AND_FREE(logs_path)
+      free_output_file_strings_and_streams();
       fprintf(stdout, "%s [INFO] PID of daemon process: %d.\n", get_stats_formated_time(), process_id);
       exit(EXIT_SUCCESS);
    }
@@ -1095,12 +1098,12 @@ int daemon_init_structures()
 
    server_internals = (server_internals_t *) calloc(1, sizeof(server_internals_t));
    if (server_internals == NULL) {
-      fprintf(stderr, "%s [ERROR] Could not allocate dameon_internals, cannot proceed without it!\n", get_stats_formated_time());
+      VERBOSE(N_STDOUT, "%s [ERROR] Could not allocate dameon_internals, cannot proceed without it!\n", get_stats_formated_time());
       return -1;
    }
    server_internals->clients = (sup_client_t **) calloc(MAX_NUMBER_SUP_CLIENTS, sizeof(sup_client_t*));
    if (server_internals->clients == NULL) {
-      fprintf(stderr, "%s [ERROR] Could not allocate structures for clients, cannot proceed without it!\n", get_stats_formated_time());
+      VERBOSE(N_STDOUT, "%s [ERROR] Could not allocate structures for clients, cannot proceed without it!\n", get_stats_formated_time());
       return -1;
    }
    for (x = 0; x < MAX_NUMBER_SUP_CLIENTS; x++) {
@@ -1109,7 +1112,7 @@ int daemon_init_structures()
          server_internals->clients[x]->client_sd = -1;
          server_internals->clients[x]->client_input_stream_fd = -1;
       } else {
-         fprintf(stderr, "%s [ERROR] Could not allocate structures for clients, cannot proceed without it!\n", get_stats_formated_time());
+         VERBOSE(N_STDOUT, "%s [ERROR] Could not allocate structures for clients, cannot proceed without it!\n", get_stats_formated_time());
          return -1;
       }
    }
@@ -1130,25 +1133,25 @@ int daemon_init_socket()
    unlink(socket_path); /* error when file does not exist is not a problem */
    server_internals->server_sd = socket(AF_UNIX, SOCK_STREAM, 0);
    if (server_internals->server_sd == -1) {
-      fprintf(stderr, "%s [ERROR] Could not create daemon socket.\n", get_stats_formated_time());
+      VERBOSE(N_STDOUT, "%s [ERROR] Could not create daemon socket.\n", get_stats_formated_time());
       return -1;
    }
    if (fcntl(server_internals->server_sd, F_SETFL, O_NONBLOCK) == -1) {
-      fprintf(stderr, "%s [ERROR] Could not set nonblocking mode on daemon socket.\n", get_stats_formated_time());
+      VERBOSE(N_STDOUT, "%s [ERROR] Could not set nonblocking mode on daemon socket.\n", get_stats_formated_time());
       return -1;
    }
 
    if (bind(server_internals->server_sd, (struct sockaddr *) &addr.unix_addr, sizeof(addr.unix_addr)) != -1) {
       if (chmod(socket_path, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH) == -1) {
-         fprintf(stderr, "%s [WARNING] Failed to set permissions to socket (%s)\n", get_stats_formated_time(), socket_path);
+         VERBOSE(N_STDOUT, "%s [WARNING] Failed to set permissions to socket (%s)\n", get_stats_formated_time(), socket_path);
       }
    } else {
-      fprintf(stderr,"%s [ERROR] Bind: could not bind the daemon socket!\n", get_stats_formated_time());
+      VERBOSE(N_STDOUT,"%s [ERROR] Bind: could not bind the daemon socket!\n", get_stats_formated_time());
       return -1;
    }
 
    if (listen(server_internals->server_sd, MAX_NUMBER_SUP_CLIENTS) == -1) {
-      fprintf(stderr,"%s [ERROR] Listen: could not listen on the daemon socket!\n", get_stats_formated_time());
+      VERBOSE(N_STDOUT,"%s [ERROR] Listen: could not listen on the daemon socket!\n", get_stats_formated_time());
       return -1;
    }
 
@@ -1176,6 +1179,7 @@ int daemon_mode_initialization()
    }
 
    daemon_mode_initialized = TRUE;
+   VERBOSE(N_STDOUT, "%s [INFO] Daemon process successfully initialized.\n", get_stats_formated_time());
    return 0;
 }
 
@@ -2855,6 +2859,8 @@ void create_output_files_strings()
          if (server_internals->clients_cnt == 0) {
             output_fd = supervisor_log_fd;
          }
+      } else {
+         output_fd = stdout;
       }
    }
 }
@@ -2904,19 +2910,70 @@ void supervisor_flags_initialization()
    verbose_flag = FALSE;
    daemon_flag = FALSE;
    netconf_flag = FALSE;
+
+   // Create temporary logs for writing - if an error occurs, it doesn't matter
+   supervisor_log_fd = fopen(INIT_TMP_LOG_PATH, "w");
+   supervisor_debug_log_fd = fopen(INIT_TMP_DEBUG_LOG_PATH, "w");
+
+   // Temporarily redirect standard output to tmp file for every supervisors mode to prevent losing possible warning and error messages
+   if (supervisor_log_fd != NULL) {
+      output_fd = supervisor_log_fd;
+   }
+   input_fd = stdin;
+}
+
+void append_tmp_logs()
+{
+   char buffer[DEFAULT_SIZE_OF_BUFFER];
+   int ret_val = 0;
+
+   // Open temporary logs for reading and write their whole content to already created logs
+   FILE * tmp_log_fd = fopen(INIT_TMP_LOG_PATH, "r");
+   if (tmp_log_fd != NULL) {
+      while (feof(tmp_log_fd) == FALSE) {
+         ret_val = fread((void *) buffer, sizeof(char), DEFAULT_SIZE_OF_BUFFER, tmp_log_fd);
+         if (ret_val > 0) {
+            buffer[ret_val] = 0;
+            VERBOSE(N_STDOUT, "%s", buffer);
+         } else {
+            break;
+         }
+      }
+      fclose(tmp_log_fd);
+      tmp_log_fd = NULL;
+   }
+
+   FILE * tmp_debug_log_fd = fopen(INIT_TMP_DEBUG_LOG_PATH, "r");
+   if (tmp_debug_log_fd != NULL) {
+      while (feof(tmp_debug_log_fd) == FALSE) {
+         ret_val = fread((void *) buffer, sizeof(char), DEFAULT_SIZE_OF_BUFFER, tmp_debug_log_fd);
+         if (ret_val > 0) {
+            buffer[ret_val] = 0;
+            VERBOSE(DEBUG, "%s", buffer);
+         } else {
+            break;
+         }
+      }
+      fclose(tmp_debug_log_fd);
+      tmp_debug_log_fd = NULL;
+   }
+
+   // Delete temporary log files
+   if (unlink(INIT_TMP_LOG_PATH) == -1) {
+      if (errno != ENOENT) {
+         VERBOSE(N_STDOUT, "%s [WARNING] Could not delete tmp log file with path \"%s\".", get_stats_formated_time(), INIT_TMP_LOG_PATH);
+      }
+   }
+   if (unlink(INIT_TMP_DEBUG_LOG_PATH) == -1) {
+      if (errno != ENOENT) {
+         VERBOSE(N_STDOUT, "%s [WARNING] Could not delete tmp debug log file with path \"%s\".", get_stats_formated_time(), INIT_TMP_DEBUG_LOG_PATH);
+      }
+   }
 }
 
 int supervisor_initialization()
 {
    init_time_info = get_sys_time();
-
-   input_fd = stdin;
-   output_fd = stdout;
-
-   // Check and create (if it doesn't exist) directory for all output (started modules and also supervisor's) according to the logs_path
-   create_output_dir();
-   // Create strings with supervisor's output files names and get their file descriptors
-   create_output_files_strings();
 
    // Allocate running_modules memory
    running_modules_array_size = 0;
@@ -3685,7 +3742,7 @@ parse_default_config_file:
       case RELOAD_DEFAULT_CONFIG_FILE:
          config_vars->doc_tree_ptr = xmlParseFile(config_file);
          if (config_vars->doc_tree_ptr == NULL) {
-            fprintf(stderr,"Document not parsed successfully. \n");
+            VERBOSE(N_STDOUT,"Document not parsed successfully. \n");
             pthread_mutex_unlock(&running_modules_lock);
             free(config_vars);
             return FALSE;
@@ -3702,7 +3759,7 @@ parse_default_config_file:
          VERBOSE(N_STDOUT, ANSI_YELLOW_BOLD "[INTERACTIVE] Type in a name of the xml file to be loaded including \".xml\"; ("  "to reload same config file"  " with path \"%s\" type \"default\" or " "to cancel reloading" " type \"cancel\"): " ANSI_ATTR_RESET, config_file);
          buffer = get_input_from_stream(input_fd);
          if (buffer == NULL) {
-            fprintf(stderr,"[ERROR] Input error.\n");
+            VERBOSE(N_STDOUT,"[ERROR] Input error.\n");
             pthread_mutex_unlock(&running_modules_lock);
             free(config_vars);
             return FALSE;
