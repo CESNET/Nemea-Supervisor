@@ -97,6 +97,11 @@
 #define RET_ERROR   -1
 #define MAX_NUMBER_SUP_CLIENTS   5
 #define NUM_SERVICE_IFC_PERIODS   30
+#define SERVICE_WAIT_BEFORE_TIMEOUT 25000
+
+#define SERVICE_GET_COM 10
+#define SERVICE_SET_COM 11
+#define SERVICE_OK_REPLY 12
 
 /*******GLOBAL VARIABLES*******/
 running_module_t *running_modules = NULL;  ///< Information about running modules
@@ -141,6 +146,10 @@ server_internals_t *server_internals = NULL;
 // Returns absolute path of the file / directory passed in file_name parameter
 char *get_absolute_file_path(char *file_name)
 {
+   if (file_name == NULL) {
+      return NULL;
+   }
+
    static char absolute_file_path[PATH_MAX];
    memset(absolute_file_path, 0, PATH_MAX);
 
@@ -237,6 +246,7 @@ void print_xmlDoc_to_stream(xmlDocPtr doc_ptr, FILE *stream)
          return;
       } else {
          fprintf(stream, "%s\n", formated_xml_output);
+         fflush(stream);
          xmlFree(formated_xml_output);
       }
    }
@@ -1871,7 +1881,7 @@ int service_recv_data(int module_idx, uint32_t size, void **data)
             if (num_of_timeouts >= 3) {
                return -1;
             } else {
-               usleep(25000);
+               usleep(SERVICE_WAIT_BEFORE_TIMEOUT);
                continue;
             }
          }
@@ -1895,7 +1905,7 @@ int service_send_data(int module_idx, uint32_t size, void **data)
             if (num_of_timeouts >= 3) {
                return -1;
             } else {
-               usleep(25000);
+               usleep(SERVICE_WAIT_BEFORE_TIMEOUT);
                continue;
             }
          }
@@ -1952,17 +1962,6 @@ void service_connect_to_module(int module, int num_ifc)
    VERBOSE(MODULE_EVENT,"%s [SERVICE] Connected to module %s.\n", get_stats_formated_time(), running_modules[module].module_name);
    NULLP_TEST_AND_FREE(dest_port)
 }
-
-
-#define SERVICE_GET_COM 10
-#define SERVICE_SET_COM 11
-#define SERVICE_OK_REPLY 12
-
-typedef struct service_msg_header_s {
-   uint8_t com;
-   uint32_t data_size;
-} service_msg_header_t;
-
 
 void *service_thread_routine(void *arg __attribute__ ((unused)))
 {
@@ -3677,7 +3676,7 @@ void reload_resolve_module_enabled(reload_config_vars_t **config_vars, const int
 int reload_configuration(const int choice, xmlNodePtr *node)
 {
    pthread_mutex_lock(&running_modules_lock);
-
+   FILE *tmp_err = NULL;
    char *backup_file_name = NULL;
    int modules_got_profile;
    unsigned int x = 0;
@@ -3695,7 +3694,10 @@ int reload_configuration(const int choice, xmlNodePtr *node)
             backup_file_name = create_backup_file_path();
             if (backup_file_name == NULL) {
 parse_default_config_file:
+               tmp_err = stderr;
+               stderr = supervisor_debug_log_fd;
                config_vars->doc_tree_ptr = xmlParseFile(config_file);
+               stderr = tmp_err;
                if (config_vars->doc_tree_ptr == NULL) {
                   if (access(config_file, R_OK) == -1) {
                      if (errno == EACCES) {
@@ -3712,7 +3714,10 @@ parse_default_config_file:
                   return FALSE;
                }
             } else {
+               tmp_err = stderr;
+               stderr = supervisor_debug_log_fd;
                config_vars->doc_tree_ptr = xmlParseFile(backup_file_name);
+               stderr = tmp_err;
                if (config_vars->doc_tree_ptr == NULL) {
                   if (access(backup_file_name, R_OK) == -1) {
                      if (errno == EACCES) {

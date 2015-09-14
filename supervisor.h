@@ -218,6 +218,11 @@ union tcpip_socket_addr {
    struct sockaddr_un unix_addr; ///< used for path of UNIX socket
 };
 
+typedef struct service_msg_header_s {
+   uint8_t com;
+   uint32_t data_size;
+} service_msg_header_t;
+
 /***********FUNCTIONS***********/
 
 /** Function prints list of loaded modules with their params and all their interfaces with params.
