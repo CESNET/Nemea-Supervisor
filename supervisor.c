@@ -128,13 +128,13 @@ int supervisor_initialized = FALSE;
 int service_thread_initialized = FALSE;
 int daemon_mode_initialized = FALSE;
 int logs_paths_initialized = FALSE;
+int modules_logs_path_initialized = FALSE;
 int verbose_flag = FALSE;     // -v messages and cpu_usage stats
 int daemon_flag = FALSE;      // --daemon
 int netconf_flag = FALSE;
 char *config_file = NULL;
 char *socket_path = NULL;
 char *logs_path = NULL;
-char *modules_logs_path = NULL;
 
 char *statistics_file_path = NULL;
 char *module_event_file_path = NULL;
@@ -1605,14 +1605,14 @@ void service_start_module(const int module_idx)
       VERBOSE(MODULE_EVENT,"%s [RESTART] Restarting module %s\n", get_stats_formated_time(), running_modules[module_idx].module_name);
    }
 
-   char log_path_stdout[200];
-   char log_path_stderr[200];
-   memset(log_path_stderr,0,200);
-   memset(log_path_stdout,0,200);
+   char log_path_stdout[PATH_MAX];
+   char log_path_stderr[PATH_MAX];
+   memset(log_path_stderr, 0, PATH_MAX);
+   memset(log_path_stdout, 0, PATH_MAX);
 
-   if (modules_logs_path != NULL) {
-      sprintf(log_path_stdout,"%s%s_stdout",modules_logs_path, running_modules[module_idx].module_name);
-      sprintf(log_path_stderr,"%s%s_stderr",modules_logs_path, running_modules[module_idx].module_name);
+   if (modules_logs_path_initialized == TRUE) {
+      sprintf(log_path_stdout,"%smodules_logs/%s_stdout",logs_path, running_modules[module_idx].module_name);
+      sprintf(log_path_stderr,"%smodules_logs/%s_stderr",logs_path, running_modules[module_idx].module_name);
    }
 
    init_module_variables(module_idx);
@@ -2754,7 +2754,6 @@ void supervisor_termination(const uint8_t stop_all_modules, const uint8_t genera
 
    NULLP_TEST_AND_FREE(config_file)
    NULLP_TEST_AND_FREE(logs_path)
-   NULLP_TEST_AND_FREE(modules_logs_path)
 }
 
 
@@ -2771,6 +2770,8 @@ int create_output_dir()
    char *buffer = NULL;
    struct stat st = {0};
    uint8_t default_path_used = FALSE;
+   char modules_logs_path[PATH_MAX];
+   memset(modules_logs_path, 0, PATH_MAX);
 
 logs_path_null:
    if (logs_path == NULL) {
@@ -2797,9 +2798,8 @@ logs_path_null:
    }
 
    // Create modules logs path
-   NULLP_TEST_AND_FREE(modules_logs_path)
-   if (asprintf(&modules_logs_path, "%smodules_logs/", logs_path) < 0) {
-      modules_logs_path = NULL;
+   if (sprintf(modules_logs_path, "%smodules_logs/", logs_path) <= 0) {
+      goto fail_label;
    }
 
    if (mkdir(logs_path, PERM_LOGSDIR) == -1) {
@@ -2838,8 +2838,9 @@ modules_dir:
 success_label:
    if (stat(modules_logs_path, &st) != -1) { // Get info about modules logs path
       if (S_ISDIR(st.st_mode) == FALSE) { // Check whether the file is a directory
-         NULLP_TEST_AND_FREE(modules_logs_path)
-         modules_logs_path = logs_path; // If not, use logs path instead
+         modules_logs_path_initialized = FALSE;
+      } else {
+         modules_logs_path_initialized = TRUE;
       }
    }
    logs_paths_initialized = TRUE;
@@ -2850,8 +2851,8 @@ success_label:
 
 fail_label:
    logs_paths_initialized = FALSE;
+   modules_logs_path_initialized = FALSE;
    NULLP_TEST_AND_FREE(logs_path)
-   NULLP_TEST_AND_FREE(modules_logs_path)
    return -1;
 }
 
@@ -2944,6 +2945,7 @@ void supervisor_flags_initialization()
    service_thread_initialized = FALSE;
    daemon_mode_initialized = FALSE;
    logs_paths_initialized = FALSE;
+   modules_logs_path_initialized = FALSE;
 
    logs_path = NULL;
    config_file = NULL;
