@@ -29,7 +29,8 @@ AC_ARG_ENABLE([debug],
               CXXFLAGS="-Wall -O3 $CXXFLAGS"])
 AM_CONDITIONAL(DEBUG, test x"$debug" = x"true")
 
-AC_DEFINE_DIR(initdir, [sysconfdir]/init.d, [Path to init.d (init script)])
+AC_DEFINE_DIR(initdir, [sysconfdir]/../init.d, [Path to init.d (init script)])
+AC_DEFINE_DIR(bindir, [bindir], [Path to binaries])
 
 # Checks for programs.
 AC_PROG_CC
@@ -69,14 +70,20 @@ AX_LIBTRAP_CHECK
 AX_LIBXML2_CHECK
 
 # Checks for header files.
-AC_CHECK_HEADERS([fcntl.h limits.h stdlib.h string.h unistd.h])
+AC_CHECK_HEADERS([arpa/inet.h fcntl.h inttypes.h string.h limits.h netdb.h netinet/in.h stdlib.h string.h sys/ioctl.h sys/socket.h unistd.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_TYPE_PID_T
+AC_TYPE_SIZE_T
+AC_TYPE_UINT16_T
+AC_TYPE_UINT32_T
+AC_TYPE_UINT64_T
+AC_TYPE_UINT8_T
 
 # Checks for library functions.
 AC_FUNC_FORK
-AC_CHECK_FUNCS([dup2 memset mkdir])
+AC_FUNC_REALLOC
+AC_CHECK_FUNCS([dup2 memset mkdir realpath select socket strchr strdup strstr])
 
 PKG_CHECK_MODULES([systemd], [systemd], [
 SYSTEMD_UNIT_DIR=$(pkg-config --variable=systemdsystemunitdir systemd)
