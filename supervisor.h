@@ -242,20 +242,6 @@ int get_number_from_input();
  */
 int interactive_get_option();
 
-/** Function is used for first start of module, allocates its array for statistics, initialize its variables, creates new process, redirects stdout, stderr and executes module.
- * @param[in] module_number Index to running_modules array.
- */
-void re_start_module(const int module_number);
-
-/** Function sends SIGINT to selected module.
- * @param[in] module_number Index to running_modules array.
- */
-void stop_module(const int module_number);
-
-/** Function updates running modules processes status.
- */
-int service_update_module_status();
-
 /** SIGPIPE handler.
  */
 void sigpipe_handler(int sig);
@@ -283,17 +269,9 @@ void interactive_set_module_enabled();
  */
 void interactive_stop_module();
 
-/** Function uses restart_module() for stopped, enabled modules.
- */
-void service_restart_modules();
-
 /** Function prints a list of loaded modules with their status - running/stopped/remote.
  */
 void interactive_show_running_modules_status();
-
-/** Function stops service thread and acceptor thread and frees allocated memory.
- */
-void  supervisor_termination(int stop_all_modules, int generate_backup);
 
 char *get_param_by_delimiter(const char *source, char **dest, const char delimiter);
 
@@ -308,13 +286,6 @@ void generate_periodic_picture();
 
 void interactive_show_graph();
 
-/** Function receives data from running modules with statistics.
- * @param[in] sd Socket descriptor of module.
- * @param[in] running_module_number Index to running_modules array.
- * @return 0 if error, else 1;
- */
-int service_get_data(int sd, int running_module_number);
-
 /** Function tries to connect to selected module.
  * @param[in] module Index to running_modules array.
  * @param[in] num_ifc Index to selected modules interfaces array.
@@ -324,11 +295,6 @@ void connect_to_module_service_ifc(int module, int num_ifc);
 void print_statistics(struct tm * timeinfo);
 
 void print_statistics_legend();
-
-/** Main routine of service thread.
- * @param[in] arg NULL.
- */
-void * service_thread_routine(void* arg);
 
 char * make_formated_statistics();
 
@@ -350,10 +316,6 @@ void print_help();
 int get_shorter_string_length(char * first, char * second);
 
 int find_loaded_module(char * name);
-
-void free_module_on_index(int index);
-
-void free_module_interfaces_on_index(int index);
 
 int reload_configuration(const int choice, xmlNodePtr * node);
 
@@ -445,31 +407,82 @@ void check_duplicated_ports();
  *
  */
 int create_output_dir();
+
+/**
+ *
+ */
 void create_output_files_strings();
+
+/**
+ *
+ */
 void supervisor_signal_handler(int catched_signal);
+
+/**
+ *
+ */
 void supervisor_flags_initialization();
+
+/**
+ *
+ */
 int supervisor_initialization();
+
+/**
+ *
+ */
 int start_service_thread();
+
+/**
+ *
+ */
 int parse_program_arguments(int *argc, char **argv);
 /**@}*/
 
 
 
  /**
- * \defgroup GROUP_NAME short_description
+ * \defgroup cleanup_functions Supervisor clean up (and termination) functions
  *
- * TODO group description.
  * @{
  */
 
 /**
+ * Frees dynamically allocated memory of the specified module (all structures, strings etc.).
  *
+ * @param[in] module_idx Index to array of modules (array of structures).
  */
-void free_module_on_index(int index);
-void free_module_interfaces_on_index(int index);
+void free_module_on_index(const int module_idx);
+
+/**
+ * Frees dynamically allocated memory of the specified module - only modules interfaces.
+ *
+ * @param[in] module_idx Index to array of modules (array of structures).
+ */
+void free_module_interfaces_on_index(const int module_idx);
+
+/**
+ * Closes all opened file streams (supervisor logs) and frees output file path strings.
+ */
 void free_output_file_strings_and_streams();
+
+/**
+ * Frees dynamically allocated memory of the specified module and shifts whole array of the loaded modules.
+ * (loaded modules A B C -> free B -> result A C)
+ *
+ * @param[in] module_idx Index to array of modules (array of structures).
+ */
 void free_module_and_shift_array(const int module_idx);
-void supervisor_termination(int stop_all_modules, int generate_backup);
+
+/**
+ * Terminating function of the program. According to the function parameters it stops running modules
+ * and generates a backup file (in case of crash or if some module is still running). After that it stops service thread,
+ * in daemon mode it waits for all clients threads and finally it does all needed clean up.
+ *
+ * @param[in] stop_all_modules Flag defining whether it stops running modules or not.
+ * @param[in] generate_backup Flag defining whether the backup file is generated or not.
+ */
+void supervisor_termination(const uint8_t stop_all_modules, const uint8_t generate_backup);
 /**@}*/
 
 

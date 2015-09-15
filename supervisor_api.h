@@ -49,11 +49,12 @@
 #define DAEMON_MODE_CODE   2
 
 #include <libxml/tree.h>
+#include <inttypes.h>
 
 void supervisor_flags_initialization();
 int parse_program_arguments(int *argc, char **argv);
 int supervisor_initialization();
-void supervisor_termination(int stop_all_modules, int generate_backup);
+void supervisor_termination(const uint8_t stop_all_modules, const uint8_t generate_backup);
 
 /* Interactive mode functions */
 void interactive_mode();

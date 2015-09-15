@@ -2574,25 +2574,25 @@ void interactive_show_running_modules_status()
  * Supervisor termination and clean up functions *
  *****************************************************************/
 
-void free_module_on_index(int index)
+void free_module_on_index(const int module_idx)
 {
-   free_module_interfaces_on_index(index);
+   free_module_interfaces_on_index(module_idx);
 
-   NULLP_TEST_AND_FREE(running_modules[index].module_ifces)
-   NULLP_TEST_AND_FREE(running_modules[index].module_path)
-   NULLP_TEST_AND_FREE(running_modules[index].module_name)
-   NULLP_TEST_AND_FREE(running_modules[index].module_params)
+   NULLP_TEST_AND_FREE(running_modules[module_idx].module_ifces)
+   NULLP_TEST_AND_FREE(running_modules[module_idx].module_path)
+   NULLP_TEST_AND_FREE(running_modules[module_idx].module_name)
+   NULLP_TEST_AND_FREE(running_modules[module_idx].module_params)
 }
 
-void free_module_interfaces_on_index(int index)
+void free_module_interfaces_on_index(const int module_idx)
 {
    unsigned int y;
-   for (y=0; y<running_modules[index].module_ifces_cnt; y++) {
-      NULLP_TEST_AND_FREE(running_modules[index].module_ifces[y].ifc_note)
-      NULLP_TEST_AND_FREE(running_modules[index].module_ifces[y].ifc_type)
-      NULLP_TEST_AND_FREE(running_modules[index].module_ifces[y].ifc_direction)
-      NULLP_TEST_AND_FREE(running_modules[index].module_ifces[y].ifc_params)
-      NULLP_TEST_AND_FREE(running_modules[index].module_ifces[y].ifc_data)
+   for (y=0; y<running_modules[module_idx].module_ifces_cnt; y++) {
+      NULLP_TEST_AND_FREE(running_modules[module_idx].module_ifces[y].ifc_note)
+      NULLP_TEST_AND_FREE(running_modules[module_idx].module_ifces[y].ifc_type)
+      NULLP_TEST_AND_FREE(running_modules[module_idx].module_ifces[y].ifc_direction)
+      NULLP_TEST_AND_FREE(running_modules[module_idx].module_ifces[y].ifc_params)
+      NULLP_TEST_AND_FREE(running_modules[module_idx].module_ifces[y].ifc_data)
    }
 }
 
@@ -2637,7 +2637,7 @@ void free_module_and_shift_array(const int module_idx)
    memset(&running_modules[loaded_modules_cnt], 0, sizeof(running_module_t));
 }
 
-void supervisor_termination(int stop_all_modules, int generate_backup)
+void supervisor_termination(const uint8_t stop_all_modules, const uint8_t generate_backup)
 {
    int x = 0, attemps = 0;
 
