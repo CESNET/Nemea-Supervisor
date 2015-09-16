@@ -5,7 +5,8 @@ AC_PREREQ([2.63])
 AC_INIT([nemea-supervisor], [1.1.0], [svepemar@fit.cvut.cz])
 AC_CONFIG_SRCDIR([supervisor.c])
 AC_CONFIG_HEADERS([config.h])
-AM_INIT_AUTOMAKE([-Wall foreign silent-rules])
+AM_INIT_AUTOMAKE([foreign silent-rules])
+AM_SILENT_RULES([yes])
 RELEASE=1
 AC_SUBST(RELEASE)
 USERNAME=`git config --get user.name`
@@ -15,7 +16,6 @@ AC_SUBST(USERMAIL)
 # Check for rpmbuild
 AC_CHECK_PROG(RPMBUILD, rpmbuild, rpmbuild, [""])
 AM_CONDITIONAL(MAKE_RPMS, test x$RPMBUILD != x)
-AM_SILENT_RULES([yes])
 
 AC_CONFIG_MACRO_DIR([m4])
 
