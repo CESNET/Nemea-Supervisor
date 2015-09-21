@@ -1,12 +1,34 @@
-Supervisor:
-===========
+README outline
+===============
+
+- Project status and breaf description
+- Program arguments
+- Program modes
+- Configuration file
+- Configuring modules
+- Monitoring modules
+- Log files
+- Program termination
+- Supervisor client
+- Statistics about Nemea modules
+- Output format - description
+
+
+
+Project status
+--------------
 
 Travis CI build: [![Build Status](https://travis-ci.org/CESNET/Nemea-Supervisor.svg?branch=master)](https://travis-ci.org/CESNET/Nemea-Supervisor)
 
 Coverity Scan: [![Coverity Scan Build Status](https://scan.coverity.com/projects/6190/badge.svg)](https://scan.coverity.com/projects/6190)
 
-This module allows user to configure and monitor Nemea modules. User specifies modules
-in xml configuration file, which is input for the Supervisor and it is shown and described in the section "Configuration file".
+
+
+Supervisor
+===========
+
+This module allows user to configure and monitor Nemea modules (see [basic modules](https://github.com/CESNET/Nemea-Modules) and [detectors](https://github.com/CESNET/Nemea-Detectors)).
+User specifies modules in xml configuration file, which is input for the Supervisor and it is shown and described in the section "Configuration file".
 
 
 
@@ -14,12 +36,12 @@ Program arguments
 ------------------
 
 Here is the list of arguments the program accepts:
-- f FILE or --config-file=FILE - xml file with initial configuration (the only mandatory parameter)
-- L PATH or --logs-path=PATH - optional path to Supervisor logs directory (see more information about logs in the section "Log files")
-- s SOCKET or --daemon-socket=SOCKET - optional path to unix socket used for communication with supervisor client (default /tmp/daemon_supervisor.sock)
-- v or --verbose - optional verbose flag used for enabling printing stats about messages and CPU usage to "supervisor_log_statistics" file in logs directory (more about these stats down below) // TODO context
-- d or --daemon - flag used for running Supervisor as a process in background
-- h or --help - program prints help and terminates
+- `-f FILE` or `--config-file=FILE` - xml file with initial configuration (the only mandatory parameter)
+- `-L PATH` or `--logs-path=PATH` - optional path to Supervisor logs directory (see more information about logs in the section "Log files")
+- `-s SOCKET` or `--daemon-socket=SOCKET` - optional path to unix socket used for communication with supervisor client (default /tmp/daemon_supervisor.sock)
+- `-v` or `--verbose` - optional verbose flag used for enabling printing stats about messages and CPU usage to "supervisor_log_statistics" file in logs directory (more about these stats down below) // TODO context
+- `-d` or `--daemon` - flag used for running Supervisor as a process in background
+- `-h` or `--help` - program prints help and terminates
 
 
 
@@ -113,8 +135,8 @@ Optional element "supervisor" in the root element "nemea-supervisor" containts s
 
 
 
-Options
--------
+Configuring modules
+-------------------------
 
 User can do various operations with modules via Supervisor. After launch appears
 menu with available operations:
@@ -126,9 +148,9 @@ menu with available operations:
 5. STARTED MODULES STATUS - displays status of loaded modules (stopped or running)
                             and PIDs of modules processes
 6. AVAILABLE MODULES - prints out actual loaded configuration
-8. RELOAD CONFIGURATION - operation allows user to reload actual configuration
+7. RELOAD CONFIGURATION - operation allows user to reload actual configuration
                           from initial xml file or from another xml file
-9. STOP SUPERVISOR - this operation terminates whole Supervisor
+8. STOP SUPERVISOR - this operation terminates whole Supervisor
 
 
 Note: for reload operation is important unique module name. There are three cases,
@@ -141,11 +163,16 @@ b) Supervisor found a module with same name in loaded configuration -> compares 
 c) Module in loaded configuration was not found in reloaded configuration -> it is
    removed.
 
+
+
+Monitoring modules
+----------------------
+
 Supervisor monitors the status of all modules and if needed, modules are auto-restarted.
 Every module can be run with special "service" interface, which allows Supervisor to get
 statistics about module interfaces (more in the section "Statistics about Nemea modules").
 Another monitored event is CPU and memory usage of every module.
-These events are periodically monitored.
+
 
 
 Log files
@@ -185,7 +212,14 @@ Program termination
 Supervisor client
 ------------------
 
-// TODO
+The client communicates with supervisor daemon (process in the background - supervisor started with `-d` argument) via UNIX socket which can be specified with `-s SOCKET` just like supervisor. According to the optional given argument it performs one of the following commands:
+
+- reload supervisor - `./supervisor_cli -r`
+- get modules statistics - `./supervisor_cli -x`
+- enter configuration mode - `./supervisor_cli`
+
+Note: All these parameters are optional so if the client is started without them (`./supervisor_cli`), it uses default socket path (/tmp/daemon_supervisor.sock) and enters configuration mode.
+
 
 
 Statistics about Nemea modules
@@ -201,7 +235,7 @@ Statistics about Nemea modules
 
   Note: Supervisor daemon must be running.
 
-Output format - description:
+Output format - description
 ----------------------------
 
 ```
