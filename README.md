@@ -6,7 +6,7 @@ Travis CI build: [![Build Status](https://travis-ci.org/CESNET/Nemea-Supervisor.
 Coverity Scan: [![Coverity Scan Build Status](https://scan.coverity.com/projects/6190/badge.svg)](https://scan.coverity.com/projects/6190)
 
 This module allows user to configure and monitor Nemea modules. User specifies modules
-in xml configuration file, which is input for the Supervisor and it is shown and described down below.
+in xml configuration file, which is input for the Supervisor and it is shown and described in the section "Configuration file".
 
 
 
@@ -14,10 +14,10 @@ Program arguments
 ------------------
 
 Here is the list of arguments the program accepts:
-- f FILE or --config-file=FILE - xml file with initial configuration
-- L PATH or --logs-path=PATH - optional path to Supervisor logs directory (default /home/$user/supervisor_logs/)
-- s SOCKET or --daemon-socket=SOCKET - optional path to unix socket used for communication with supervisor client (default /tmp/supervisor_daemon.sock)
-- v or --verbose - optional verbose flag used for enabling printing stats about messages and CPU usage to "supervisor_log_statistics" file in logs directory (more about these stats down below)
+- f FILE or --config-file=FILE - xml file with initial configuration (the only mandatory parameter)
+- L PATH or --logs-path=PATH - optional path to Supervisor logs directory (see more information about logs in the section "Log files")
+- s SOCKET or --daemon-socket=SOCKET - optional path to unix socket used for communication with supervisor client (default /tmp/daemon_supervisor.sock)
+- v or --verbose - optional verbose flag used for enabling printing stats about messages and CPU usage to "supervisor_log_statistics" file in logs directory (more about these stats down below) // TODO context
 - d or --daemon - flag used for running Supervisor as a process in background
 - h or --help - program prints help and terminates
 
@@ -26,7 +26,8 @@ Here is the list of arguments the program accepts:
 Program modes
 --------------
 
-Supervisor can run in one of two basic modes:
+Supervisor can run in one of the following modes:
+
 1) Interactive Mode:
 
 ```
@@ -34,7 +35,7 @@ Supervisor can run in one of two basic modes:
 ```
 
 2) Daemon Mode:
-  Supervisor is executed with `--daemon` and runs as a process in backround
+  Program is executed with `-d (or --daemon)` argument and runs as a process in backround
   of the operating system.
 
 ```
@@ -48,16 +49,19 @@ Supervisor can run in one of two basic modes:
 ```
 
   Both daemon and client supports `-s` to specify path to the UNIX socket
-  that is used for communication between daemon and client.
+  that is used for communication between daemon and client (more information about the client can be found in the section "Supervisor client").
 
   Note: paths must match to communicate with right Supervisor daemon
 
+3) System service // TODO
+
+4) Netopeer server plugin (using NETCONF protocol) // TODO
 
 
 Configuration file
 -------------------
 
-Example configuration of one module called flowcounter:
+Example configuration of one nemea module called flowcounter:
 
 ```
 <nemea-supervisor>
@@ -74,6 +78,7 @@ Example configuration of one module called flowcounter:
       <enabled>false</enabled>
       <params></params>
       <path>/usr/bin/nemea/flowcounter</path>
+      <module-restarts>0</module-restarts>
       <trapinterfaces>
         <interface>
           <note></note>
@@ -87,33 +92,25 @@ Example configuration of one module called flowcounter:
 </nemea-supervisor>
 ```
 
-Every module contains unique name, path to binary file, parameters, enabled flag
-and trap interfaces. Enabled flag tells Supervisor to run or not to run module after
-startup. Every trap interface is specified by type (tcp, unixsocket or service),
-direction (in or out), parameters (output interface: address + port; input
-interface: port + number of clients) and optional note.
+Every module contains unique name (future name of the running process), path to binary file,
+program parameters, enabled flag, module-restarts and trap interfaces. Enabled flag tells Supervisor to run
+or not to run module after startup and module-restarts is maximum module restarts per minute. The trap interface
+is specified by type (tcp, unixsocket or service), direction (in or out), parameters and optional note.
 
-The configuration file has been designed according to the data model of the Supervisor.
-Data model tree:
+Trap interface parameters depends on the interface direction. Output interface has optional address (default is localhost) and port. Input interface has port and optional number of clients (default number of clients is 10). There are also few optional setters that can affect behaviour of the interface (check // TODO ref for more information about libtrap interfaces and their params).
 
-```
-module: nemea
-   +--rw nemea-supervisor
-      +--rw modules
-      +--rw name? string
-      +--rw module* [name]
-         +--rw name string
-         +--rw params? string
-         +--rw enabled boolean
-         +--ro running? boolean
-         +--rw path string
-         +--rw trapinterfaces
-            +--rw interface* [type direction params]
-               +--rw note? string
-               +--rw type trapifc-type
-               +--rw direction trapifc-direction
-               +--rw params string
-```
+Modules can be divided into profiles (groups of modules - element "modules"). Every profile has unique name and enabled flag.
+This allows user to create several groups of modules (e.g. "detectors", "filters" or "loggers") and turn
+all of them on/off by one simple change in the configuration file.
+
+Optional element "supervisor" in the root element "nemea-supervisor" containts several optional items:
+
+- verbose - sets verbose flag to TRUE or FALSE
+- module-restarts - sets maximum number of restarts per minute for all modules (default number is 3). If this element is set also for concrete module, it has bigger priority.
+- logs-directory - sets supervisor logs directory path (bigger priority than the path from -L program parameter). This allows user to change logs directory during runtime (see reload configuration in the section "Options").
+
+// TODO ref to data model
+
 
 
 Options
@@ -129,8 +126,6 @@ menu with available operations:
 5. STARTED MODULES STATUS - displays status of loaded modules (stopped or running)
                             and PIDs of modules processes
 6. AVAILABLE MODULES - prints out actual loaded configuration
-7. SHOW GRAPH - if dot program is installed, this operation displays picture
-                of oriented graph of modules
 8. RELOAD CONFIGURATION - operation allows user to reload actual configuration
                           from initial xml file or from another xml file
 9. STOP SUPERVISOR - this operation terminates whole Supervisor
@@ -148,8 +143,8 @@ c) Module in loaded configuration was not found in reloaded configuration -> it 
 
 Supervisor monitors the status of all modules and if needed, modules are auto-restarted.
 Every module can be run with special "service" interface, which allows Supervisor to get
-statistics about sent and received messages from module.
-Another monitored event is CPU usage of every module.
+statistics about module interfaces (more in the section "Statistics about Nemea modules").
+Another monitored event is CPU and memory usage of every module.
 These events are periodically monitored.
 
 
@@ -185,6 +180,12 @@ Program termination
 --------------------
 
 // TODO signals and backup
+
+
+Supervisor client
+------------------
+
+// TODO
 
 
 Statistics about Nemea modules
