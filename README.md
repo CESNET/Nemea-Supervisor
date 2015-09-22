@@ -1,22 +1,31 @@
-README outline
-===============
+## README outline
 
-- Project status and breaf description
-- Program arguments
-- Program modes
-- Configuration file
-- Configuring modules
-- Monitoring modules
-- Log files
-- Program termination
-- Supervisor client
-- Statistics about Nemea modules
-- Output format - description
+- [Project status](#project-status)
+- [Breaf description](#supervisor)
+- [Program arguments](#program-arguments)
+- [Program modes](#program-modes)
+  - Interactive
+  - Daemon
+  - System service
+  - Netopeer server plugin
+- [Configuration file](#configuration-file)
+- [Configuring modules](#configuring-modules)
+- [Monitoring modules](#monitoring-modules)
+  - Module status
+  - Modules CPU and memory usage
+  - Communication between modules
+- [Log files](#log-files)
+- [Program termination](#program-termination)
+  - [Backup file](#backup-file)
+  - [Signals](#signals)
+- [Supervisor client](#supervisor-client)
+  - Usage of the client
+  - [Collecting statistics about Nemea modules](#statistics-about-nemea-modules)
+- [Output format](#output-format)
 
 
 
-Project status
---------------
+## Project status
 
 Travis CI build: [![Build Status](https://travis-ci.org/CESNET/Nemea-Supervisor.svg?branch=master)](https://travis-ci.org/CESNET/Nemea-Supervisor)
 
@@ -24,16 +33,14 @@ Coverity Scan: [![Coverity Scan Build Status](https://scan.coverity.com/projects
 
 
 
-Supervisor
-===========
+# Supervisor
 
 This module allows user to configure and monitor Nemea modules (see [basic modules](https://github.com/CESNET/Nemea-Modules) and [detectors](https://github.com/CESNET/Nemea-Detectors)).
 User specifies modules in xml configuration file, which is input for the Supervisor and it is shown and described in the section "Configuration file".
 
 
 
-Program arguments
-------------------
+## Program arguments
 
 Here is the list of arguments the program accepts:
 - `-f FILE` or `--config-file=FILE` - xml file with initial configuration (the only mandatory parameter)
@@ -45,8 +52,7 @@ Here is the list of arguments the program accepts:
 
 
 
-Program modes
---------------
+## Program modes
 
 Supervisor can run in one of the following modes:
 
@@ -80,12 +86,11 @@ Supervisor can run in one of the following modes:
 4) Netopeer server plugin (using NETCONF protocol) // TODO
 
 
-Configuration file
--------------------
+## Configuration file
 
 Example configuration of one nemea module called flowcounter:
 
-```
+```xml
 <nemea-supervisor>
   <supervisor>
     <verbose>true</verbose>
@@ -135,8 +140,7 @@ Optional element "supervisor" in the root element "nemea-supervisor" containts s
 
 
 
-Configuring modules
--------------------------
+## Configuring modules
 
 User can do various operations with modules via Supervisor. After launch appears
 menu with available operations:
@@ -165,18 +169,22 @@ c) Module in loaded configuration was not found in reloaded configuration -> it 
 
 
 
-Monitoring modules
-----------------------
+## Monitoring modules
 
-Supervisor monitors the status of all modules and if needed, modules are auto-restarted.
-Every module can be run with special "service" interface, which allows Supervisor to get
-statistics about module interfaces (more in the section "Statistics about Nemea modules").
-Another monitored event is CPU and memory usage of every module.
+Supervisor monitors the status of all modules which depends on "enabled flag" of the module. If the status is stopped and the flag is set to true, modules is restared. There is limit of restarts per minute which can be modified in configuration file (optional element module-restarts). On the other hand if the module is running and flag is set to false, SIGINT is used to stop the module. If it keeps running, SIGKILL is used to stop it.
+
+Every Nemea module can be run with special "service" interface (see [configuration file](supervisor_config.xml)), which allows Supervisor to get statistics about module interfaces. These stats include following counters:
+
+- input interface: received messages, recevied buffers
+- output interface: sent messages, sent buffers, dropped messages, autoflushes
+
+Data sent via service interface are encoded in JSON format. More information about stats utilization [here](#statistics-about-nemea-modules)
+
+Last monitored event is CPU usage (kernel and user modes) and system memory usage of every module.
 
 
 
-Log files
-----------
+## Log files
 
 Supervisor uses log files for its own output and also for an output of the started modules.
 
@@ -204,10 +212,13 @@ Content of the log directory is as follows:
 
 
 
-Program termination
---------------------
+## Program termination
 
 Supervisor can be terminated via one of the menu options (interactive mode "STOP SUPERVISOR" or daemon mode "Dstop") or via sending a signal.
+
+
+
+### Backup file
 
 Supervisor is able to terminate without stopping running modules and "find" them again after restart. This is achived via backup file which is generated during termination if needed.
 Every backup file is bound to unique configuration file so the path is chosen according to it. The path is `/tmp/PREFIX_sup_backup_file.xml` where "PREFIX" is a number computed from absolute path of the configuration file.
@@ -227,6 +238,10 @@ Start some modules and terminate supervisor. Because of running modules it gener
 
 If the user executes supervisor with the same configuration file (which is also saved in the .xml_info file), supervisor will automatically find the backup file, loads the configuration and connects to running modules.
 
+
+
+### Signals
+
 Signal handler catches following signals:
 
 - SIGTERM - stops all running modules and does not generate backup file (the only case modules are stopped)
@@ -236,8 +251,7 @@ Signal handler catches following signals:
 
 
 
-Supervisor client
-------------------
+## Supervisor client
 
 The client communicates with supervisor daemon (process in the background - supervisor started with `-d` argument) via UNIX socket which can be specified with `-s SOCKET` just like supervisor. According to the optional given argument it performs one of the following commands:
 
@@ -249,8 +263,7 @@ Note: All these parameters are optional so if the client is started without them
 
 
 
-Statistics about Nemea modules
---------------------------------
+### Statistics about Nemea modules
 
   Supervisor client has a special mode that is enabled by `-x`. It allows user
   to get statistics about message numbers and cpu usage of modules.
@@ -261,9 +274,10 @@ Statistics about Nemea modules
 ```
 
   Note: Supervisor daemon must be running.
+  
+  // TODO munin
 
-Output format - description
-----------------------------
+### Output format
 
 ```
 <module unique name>,<information type>,<statistics/identification>
@@ -292,8 +306,7 @@ The example means: usage of CPU (cpu) in percent in kernel mode (2) and user mod
 of the module (flowcounter1).
 
 
-Overall Example of the output with statistics:
-----------------------------------------------
+### Overall Example of the output with statistics:
 
 ```
 flowcounter1,in,0,1020229
