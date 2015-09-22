@@ -189,9 +189,9 @@ The path can be changed during runtime by adding or changing the element in the 
 
 In case the user-defined path is not correct (process has no permissions to create the directories etc.), default path is used.
 The path depends on the current supervisors mode:
-- interactive mode: /tmp/interactive_supervisor_logs/
-- daemon mode: /tmp/daemon_supervisor_logs/
-- netconf mode: /tmp/netconf_supervisor_logs/
+- interactive mode: `/tmp/interactive_supervisor_logs/`
+- daemon mode: `/tmp/daemon_supervisor_logs/`
+- netconf mode: `/tmp/netconf_supervisor_logs/`
 
 These paths are used because /tmp directory is accesable by every process so the output won´t be lost.
 
@@ -203,10 +203,37 @@ Content of the log directory is as follows:
 - logs-path/modules_logs/ - contains files with started modules stdout and stderr in form of [module_name]_stdout and [module_name]_stderr
 
 
+
 Program termination
 --------------------
 
-// TODO signals and backup
+Supervisor can be terminated via one of the menu options (interactive mode "STOP SUPERVISOR" or daemon mode "Dstop") or via sending a signal.
+
+Supervisor is able to terminate without stopping running modules and "find" them again after restart. This is achived via backup file which is generated during termination if needed.
+Every backup file is bound to unique configuration file so the path is chosen according to it. The path is `/tmp/PREFIX_sup_backup_file.xml` where "PREFIX" is a number computed from absolute path of the configuration file.
+The backup file contains current configuration with PIDs of running modules.
+Together with backup file is also generated info file with basic information about current configuration.
+
+Example:
+
+```
+./supervisor -f /data/configs/supervisor_config.xml
+```
+
+Start some modules and terminate supervisor. Because of running modules it generates following files:
+
+- `/tmp/65018_sup_backup_file.xml` - backup file
+- `/tmp/65018_sup_backup_file.xml_info` - file with basic information about current configuration
+
+If the user executes supervisor with the same configuration file (which is also saved in the .xml_info file), supervisor will automatically find the backup file, loads the configuration and connects to running modules.
+
+Signal handler catches following signals:
+
+- SIGTERM - stops all running modules and does not generate backup file (the only case modules are stopped)
+- SIGINT - it let the modules continue running and generates backup file
+- SIGQUIT - same as SIGINT
+- SIGSEGV - this is for case something goes wrong during runtime. SIGSEGV is catched, modules continue running and backup file is saved.
+
 
 
 Supervisor client
