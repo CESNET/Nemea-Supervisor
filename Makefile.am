@@ -11,6 +11,7 @@ EXTRA_DIST = supervisor_config.xml nemea-supervisor README.md
 sysconf_DATA = supervisor_config.xml
 bin_SCRIPTS=nemea-supervisor
 
+DISTCHECK_CONFIGURE_FLAGS="--without-systemd"
 if HAVE_SYSTEMD
 systemddir=@SYSTEMD_UNIT_DIR@
 systemd_DATA=nemea-supervisor.service

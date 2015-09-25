@@ -85,11 +85,25 @@ AC_FUNC_FORK
 AC_FUNC_REALLOC
 AC_CHECK_FUNCS([dup2 memset mkdir realpath select socket strchr strdup strstr])
 
-PKG_CHECK_MODULES([systemd], [systemd], [
-SYSTEMD_UNIT_DIR=$(pkg-config --variable=systemdsystemunitdir systemd)
-AC_SUBST(SYSTEMD_UNIT_DIR)
-AM_CONDITIONAL([HAVE_SYSTEMD], [true])
-], [AM_CONDITIONAL([HAVE_SYSTEMD], [false])])
+# allow to skip systemd, enabled by default
+AC_ARG_WITH([systemd],
+	AC_HELP_STRING([--without-systemd], [Disable checking and usage of systemd]),
+        [if test "$withval" = "no"; then
+                withsystemd="no"
+        else
+                withsystemd="yes"
+        fi], [withsystemd="yes"])
+
+if test "x$withsystemd" = "xyes"; then
+	PKG_CHECK_MODULES([systemd], [systemd], [
+	SYSTEMD_UNIT_DIR=$(pkg-config --variable=systemdsystemunitdir systemd)
+	AC_SUBST(SYSTEMD_UNIT_DIR)
+	AM_CONDITIONAL([HAVE_SYSTEMD], [true])
+	], [AM_CONDITIONAL([HAVE_SYSTEMD], [false])])
+else
+	# disabled systemd
+	AM_CONDITIONAL([HAVE_SYSTEMD], [false])
+fi
 
 AC_CONFIG_FILES([Makefile nemea-supervisor.spec nemea-supervisor nemea-supervisor.service munin/Makefile])
 AC_OUTPUT
