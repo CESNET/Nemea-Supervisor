@@ -35,4 +35,4 @@ chkconfig --add nemea-supervisor
 %{_sysconfdir}/nemea/supervisor_config.xml
 %{_sysconfdir}/init.d/nemea-supervisor
 %{_datarootdir}/munin/plugins/nemea_supervisor
-
+@SYSTEMD_UNIT_DIR@/nemea-supervisor.service
