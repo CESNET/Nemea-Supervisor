@@ -2165,6 +2165,7 @@ int service_decode_module_stats(char **data, int module_idx)
          for (x = actual_ifc_index + 1; x < running_modules[module_idx].module_ifces_cnt; x++) {
             if (running_modules[module_idx].module_ifces[x].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
                actual_ifc_index = x;
+               break;
             }
          }
 
@@ -2214,6 +2215,7 @@ int service_decode_module_stats(char **data, int module_idx)
          for (x = actual_ifc_index + 1; x < running_modules[module_idx].module_ifces_cnt; x++) {
             if (running_modules[module_idx].module_ifces[x].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
                actual_ifc_index = x;
+               break;
             }
          }
 
