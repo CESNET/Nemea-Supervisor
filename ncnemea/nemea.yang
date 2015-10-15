@@ -51,11 +51,6 @@ module "nemea" {
 
   container "nemea-supervisor" {
     container "supervisor" {
-      leaf "verbose" {
-        type "boolean";
-        default "false";
-        description "Verbose level of supervisor log.";
-      }
       leaf "module-restarts" {
         type "uint8";
         default "3";

@@ -129,7 +129,6 @@ int service_thread_initialized = FALSE;
 int daemon_mode_initialized = FALSE;
 int logs_paths_initialized = FALSE;
 int modules_logs_path_initialized = FALSE;
-int verbose_flag = FALSE;     // -v messages and cpu_usage stats
 int daemon_flag = FALSE;      // --daemon
 int netconf_flag = FALSE;
 char *config_file = NULL;
@@ -650,134 +649,113 @@ char *get_param_by_delimiter(const char *source, char **dest, const char delimit
 
 
 
-void print_statistics(struct tm *timeinfo)
+void print_statistics()
 {
-   unsigned int x = 0, y = 0;
-   VERBOSE(STATISTICS,"------> %s", asctime(timeinfo));
-   for (x = 0; x < loaded_modules_cnt; x++) {
-      if (running_modules[x].module_status) {
-         VERBOSE(STATISTICS,"NAME:  %s; PID: %d; | ",  running_modules[x].module_name, running_modules[x].module_pid);
-         if (running_modules[x].module_has_service_ifc && running_modules[x].module_service_ifc_isconnected) {
+   time_t t = 0;
+   time(&t);
+   char *stats_buffer = make_formated_statistics((uint8_t) 1);
 
-            VERBOSE(STATISTICS,"CNT_RM:  ");
-            for (y = 0; y < running_modules[y].module_ifces_cnt; y++) {
-               if (running_modules[y].module_ifces[y].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
-                  VERBOSE(STATISTICS,"%"PRIu64"  ", ((in_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->recv_msg_cnt);
-               }
-            }
-
-            VERBOSE(STATISTICS,"CNT_RB:  ");
-            for (y = 0; y < running_modules[y].module_ifces_cnt; y++) {
-               if (running_modules[y].module_ifces[y].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
-                  VERBOSE(STATISTICS,"%"PRIu64"  ", ((in_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->recv_buffer_cnt);
-               }
-            }
-
-            VERBOSE(STATISTICS,"CNT_SM:  ");
-            for (y = 0; y < running_modules[y].module_ifces_cnt; y++) {
-               if (running_modules[y].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
-                  VERBOSE(STATISTICS,"%"PRIu64"  ", ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_msg_cnt);
-               }
-            }
-
-            VERBOSE(STATISTICS,"CNT_DM:  ");
-            for (y = 0; y < running_modules[y].module_ifces_cnt; y++) {
-               if (running_modules[y].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
-                  VERBOSE(STATISTICS,"%"PRIu64"  ", ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->dropped_msg_cnt);
-               }
-            }
-
-            VERBOSE(STATISTICS,"CNT_SB:  ");
-            for (y = 0; y < running_modules[y].module_ifces_cnt; y++) {
-               if (running_modules[y].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
-                  VERBOSE(STATISTICS,"%"PRIu64"  ", ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_buffer_cnt);
-               }
-            }
-
-            VERBOSE(STATISTICS,"CNT_AF:  ");
-            for (y = 0; y < running_modules[y].module_ifces_cnt; y++) {
-               if (running_modules[y].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
-                  VERBOSE(STATISTICS,"%"PRIu64"  ", ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->autoflush_cnt);
-               }
-            }
-         }
-         VERBOSE(STATISTICS,"\n");
-      }
+   if (stats_buffer == NULL) {
+      return;
    }
+   VERBOSE(STATISTICS, "------> %s", ctime(&t));
+   VERBOSE(STATISTICS, "%s", stats_buffer);
+
+   NULLP_TEST_AND_FREE(stats_buffer);
 }
 
 void print_statistics_legend()
 {
-   VERBOSE(STATISTICS,"Legend CPU stats:\n"
-                        "\tO_S - overall kernel mode percentage (overall system)\n"
-                        "\tO_U - overall user mode percentage (overall user)\n"
-                        "\tP_S - periodic kernel mode percentage (periodic system)\n"
-                        "\tP_U - periodic user mode percentage (periodic user)\n"
-                        "Legend messages stats:\n"
-                        "\tCNT_RM - counter of received messages of one trap interface (INPUT IFC)\n"
-                        "\tCNT_SM - counter of sent messages of one trap interface (OUTPUT IFC)\n"
-                        "\tCNT_SB - send buffer counter of one trap interface (OUTPUT IFC)\n"
-                        "\tCNT_AF - autoflush counter of one trap interface (OUTPUT IFC)\n");
+   VERBOSE(STATISTICS,"Legend for an interface statistics:\n"
+                        "\tCNT_RM - counter of received messages  on the input interface\n"
+                        "\tCNT_RB - counter of received buffers on the input interface\n"
+                        "\tCNT_SM - counter of sent messages on the output interface\n"
+                        "\tCNT_SB - counter of sent buffers on the output interface\n"
+                        "\tCNT_DM - counter of dropped messages on the output interface\n"
+                        "\tCNT_AF - autoflush counter of the output interface\n"
+                        "Statistics example:\n"
+                        "\tmodule_name,interface_direction,interface_number,stats\n"
+                        "\tmodule,in,number,CNT_RM,CNT_RB\n"
+                        "\tmodule,out,number,CNT_SM,CNT_SB,CNT_DM,CNT_AF\n"
+                        "--------------------------------------------------------\n");
 }
 
-char *make_formated_statistics()
+char *make_formated_statistics(uint8_t stats_mask)
 {
+   uint8_t print_ifc_stats = FALSE, print_cpu_stats = FALSE, print_memory_stats = FALSE;
    unsigned int size_of_buffer = 5*DEFAULT_SIZE_OF_BUFFER;
    char *buffer = (char *) calloc(size_of_buffer, sizeof(char));
    unsigned int x, y, counter = 0;
    int ptr = 0;
 
-   for (x=0; x<loaded_modules_cnt; x++) {
-      if (running_modules[x].module_status == TRUE && running_modules[x].module_has_service_ifc == TRUE && running_modules[x].module_service_ifc_isconnected == TRUE) {
-         counter = 0;
-         for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
-            if (running_modules[x].module_ifces[y].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
-               ptr += sprintf(buffer + ptr, "%s,in,%d,%"PRIu64",%"PRIu64"\n", running_modules[x].module_name, counter, ((in_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->recv_msg_cnt,
-                                                                                                                                                                                                      ((in_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->recv_buffer_cnt);
-               counter++;
-               if (strlen(buffer) >= (3*size_of_buffer)/5) {
-                  size_of_buffer += size_of_buffer/2;
-                  buffer = (char *) realloc (buffer, size_of_buffer * sizeof(char));
-                  memset(buffer + ptr, 0, size_of_buffer - ptr);
+   // Decide which stats should be printed according to the stats mask
+   if ((stats_mask & (uint8_t) 1) == (uint8_t) 1) {
+      print_ifc_stats = TRUE;
+   }
+   if ((stats_mask & (uint8_t) 2) == (uint8_t) 2) {
+      print_cpu_stats = TRUE;
+   }
+   if ((stats_mask & (uint8_t) 4) == (uint8_t) 4) {
+      print_memory_stats = TRUE;
+   }
+
+   if (print_ifc_stats == TRUE) {
+      for (x=0; x<loaded_modules_cnt; x++) {
+         if (running_modules[x].module_status == TRUE && running_modules[x].module_has_service_ifc == TRUE && running_modules[x].module_service_ifc_isconnected == TRUE) {
+            counter = 0;
+            for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
+               if (running_modules[x].module_ifces[y].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
+                  ptr += sprintf(buffer + ptr, "%s,in,%d,%"PRIu64",%"PRIu64"\n", running_modules[x].module_name, counter, ((in_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->recv_msg_cnt,
+                                                                                                                                                                                                         ((in_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->recv_buffer_cnt);
+                  counter++;
+                  if (strlen(buffer) >= (3*size_of_buffer)/5) {
+                     size_of_buffer += size_of_buffer/2;
+                     buffer = (char *) realloc (buffer, size_of_buffer * sizeof(char));
+                     memset(buffer + ptr, 0, size_of_buffer - ptr);
+                  }
                }
             }
-         }
-         counter = 0;
-         for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
-            if (running_modules[x].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
-               ptr += sprintf(buffer + ptr, "%s,out,%d,%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64"\n", running_modules[x].module_name, counter, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_msg_cnt,
-                                                                                                                                                                                                                           ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->dropped_msg_cnt,
-                                                                                                                                                                                                                           ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_buffer_cnt,
-                                                                                                                                                                                                                           ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->autoflush_cnt);
-               counter++;
-               if (strlen(buffer) >= (3*size_of_buffer)/5) {
-                  size_of_buffer += size_of_buffer/2;
-                  buffer = (char *) realloc (buffer, size_of_buffer * sizeof(char));
-                  memset(buffer + ptr, 0, size_of_buffer - ptr);
+            counter = 0;
+            for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
+               if (running_modules[x].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
+                  ptr += sprintf(buffer + ptr, "%s,out,%d,%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64"\n", running_modules[x].module_name, counter, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_msg_cnt,
+                                                                                                                                                                                                                              ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->dropped_msg_cnt,
+                                                                                                                                                                                                                              ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_buffer_cnt,
+                                                                                                                                                                                                                              ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->autoflush_cnt);
+                  counter++;
+                  if (strlen(buffer) >= (3*size_of_buffer)/5) {
+                     size_of_buffer += size_of_buffer/2;
+                     buffer = (char *) realloc (buffer, size_of_buffer * sizeof(char));
+                     memset(buffer + ptr, 0, size_of_buffer - ptr);
+                  }
                }
             }
          }
       }
    }
 
-   for (x=0; x<loaded_modules_cnt; x++) {
-      if (running_modules[x].module_status == TRUE) {
-         ptr += sprintf(buffer + ptr, "%s,cpu,%d,%d\n", running_modules[x].module_name, running_modules[x].last_period_percent_cpu_usage_kernel_mode, running_modules[x].last_period_percent_cpu_usage_user_mode);
-         if (strlen(buffer) >= (3*size_of_buffer)/5) {
-            size_of_buffer += size_of_buffer/2;
-            buffer = (char *) realloc (buffer, size_of_buffer * sizeof(char));
-            memset(buffer + ptr, 0, size_of_buffer - ptr);
+   if (print_cpu_stats == TRUE) {
+      for (x=0; x<loaded_modules_cnt; x++) {
+         if (running_modules[x].module_status == TRUE) {
+            ptr += sprintf(buffer + ptr, "%s,cpu,%d,%d\n", running_modules[x].module_name, running_modules[x].last_period_percent_cpu_usage_kernel_mode, running_modules[x].last_period_percent_cpu_usage_user_mode);
+            if (strlen(buffer) >= (3*size_of_buffer)/5) {
+               size_of_buffer += size_of_buffer/2;
+               buffer = (char *) realloc (buffer, size_of_buffer * sizeof(char));
+               memset(buffer + ptr, 0, size_of_buffer - ptr);
+            }
          }
       }
    }
 
-   for (x=0; x<loaded_modules_cnt; x++) {
-      if (running_modules[x].module_status == TRUE) {
-         ptr += sprintf(buffer + ptr, "%s,mem,%d\n", running_modules[x].module_name, running_modules[x].virtual_memory_usage);
-         if (strlen(buffer) >= (3*size_of_buffer)/5) {
-            size_of_buffer += size_of_buffer/2;
-            buffer = (char *) realloc (buffer, size_of_buffer * sizeof(char));
-            memset(buffer + ptr, 0, size_of_buffer - ptr);
+   if (print_memory_stats == TRUE) {
+      for (x=0; x<loaded_modules_cnt; x++) {
+         if (running_modules[x].module_status == TRUE) {
+            ptr += sprintf(buffer + ptr, "%s,mem,%d\n", running_modules[x].module_name, running_modules[x].virtual_memory_usage);
+            if (strlen(buffer) >= (3*size_of_buffer)/5) {
+               size_of_buffer += size_of_buffer/2;
+               buffer = (char *) realloc (buffer, size_of_buffer * sizeof(char));
+               memset(buffer + ptr, 0, size_of_buffer - ptr);
+            }
          }
       }
    }
@@ -822,11 +800,6 @@ void generate_backup_config_file()
    }
 
    modules = xmlNewChild(root_elem, NULL, BAD_CAST "supervisor", BAD_CAST NULL);
-   if (verbose_flag) {
-      xmlNewChild(modules, NULL, BAD_CAST "verbose", BAD_CAST "true");
-   } else {
-      xmlNewChild(modules, NULL, BAD_CAST "verbose", BAD_CAST "false");
-   }
    memset(buffer,0,20);
    sprintf(buffer, "%d", max_restarts_per_minute_config);
    xmlNewChild(modules, NULL, BAD_CAST "module-restarts", BAD_CAST buffer);
@@ -1470,7 +1443,7 @@ void *daemon_serve_client_routine (void *cli)
       VERBOSE(SUP_LOG, "%s [INFO] Got stats mode code. (client's ID: %d)\n", get_stats_formated_time(), client->client_id);
       update_module_cpu_usage();
       update_module_mem_usage();
-      char *stats_buffer = make_formated_statistics();
+      char *stats_buffer = make_formated_statistics((uint8_t) 7);
       int buffer_len = strlen(stats_buffer);
       char stats_buffer2[buffer_len+1];
       memset(stats_buffer2,0,buffer_len+1);
@@ -1969,19 +1942,15 @@ void service_connect_to_module(int module, int num_ifc)
 
 void *service_thread_routine(void *arg __attribute__ ((unused)))
 {
+   uint64_t period_cnt = 0;
    service_msg_header_t *header = (service_msg_header_t *) calloc(1, sizeof(service_msg_header_t));
    uint32_t buffer_size = 256;
    char *buffer = (char *) calloc(buffer_size, sizeof(char));
    int running_modules_cnt = 0;
    unsigned int x,y;
 
-   time_t rawtime;
-   struct tm * timeinfo;
-
    while (TRUE) {
       pthread_mutex_lock(&running_modules_lock);
-      time(&rawtime);
-      timeinfo = localtime(&rawtime);
 
       running_modules_cnt = service_check_modules_status();
       if (service_thread_continue == FALSE) {
@@ -2092,14 +2061,16 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
 
       pthread_mutex_unlock(&running_modules_lock);
 
-      if ((verbose_flag == TRUE) && (running_modules_cnt > 0)) {
-         print_statistics(timeinfo);
+      if ((period_cnt%30 == 0) && (running_modules_cnt > 0)) {
+         print_statistics();
       }
 
       if (service_thread_continue == TRUE) {
          sleep(1);
       }
-   }
+
+      period_cnt++;
+   } // Service thread loop
 
    // Disconnect from running modules
    for (x=0;x<loaded_modules_cnt;x++) {
@@ -2953,7 +2924,6 @@ void supervisor_flags_initialization()
    config_file = NULL;
    socket_path = NULL;
 
-   verbose_flag = FALSE;
    daemon_flag = FALSE;
    netconf_flag = FALSE;
 
@@ -3126,13 +3096,10 @@ int parse_program_arguments(int *argc, char **argv)
          fprintf(stderr, "Unknown option, use \"supervisor -h\" for help.\n");
          return -1;
       case 'h':
-         printf("Usage: supervisor [-d|--daemon] -f|--config-file=path [-h|--help] [-v|--verbose] [-L|--logs-path] [-s|--daemon-socket=path]\n");
+         printf("Usage: supervisor [-d|--daemon] -f|--config-file=path [-h|--help] [-L|--logs-path] [-s|--daemon-socket=path]\n");
          return -1;
       case 's':
          socket_path = optarg;
-         break;
-      case 'v':
-         verbose_flag = TRUE;
          break;
       case 'f':
          NULLP_TEST_AND_FREE(config_file)
@@ -3183,17 +3150,7 @@ void reload_process_supervisor_element(reload_config_vars_t **config_vars)
    char *path_new = NULL;
 
    while ((*config_vars)->module_elem != NULL) {
-      if (!xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "verbose")) {
-         // Process supervisor's element "verbose"
-         key = xmlNodeListGetString((*config_vars)->doc_tree_ptr, (*config_vars)->module_elem->xmlChildrenNode, 1);
-         if (key != NULL) {
-            if (xmlStrcmp(key, BAD_CAST "true") == 0) {
-               verbose_flag = TRUE;
-            } else if (xmlStrcmp(key, BAD_CAST "false") == 0) {
-               verbose_flag = FALSE;
-            }
-         }
-      } else if (!xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "module-restarts")) {
+      if (!xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "module-restarts")) {
          // Process supervisor's element "module-restarts"
          key = xmlNodeListGetString((*config_vars)->doc_tree_ptr, (*config_vars)->module_elem->xmlChildrenNode, 1);
          if (key != NULL) {

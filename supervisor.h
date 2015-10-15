@@ -292,12 +292,6 @@ void interactive_show_graph();
  */
 void connect_to_module_service_ifc(int module, int num_ifc);
 
-void print_statistics(struct tm * timeinfo);
-
-void print_statistics_legend();
-
-char * make_formated_statistics();
-
 /** Function creates 2 threads - service and acceptor thread.
  */
 int start_service_thread();
@@ -343,9 +337,9 @@ int get_number_from_input_choosing_option();
 int get_numbers_from_input_dis_enable_module(int **array);
 void init_module_variables(int module_number);
 char *get_param_by_delimiter(const char *source, char **dest, const char delimiter);
-void print_statistics(struct tm *timeinfo);
+void print_statistics();
 void print_statistics_legend();
-char *make_formated_statistics();
+char *make_formated_statistics(uint8_t stats_mask);
 int find_loaded_module(char *name);
 void generate_backup_config_file();
 /**@}*/
