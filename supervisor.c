@@ -3079,11 +3079,9 @@ int parse_program_arguments(int *argc, char **argv)
    /******/
 
    char c = 0;
-   int option_index = 0;
 
    while (1) {
-      option_index = 0;
-      c = getopt_long(*argc, argv, "df:hvs:L:", long_options, &option_index);
+      c = SUP_GETOPT(*argc, argv, "df:hvs:L:", long_options);
       if (c == -1) {
          break;
       }
