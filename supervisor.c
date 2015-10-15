@@ -938,6 +938,17 @@ void generate_backup_config_file()
    xmlCleanupParser();
 }
 
+void print_supervisor_info()
+{
+   VERBOSE(N_STDOUT, ANSI_BOLD "--------------- INFO ---------------\n")
+   VERBOSE(N_STDOUT, "Supervisor package version:" ANSI_ATTR_RESET " %s\n", sup_package_version);
+   VERBOSE(N_STDOUT, ANSI_BOLD "Supervisor git version:" ANSI_ATTR_RESET " %s\n", sup_git_version);
+   VERBOSE(N_STDOUT, ANSI_BOLD "Actual logs directory:" ANSI_ATTR_RESET " %s\n", get_absolute_file_path(logs_path));
+   VERBOSE(N_STDOUT, ANSI_BOLD "Start-up configuration file:" ANSI_ATTR_RESET " %s\n", get_absolute_file_path(config_file));
+   VERBOSE(N_STDOUT, ANSI_BOLD "Number of loaded modules:" ANSI_ATTR_RESET " %d\n", loaded_modules_cnt);
+   VERBOSE(N_STDOUT, ANSI_BOLD "Number of running modules:" ANSI_ATTR_RESET " %d\n", service_check_modules_status());
+}
+
 
 
 /*****************************************************************
@@ -1324,6 +1335,7 @@ void daemon_send_options_to_client()
    VERBOSE(N_STDOUT, "5. STARTED MODULES STATUS\n");
    VERBOSE(N_STDOUT, "6. AVAILABLE MODULES\n");
    VERBOSE(N_STDOUT, "7. RELOAD CONFIGURATION\n");
+   VERBOSE(N_STDOUT, "8. PRINT SUPERVISOR INFO\n");
    VERBOSE(N_STDOUT, "-- Type \"Cquit\" to exit client --\n");
    VERBOSE(N_STDOUT, "-- Type \"Dstop\" to stop daemon --\n" ANSI_ATTR_RESET);
    VERBOSE(N_STDOUT, ANSI_YELLOW_BOLD "[INTERACTIVE] Your choice: " ANSI_ATTR_RESET);
@@ -1516,6 +1528,9 @@ void *daemon_serve_client_routine (void *cli)
                break;
             case 7:
                reload_configuration(RELOAD_INTERACTIVE, NULL);
+               break;
+            case 8:
+               print_supervisor_info();
                break;
             case 9:
                nine_cnt++;
@@ -2310,7 +2325,8 @@ int interactive_get_option()
    VERBOSE(N_STDOUT, "5. STARTED MODULES STATUS\n");
    VERBOSE(N_STDOUT, "6. AVAILABLE MODULES\n");
    VERBOSE(N_STDOUT, "7. RELOAD CONFIGURATION\n");
-   VERBOSE(N_STDOUT, "8. STOP SUPERVISOR\n" ANSI_ATTR_RESET);
+   VERBOSE(N_STDOUT, "8. PRINT SUPERVISOR INFO\n");
+   VERBOSE(N_STDOUT, "9. STOP SUPERVISOR\n" ANSI_ATTR_RESET);
    VERBOSE(N_STDOUT, ANSI_YELLOW_BOLD "[INTERACTIVE] Your choice: " ANSI_ATTR_RESET);
 
    return get_number_from_input_choosing_option();

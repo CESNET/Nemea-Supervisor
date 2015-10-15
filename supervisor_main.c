@@ -50,36 +50,32 @@ void interactive_mode()
 {
    int ret_val = 0;
 
-   while ((ret_val = interactive_get_option()) != 8) {
+   while ((ret_val = interactive_get_option()) != 9) {
       switch (ret_val) {
       case 1:
          interactive_start_configuration();
          break;
-
       case 2:
          interactive_stop_configuration();
          break;
-
       case 3:
          interactive_set_module_enabled();
          break;
-
       case 4:
          interactive_stop_module();
          break;
-
       case 5:
          interactive_show_running_modules_status();
          break;
-
       case 6:
          interactive_show_available_modules();
          break;
-
       case 7:
          reload_configuration(RELOAD_INTERACTIVE, NULL);
          break;
-
+      case 8:
+         print_supervisor_info();
+         break;
       default:
          VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Wrong input.\n" ANSI_ATTR_RESET);
          break;

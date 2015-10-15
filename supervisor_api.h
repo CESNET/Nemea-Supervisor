@@ -66,6 +66,7 @@ void interactive_stop_module();
 void interactive_show_running_modules_status();
 void interactive_show_available_modules();
 int reload_configuration(const int, xmlNodePtr *);
+void print_supervisor_info();
 
 /* Daemon mode functions */
 int daemon_mode_initialization();

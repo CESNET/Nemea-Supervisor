@@ -38,6 +38,7 @@ AM_PROG_CC_C_O
 AC_PROG_LN_S
 AC_PROG_INSTALL
 AC_PROG_MAKE_SET
+AC_CHECK_PROG(GIT, git, git, [""])
 
 AC_ARG_ENABLE(repobuild, AS_HELP_STRING([--disable-repobuild],
                 [disable local compilation without system installed Nemea libraries, default: yes]),
@@ -46,6 +47,13 @@ AC_ARG_ENABLE(repobuild, AS_HELP_STRING([--disable-repobuild],
         no)  repobuild=false ;;
         *)   AC_MSG_ERROR([bad value ${enableval} for --disable-repobuild]) ;;
 esac], [repobuild=true])
+
+if test -n "$GIT"; then
+    GIT_VERSION=$($GIT log --format="%h" HEAD^..HEAD | head -1)
+else
+   GIT_VERSION=""
+fi
+AC_DEFINE_UNQUOTED(GIT_VERSION, ["$GIT_VERSION"], [Git revision])
 
 # Checks for libraries.
 
