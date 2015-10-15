@@ -39,23 +39,6 @@ AC_PROG_LN_S
 AC_PROG_INSTALL
 AC_PROG_MAKE_SET
 
-AC_CHECK_PROG(HAVE_DOT, dot, yes)
-AC_CHECK_PROG(HAVE_DISPLAY, display, yes)
-
-if test "x$HAVE_DOT" = xyes; then
-AC_DEFINE([HAVE_DOT], 1, [Use dot(1) for graph creation])
-else
-AC_DEFINE([HAVE_DOT], 0, [Use dot(1) for graph creation])
-AC_MSG_WARN([We need graphviz...])
-fi
-
-if test "x$HAVE_DISPLAY" = xyes; then
-AC_DEFINE([HAVE_DISPLAY], 1, [Use display(1) to show image.])
-else
-AC_DEFINE([HAVE_DISPLAY], 0, [Use display(1) to show image.])
-AC_MSG_WARN([We need ImageMagick...])
-fi
-
 AC_ARG_ENABLE(repobuild, AS_HELP_STRING([--disable-repobuild],
                 [disable local compilation without system installed Nemea libraries, default: yes]),
 [case "${enableval}" in
