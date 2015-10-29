@@ -120,7 +120,7 @@ modules_profile_t *actual_profile_ptr = NULL;
 pthread_t service_thread_id; ///< Service thread identificator.
 pthread_t netconf_server_thread_id;
 
-struct tm *init_time_info = NULL;
+time_t sup_init_time = 0;
 int service_stop_all_modules = FALSE;
 
 // supervisor flags
@@ -203,7 +203,10 @@ void create_shutdown_info(char **backup_file_path)
    }
 
    fprintf(info_file_fd, "Supervisor shutdown info:\n==========================\n\n");
-   fprintf(info_file_fd, "Date and time: %s\n", get_stats_formated_time());
+   fprintf(info_file_fd, "Supervisor package version: %s\n", sup_package_version);
+   fprintf(info_file_fd, "Supervisor git version: %s\n", sup_git_version);
+   fprintf(info_file_fd, "Started: %s", ctime(&sup_init_time));
+   fprintf(info_file_fd, "Actual date and time: %s\n", get_formatted_time());
    fprintf(info_file_fd, "Number of modules in configuration: %d\n", loaded_modules_cnt);
    fprintf(info_file_fd, "Number of running modules: %d\n", service_check_modules_status());
    fprintf(info_file_fd, "Logs directory: %s\n", get_absolute_file_path(logs_path));
@@ -212,29 +215,6 @@ void create_shutdown_info(char **backup_file_path)
 
    NULLP_TEST_AND_FREE(info_file_name)
    fclose(info_file_fd);
-}
-
-void print_module_ifc_stats(int module_number)
-{
-   uint x = 0;
-
-   printf("\nMODULE %d IFC STATS:\n", module_number);
-   printf("\tinput ifces: ");
-   for (x = 0; x < running_modules[module_number].module_ifces_cnt; x++) {
-      if (running_modules[module_number].module_ifces[x].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
-         printf("%" PRIu64 " %" PRIu64 " | ", ((in_ifc_stats_t *) running_modules[module_number].module_ifces[x].ifc_data)->recv_msg_cnt,
-                                                                                          ((in_ifc_stats_t *) running_modules[module_number].module_ifces[x].ifc_data)->recv_buffer_cnt);
-      }
-   }
-   printf("\n\toutput ifces: ");
-   for (x = 0; x < running_modules[module_number].module_ifces_cnt; x++) {
-      if (running_modules[module_number].module_ifces[x].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
-         printf("%" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 " | ", ((out_ifc_stats_t *) running_modules[module_number].module_ifces[x].ifc_data)->sent_msg_cnt,
-                                                                                          ((out_ifc_stats_t *) running_modules[module_number].module_ifces[x].ifc_data)->dropped_msg_cnt,
-                                                                                          ((out_ifc_stats_t *) running_modules[module_number].module_ifces[x].ifc_data)->sent_buffer_cnt,
-                                                                                          ((out_ifc_stats_t *) running_modules[module_number].module_ifces[x].ifc_data)->autoflush_cnt);
-      }
-   }
 }
 
 void print_xmlDoc_to_stream(xmlDocPtr doc_ptr, FILE *stream)
@@ -253,22 +233,18 @@ void print_xmlDoc_to_stream(xmlDocPtr doc_ptr, FILE *stream)
    }
 }
 
-struct tm *get_sys_time()
+char *get_formatted_time()
 {
    time_t rawtime;
+   static char formatted_time_buffer[DEFAULT_SIZE_OF_BUFFER];
+
+   memset(formatted_time_buffer,0,DEFAULT_SIZE_OF_BUFFER);
    time(&rawtime);
-   return localtime(&rawtime);
-}
 
-char *get_stats_formated_time()
-{
-   static char formated_time_buffer[DEFAULT_SIZE_OF_BUFFER];
-   memset(formated_time_buffer,0,DEFAULT_SIZE_OF_BUFFER);
-   struct tm * act_time = get_sys_time();
+   sprintf(formatted_time_buffer, "%s", ctime(&rawtime));
+   formatted_time_buffer[strlen(formatted_time_buffer) - 1] = 0;
 
-   sprintf(formated_time_buffer,"%d.%d %d:%d:%d",  act_time->tm_mday, act_time->tm_mon+1, act_time->tm_hour, act_time->tm_min, act_time->tm_sec);
-
-   return formated_time_buffer;
+   return formatted_time_buffer;
 }
 
 char **make_module_arguments(const int number_of_module)
@@ -338,8 +314,8 @@ char **make_module_arguments(const int number_of_module)
          NULLP_TEST_AND_FREE(buffer)
       }
 
-      fprintf(stdout,"%s [INFO] Supervisor - executed command: %s", get_stats_formated_time(), running_modules[number_of_module].module_path);
-      fprintf(stderr,"%s [INFO] Supervisor - executed command: %s", get_stats_formated_time(), running_modules[number_of_module].module_path);
+      fprintf(stdout,"%s [INFO] Supervisor - executed command: %s", get_formatted_time(), running_modules[number_of_module].module_path);
+      fprintf(stderr,"%s [INFO] Supervisor - executed command: %s", get_formatted_time(), running_modules[number_of_module].module_path);
 
       if (params_counter > 0) {
          for (x=1; x<params_counter; x++) {
@@ -384,7 +360,7 @@ char **make_module_arguments(const int number_of_module)
                strncpy(atr + ptr, "f:", 2);
                ptr+=2;
             } else {
-               VERBOSE(MODULE_EVENT, "%s [WARNING] Wrong ifc_type in module %d (interface number %d).\n", get_stats_formated_time(), number_of_module, x);
+               VERBOSE(MODULE_EVENT, "%s [WARNING] Wrong ifc_type in module %d (interface number %d).\n", get_formatted_time(), number_of_module, x);
                NULLP_TEST_AND_FREE(atr)
                return NULL;
             }
@@ -484,8 +460,8 @@ char **make_module_arguments(const int number_of_module)
       NULLP_TEST_AND_FREE(buffer)
    }
 
-   fprintf(stdout,"%s [INFO] Supervisor - executed command: %s   %s   %s", get_stats_formated_time(), running_modules[number_of_module].module_path, params[1], params[2]);
-   fprintf(stderr,"%s [INFO] Supervisor - executed command: %s   %s   %s", get_stats_formated_time(), running_modules[number_of_module].module_path, params[1], params[2]);
+   fprintf(stdout,"%s [INFO] Supervisor - executed command: %s   %s   %s", get_formatted_time(), running_modules[number_of_module].module_path, params[1], params[2]);
+   fprintf(stderr,"%s [INFO] Supervisor - executed command: %s   %s   %s", get_formatted_time(), running_modules[number_of_module].module_path, params[1], params[2]);
 
    if (params_counter > 0) {
       for (x=3; x<params_counter; x++) {
@@ -912,22 +888,22 @@ void generate_backup_config_file()
 
    backup_file_name = create_backup_file_path();
    if (backup_file_name == NULL) {
-      VERBOSE(N_STDOUT, "%s [ERROR] Could not create backup file name!\n", get_stats_formated_time());
+      VERBOSE(N_STDOUT, "%s [ERROR] Could not create backup file name!\n", get_formatted_time());
    } else {
       backup_file_fd = fopen(backup_file_name,"w");
       if (backup_file_fd != NULL) {
          if (xmlDocFormatDump(backup_file_fd, document_ptr, 1) == -1) {
-            VERBOSE(N_STDOUT, "%s [ERROR] Could not save backup file!\n", get_stats_formated_time());
+            VERBOSE(N_STDOUT, "%s [ERROR] Could not save backup file!\n", get_formatted_time());
          } else {
-            VERBOSE(N_STDOUT, "%s [WARNING] Phew, backup file saved !!\n", get_stats_formated_time());
+            VERBOSE(N_STDOUT, "%s [WARNING] Phew, backup file saved !!\n", get_formatted_time());
          }
          fclose(backup_file_fd);
          // Set permissions to backup file to prevent problems during loading and deleting after supervisor restart
          if (chmod(backup_file_name, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH) == -1) {
-            fprintf(stderr, "%s [WARNING] Failed to set permissions to backup file (%s)\n", get_stats_formated_time(), backup_file_name);
+            fprintf(stderr, "%s [WARNING] Failed to set permissions to backup file (%s)\n", get_formatted_time(), backup_file_name);
          }
       } else {
-         VERBOSE(N_STDOUT, "%s [ERROR] Could not open backup file!\n", get_stats_formated_time());
+         VERBOSE(N_STDOUT, "%s [ERROR] Could not open backup file!\n", get_formatted_time());
       }
       // Create file with information about generated backup file
       create_shutdown_info(&backup_file_name);
@@ -936,17 +912,6 @@ void generate_backup_config_file()
 
    xmlFreeDoc(document_ptr);
    xmlCleanupParser();
-}
-
-void print_supervisor_info()
-{
-   VERBOSE(N_STDOUT, ANSI_BOLD "--------------- INFO ---------------\n")
-   VERBOSE(N_STDOUT, "Supervisor package version:" ANSI_ATTR_RESET " %s\n", sup_package_version);
-   VERBOSE(N_STDOUT, ANSI_BOLD "Supervisor git version:" ANSI_ATTR_RESET " %s\n", sup_git_version);
-   VERBOSE(N_STDOUT, ANSI_BOLD "Actual logs directory:" ANSI_ATTR_RESET " %s\n", get_absolute_file_path(logs_path));
-   VERBOSE(N_STDOUT, ANSI_BOLD "Start-up configuration file:" ANSI_ATTR_RESET " %s\n", get_absolute_file_path(config_file));
-   VERBOSE(N_STDOUT, ANSI_BOLD "Number of loaded modules:" ANSI_ATTR_RESET " %d\n", loaded_modules_cnt);
-   VERBOSE(N_STDOUT, ANSI_BOLD "Number of running modules:" ANSI_ATTR_RESET " %d\n", service_check_modules_status());
 }
 
 
@@ -1068,13 +1033,13 @@ int daemon_init_process()
 
    process_id = fork();
    if (process_id < 0)  {
-      VERBOSE(N_STDOUT,"%s [ERROR] Fork: could not initialize daemon process!\n", get_stats_formated_time());
+      VERBOSE(N_STDOUT,"%s [ERROR] Fork: could not initialize daemon process!\n", get_formatted_time());
       return -1;
    } else if (process_id > 0) {
       NULLP_TEST_AND_FREE(config_file)
       NULLP_TEST_AND_FREE(logs_path)
       free_output_file_strings_and_streams();
-      fprintf(stdout, "%s [INFO] PID of daemon process: %d.\n", get_stats_formated_time(), process_id);
+      fprintf(stdout, "%s [INFO] PID of daemon process: %d.\n", get_formatted_time(), process_id);
       exit(EXIT_SUCCESS);
    }
 
@@ -1094,12 +1059,12 @@ int daemon_init_structures()
 
    server_internals = (server_internals_t *) calloc(1, sizeof(server_internals_t));
    if (server_internals == NULL) {
-      VERBOSE(N_STDOUT, "%s [ERROR] Could not allocate dameon_internals, cannot proceed without it!\n", get_stats_formated_time());
+      VERBOSE(N_STDOUT, "%s [ERROR] Could not allocate dameon_internals, cannot proceed without it!\n", get_formatted_time());
       return -1;
    }
    server_internals->clients = (sup_client_t **) calloc(MAX_NUMBER_SUP_CLIENTS, sizeof(sup_client_t*));
    if (server_internals->clients == NULL) {
-      VERBOSE(N_STDOUT, "%s [ERROR] Could not allocate structures for clients, cannot proceed without it!\n", get_stats_formated_time());
+      VERBOSE(N_STDOUT, "%s [ERROR] Could not allocate structures for clients, cannot proceed without it!\n", get_formatted_time());
       return -1;
    }
    for (x = 0; x < MAX_NUMBER_SUP_CLIENTS; x++) {
@@ -1108,7 +1073,7 @@ int daemon_init_structures()
          server_internals->clients[x]->client_sd = -1;
          server_internals->clients[x]->client_input_stream_fd = -1;
       } else {
-         VERBOSE(N_STDOUT, "%s [ERROR] Could not allocate structures for clients, cannot proceed without it!\n", get_stats_formated_time());
+         VERBOSE(N_STDOUT, "%s [ERROR] Could not allocate structures for clients, cannot proceed without it!\n", get_formatted_time());
          return -1;
       }
    }
@@ -1129,25 +1094,25 @@ int daemon_init_socket()
    unlink(socket_path); /* error when file does not exist is not a problem */
    server_internals->server_sd = socket(AF_UNIX, SOCK_STREAM, 0);
    if (server_internals->server_sd == -1) {
-      VERBOSE(N_STDOUT, "%s [ERROR] Could not create daemon socket.\n", get_stats_formated_time());
+      VERBOSE(N_STDOUT, "%s [ERROR] Could not create daemon socket.\n", get_formatted_time());
       return -1;
    }
    if (fcntl(server_internals->server_sd, F_SETFL, O_NONBLOCK) == -1) {
-      VERBOSE(N_STDOUT, "%s [ERROR] Could not set nonblocking mode on daemon socket.\n", get_stats_formated_time());
+      VERBOSE(N_STDOUT, "%s [ERROR] Could not set nonblocking mode on daemon socket.\n", get_formatted_time());
       return -1;
    }
 
    if (bind(server_internals->server_sd, (struct sockaddr *) &addr.unix_addr, sizeof(addr.unix_addr)) != -1) {
       if (chmod(socket_path, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH) == -1) {
-         VERBOSE(N_STDOUT, "%s [WARNING] Failed to set permissions to socket (%s)\n", get_stats_formated_time(), socket_path);
+         VERBOSE(N_STDOUT, "%s [WARNING] Failed to set permissions to socket (%s)\n", get_formatted_time(), socket_path);
       }
    } else {
-      VERBOSE(N_STDOUT,"%s [ERROR] Bind: could not bind the daemon socket!\n", get_stats_formated_time());
+      VERBOSE(N_STDOUT,"%s [ERROR] Bind: could not bind the daemon socket!\n", get_formatted_time());
       return -1;
    }
 
    if (listen(server_internals->server_sd, MAX_NUMBER_SUP_CLIENTS) == -1) {
-      VERBOSE(N_STDOUT,"%s [ERROR] Listen: could not listen on the daemon socket!\n", get_stats_formated_time());
+      VERBOSE(N_STDOUT,"%s [ERROR] Listen: could not listen on the daemon socket!\n", get_formatted_time());
       return -1;
    }
 
@@ -1175,7 +1140,7 @@ int daemon_mode_initialization()
    }
 
    daemon_mode_initialized = TRUE;
-   VERBOSE(N_STDOUT, "%s [INFO] Daemon process successfully initialized.\n", get_stats_formated_time());
+   VERBOSE(N_STDOUT, "%s [INFO] Daemon process successfully initialized.\n", get_formatted_time());
    return 0;
 }
 
@@ -1194,7 +1159,7 @@ void daemon_mode_server_routine()
    pthread_attr_init(&clients_thread_attr);
    pthread_attr_setdetachstate(&clients_thread_attr, PTHREAD_CREATE_DETACHED);
 
-   VERBOSE(SUP_LOG, "%s [INFO] Starting server thread.\n", get_stats_formated_time());
+   VERBOSE(SUP_LOG, "%s [INFO] Starting server thread.\n", get_formatted_time());
    while (server_internals->daemon_terminated == FALSE) {
       FD_ZERO(&read_fds);
       FD_SET(server_internals->server_sd, &read_fds);
@@ -1205,7 +1170,7 @@ void daemon_mode_server_routine()
       ret_val = select(server_internals->server_sd+1, &read_fds, NULL, NULL, &tv);
       if (ret_val == -1) {
          // Select error, return -1 and terminate
-         VERBOSE(SUP_LOG, "%s [ERROR] Server thread: select call failed.\n", get_stats_formated_time());
+         VERBOSE(SUP_LOG, "%s [ERROR] Server thread: select call failed.\n", get_formatted_time());
          return;
       } else if (ret_val != 0) {
          if (FD_ISSET(server_internals->server_sd, &read_fds)) {
@@ -1213,10 +1178,10 @@ void daemon_mode_server_routine()
             if (new_client == -1) {
                if (errno == EAGAIN || errno == EWOULDBLOCK) {
                   // Some client wanted to connect but before accepting, he canceled the connection attempt
-                  VERBOSE(SUP_LOG, "%s [WARNING] Accept would block error, wait for another client.\n", get_stats_formated_time());
+                  VERBOSE(SUP_LOG, "%s [WARNING] Accept would block error, wait for another client.\n", get_formatted_time());
                   continue;
                } else {
-                  VERBOSE(SUP_LOG,"%s [ERROR] Server thread: accept call failed.\n", get_stats_formated_time());
+                  VERBOSE(SUP_LOG,"%s [ERROR] Server thread: accept call failed.\n", get_formatted_time());
                   continue;
                }
             } else {
@@ -1224,7 +1189,7 @@ void daemon_mode_server_routine()
                   // Find a free spot in the clients buffer for a new client
                   for (x = 0; x < MAX_NUMBER_SUP_CLIENTS; x++) {
                      if (server_internals->clients[x]->client_sd == -1) {
-                        VERBOSE(SUP_LOG,"%s [INFO] New client has connected and will be saved to position %d. (client's ID: %d)\n", get_stats_formated_time(), x, server_internals->next_client_id);
+                        VERBOSE(SUP_LOG,"%s [INFO] New client has connected and will be saved to position %d. (client's ID: %d)\n", get_formatted_time(), x, server_internals->next_client_id);
                         server_internals->clients[x]->client_sd = new_client;
                         server_internals->clients[x]->client_id = server_internals->next_client_id;
                         server_internals->clients[x]->client_connected = TRUE;
@@ -1234,7 +1199,7 @@ void daemon_mode_server_routine()
                         pthread_mutex_unlock(&server_internals->lock);
                         // Serve the new client
                         if (pthread_create(&server_internals->clients[x]->client_thread_id,  &clients_thread_attr, daemon_serve_client_routine, (void *) (server_internals->clients[x])) != 0) {
-                           VERBOSE(SUP_LOG, "%s [ERROR] Could not create client's thread.\n", get_stats_formated_time());
+                           VERBOSE(SUP_LOG, "%s [ERROR] Could not create client's thread.\n", get_formatted_time());
                            close(server_internals->clients[x]->client_sd);
                            server_internals->clients[x]->client_sd = -1;
                            server_internals->clients[x]->client_connected = FALSE;
@@ -1347,21 +1312,21 @@ int daemon_open_client_streams(sup_client_t **cli)
    sup_client_t * client = *cli;
    client->client_input_stream = fdopen(client->client_sd, "r");
    if (client->client_input_stream == NULL) {
-      VERBOSE(N_STDOUT,"%s [ERROR] Fdopen: could not open client's input stream! (client's ID: %d)\n", get_stats_formated_time(), client->client_id);
+      VERBOSE(N_STDOUT,"%s [ERROR] Fdopen: could not open client's input stream! (client's ID: %d)\n", get_formatted_time(), client->client_id);
       return -1;
    }
 
    // open output stream on client' s socket
    client->client_output_stream = fdopen(client->client_sd, "w");
    if (client->client_output_stream == NULL) {
-      VERBOSE(N_STDOUT,"%s [ERROR] Fdopen: could not open client's output stream! (client's ID: %d)\n", get_stats_formated_time(), client->client_id);
+      VERBOSE(N_STDOUT,"%s [ERROR] Fdopen: could not open client's output stream! (client's ID: %d)\n", get_formatted_time(), client->client_id);
       return -1;
    }
 
    // get file descriptor of input stream on client' s socket
    client->client_input_stream_fd = fileno(client->client_input_stream);
    if (client->client_input_stream_fd < 0) {
-      VERBOSE(N_STDOUT,"%s [ERROR] Fileno: could not get client's input stream descriptor! (client's ID: %d)\n", get_stats_formated_time(), client->client_id);
+      VERBOSE(N_STDOUT,"%s [ERROR] Fileno: could not get client's input stream descriptor! (client's ID: %d)\n", get_formatted_time(), client->client_id);
       return -1;
    }
 
@@ -1390,7 +1355,7 @@ void daemon_disconnect_client(sup_client_t *cli)
    pthread_mutex_lock(&server_internals->lock);
    server_internals->clients_cnt--;
    pthread_mutex_unlock(&server_internals->lock);
-   VERBOSE(SUP_LOG, "%s [INFO] Disconnected client. (client's ID: %d)\n", get_stats_formated_time(), cli->client_id);
+   VERBOSE(SUP_LOG, "%s [INFO] Disconnected client. (client's ID: %d)\n", get_formatted_time(), cli->client_id);
 }
 
 void *daemon_serve_client_routine (void *cli)
@@ -1429,14 +1394,14 @@ void *daemon_serve_client_routine (void *cli)
       // Check whether any client is already connected in config mode
       pthread_mutex_lock(&server_internals->lock);
       if (server_internals->config_mode_active == TRUE) {
-         VERBOSE(SUP_LOG, "%s [INFO] Got configuration mode code, but another client is already connected in this mode. (client's ID: %d)\n", get_stats_formated_time(), client->client_id);
+         VERBOSE(SUP_LOG, "%s [INFO] Got configuration mode code, but another client is already connected in this mode. (client's ID: %d)\n", get_formatted_time(), client->client_id);
          fprintf(client->client_output_stream, ANSI_RED_BOLD "[WARNING] Another client is connected to supervisor in configuration mode, you have to wait.\n" ANSI_ATTR_RESET);
          fflush(client->client_output_stream);
          pthread_mutex_unlock(&server_internals->lock);
          daemon_disconnect_client(client);
          pthread_exit(EXIT_SUCCESS);
       } else {
-         VERBOSE(SUP_LOG, "%s [INFO] Got configuration mode code. (client's ID: %d)\n", get_stats_formated_time(), client->client_id);
+         VERBOSE(SUP_LOG, "%s [INFO] Got configuration mode code. (client's ID: %d)\n", get_formatted_time(), client->client_id);
          server_internals->config_mode_active = TRUE;
       }
       pthread_mutex_unlock(&server_internals->lock);
@@ -1446,13 +1411,13 @@ void *daemon_serve_client_routine (void *cli)
       break;
 
    case CLIENT_RELOAD_MODE_CODE: // just reload configuration and wait for new client
-      VERBOSE(SUP_LOG, "%s [INFO] Got reload mode code. (client's ID: %d)\n", get_stats_formated_time(), client->client_id);
+      VERBOSE(SUP_LOG, "%s [INFO] Got reload mode code. (client's ID: %d)\n", get_formatted_time(), client->client_id);
       daemon_disconnect_client(client);
       reload_configuration(RELOAD_DEFAULT_CONFIG_FILE, NULL);
       pthread_exit(EXIT_SUCCESS);
 
    case CLIENT_STATS_MODE_CODE: { // send stats to current client and wait for new one
-      VERBOSE(SUP_LOG, "%s [INFO] Got stats mode code. (client's ID: %d)\n", get_stats_formated_time(), client->client_id);
+      VERBOSE(SUP_LOG, "%s [INFO] Got stats mode code. (client's ID: %d)\n", get_formatted_time(), client->client_id);
       update_module_cpu_usage();
       update_module_mem_usage();
       char *stats_buffer = make_formated_statistics((uint8_t) 7);
@@ -1463,7 +1428,7 @@ void *daemon_serve_client_routine (void *cli)
       fprintf(client->client_output_stream, "%s", stats_buffer2);
       fflush(client->client_output_stream);
       NULLP_TEST_AND_FREE(stats_buffer)
-      VERBOSE(SUP_LOG, "%s [INFO] Stats sent to client. (client's ID: %d)\n", get_stats_formated_time(), client->client_id);
+      VERBOSE(SUP_LOG, "%s [INFO] Stats sent to client. (client's ID: %d)\n", get_formatted_time(), client->client_id);
       daemon_disconnect_client(client);
       pthread_exit(EXIT_SUCCESS);
    }
@@ -1484,7 +1449,7 @@ void *daemon_serve_client_routine (void *cli)
 
       ret_val = select(client->client_input_stream_fd+1, &read_fds, NULL, NULL, &tv);
       if (ret_val == -1) {
-         VERBOSE(SUP_LOG,"%s [ERROR] Client's thread: select error.\n", get_stats_formated_time());
+         VERBOSE(SUP_LOG,"%s [ERROR] Client's thread: select error.\n", get_formatted_time());
          input_fd = stdin;
          output_fd = supervisor_log_fd;
          pthread_mutex_lock(&server_internals->lock);
@@ -1530,7 +1495,7 @@ void *daemon_serve_client_routine (void *cli)
                reload_configuration(RELOAD_INTERACTIVE, NULL);
                break;
             case 8:
-               print_supervisor_info();
+               interactive_print_supervisor_info();
                break;
             case 9:
                nine_cnt++;
@@ -1577,7 +1542,7 @@ void service_start_module(const int module_idx)
    uint x = 0;
 
    if (running_modules[module_idx].module_running == FALSE) {
-      VERBOSE(MODULE_EVENT,"%s [START] Starting module %s.\n", get_stats_formated_time(), running_modules[module_idx].module_name);
+      VERBOSE(MODULE_EVENT,"%s [START] Starting module %s.\n", get_formatted_time(), running_modules[module_idx].module_name);
       #ifdef nemea_plugin
          netconf_notify(MODULE_EVENT_STARTED,running_modules[module_idx].module_name);
       #endif
@@ -1590,7 +1555,7 @@ void service_start_module(const int module_idx)
       #ifdef nemea_plugin
          netconf_notify(MODULE_EVENT_RESTARTED,running_modules[module_idx].module_name);
       #endif
-      VERBOSE(MODULE_EVENT,"%s [RESTART] Restarting module %s\n", get_stats_formated_time(), running_modules[module_idx].module_name);
+      VERBOSE(MODULE_EVENT,"%s [RESTART] Restarting module %s\n", get_formatted_time(), running_modules[module_idx].module_name);
    }
 
    char log_path_stdout[PATH_MAX];
@@ -1627,28 +1592,26 @@ void service_start_module(const int module_idx)
       fprintf(stdout,"---> %s", asctime (timeinfo));
       fprintf(stderr,"---> %s", asctime (timeinfo));
       if (running_modules[module_idx].module_path == NULL) {
-         VERBOSE(N_STDOUT,"%s [ERROR] Starting module: module path is missing!\n", get_stats_formated_time());
+         VERBOSE(N_STDOUT,"%s [ERROR] Starting module: module path is missing!\n", get_formatted_time());
          running_modules[module_idx].module_enabled = FALSE;
       } else {
          char **params = make_module_arguments(module_idx);
          if (params == NULL) {
             goto execute_fail;
          }
-         // TODO make_module_arguments - if it fails (comparing types and directions etc.) create exit label
-         // TODO check values of ifc type and direction during reload
          fflush(stdout);
          fflush(stderr);
          execvp(running_modules[module_idx].module_path, params);
 execute_fail:
          exit(EXIT_FAILURE);
       }
-      VERBOSE(MODULE_EVENT,"%s [ERROR] Module execution: could not execute %s binary! (possible reason - wrong module binary path)\n", get_stats_formated_time(), running_modules[module_idx].module_name);
+      VERBOSE(MODULE_EVENT,"%s [ERROR] Module execution: could not execute %s binary! (possible reason - wrong module binary path)\n", get_formatted_time(), running_modules[module_idx].module_name);
       running_modules[module_idx].module_enabled = FALSE;
       exit(EXIT_FAILURE);
    } else if (running_modules[module_idx].module_pid == -1) {
       running_modules[module_idx].module_status = FALSE;
       running_modules[module_idx].module_restart_cnt++;
-      VERBOSE(N_STDOUT,"%s [ERROR] Fork: could not fork supervisor process!\n", get_stats_formated_time());
+      VERBOSE(N_STDOUT,"%s [ERROR] Fork: could not fork supervisor process!\n", get_formatted_time());
    } else {
       running_modules[module_idx].module_is_my_child = TRUE;
       running_modules[module_idx].module_status = TRUE;
@@ -1662,7 +1625,7 @@ execute_fail:
 void service_disconnect_from_module(const int module_idx)
 {
    if ((running_modules[module_idx].module_has_service_ifc == TRUE) && (running_modules[module_idx].module_service_ifc_isconnected == TRUE)) {
-      VERBOSE(MODULE_EVENT,"%s [SERVICE] Disconnecting from module %s\n", get_stats_formated_time(), running_modules[module_idx].module_name);
+      VERBOSE(MODULE_EVENT,"%s [SERVICE] Disconnecting from module %s\n", get_formatted_time(), running_modules[module_idx].module_name);
       if (running_modules[module_idx].module_service_sd != -1) {
          close(running_modules[module_idx].module_service_sd);
          running_modules[module_idx].module_service_sd = -1;
@@ -1686,13 +1649,13 @@ int service_check_modules_status()
       if (running_modules[x].module_pid > 0) {
          if (kill(running_modules[x].module_pid, 0) == -1) {
             if (errno == EINVAL) {
-               VERBOSE(MODULE_EVENT,"%s [STOP] kill -0: ernno EINVAL\n", get_stats_formated_time());
+               VERBOSE(MODULE_EVENT,"%s [STOP] kill -0: ernno EINVAL\n", get_formatted_time());
             }
             if (errno == EPERM) {
-               VERBOSE(MODULE_EVENT,"%s [STOP] kill -0: errno EPERM\n", get_stats_formated_time());
+               VERBOSE(MODULE_EVENT,"%s [STOP] kill -0: errno EPERM\n", get_formatted_time());
             }
             if (errno == ESRCH) {
-               VERBOSE(MODULE_EVENT,"%s [STOP] kill -0: module %s (PID: %d) is not running !\n", get_stats_formated_time(), running_modules[x].module_name, running_modules[x].module_pid);
+               VERBOSE(MODULE_EVENT,"%s [STOP] kill -0: module %s (PID: %d) is not running !\n", get_formatted_time(), running_modules[x].module_name, running_modules[x].module_pid);
             }
             if (running_modules[x].module_service_sd != -1) {
                   close(running_modules[x].module_service_sd);
@@ -1724,12 +1687,12 @@ void service_clean_after_children()
          } else if (result == -1) {
            // Error
             if (errno == ECHILD) {
-               VERBOSE(MODULE_EVENT, "%s [CLEAN] waitpid: module %s (PID: %d) is not my child!\n", get_stats_formated_time(), running_modules[x].module_name, running_modules[x].module_pid);
+               VERBOSE(MODULE_EVENT, "%s [CLEAN] waitpid: module %s (PID: %d) is not my child!\n", get_formatted_time(), running_modules[x].module_name, running_modules[x].module_pid);
                running_modules[x].module_is_my_child = FALSE;
             }
          } else {
            // Child exited
-            VERBOSE(MODULE_EVENT, "%s [CLEAN] waitpid: module %s (PID: %d) is my child and is not alive anymore!\n", get_stats_formated_time(), running_modules[x].module_name, running_modules[x].module_pid);
+            VERBOSE(MODULE_EVENT, "%s [CLEAN] waitpid: module %s (PID: %d) is my child and is not alive anymore!\n", get_formatted_time(), running_modules[x].module_name, running_modules[x].module_pid);
          }
       }
    }
@@ -1743,7 +1706,7 @@ void service_stop_modules_sigint()
          #ifdef nemea_plugin
             netconf_notify(MODULE_EVENT_STOPPED,running_modules[x].module_name);
          #endif
-         VERBOSE(MODULE_EVENT, "%s [STOP] Stopping module %s... sending SIGINT\n", get_stats_formated_time(), running_modules[x].module_name);
+         VERBOSE(MODULE_EVENT, "%s [STOP] Stopping module %s... sending SIGINT\n", get_formatted_time(), running_modules[x].module_name);
          kill(running_modules[x].module_pid,2);
          running_modules[x].sent_sigint = TRUE;
       }
@@ -1757,7 +1720,7 @@ void service_stop_modules_sigkill()
    unsigned int x, y;
    for (x=0; x<loaded_modules_cnt; x++) {
       if (running_modules[x].module_status && running_modules[x].module_enabled == FALSE && running_modules[x].sent_sigint == TRUE) {
-         VERBOSE(MODULE_EVENT, "%s [STOP] Stopping module %s... sending SIGKILL\n", get_stats_formated_time(), running_modules[x].module_name);
+         VERBOSE(MODULE_EVENT, "%s [STOP] Stopping module %s... sending SIGKILL\n", get_formatted_time(), running_modules[x].module_name);
          kill(running_modules[x].module_pid,9);
          for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
             if (running_modules[x].module_ifces[y].int_ifc_type == SERVICE_MODULE_IFC_TYPE || ((running_modules[x].module_ifces[y].int_ifc_type == UNIXSOCKET_MODULE_IFC_TYPE)
@@ -1768,7 +1731,7 @@ void service_stop_modules_sigkill()
                memset(buffer, 0, DEFAULT_SIZE_OF_BUFFER);
                get_param_by_delimiter(running_modules[x].module_ifces[y].ifc_params, &dest_port, ',');
                sprintf(buffer,MODULES_UNIXSOCKET_PATH_FILENAME_FORMAT,dest_port);
-               VERBOSE(MODULE_EVENT, "%s [CLEAN] Deleting socket %s - module %s\n", get_stats_formated_time(), buffer, running_modules[x].module_name);
+               VERBOSE(MODULE_EVENT, "%s [CLEAN] Deleting socket %s - module %s\n", get_formatted_time(), buffer, running_modules[x].module_name);
                unlink(buffer);
                NULLP_TEST_AND_FREE(dest_port)
             }
@@ -1798,7 +1761,7 @@ void service_update_modules_status()
       }
 
       if (running_modules[x].module_enabled == TRUE && running_modules[x].module_status == FALSE && (running_modules[x].module_restart_cnt == max_restarts)) {
-         VERBOSE(MODULE_EVENT,"%s [RESTART] Module: %s was restarted %d times per minute and it is down again. I set it disabled.\n", get_stats_formated_time(), running_modules[x].module_name, max_restarts);
+         VERBOSE(MODULE_EVENT,"%s [RESTART] Module: %s was restarted %d times per minute and it is down again. I set it disabled.\n", get_formatted_time(), running_modules[x].module_name, max_restarts);
          running_modules[x].module_enabled = FALSE;
          #ifdef nemea_plugin
             netconf_notify(MODULE_EVENT_DISABLED,running_modules[x].module_name);
@@ -1829,7 +1792,7 @@ void service_check_connections()
             }
 
             if (running_modules[x].module_service_ifc_conn_fails >= MAX_SERVICE_IFC_CONN_FAILS) {
-               VERBOSE(MODULE_EVENT, "%s [WARNING] Module %s reached %d errors during connections -> it is blocked.\n", get_stats_formated_time(), running_modules[x].module_name, MAX_SERVICE_IFC_CONN_FAILS);
+               VERBOSE(MODULE_EVENT, "%s [WARNING] Module %s reached %d errors during connections -> it is blocked.\n", get_formatted_time(), running_modules[x].module_name, MAX_SERVICE_IFC_CONN_FAILS);
                running_modules[x].module_service_ifc_conn_block = TRUE;
                continue;
             }
@@ -1877,7 +1840,7 @@ int service_recv_data(int module_idx, uint32_t size, void **data)
                continue;
             }
          }
-         VERBOSE(MODULE_EVENT,"%s [SERVICE] Error while receiving from module %d_%s !\n", get_stats_formated_time(), module_idx, running_modules[module_idx].module_name);
+         VERBOSE(MODULE_EVENT,"%s [SERVICE] Error while receiving from module %d_%s !\n", get_formatted_time(), module_idx, running_modules[module_idx].module_name);
          return -1;
       }
       total_receved += last_receved;
@@ -1901,7 +1864,7 @@ int service_send_data(int module_idx, uint32_t size, void **data)
                continue;
             }
          }
-         VERBOSE(MODULE_EVENT,"%s [SERVICE] Error while sending to module %d_%s !\n", get_stats_formated_time(), module_idx, running_modules[module_idx].module_name);
+         VERBOSE(MODULE_EVENT,"%s [SERVICE] Error while sending to module %d_%s !\n", get_formatted_time(), module_idx, running_modules[module_idx].module_name);
          return -1;
       }
       total_sent += last_sent;
@@ -1919,7 +1882,7 @@ void service_connect_to_module(int module, int num_ifc)
    running_modules[module].module_service_ifc_conn_attempts++;
 
    if (running_modules[module].module_service_ifc_conn_attempts > SERVICE_IFC_CONN_ATTEMPTS_LIMIT) {
-      VERBOSE(MODULE_EVENT,"%s [WARNING] Connection attempts to service interface of module %s exceeded %d, enough trying!\n", get_stats_formated_time(), running_modules[module].module_name, SERVICE_IFC_CONN_ATTEMPTS_LIMIT);
+      VERBOSE(MODULE_EVENT,"%s [WARNING] Connection attempts to service interface of module %s exceeded %d, enough trying!\n", get_formatted_time(), running_modules[module].module_name, SERVICE_IFC_CONN_ATTEMPTS_LIMIT);
       running_modules[module].module_service_ifc_conn_block = TRUE;
       return;
    }
@@ -1929,7 +1892,7 @@ void service_connect_to_module(int module, int num_ifc)
       return;
    }
    get_param_by_delimiter(running_modules[module].module_ifces[num_ifc].ifc_params, &dest_port, ',');
-   VERBOSE(MODULE_EVENT,"%s [SERVICE] Connecting to module %s on port %s...\n", get_stats_formated_time(), running_modules[module].module_name, dest_port);
+   VERBOSE(MODULE_EVENT,"%s [SERVICE] Connecting to module %s on port %s...\n", get_formatted_time(), running_modules[module].module_name, dest_port);
 
    memset(&addr, 0, sizeof(addr));
 
@@ -1937,13 +1900,13 @@ void service_connect_to_module(int module, int num_ifc)
    snprintf(addr.unix_addr.sun_path, sizeof(addr.unix_addr.sun_path) - 1, MODULES_UNIXSOCKET_PATH_FILENAME_FORMAT, dest_port);
    sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
    if (sockfd == -1) {
-      VERBOSE(MODULE_EVENT,"%s [SERVICE] Error while opening socket for connection with module %s.\n", get_stats_formated_time(), running_modules[module].module_name);
+      VERBOSE(MODULE_EVENT,"%s [SERVICE] Error while opening socket for connection with module %s.\n", get_formatted_time(), running_modules[module].module_name);
       running_modules[module].module_service_ifc_isconnected = FALSE;
       NULLP_TEST_AND_FREE(dest_port)
       return;
    }
    if (connect(sockfd, (struct sockaddr *) &addr.unix_addr, sizeof(addr.unix_addr)) == -1) {
-      VERBOSE(MODULE_EVENT,"%s [SERVICE] Error while connecting to module %s on port %s\n", get_stats_formated_time(), running_modules[module].module_name, dest_port);
+      VERBOSE(MODULE_EVENT,"%s [SERVICE] Error while connecting to module %s on port %s\n", get_formatted_time(), running_modules[module].module_name, dest_port);
       running_modules[module].module_service_ifc_isconnected = FALSE;
       NULLP_TEST_AND_FREE(dest_port)
       close(sockfd);
@@ -1951,7 +1914,7 @@ void service_connect_to_module(int module, int num_ifc)
    }
    running_modules[module].module_service_sd = sockfd;
    running_modules[module].module_service_ifc_isconnected = TRUE;
-   VERBOSE(MODULE_EVENT,"%s [SERVICE] Connected to module %s.\n", get_stats_formated_time(), running_modules[module].module_name);
+   VERBOSE(MODULE_EVENT,"%s [SERVICE] Connected to module %s.\n", get_formatted_time(), running_modules[module].module_name);
    NULLP_TEST_AND_FREE(dest_port)
 }
 
@@ -1970,10 +1933,10 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
       running_modules_cnt = service_check_modules_status();
       if (service_thread_continue == FALSE) {
          if (service_stop_all_modules == FALSE) {
-            VERBOSE(N_STDOUT, "%s [WARNING] I let modules continue running!\n", get_stats_formated_time());
+            VERBOSE(N_STDOUT, "%s [WARNING] I let modules continue running!\n", get_formatted_time());
             break;
          } else if (running_modules_cnt == 0) {
-            VERBOSE(N_STDOUT, "%s [WARNING] I stopped all modules!\n", get_stats_formated_time());
+            VERBOSE(N_STDOUT, "%s [WARNING] I stopped all modules!\n", get_formatted_time());
             break;
          }
       }
@@ -2024,7 +1987,7 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
          // If the module and supervisor are connected via service interface, request for stats is sent
          if (running_modules[x].module_service_ifc_isconnected == TRUE) {
             if (service_send_data(x, sizeof(service_msg_header_t), (void **) &header) == -1) {
-               VERBOSE(MODULE_EVENT,"%s [SERVICE] Error while sending request to module %d_%s.\n", get_stats_formated_time(), x, running_modules[x].module_name);
+               VERBOSE(MODULE_EVENT,"%s [SERVICE] Error while sending request to module %d_%s.\n", get_formatted_time(), x, running_modules[x].module_name);
                service_disconnect_from_module(x);
             }
          }
@@ -2038,14 +2001,14 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
          if (running_modules[x].module_has_service_ifc == TRUE && running_modules[x].module_status == TRUE && running_modules[x].module_service_ifc_isconnected == TRUE) {
             // Receive reply header
             if (service_recv_data(x, sizeof(service_msg_header_t), (void **) &header) == -1) {
-               VERBOSE(MODULE_EVENT, "%s [SERVICE] Error while receiving reply header from module %d_%s.\n", get_stats_formated_time(), x, running_modules[x].module_name);
+               VERBOSE(MODULE_EVENT, "%s [SERVICE] Error while receiving reply header from module %d_%s.\n", get_formatted_time(), x, running_modules[x].module_name);
                service_disconnect_from_module(x);
                continue;
             }
 
             // Check if the reply is OK
             if (header->com != SERVICE_OK_REPLY) {
-               VERBOSE(MODULE_EVENT, "%s [SERVICE] Wrong reply from module %d_%s.\n", get_stats_formated_time(), x, running_modules[x].module_name);
+               VERBOSE(MODULE_EVENT, "%s [SERVICE] Wrong reply from module %d_%s.\n", get_formatted_time(), x, running_modules[x].module_name);
                service_disconnect_from_module(x);
                continue;
             }
@@ -2060,14 +2023,14 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
 
             // Receive module stats in json format
             if (service_recv_data(x, header->data_size, (void **) &buffer) == -1) {
-               VERBOSE(MODULE_EVENT, "%s [SERVICE] Error while receiving stats from module %d_%s.\n", get_stats_formated_time(), x, running_modules[x].module_name);
+               VERBOSE(MODULE_EVENT, "%s [SERVICE] Error while receiving stats from module %d_%s.\n", get_formatted_time(), x, running_modules[x].module_name);
                service_disconnect_from_module(x);
                continue;
             }
 
             // Decode json and save stats into module structure
             if (service_decode_module_stats(&buffer, x) == -1) {
-               VERBOSE(MODULE_EVENT, "%s [SERVICE] Error while receiving stats from module %d_%s.\n", get_stats_formated_time(), x, running_modules[x].module_name);
+               VERBOSE(MODULE_EVENT, "%s [SERVICE] Error while receiving stats from module %d_%s.\n", get_formatted_time(), x, running_modules[x].module_name);
                service_disconnect_from_module(x);
                continue;
             }
@@ -2118,13 +2081,13 @@ int service_decode_module_stats(char **data, int module_idx)
    // Parse received modules counters in json format
    json_struct = json_loads(*data , 0, &error);
     if (json_struct == NULL) {
-        VERBOSE(MODULE_EVENT, "%s [ERROR] Could not convert modules (%s) stats to json structure on line %d: %s\n", get_stats_formated_time(), running_modules[module_idx].module_name, error.line, error.text);
+        VERBOSE(MODULE_EVENT, "%s [ERROR] Could not convert modules (%s) stats to json structure on line %d: %s\n", get_formatted_time(), running_modules[module_idx].module_name, error.line, error.text);
         return -1;
     }
 
     // Check whether the root elem is a json object
     if (json_is_object(json_struct) == 0) {
-      VERBOSE(MODULE_EVENT, "%s [ERROR] Root elem is not a json object (module %s).\n", get_stats_formated_time(), running_modules[module_idx].module_name);
+      VERBOSE(MODULE_EVENT, "%s [ERROR] Root elem is not a json object (module %s).\n", get_formatted_time(), running_modules[module_idx].module_name);
       json_decref(json_struct);
       return -1;
     }
@@ -2134,13 +2097,13 @@ int service_decode_module_stats(char **data, int module_idx)
       // Get value of the key "in" from json root elem (it should be an array of json objects - every object contains counters of one input interface)
       in_ifces_arr = json_object_get(json_struct, "in");
       if (in_ifces_arr == NULL) {
-         VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"in\" from root json object while parsing modules stats (module %s).\n", get_stats_formated_time(), running_modules[module_idx].module_name);
+         VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"in\" from root json object while parsing modules stats (module %s).\n", get_formatted_time(), running_modules[module_idx].module_name);
          json_decref(json_struct);
          return -1;
       }
 
       if (json_is_array(in_ifces_arr) == 0) {
-         VERBOSE(MODULE_EVENT, "%s [ERROR] Value of key \"in\" is not a json array (module %s).\n", get_stats_formated_time(), running_modules[module_idx].module_name);
+         VERBOSE(MODULE_EVENT, "%s [ERROR] Value of key \"in\" is not a json array (module %s).\n", get_formatted_time(), running_modules[module_idx].module_name);
          json_decref(json_struct);
          return -1;
       }
@@ -2156,14 +2119,14 @@ int service_decode_module_stats(char **data, int module_idx)
          }
 
          if (json_is_object(in_ifc_cnts) == 0) {
-            VERBOSE(MODULE_EVENT, "%s [ERROR] Counters of an input interface are not a json object in received json structure (module %s).\n", get_stats_formated_time(), running_modules[module_idx].module_name);
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Counters of an input interface are not a json object in received json structure (module %s).\n", get_formatted_time(), running_modules[module_idx].module_name);
             json_decref(json_struct);
             return -1;
          }
 
          cnt = json_object_get(in_ifc_cnts, "messages");
          if (cnt == NULL) {
-            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an input interface json object (module %s).\n", get_stats_formated_time(), "messages", running_modules[module_idx].module_name);
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an input interface json object (module %s).\n", get_formatted_time(), "messages", running_modules[module_idx].module_name);
             json_decref(json_struct);
             return -1;
          }
@@ -2171,7 +2134,7 @@ int service_decode_module_stats(char **data, int module_idx)
 
          cnt = json_object_get(in_ifc_cnts, "buffers");
          if (cnt == NULL) {
-            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an input interface json object (module %s).\n", get_stats_formated_time(), "buffers", running_modules[module_idx].module_name);
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an input interface json object (module %s).\n", get_formatted_time(), "buffers", running_modules[module_idx].module_name);
             json_decref(json_struct);
             return -1;
          }
@@ -2184,13 +2147,13 @@ int service_decode_module_stats(char **data, int module_idx)
       // Get value of the key "out" from json root elem (it should be an array of json objects - every object contains counters of one output interface)
       out_ifces_arr = json_object_get(json_struct, "out");
       if (out_ifces_arr == NULL) {
-         VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"out\" from root json object while parsing modules stats (module %s).\n", get_stats_formated_time(), running_modules[module_idx].module_name);
+         VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"out\" from root json object while parsing modules stats (module %s).\n", get_formatted_time(), running_modules[module_idx].module_name);
          json_decref(json_struct);
          return -1;
       }
 
       if (json_is_array(out_ifces_arr) == 0) {
-         VERBOSE(MODULE_EVENT, "%s [ERROR] Value of key \"out\" is not a json array (module %s).\n", get_stats_formated_time(), running_modules[module_idx].module_name);
+         VERBOSE(MODULE_EVENT, "%s [ERROR] Value of key \"out\" is not a json array (module %s).\n", get_formatted_time(), running_modules[module_idx].module_name);
          json_decref(json_struct);
          return -1;
       }
@@ -2206,14 +2169,14 @@ int service_decode_module_stats(char **data, int module_idx)
          }
 
          if (json_is_object(out_ifc_cnts) == 0) {
-            VERBOSE(MODULE_EVENT, "%s [ERROR] Counters of an output interface are not a json object in received json structure (module %s).\n", get_stats_formated_time(), running_modules[module_idx].module_name);
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Counters of an output interface are not a json object in received json structure (module %s).\n", get_formatted_time(), running_modules[module_idx].module_name);
             json_decref(json_struct);
             return -1;
          }
 
          cnt = json_object_get(out_ifc_cnts, "sent-messages");
          if (cnt == NULL) {
-            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an output interface json object (module %s).\n", get_stats_formated_time(), "sent-messages", running_modules[module_idx].module_name);
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an output interface json object (module %s).\n", get_formatted_time(), "sent-messages", running_modules[module_idx].module_name);
             json_decref(json_struct);
             return -1;
          }
@@ -2221,7 +2184,7 @@ int service_decode_module_stats(char **data, int module_idx)
 
          cnt = json_object_get(out_ifc_cnts, "dropped-messages");
          if (cnt == NULL) {
-            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an output interface json object (module %s).\n", get_stats_formated_time(), "dropped-messages", running_modules[module_idx].module_name);
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an output interface json object (module %s).\n", get_formatted_time(), "dropped-messages", running_modules[module_idx].module_name);
             json_decref(json_struct);
             return -1;
          }
@@ -2229,7 +2192,7 @@ int service_decode_module_stats(char **data, int module_idx)
 
          cnt = json_object_get(out_ifc_cnts, "buffers");
          if (cnt == NULL) {
-            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an output interface json object (module %s).\n", get_stats_formated_time(), "buffers", running_modules[module_idx].module_name);
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an output interface json object (module %s).\n", get_formatted_time(), "buffers", running_modules[module_idx].module_name);
             json_decref(json_struct);
             return -1;
          }
@@ -2237,7 +2200,7 @@ int service_decode_module_stats(char **data, int module_idx)
 
          cnt = json_object_get(out_ifc_cnts, "autoflushes");
          if (cnt == NULL) {
-            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an output interface json object (module %s).\n", get_stats_formated_time(), "autoflushes", running_modules[module_idx].module_name);
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"%s\" from an output interface json object (module %s).\n", get_formatted_time(), "autoflushes", running_modules[module_idx].module_name);
             json_decref(json_struct);
             return -1;
          }
@@ -2335,7 +2298,7 @@ int interactive_get_option()
 void interactive_start_configuration()
 {
    pthread_mutex_lock(&running_modules_lock);
-   VERBOSE(MODULE_EVENT,"%s [START] Starting configuration...\n", get_stats_formated_time());
+   VERBOSE(MODULE_EVENT,"%s [START] Starting configuration...\n", get_formatted_time());
    unsigned int x = 0;
    for (x=0; x<loaded_modules_cnt; x++) {
       if (running_modules[x].module_enabled == FALSE) {
@@ -2351,7 +2314,7 @@ void interactive_stop_configuration()
 {
    unsigned int x = 0;
    pthread_mutex_lock(&running_modules_lock);
-   VERBOSE(MODULE_EVENT,"%s [STOP] Stopping configuration...\n", get_stats_formated_time());
+   VERBOSE(MODULE_EVENT,"%s [STOP] Stopping configuration...\n", get_formatted_time());
    for (x=0; x<loaded_modules_cnt; x++) {
       if (running_modules[x].module_enabled) {
          running_modules[x].module_enabled = FALSE;
@@ -2430,7 +2393,7 @@ void interactive_set_module_enabled()
          } else {
             running_modules[x].module_enabled = TRUE;
             running_modules[x].module_restart_cnt = -1;
-            VERBOSE(MODULE_EVENT, "%s [ENABLED] Module %s set to enabled.\n", get_stats_formated_time(), running_modules[x].module_name);
+            VERBOSE(MODULE_EVENT, "%s [ENABLED] Module %s set to enabled.\n", get_formatted_time(), running_modules[x].module_name);
          }
       }
       free(modules_to_enable);
@@ -2508,7 +2471,7 @@ void interactive_stop_module()
             VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Module %s is already disabled.\n" ANSI_ATTR_RESET, running_modules[x].module_name);
          } else {
             running_modules[x].module_enabled = FALSE;
-            VERBOSE(MODULE_EVENT, "%s [DISABLED] Module %s set to disabled.\n", get_stats_formated_time(), running_modules[x].module_name);
+            VERBOSE(MODULE_EVENT, "%s [DISABLED] Module %s set to disabled.\n", get_formatted_time(), running_modules[x].module_name);
          }
       }
       free(modules_to_stop);
@@ -2557,6 +2520,17 @@ void interactive_show_running_modules_status()
    }
 }
 
+void interactive_print_supervisor_info()
+{
+   VERBOSE(N_STDOUT, ANSI_BOLD "--------------- INFO ---------------\n");
+   VERBOSE(N_STDOUT, "Supervisor package version:" ANSI_ATTR_RESET " %s\n", sup_package_version);
+   VERBOSE(N_STDOUT, ANSI_BOLD "Supervisor git version:" ANSI_ATTR_RESET " %s\n", sup_git_version);
+   VERBOSE(N_STDOUT, ANSI_BOLD "Started:" ANSI_ATTR_RESET " %s", ctime(&sup_init_time));
+   VERBOSE(N_STDOUT, ANSI_BOLD "Actual logs directory:" ANSI_ATTR_RESET " %s\n", get_absolute_file_path(logs_path));
+   VERBOSE(N_STDOUT, ANSI_BOLD "Start-up configuration file:" ANSI_ATTR_RESET " %s\n", get_absolute_file_path(config_file));
+   VERBOSE(N_STDOUT, ANSI_BOLD "Number of loaded modules:" ANSI_ATTR_RESET " %d\n", loaded_modules_cnt);
+   VERBOSE(N_STDOUT, ANSI_BOLD "Number of running modules:" ANSI_ATTR_RESET " %d\n", service_check_modules_status());
+}
 
 
 /*****************************************************************
@@ -2651,20 +2625,20 @@ void supervisor_termination(const uint8_t stop_all_modules, const uint8_t genera
             service_stop_all_modules = FALSE;
          }
 
-         VERBOSE(N_STDOUT,"%s [SERVICE] Aborting service thread!\n", get_stats_formated_time());
+         VERBOSE(N_STDOUT,"%s [SERVICE] Aborting service thread!\n", get_formatted_time());
          service_thread_continue = FALSE;
 
          x = pthread_join(service_thread_id, NULL);
 
          if (x == 0) {
-            VERBOSE(N_STDOUT, "%s [SERVICE] pthread_join success: Service thread finished!\n", get_stats_formated_time())
+            VERBOSE(N_STDOUT, "%s [SERVICE] pthread_join success: Service thread finished!\n", get_formatted_time())
          } else if (x == -1) {
             if (errno == EINVAL) {
-               VERBOSE(N_STDOUT, "%s [ERROR] pthread_join: Not joinable thread!\n", get_stats_formated_time());
+               VERBOSE(N_STDOUT, "%s [ERROR] pthread_join: Not joinable thread!\n", get_formatted_time());
             } else if (errno == ESRCH) {
-               VERBOSE(N_STDOUT, "%s [ERROR] pthread_join: No thread with this ID found!\n", get_stats_formated_time());
+               VERBOSE(N_STDOUT, "%s [ERROR] pthread_join: No thread with this ID found!\n", get_formatted_time());
             } else if ( errno == EDEADLK) {
-               VERBOSE(N_STDOUT, "%s [ERROR] pthread_join: Deadlock in service thread detected!\n", get_stats_formated_time());
+               VERBOSE(N_STDOUT, "%s [ERROR] pthread_join: Deadlock in service thread detected!\n", get_formatted_time());
             }
          }
 
@@ -2673,7 +2647,7 @@ void supervisor_termination(const uint8_t stop_all_modules, const uint8_t genera
          } else {
             for (x = 0;  x < loaded_modules_cnt; x++) {
                if (running_modules[x].module_status == TRUE) {
-                  VERBOSE(N_STDOUT, "%s [WARNING] Some modules are still running, gonna generate backup anyway!\n", get_stats_formated_time());
+                  VERBOSE(N_STDOUT, "%s [WARNING] Some modules are still running, gonna generate backup anyway!\n", get_formatted_time());
                   generate_backup_config_file();
                   break;
                }
@@ -2702,11 +2676,11 @@ void supervisor_termination(const uint8_t stop_all_modules, const uint8_t genera
       if (server_internals != NULL) {
          if (server_internals->clients != NULL) {
             // Wait for daemon clients threads
-            VERBOSE(SUP_LOG, "%s [INFO] Waiting for client's threads to terminate.\n", get_stats_formated_time());
+            VERBOSE(SUP_LOG, "%s [INFO] Waiting for client's threads to terminate.\n", get_formatted_time());
             for (x = 0; x < MAX_NUMBER_SUP_CLIENTS; x++) {
                // After 2 unsuccessful attempts terminate
                if (attemps >= 2) {
-                  VERBOSE(SUP_LOG, "%s [INFO] Enough waiting, gonna terminate anyway.\n", get_stats_formated_time());
+                  VERBOSE(SUP_LOG, "%s [INFO] Enough waiting, gonna terminate anyway.\n", get_formatted_time());
                   break;
                }
                // If any client is still connected, wait 300 ms and check all clients again
@@ -2718,7 +2692,7 @@ void supervisor_termination(const uint8_t stop_all_modules, const uint8_t genera
                }
             }
             if (attemps < 2) {
-               VERBOSE(SUP_LOG, "%s [INFO] All client's threads terminated.\n", get_stats_formated_time());
+               VERBOSE(SUP_LOG, "%s [INFO] All client's threads terminated.\n", get_formatted_time());
             }
             for (x = 0; x < MAX_NUMBER_SUP_CLIENTS; x++) {
                NULLP_TEST_AND_FREE(server_internals->clients[x])
@@ -2754,7 +2728,7 @@ void supervisor_termination(const uint8_t stop_all_modules, const uint8_t genera
 #define CREATED_DEFAULT_LOGS   1
 #define CREATED_USER_DEFINED_LOGS   2
 
-int create_output_dir()
+int init_sup_logs_dir()
 {
    char *buffer = NULL;
    struct stat st = {0};
@@ -2793,11 +2767,11 @@ logs_path_null:
 
    if (mkdir(logs_path, PERM_LOGSDIR) == -1) {
       if (errno == EACCES) { // Don't have permissions to some folder in logs_path, use default directory according to executed mode of supervisor
-         VERBOSE(N_STDOUT, "%s [ERROR] Don't have permissions to create a directory with path \"%s\".", get_stats_formated_time(), logs_path);
+         VERBOSE(N_STDOUT, "%s [ERROR] Don't have permissions to create a directory with path \"%s\".", get_formatted_time(), logs_path);
       } else if (errno == EEXIST) { // logs_path already exists -> check whether it is a directory and create modules logs directory
          goto modules_dir;
       } else if (errno == ENOENT || errno == ENOTDIR) { // Some prefix of the logs_path is not a directory, use default directory according to executed mode of supervisor
-         VERBOSE(N_STDOUT, "%s [ERROR] Some prefix of the path \"%s\" is not a directory.", get_stats_formated_time(), logs_path);
+         VERBOSE(N_STDOUT, "%s [ERROR] Some prefix of the path \"%s\" is not a directory.", get_formatted_time(), logs_path);
       }
       if (default_path_used == TRUE) { // Prevent cycling (don't need more attempts to create directory with default path)
          goto fail_label;
@@ -2810,11 +2784,11 @@ logs_path_null:
 modules_dir:
    if (mkdir(modules_logs_path, PERM_LOGSDIR) == -1) {
       if (errno == EACCES) {
-         VERBOSE(N_STDOUT, "%s [ERROR] Don't have permissions to create a directory with path \"%s\".", get_stats_formated_time(), modules_logs_path);
+         VERBOSE(N_STDOUT, "%s [ERROR] Don't have permissions to create a directory with path \"%s\".", get_formatted_time(), modules_logs_path);
       } else if (errno == EEXIST) { // modules_logs_path already exists
          goto success_label;
       } else if (errno == ENOTDIR) {
-         VERBOSE(N_STDOUT, "%s [ERROR] The path \"%s\" is not a directory.", get_stats_formated_time(), logs_path);
+         VERBOSE(N_STDOUT, "%s [ERROR] The path \"%s\" is not a directory.", get_formatted_time(), logs_path);
       }
       if (default_path_used == TRUE) { // Prevent cycling (don't need more attempts to create directory with default path)
          goto fail_label;
@@ -2845,7 +2819,7 @@ fail_label:
    return -1;
 }
 
-void create_output_files_strings()
+void init_sup_logs_files()
 {
    free_output_file_strings_and_streams();
 
@@ -2859,22 +2833,22 @@ void create_output_files_strings()
 
       supervisor_debug_log_fd = fopen(supervisor_debug_log_file_path, "a");
       if (supervisor_debug_log_fd == NULL) {
-         fprintf(stderr, "%s [ERROR] Could not open supervisor_debug_log file stream!\n",get_stats_formated_time());
+         fprintf(stderr, "%s [ERROR] Could not open supervisor_debug_log file stream!\n",get_formatted_time());
       } else {
-         fprintf(supervisor_debug_log_fd,"-------------------- %s --------------------\n", get_stats_formated_time());
+         fprintf(supervisor_debug_log_fd,"-------------------- %s --------------------\n", get_formatted_time());
       }
       statistics_fd = fopen(statistics_file_path, "a");
       if (statistics_fd == NULL) {
-         fprintf(stderr, "%s [ERROR] Could not open supervisor_log_statistics file stream!\n",get_stats_formated_time());
+         fprintf(stderr, "%s [ERROR] Could not open supervisor_log_statistics file stream!\n",get_formatted_time());
       } else {
-         VERBOSE(STATISTICS,"-------------------- %s --------------------\n", get_stats_formated_time());
+         VERBOSE(STATISTICS,"-------------------- %s --------------------\n", get_formatted_time());
          print_statistics_legend();
       }
       module_event_fd = fopen(module_event_file_path, "a");
       if (module_event_fd == NULL) {
-         fprintf(stderr, "%s [ERROR] Could not open supervisor_log_module_event file stream!\n",get_stats_formated_time());
+         fprintf(stderr, "%s [ERROR] Could not open supervisor_log_module_event file stream!\n",get_formatted_time());
       } else {
-         VERBOSE(MODULE_EVENT,"-------------------- %s --------------------\n", get_stats_formated_time());
+         VERBOSE(MODULE_EVENT,"-------------------- %s --------------------\n", get_formatted_time());
       }
 
       if (netconf_flag || daemon_flag) {
@@ -2883,9 +2857,9 @@ void create_output_files_strings()
 
          supervisor_log_fd = fopen (supervisor_log_file_path, "a");
          if (supervisor_log_fd == NULL) {
-            fprintf(stderr, "%s [ERROR] Could not open supervisor_log file stream!\n",get_stats_formated_time());
+            fprintf(stderr, "%s [ERROR] Could not open supervisor_log file stream!\n",get_formatted_time());
          } else {
-            fprintf(supervisor_log_fd,"-------------------- %s --------------------\n", get_stats_formated_time());
+            fprintf(supervisor_log_fd,"-------------------- %s --------------------\n", get_formatted_time());
          }
          if (server_internals->clients_cnt == 0) {
             output_fd = supervisor_log_fd;
@@ -2896,39 +2870,39 @@ void create_output_files_strings()
    }
 }
 
-void supervisor_signal_handler(int catched_signal)
+void sup_sig_handler(int catched_signal)
 {
    switch (catched_signal) {
    case SIGPIPE:
       break;
 
    case SIGTERM:
-      VERBOSE(N_STDOUT,"%s [SIGNAL HANDLER] SIGTERM catched -> I'm going to terminate my self !\n", get_stats_formated_time());
+      VERBOSE(N_STDOUT,"%s [SIGNAL HANDLER] SIGTERM catched -> I'm going to terminate my self !\n", get_formatted_time());
       supervisor_termination(TRUE, FALSE);
       exit(EXIT_SUCCESS);
       break;
 
    case SIGINT:
-      VERBOSE(N_STDOUT,"%s [SIGNAL HANDLER] SIGINT catched -> I'm going to terminate my self !\n", get_stats_formated_time());
+      VERBOSE(N_STDOUT,"%s [SIGNAL HANDLER] SIGINT catched -> I'm going to terminate my self !\n", get_formatted_time());
       supervisor_termination(FALSE, TRUE);
       exit(EXIT_SUCCESS);
       break;
 
    case SIGQUIT:
-      VERBOSE(N_STDOUT,"%s [SIGNAL HANDLER] SIGQUIT catched -> I'm going to terminate my self !\n", get_stats_formated_time());
+      VERBOSE(N_STDOUT,"%s [SIGNAL HANDLER] SIGQUIT catched -> I'm going to terminate my self !\n", get_formatted_time());
       supervisor_termination(FALSE, TRUE);
       exit(EXIT_SUCCESS);
       break;
 
    case SIGSEGV:
-      VERBOSE(N_STDOUT,"%s [SIGNAL HANDLER] Ouch, SIGSEGV catched -> I'm going to terminate my self !\n", get_stats_formated_time());
+      VERBOSE(N_STDOUT,"%s [SIGNAL HANDLER] Ouch, SIGSEGV catched -> I'm going to terminate my self !\n", get_formatted_time());
       supervisor_termination(FALSE, TRUE);
       exit(EXIT_FAILURE);
       break;
    }
 }
 
-void supervisor_flags_initialization()
+void init_sup_flags()
 {
    supervisor_initialized = FALSE;
    service_thread_initialized = FALSE;
@@ -2993,19 +2967,19 @@ void append_tmp_logs()
    // Delete temporary log files
    if (unlink(INIT_TMP_LOG_PATH) == -1) {
       if (errno != ENOENT) {
-         VERBOSE(N_STDOUT, "%s [WARNING] Could not delete tmp log file with path \"%s\".", get_stats_formated_time(), INIT_TMP_LOG_PATH);
+         VERBOSE(N_STDOUT, "%s [WARNING] Could not delete tmp log file with path \"%s\".", get_formatted_time(), INIT_TMP_LOG_PATH);
       }
    }
    if (unlink(INIT_TMP_DEBUG_LOG_PATH) == -1) {
       if (errno != ENOENT) {
-         VERBOSE(N_STDOUT, "%s [WARNING] Could not delete tmp debug log file with path \"%s\".", get_stats_formated_time(), INIT_TMP_DEBUG_LOG_PATH);
+         VERBOSE(N_STDOUT, "%s [WARNING] Could not delete tmp debug log file with path \"%s\".", get_formatted_time(), INIT_TMP_DEBUG_LOG_PATH);
       }
    }
 }
 
 int supervisor_initialization()
 {
-   init_time_info = get_sys_time();
+   time(&sup_init_time);
 
    // Allocate running_modules memory
    running_modules_array_size = 0;
@@ -3021,9 +2995,9 @@ int supervisor_initialization()
    }
 
    // Check and create (if it doesn't exist) directory for all output (started modules and also supervisor's) according to the logs_path
-   if (create_output_dir() != -1) {
+   if (init_sup_logs_dir() != -1) {
       // Create strings with supervisor's output files names and get their file descriptors
-      create_output_files_strings();
+      init_sup_logs_files();
       // Append content of tmp log files to already created logs
       append_tmp_logs();
    }
@@ -3039,24 +3013,24 @@ int supervisor_initialization()
    /************ SIGNAL HANDLING *************/
    if (netconf_flag == FALSE) {
       struct sigaction sig_action;
-      sig_action.sa_handler = supervisor_signal_handler;
+      sig_action.sa_handler = sup_sig_handler;
       sig_action.sa_flags = 0;
       sigemptyset(&sig_action.sa_mask);
 
       if (sigaction(SIGPIPE,&sig_action,NULL) == -1) {
-         VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGPIPE !\n", get_stats_formated_time());
+         VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGPIPE !\n", get_formatted_time());
       }
       if (sigaction(SIGINT,&sig_action,NULL) == -1) {
-         VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGINT !\n", get_stats_formated_time());
+         VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGINT !\n", get_formatted_time());
       }
       if (sigaction(SIGTERM,&sig_action,NULL) == -1) {
-         VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGTERM !\n", get_stats_formated_time());
+         VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGTERM !\n", get_formatted_time());
       }
       if (sigaction(SIGSEGV,&sig_action,NULL) == -1) {
-         VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGSEGV !\n", get_stats_formated_time());
+         VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGSEGV !\n", get_formatted_time());
       }
       if (sigaction(SIGQUIT,&sig_action,NULL) == -1) {
-         VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGQUIT !\n", get_stats_formated_time());
+         VERBOSE(N_STDOUT,"%s [ERROR] Sigaction: signal handler won't catch SIGQUIT !\n", get_formatted_time());
       }
    }
    /****************************************/
@@ -3080,7 +3054,7 @@ int start_service_thread()
    return pthread_create(&service_thread_id,  &attr, service_thread_routine, NULL);
 }
 
-int parse_program_arguments(int *argc, char **argv)
+int parse_prog_args(int *argc, char **argv)
 {
    /******/
    static struct option long_options[] = {
@@ -3186,16 +3160,16 @@ void reload_process_supervisor_element(reload_config_vars_t **config_vars)
                if (path_new == NULL) { // In case the new path does not exists, use it (if it won't be a valid path for logs - permissions etc., default logs path will be used)
                   NULLP_TEST_AND_FREE(logs_path)
                   logs_path = (char *) xmlStrdup(key);
-                  create_output_dir();
-                  create_output_files_strings();
+                  init_sup_logs_dir();
+                  init_sup_logs_files();
                } else {
                   path_new = strdup(path_new);
                   path_old = strdup(get_absolute_file_path(logs_path));
                   if (strcmp(path_old, path_new) != 0) { // If it exists and it is not same as the current logs path, use it
                      NULLP_TEST_AND_FREE(logs_path)
                      logs_path = (char *) xmlStrdup(key);
-                     create_output_dir();
-                     create_output_files_strings();
+                     init_sup_logs_dir();
+                     init_sup_logs_files();
                   }
                   NULLP_TEST_AND_FREE(path_new)
                   NULLP_TEST_AND_FREE(path_old)
@@ -3743,12 +3717,12 @@ parse_default_config_file:
                if (config_vars->doc_tree_ptr == NULL) {
                   if (access(config_file, R_OK) == -1) {
                      if (errno == EACCES) {
-                        VERBOSE(N_STDOUT, "%s [WARNING] I don't have permissions to read config file with path \"%s\"!\n", get_stats_formated_time(), config_file);
+                        VERBOSE(N_STDOUT, "%s [WARNING] I don't have permissions to read config file with path \"%s\"!\n", get_formatted_time(), config_file);
                      } else if (errno == ENOENT) {
-                        VERBOSE(N_STDOUT, "%s [WARNING] Config file with path \"%s\" does not exist!\n", get_stats_formated_time(), config_file);
+                        VERBOSE(N_STDOUT, "%s [WARNING] Config file with path \"%s\" does not exist!\n", get_formatted_time(), config_file);
                      }
                   } else {
-                     VERBOSE(N_STDOUT,"%s [WARNING] Config file with path \"%s\" was not parsed successfully!\n", get_stats_formated_time(), config_file);
+                     VERBOSE(N_STDOUT,"%s [WARNING] Config file with path \"%s\" was not parsed successfully!\n", get_formatted_time(), config_file);
                   }
                   pthread_mutex_unlock(&running_modules_lock);
                   xmlCleanupParser();
@@ -3763,20 +3737,20 @@ parse_default_config_file:
                if (config_vars->doc_tree_ptr == NULL) {
                   if (access(backup_file_name, R_OK) == -1) {
                      if (errno == EACCES) {
-                        VERBOSE(N_STDOUT, "%s [WARNING] I don't have permissions to read backup file with path \"%s\", I'm gonna load default config file!\n", get_stats_formated_time(), backup_file_name);
+                        VERBOSE(N_STDOUT, "%s [WARNING] I don't have permissions to read backup file with path \"%s\", I'm gonna load default config file!\n", get_formatted_time(), backup_file_name);
                      } else if (errno == ENOENT) {
-                        VERBOSE(N_STDOUT, "%s [WARNING] Backup file with path \"%s\" does not exist, I'm gonna load default config file!\n", get_stats_formated_time(), backup_file_name);
+                        VERBOSE(N_STDOUT, "%s [WARNING] Backup file with path \"%s\" does not exist, I'm gonna load default config file!\n", get_formatted_time(), backup_file_name);
                      }
                   } else {
-                     VERBOSE(N_STDOUT,"%s [WARNING] Backup file with path \"%s\" was not parsed successfully, I'm gonna load default config file!\n", get_stats_formated_time(), backup_file_name);
+                     VERBOSE(N_STDOUT,"%s [WARNING] Backup file with path \"%s\" was not parsed successfully, I'm gonna load default config file!\n", get_formatted_time(), backup_file_name);
                   }
                   goto parse_default_config_file;
                } else {
-                  VERBOSE(N_STDOUT, "%s [WARNING] I found backup file for this configuration file on path \"%s\" and I'm gonna load it!\n", get_stats_formated_time(), backup_file_name);
+                  VERBOSE(N_STDOUT, "%s [WARNING] I found backup file for this configuration file on path \"%s\" and I'm gonna load it!\n", get_formatted_time(), backup_file_name);
                   // delete backup file after parsing, it wont be needed anymore
                   if (unlink(backup_file_name) == -1) {
                      if (errno == EACCES) {
-                        VERBOSE(N_STDOUT, "%s [WARNING] I don't have permissions to delete backup file \"%s\"\n", get_stats_formated_time(), backup_file_name);
+                        VERBOSE(N_STDOUT, "%s [WARNING] I don't have permissions to delete backup file \"%s\"\n", get_formatted_time(), backup_file_name);
                      }
                   }
                }
@@ -3883,7 +3857,7 @@ parse_default_config_file:
    }
 
    // Print XML configuration to supervisor debug log
-   VERBOSE(DEBUG, "\n\n%s [DEBUG] Request to reload this configuration --->\n\n", get_stats_formated_time());
+   VERBOSE(DEBUG, "\n\n%s [DEBUG] Request to reload this configuration --->\n\n", get_formatted_time());
    print_xmlDoc_to_stream(config_vars->current_node->doc, supervisor_debug_log_fd);
 
    config_vars->current_node = config_vars->current_node->xmlChildrenNode;
@@ -4237,7 +4211,7 @@ int netconf_supervisor_initialization(xmlNodePtr *running)
    pthread_attr_t attr;
    pthread_attr_init(&attr);
 
-   supervisor_flags_initialization();
+   init_sup_flags();
    netconf_flag = TRUE;
    socket_path = DEFAULT_NETCONF_SERVER_SOCKET;
 

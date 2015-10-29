@@ -74,7 +74,7 @@ void interactive_mode()
          reload_configuration(RELOAD_INTERACTIVE, NULL);
          break;
       case 8:
-         print_supervisor_info();
+         interactive_print_supervisor_info();
          break;
       default:
          VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Wrong input.\n" ANSI_ATTR_RESET);
@@ -88,10 +88,10 @@ int main (int argc, char *argv [])
 {
    int ret_val = 0;
 
-   // Initialize main control flags, which will be set in parse_program_arguments and supervisor_initialization functions
-   supervisor_flags_initialization();
+   // Initialize main control flags, which will be set in parse_prog_args and supervisor_initialization functions
+   init_sup_flags();
    // Parse program arguments
-   ret_val = parse_program_arguments(&argc, argv);
+   ret_val = parse_prog_args(&argc, argv);
 
    if (ret_val == DAEMON_MODE_CODE) {
       // Initialize a new daemon process and it's socket

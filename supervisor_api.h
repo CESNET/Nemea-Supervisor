@@ -51,8 +51,8 @@
 #include <libxml/tree.h>
 #include <inttypes.h>
 
-void supervisor_flags_initialization();
-int parse_program_arguments(int *argc, char **argv);
+void init_sup_flags();
+int parse_prog_args(int *argc, char **argv);
 int supervisor_initialization();
 void supervisor_termination(const uint8_t stop_all_modules, const uint8_t generate_backup);
 
@@ -66,7 +66,7 @@ void interactive_stop_module();
 void interactive_show_running_modules_status();
 void interactive_show_available_modules();
 int reload_configuration(const int, xmlNodePtr *);
-void print_supervisor_info();
+void interactive_print_supervisor_info();
 
 /* Daemon mode functions */
 int daemon_mode_initialization();

@@ -241,96 +241,6 @@ typedef struct service_msg_header_s {
 
 /***********FUNCTIONS***********/
 
-/** Function prints list of loaded modules with their params and all their interfaces with params.
- */
-void interactive_show_available_modules();
-
-/** Function creates array of strings for function execvp() before executing new module (its process).
- * @param[in] number_of_module Index to running_modules array.
- * @return Array of strings.
- */
-char **make_module_arguments(const int number_of_module);
-
-int get_number_from_input();
-
-/** Function prints a list of user operations and scans one number as an input.
- * @return Number of selected operation.
- */
-int interactive_get_option();
-
-/** SIGPIPE handler.
- */
-void sigpipe_handler(int sig);
-
-/** Whole program initialization; global variables, input params parsing, supervisor mode selection.
- * @param[in] argc Argc of main function.
- * @param[in] argv Argv of main function.
- * @return 0 if interactive mode, 2 if daemon mode, 1 if error.
- */
-int supervisor_initialization();
-
-/** Starts every loaded module.
- */
-void interactive_start_configuration();
-
-/** Stops every loaded module.
- */
-void interactive_stop_configuration();
-
-/** Function scans one number as an input and uses it as an index to running_module array setting selected module enabled.
- */
-void interactive_set_module_enabled();
-
-/** Function scans one number as an input and pastes it as and argument to function stop_module();
- */
-void interactive_stop_module();
-
-/** Function prints a list of loaded modules with their status - running/stopped/remote.
- */
-void interactive_show_running_modules_status();
-
-char *get_param_by_delimiter(const char *source, char **dest, const char delimiter);
-
-long int get_total_cpu_usage();
-
-/** Function updates running modules CPU usage - in kernel/user mode.
- * @param[in] last_total_cpu_usage Total cpu usage in last period.
- */
-void update_module_cpu_usage();
-
-void generate_periodic_picture();
-
-void interactive_show_graph();
-
-/** Function tries to connect to selected module.
- * @param[in] module Index to running_modules array.
- * @param[in] num_ifc Index to selected modules interfaces array.
- */
-void connect_to_module_service_ifc(int module, int num_ifc);
-
-/** Function creates 2 threads - service and acceptor thread.
- */
-int start_service_thread();
-
-/** Function parses program arguments.
- * @param[in] argc Argc of main function.
- * @param[in] argv Argv of main function.
- * @return 1 if success, 0 if error.
- */
-int parse_program_arguments(int *argc, char **argv);
-
-/** Function prints a help to supervisor after executing program with -h argument.
- */
-void print_help();
-
-int get_shorter_string_length(char * first, char * second);
-
-int find_loaded_module(char * name);
-
-int reload_configuration(const int choice, xmlNodePtr * node);
-
-
-
 /**
  * \defgroup GROUP_NAME short_description
  *
@@ -344,10 +254,12 @@ int reload_configuration(const int choice, xmlNodePtr * node);
 char *get_absolute_file_path(char *file_name);
 char *create_backup_file_path();
 void create_shutdown_info(char **backup_file_path);
-void print_module_ifc_stats(int module_number);
 void print_xmlDoc_to_stream(xmlDocPtr doc_ptr, FILE *stream);
-struct tm *get_sys_time();
-char *get_stats_formated_time();
+char *get_formatted_time();
+/** Function creates array of strings for function execvp() before executing new module (its process).
+ * @param[in] number_of_module Index to running_modules array.
+ * @return Array of strings.
+ */
 char **make_module_arguments(const int number_of_module);
 int get_number_from_input_choosing_option();
 int get_numbers_from_input_dis_enable_module(int **array);
@@ -358,7 +270,6 @@ void print_statistics_legend();
 char *make_formated_statistics(uint8_t stats_mask);
 int find_loaded_module(char *name);
 void generate_backup_config_file();
-void print_supervisor_info();
 /**@}*/
 
 
@@ -408,46 +319,64 @@ void check_duplicated_ports();
 
 
  /**
- * \defgroup GROUP_NAME short_description
+ * \defgroup startup_functions Functions used by supervisor during startup
  *
- * TODO group description.
  * @{
  */
 
 /**
+ * Function tries to create a directory with path defined by logs_path variable
+ * (logs_path is set by user in the configuration file or by -L program parameter).
+ * If it fails (because of access rights etc.) or the variable wasn't set, it uses default
+ * path according to the supervisor mode - {DAEMON,INTERACTIVE,NETCONF}_DEFAULT_LOGSDIR_PATH.
  *
+ * @return CREATED_DEFAULT_LOGS or CREATED_USER_DEFINED_LOGS in case of success, otherwise -1.
  */
-int create_output_dir();
+int init_sup_logs_dir();
 
 /**
- *
+ * Function opens all needed file streams for supervisor log files
+ * (separated files for supervisor log, debug log, module events and module statistics).
  */
-void create_output_files_strings();
+void init_sup_logs_files();
 
 /**
- *
+ * Supervisor signal handler catches following signals:
+ * SIGINT, SIGQUIT - after these signals, it let modules run and it generates backup file
+ * SIGTERM - after termination signal, it stops all modules and does not generate backup file
+ * SIGSEGV - in case of segmentation fault, it let modules run and generates backup file
  */
-void supervisor_signal_handler(int catched_signal);
+void sup_sig_handler(int catched_signal);
 
 /**
- *
+ * Function sets all important global variables and opens temporary log files.
  */
-void supervisor_flags_initialization();
+void init_sup_flags();
 
 /**
+ * Whole program initialization - it creates logs directory, log files, allocates needed structures,
+ * loads initial configuration from the configuration file, starts service thread and registers signal handler.
  *
+ * @return 0 in case of success, otherwise -1.
  */
 int supervisor_initialization();
 
 /**
+ * Creates a new thread doing service thread routine.
  *
+ * @return 0 in case of success, otherwise number of error that occurred during pthread_create.
  */
 int start_service_thread();
 
 /**
+ * Function parses program arguments using SUP_GETOPT macro (it is set by configure script to getopt
+ * or getopt_long function according to the available system libraries).
  *
+ * @param[in] argc Argument counter passed from the main function.
+ * @param[in] argv Argument values passed from the main function.
+ * @return DAEMON_MODE_CODE or INTERACTIVE_MODE_CODE in case of success, otherwise -1.
  */
-int parse_program_arguments(int *argc, char **argv);
+int parse_prog_args(int *argc, char **argv);
 /**@}*/
 
 
@@ -497,26 +426,60 @@ void supervisor_termination(const uint8_t stop_all_modules, const uint8_t genera
 /**@}*/
 
 
-
  /**
- * \defgroup GROUP_NAME short_description
+ * \defgroup user_menu_options Functions performing operations shown in the user menu
  *
- * TODO group description.
  * @{
  */
 
 /**
- *
+ * Prints out loaded modules grouped by their profile (if they have any) and all information about them
+ * (starting with its name, status, parameters and interfaces - including interfaces parameters).
  */
 void interactive_show_available_modules();
-int interactive_get_option();
-void interactive_start_configuration();
-void interactive_stop_configuration();
-void interactive_set_module_enabled();
-void interactive_stop_module();
-void interactive_show_running_modules_status();
-/**@}*/
 
+/**
+ * Prints out menu with options (start/stop module, start/stop configuration, show status etc.)
+ * and loads one number with chosen option by user.
+ *
+ * @return 1 to 9 if success, otherwise -1.
+ */
+int interactive_get_option();
+
+/**
+ * All loaded modules are enabled (they will be automatically started by service thread).
+ */
+void interactive_start_configuration();
+
+/**
+ * All loaded modules are disabled (they will be automatically stopped by service thread).
+ */
+void interactive_stop_configuration();
+
+/**
+ * Prints out stopped modules grouped by their profile. After that, user can type in numbers of modules to enable.
+ * (enabled modules are automatically started by service thread)
+ */
+void interactive_set_module_enabled();
+
+/**
+ * Prints out running modules grouped by their profile. After that, user can type in numbers of modules to disable.
+ * (disabled modules are automatically stopped by service thread)
+ */
+void interactive_stop_module();
+
+/**
+ * Prints out loaded modules grouped by their profile (if they have any)
+ * and their status (running or stopped) and their PID (process id).
+ */
+void interactive_show_running_modules_status();
+
+/**
+ * Prints out important information about current program
+ * (package version, git version, startup date, config file path, logs directory path etc.)
+ */
+void interactive_print_supervisor_info();
+/**@}*/
 
 
 /**
