@@ -103,6 +103,20 @@
 #define SERVICE_SET_COM 11
 #define SERVICE_OK_REPLY 12
 
+/*
+ * Time in micro seconds the service thread spends sleeping after each period.
+ * (the period means all tasks service thread has to complete - restart and stop modules according to their enable flag,
+ * receive their statistics etc.)
+ */
+#define SERVICE_THREAD_SLEEP_IN_MICSEC 1500000
+
+/*
+ * Time in micro seconds between sending SIGINT and SIGKILL to running modules.
+ * Service thread sends SIGINT to stop running module, after time defined by this constant it checks modules status
+ * and if the module is still running service thread sends SIGKILL to stop it.
+ */
+#define SERVICE_WAIT_FOR_MODULES_TO_FINISH 500000
+
 /*******GLOBAL VARIABLES*******/
 running_module_t *running_modules = NULL;  ///< Information about running modules
 
@@ -1943,9 +1957,7 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
       service_update_modules_status();
       service_stop_modules_sigint();
 
-      pthread_mutex_unlock(&running_modules_lock);
-      sleep(1);
-      pthread_mutex_lock(&running_modules_lock);
+      usleep(SERVICE_WAIT_FOR_MODULES_TO_FINISH);
 
       service_clean_after_children();
       running_modules_cnt = service_check_modules_status();
@@ -2044,7 +2056,7 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
       }
 
       if (service_thread_continue == TRUE) {
-         sleep(1);
+         usleep(SERVICE_THREAD_SLEEP_IN_MICSEC);
       }
 
       period_cnt++;
