@@ -261,233 +261,265 @@ char *get_formatted_time()
    return formatted_time_buffer;
 }
 
-char **make_module_arguments(const int number_of_module)
+char **parse_module_params(const uint32_t module_idx, uint32_t *params_num)
 {
-   unsigned int size_of_atr = DEFAULT_SIZE_OF_BUFFER;
-   char *atr = (char *) calloc(size_of_atr, sizeof(char));
-   unsigned int x = 0, y = 0, act_dir = 0;
-   int ptr = 0;
-   int str_len = 0;
-   unsigned int params_counter = 0;
-   char **params = NULL;
+   uint32_t params_arr_size = 5, params_cnt = 0;
+   char **params = (char **) calloc(params_arr_size, sizeof(char *));
+   char buffer[DEFAULT_SIZE_OF_BUFFER];
+   memset(buffer, 0, DEFAULT_SIZE_OF_BUFFER * sizeof(char));
+   uint32_t x = 0, y = 0, act_param_len = 0;
+   int params_len = strlen(running_modules[module_idx].module_params);
+
+   if (params_len < 1) {
+      VERBOSE(MODULE_EVENT, "%s [WARNING] Empty string in \"%s\" params element.", get_formatted_time(), running_modules[module_idx].module_name);
+      goto err_cleanup;
+   }
+
+   for (x = 0; x < params_len; x++) {
+      switch(running_modules[module_idx].module_params[x]) {
+      /* parameter in apostrophes */
+      case '\'':
+      {
+         if (act_param_len > 0) { // check whether the ''' character is not in the middle of the word
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Bad format of \"%s\" params element - used \'\'\' in the middle of the word.\n", get_formatted_time(), running_modules[module_idx].module_name);
+            goto err_cleanup;
+         }
+
+         for (y = (x + 1); y < params_len; y++) {
+            if (running_modules[module_idx].module_params[y] == '\'') { // parameter in apostrophes MATCH
+               if (act_param_len == 0) { // check for empty apostrophes
+                  VERBOSE(MODULE_EVENT, "%s [ERROR] Bad format of \"%s\" params element - used empty apostrophes.\n", get_formatted_time(), running_modules[module_idx].module_name);
+                  goto err_cleanup;
+               }
+               x = y;
+               goto add_param;
+            } else { // add character to parameter in apostrophes
+               if (act_param_len >= DEFAULT_SIZE_OF_BUFFER) { // check for reaching maximum length of the parameter
+                  VERBOSE(MODULE_EVENT, "%s [ERROR] Too long parameter in \"%s\" params element in apostrophes (> %d).\n", get_formatted_time(), running_modules[module_idx].module_name, DEFAULT_SIZE_OF_BUFFER);
+                  goto err_cleanup;
+               }
+               buffer[act_param_len] = running_modules[module_idx].module_params[y];
+               act_param_len++;
+            }
+         }
+         // the terminating ''' was not found
+         VERBOSE(MODULE_EVENT, "%s [ERROR] Bad format of \"%s\" params element - used single \'\'\'.\n", get_formatted_time(), running_modules[module_idx].module_name);
+         goto err_cleanup;
+         break;
+      }
+
+      /* parameter in quotes */
+      case '\"':
+      {
+         if (act_param_len > 0) { // check whether the '"' character is not in the middle of the word
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Bad format of \"%s\" params element - used \'\"\' in the middle of the word.\n", get_formatted_time(), running_modules[module_idx].module_name);
+            goto err_cleanup;
+         }
+
+         for (y = (x + 1); y < params_len; y++) {
+            if (running_modules[module_idx].module_params[y] == '\"') { // parameter in quotes MATCH
+               if (act_param_len == 0) { // check for empty quotes
+                  VERBOSE(MODULE_EVENT, "%s [ERROR] Bad format of \"%s\" params element - used empty quotes.\n", get_formatted_time(), running_modules[module_idx].module_name);
+                  goto err_cleanup;
+               }
+               x = y;
+               goto add_param;
+            } else if (running_modules[module_idx].module_params[y] != '\'') { // add character to parameter in quotes
+               if (act_param_len >= DEFAULT_SIZE_OF_BUFFER) { // check for reaching maximum length of the parameter
+                  VERBOSE(MODULE_EVENT, "%s [ERROR] Too long parameter in \"%s\" params element in quotes (> %d).\n", get_formatted_time(), running_modules[module_idx].module_name, DEFAULT_SIZE_OF_BUFFER);
+                  goto err_cleanup;
+               }
+               buffer[act_param_len] = running_modules[module_idx].module_params[y];
+               act_param_len++;
+            } else {
+               VERBOSE(MODULE_EVENT, "%s [ERROR] Found apostrophe in \"%s\" params element in quotes.\n", get_formatted_time(), running_modules[module_idx].module_name);
+               goto err_cleanup;
+            }
+         }
+         // the terminating '"' was not found
+         VERBOSE(MODULE_EVENT, "%s [ERROR] Bad format of \"%s\" params element - used single \'\"\'.\n", get_formatted_time(), running_modules[module_idx].module_name);
+         goto err_cleanup;
+         break;
+      }
+
+      /* parameter delimiter */
+      case ' ':
+      {
+         if (act_param_len == 0) {
+            continue; // skip white-spaces between parameters
+         }
+
+add_param:
+         if (params_cnt == params_arr_size) { // if needed, resize the array of parsed parameters
+            params_arr_size += params_arr_size;
+            params = (char **) realloc(params, sizeof(char *) * params_arr_size);
+            memset(params + ((params_arr_size / 2) * sizeof(char *)), 0, ((params_arr_size / 2) * sizeof(char *)));
+         }
+
+         params[params_cnt] = strdup(buffer);
+         params_cnt++;
+         memset(buffer, 0, DEFAULT_SIZE_OF_BUFFER);
+         act_param_len = 0;
+         break;
+      }
+
+      /* adding one character to parameter out of quotes and apostrophes */
+      default:
+      {
+         if (act_param_len >= DEFAULT_SIZE_OF_BUFFER) { // check for reaching maximum length of the parameter
+            VERBOSE(MODULE_EVENT, "%s [WARNING] Too long parameter in \"%s\" params element (> %d)\n", get_formatted_time(), running_modules[module_idx].module_name, DEFAULT_SIZE_OF_BUFFER);
+            goto err_cleanup;
+         }
+         buffer[act_param_len] = running_modules[module_idx].module_params[x];
+         act_param_len++;
+
+         if (x == (params_len - 1)) { // if last character of the params element was added, add current module parameter to the params array
+            goto add_param;
+         }
+         break;
+      }
+
+      } // end of switch
+   }
+
+   if (params_cnt == 0) {
+      goto err_cleanup;
+   }
+
+   *params_num = params_cnt;
+   return params;
+
+err_cleanup:
+   for (x = 0; x < params_cnt; x++) {
+      NULLP_TEST_AND_FREE(params[x]);
+   }
+   NULLP_TEST_AND_FREE(params)
+   *params_num = 0;
+   return NULL;
+}
+
+char **prep_module_args(const uint32_t module_idx)
+{
+   uint32_t x = 0, y = 0, act_dir = 0, ptr = 0;
+   uint32_t ifc_spec_size = DEFAULT_SIZE_OF_BUFFER;
+   char *ifc_spec = (char *) calloc(ifc_spec_size, sizeof(char));
    char *addr = NULL;
    char *port = NULL;
 
-   //binary without libtrap interfaces
-   if (running_modules[number_of_module].module_ifces_cnt == 0) {
-      if (running_modules[number_of_module].module_params == NULL) {
-         params = (char **) calloc(2,sizeof(char *));
+   char **module_params = NULL;
+   uint32_t module_params_num = 0;
+   char **bin_args = NULL;
+   uint32_t bin_args_num = 2; // initially 2 - at least the name of the future process and terminating NULL pointer
+   uint32_t bin_args_pos = 0;
 
-         str_len = strlen(running_modules[number_of_module].module_name);
-         params[0] = (char *) calloc(str_len+1, sizeof(char));   // binary name for exec
-         strncpy(params[0],running_modules[number_of_module].module_name, str_len+1);
-         params[1] = NULL;
-      } else {
-         unsigned int size_of_buffer = DEFAULT_SIZE_OF_BUFFER;
-         char *buffer = (char *) calloc(size_of_buffer, sizeof(char));
-         int num_module_params = 0;
-         unsigned int module_params_length = strlen(running_modules[number_of_module].module_params);
-
-         for (x=0; x<module_params_length; x++) {
-            if (running_modules[number_of_module].module_params[x] == 32) {
-               num_module_params++;
-            }
-         }
-         num_module_params++;
-
-         params = (char **) calloc(2+num_module_params,sizeof(char *));
-         str_len = strlen(running_modules[number_of_module].module_name);
-         params[0] = (char *) calloc(str_len+1, sizeof(char));   // binary name for exec
-         strncpy(params[0],running_modules[number_of_module].module_name, str_len+1);
-
-         params_counter = 1;
-
-         y=0;
-         for (x=0; x<module_params_length; x++) {
-            if (running_modules[number_of_module].module_params[x] == 32) {
-               params[params_counter] = (char *) calloc(strlen(buffer)+1,sizeof(char));
-               sprintf(params[params_counter],"%s",buffer);
-               params_counter++;
-               memset(buffer,0,size_of_buffer);
-               y=0;
-            } else {
-               if (y >= size_of_buffer) {
-                  size_of_buffer += size_of_buffer/2;
-                  buffer = (char *) realloc (buffer, size_of_buffer*sizeof(char));
-                  memset(buffer + y, 0, size_of_buffer/3);
-               }
-               buffer[y] = running_modules[number_of_module].module_params[x];
-               y++;
-            }
-         }
-         params[params_counter] = (char *) calloc(strlen(buffer)+1,sizeof(char));
-         sprintf(params[params_counter],"%s",buffer);
-         params_counter++;
-
-         params[params_counter] = NULL;
-         NULLP_TEST_AND_FREE(buffer)
-      }
-
-      fprintf(stdout,"%s [INFO] Supervisor - executed command: %s", get_formatted_time(), running_modules[number_of_module].module_path);
-      fprintf(stderr,"%s [INFO] Supervisor - executed command: %s", get_formatted_time(), running_modules[number_of_module].module_path);
-
-      if (params_counter > 0) {
-         for (x=1; x<params_counter; x++) {
-            fprintf(stdout,"   %s",params[x]);
-            fprintf(stderr,"   %s",params[x]);
-         }
-      }
-
-      fprintf(stdout,"\n");
-      fprintf(stderr,"\n");
-      NULLP_TEST_AND_FREE(atr);
-      return params;
+   /* if the module has trap interfaces, one argument for "-i" and one for interfaces specifier */
+   if (running_modules[module_idx].module_ifces_cnt > 0) {
+      bin_args_num += 2;
    }
 
-   for (y = 0; y < 3; y++) {
-      // To get first input ifces than output ifces and in the end service ifc
-      switch (y) {
-      case 0:
-         act_dir = IN_MODULE_IFC_DIRECTION;
-         break;
-      case 1:
-         act_dir = OUT_MODULE_IFC_DIRECTION;
-         break;
-      case 2:
-         act_dir = SERVICE_MODULE_IFC_DIRECTION;
-         break;
-      }
-
-      for (x = 0; x < running_modules[number_of_module].module_ifces_cnt; x++) {
-         if (running_modules[number_of_module].module_ifces[x].int_ifc_direction == act_dir) {
-            // Get interface type
-            if (running_modules[number_of_module].module_ifces[x].int_ifc_type == TCP_MODULE_IFC_TYPE) {
-               strncpy(atr + ptr, "t:", 2);
-               ptr+=2;
-            } else if (running_modules[number_of_module].module_ifces[x].int_ifc_type == UNIXSOCKET_MODULE_IFC_TYPE) {
-               strncpy(atr + ptr, "u:", 2);
-               ptr+=2;
-            } else if (running_modules[number_of_module].module_ifces[x].int_ifc_type == SERVICE_MODULE_IFC_TYPE) {
-               strncpy(atr + ptr, "s:", 2);
-               ptr+=2;
-            } else if (running_modules[number_of_module].module_ifces[x].int_ifc_type == FILE_MODULE_IFC_TYPE) {
-               strncpy(atr + ptr, "f:", 2);
-               ptr+=2;
-            } else {
-               VERBOSE(MODULE_EVENT, "%s [WARNING] Wrong ifc_type in module %d (interface number %d).\n", get_formatted_time(), number_of_module, x);
-               NULLP_TEST_AND_FREE(atr)
-               return NULL;
-            }
-            // Get interface params
-            if (running_modules[number_of_module].module_ifces[x].ifc_params != NULL) {
-               if ((strlen(atr) + strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1) >= (3*size_of_atr)/5) {
-                  size_of_atr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + (size_of_atr/2);
-                  atr = (char *) realloc (atr, size_of_atr*sizeof(char));
-                  memset(atr + ptr, 0, size_of_atr - ptr);
-               }
-               // Compatible with previous format of libtrap -i parameter ("address,port" for one input interface)
-               port = NULL;
-               port = get_param_by_delimiter(running_modules[number_of_module].module_ifces[x].ifc_params, &addr, ',');
-               if (port == NULL) {
-                  sprintf(atr + ptr,"%s,",running_modules[number_of_module].module_ifces[x].ifc_params);
-               } else {
-                  sprintf(atr + ptr,"%s:%s,", addr, port);
-               }
-               ptr += strlen(running_modules[number_of_module].module_ifces[x].ifc_params) + 1;
-               NULLP_TEST_AND_FREE(addr)
-            }
-
-         }
+   /* if the module has non-empty params, try to parse them */
+   if (running_modules[module_idx].module_params != NULL) {
+      module_params = parse_module_params(module_idx, &module_params_num);
+      if (module_params != NULL && module_params_num > 0) {
+         bin_args_num += module_params_num; // after successful params parsing, increment the number of binary arguments
       }
    }
-   // Remove last comma
-   memset(atr + ptr-1,0,1);
 
-   if (running_modules[number_of_module].module_params == NULL) {
-      params = (char **) calloc(4,sizeof(char *));
-      str_len = strlen(running_modules[number_of_module].module_name);
-      params[0] = (char *) calloc(str_len+1, sizeof(char));   // binary name for exec
-      strncpy(params[0],running_modules[number_of_module].module_name, str_len+1);
-      str_len = strlen(TRAP_PARAM);
-      params[1] = (char *) calloc(str_len+1,sizeof(char));    // libtrap param "-i"
-      strncpy(params[1],TRAP_PARAM,str_len+1);
-      str_len = strlen(atr);
-      params[2] = (char *) calloc(str_len+1,sizeof(char)); // atributes for "-i" param
-      strncpy(params[2],atr,str_len+1);
+   /* pointers allocation */
+   bin_args = (char **) calloc(bin_args_num, sizeof(char *));
+   bin_args[0] = strdup(running_modules[module_idx].module_name); // first argument is a name of the future process
+   bin_args[bin_args_num - 1] = NULL; // last pointer is NULL because of exec function
+   bin_args_pos = 1;
 
-      params[3] = NULL;
-   } else {
-      params_counter = 0;
-      unsigned int size_of_buffer = DEFAULT_SIZE_OF_BUFFER;
-      char *buffer = (char *) calloc(size_of_buffer, sizeof(char));
-      int num_module_params = 0;
-      unsigned int module_params_length = strlen(running_modules[number_of_module].module_params);
-
-      for (x=0; x<module_params_length; x++) {
-         if (running_modules[number_of_module].module_params[x] == 32 && (x != (module_params_length-1))) {
-            num_module_params++;
-         }
+   /* copy already allocated module params strings returned by parse_module_params function */
+   if (module_params != NULL && module_params_num > 0) {
+      for (x = 0; x < module_params_num; x++) {
+         bin_args[bin_args_pos] = module_params[x];
+         bin_args_pos++;
       }
-      num_module_params++;
+      NULLP_TEST_AND_FREE(module_params)
+   }
 
-      params = (char **) calloc(4+num_module_params,sizeof(char *));
-      str_len = strlen(running_modules[number_of_module].module_name);
-      params[params_counter] = (char *) calloc(str_len+1, sizeof(char));   // binary name for exec
-      strncpy(params[params_counter],running_modules[number_of_module].module_name, str_len+1);
-      params_counter++;
-
-      y=0;
-      for (x=0; x<module_params_length; x++) {
-         if (running_modules[number_of_module].module_params[x] == 32 && (x == (module_params_length-1))) {
+   /* prepare trap interfaces specifier (e.g. "t:1234,u:sock,s:service_sock") */
+   if (running_modules[module_idx].module_ifces_cnt > 0) {
+      for (y = 0; y < 3; y++) {
+         // To get first input ifces than output ifces and in the end service ifc
+         switch (y) {
+         case 0:
+            act_dir = IN_MODULE_IFC_DIRECTION;
             break;
-         } else if (running_modules[number_of_module].module_params[x] == 32) {
-            params[params_counter] = (char *) calloc(strlen(buffer)+1,sizeof(char));
-            sprintf(params[params_counter],"%s",buffer);
-            params_counter++;
-            memset(buffer,0,size_of_buffer);
-            y=0;
-         } else {
-            if (y >= size_of_buffer) {
-               size_of_buffer += size_of_buffer/2;
-               buffer = (char *) realloc (buffer, size_of_buffer*sizeof(char));
-               memset(buffer + y, 0, size_of_buffer/3);
+         case 1:
+            act_dir = OUT_MODULE_IFC_DIRECTION;
+            break;
+         case 2:
+            act_dir = SERVICE_MODULE_IFC_DIRECTION;
+            break;
+         }
+
+         for (x = 0; x < running_modules[module_idx].module_ifces_cnt; x++) {
+            if (running_modules[module_idx].module_ifces[x].int_ifc_direction == act_dir) {
+               // Get interface type
+               if (running_modules[module_idx].module_ifces[x].int_ifc_type == TCP_MODULE_IFC_TYPE) {
+                  strncpy(ifc_spec + ptr, "t:", 2);
+                  ptr+=2;
+               } else if (running_modules[module_idx].module_ifces[x].int_ifc_type == UNIXSOCKET_MODULE_IFC_TYPE) {
+                  strncpy(ifc_spec + ptr, "u:", 2);
+                  ptr+=2;
+               } else if (running_modules[module_idx].module_ifces[x].int_ifc_type == SERVICE_MODULE_IFC_TYPE) {
+                  strncpy(ifc_spec + ptr, "s:", 2);
+                  ptr+=2;
+               } else if (running_modules[module_idx].module_ifces[x].int_ifc_type == FILE_MODULE_IFC_TYPE) {
+                  strncpy(ifc_spec + ptr, "f:", 2);
+                  ptr+=2;
+               } else {
+                  VERBOSE(MODULE_EVENT, "%s [WARNING] Wrong ifc_type in module %d (interface number %d).\n", get_formatted_time(), module_idx, x);
+                  NULLP_TEST_AND_FREE(ifc_spec)
+                  return NULL;
+               }
+               // Get interface params
+               if (running_modules[module_idx].module_ifces[x].ifc_params != NULL) {
+                  if ((strlen(ifc_spec) + strlen(running_modules[module_idx].module_ifces[x].ifc_params) + 1) >= (3 * ifc_spec_size) / 5) {
+                     ifc_spec_size += strlen(running_modules[module_idx].module_ifces[x].ifc_params) + (ifc_spec_size / 2);
+                     ifc_spec = (char *) realloc(ifc_spec, ifc_spec_size * sizeof(char));
+                     memset(ifc_spec + ptr, 0, ifc_spec_size - ptr);
+                  }
+                  // Compatible with previous format of libtrap -i parameter ("address,port" for one input interface)
+                  port = NULL;
+                  port = get_param_by_delimiter(running_modules[module_idx].module_ifces[x].ifc_params, &addr, ',');
+                  if (port == NULL) {
+                     sprintf(ifc_spec + ptr,"%s,",running_modules[module_idx].module_ifces[x].ifc_params);
+                  } else {
+                     sprintf(ifc_spec + ptr,"%s:%s,", addr, port);
+                  }
+                  ptr += strlen(running_modules[module_idx].module_ifces[x].ifc_params) + 1;
+                  NULLP_TEST_AND_FREE(addr)
+               }
+
             }
-            buffer[y] = running_modules[number_of_module].module_params[x];
-            y++;
          }
       }
+      // Remove last comma
+      memset(ifc_spec + ptr - 1, 0, 1 * sizeof(char));
 
-      params[params_counter] = (char *) calloc(strlen(buffer)+1,sizeof(char));
-      sprintf(params[params_counter],"%s",buffer);
-      params_counter++;
-
-      str_len = strlen(TRAP_PARAM);
-      params[params_counter] = (char *) calloc(str_len+1,sizeof(char));    // libtrap param "-i"
-      strncpy(params[params_counter],TRAP_PARAM,str_len+1);
-      params_counter++;
-      str_len = strlen(atr);
-      params[params_counter] = (char *) calloc(str_len+1,sizeof(char)); // atributes for "-i" param
-      strncpy(params[params_counter],atr,str_len+1);
-      params_counter++;
-
-      params[params_counter] = NULL;
-      NULLP_TEST_AND_FREE(buffer)
+      bin_args[bin_args_pos] = strdup(TRAP_PARAM); // add "-i" argument
+      bin_args_pos++;
+      bin_args[bin_args_pos] = strdup(ifc_spec); // add trap interfaces specifier argument
+      bin_args_pos++;
    }
 
-   fprintf(stdout,"%s [INFO] Supervisor - executed command: %s   %s   %s", get_formatted_time(), running_modules[number_of_module].module_path, params[1], params[2]);
-   fprintf(stderr,"%s [INFO] Supervisor - executed command: %s   %s   %s", get_formatted_time(), running_modules[number_of_module].module_path, params[1], params[2]);
+   fprintf(stdout,"%s [INFO] Supervisor - executed command: %s", get_formatted_time(), running_modules[module_idx].module_path);
+   fprintf(stderr,"%s [INFO] Supervisor - executed command: %s", get_formatted_time(), running_modules[module_idx].module_path);
 
-   if (params_counter > 0) {
-      for (x=3; x<params_counter; x++) {
-         fprintf(stdout,"   %s",params[x]);
-         fprintf(stderr,"   %s",params[x]);
-      }
+   for (x = 1; x < bin_args_num; x++) {
+      fprintf(stdout,"   %s",bin_args[x]);
+      fprintf(stderr,"   %s",bin_args[x]);
    }
 
    fprintf(stdout,"\n");
    fprintf(stderr,"\n");
-   NULLP_TEST_AND_FREE(atr)
-   return params;
+
+   NULLP_TEST_AND_FREE(ifc_spec)
+   return bin_args;
 }
 
 int get_number_from_input_choosing_option()
@@ -1609,7 +1641,7 @@ void service_start_module(const int module_idx)
          VERBOSE(N_STDOUT,"%s [ERROR] Starting module: module path is missing!\n", get_formatted_time());
          running_modules[module_idx].module_enabled = FALSE;
       } else {
-         char **params = make_module_arguments(module_idx);
+         char **params = prep_module_args(module_idx);
          if (params == NULL) {
             goto execute_fail;
          }

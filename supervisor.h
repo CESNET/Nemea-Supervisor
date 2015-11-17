@@ -256,11 +256,44 @@ char *create_backup_file_path();
 void create_shutdown_info(char **backup_file_path);
 void print_xmlDoc_to_stream(xmlDocPtr doc_ptr, FILE *stream);
 char *get_formatted_time();
-/** Function creates array of strings for function execvp() before executing new module (its process).
- * @param[in] number_of_module Index to running_modules array.
- * @return Array of strings.
+
+/**
+ * Parsing function for modules "params" element from the configuration file
+ * that it is used by prepare_module_args() function.
+ *
+ * The parameter delimiter is a white-space ' ' but if the parameter is quoted,
+ * white-spaces are part of the parameter. If the quotes have to be passed as a part of the parameter,
+ * apostrophes can be used.
+ *
+ * Example of the params element in the config file:
+ * <params>-o param_without_white-spaces "param with white-spaces" 'param with "quotes" and white-spaces'</params>
+ *
+ * Arguments passed to binary:
+ * 1) -o
+ * 2) param_without_white-spaces
+ * 3) param with white-spaces
+ * 4) param with "quotes" and white-spaces
+ *
+ * @param[in] module_idx Index to array of modules (array of structures).
+ * @param[out] params_num In case of success it contains number of parsed args, otherwise 0.
+ * @return In case of success array of strings (some of the arguments for the module binary) is returned, otherwise NULL.
  */
-char **make_module_arguments(const int number_of_module);
+char **parse_module_params(const uint32_t module_idx, uint32_t *params_num);
+
+/**
+ * Function prepares an array of strings which is passed to execvp() function by service_start_module() function.
+ * The array contains all needed arguments for the module binary. If the module has trap interfaces, "-i" arg is added
+ * and interfaces specifier is generated (e.g. "t:1234,u:sock,s:service_sock"). If the module has a non-empty
+ * "params", parse_module_params() function is used to add all module parameters.
+ *
+ * Example of the output array (8 strings plus last one terminating null pointer):
+ * "module_name" "parameter1" "-o" "parameter2" "-s" "parameter3" "-i" "t:1234,u:sock,s:service_sock" NULL
+ *
+ * @param[in] module_idx Index to array of modules (array of structures).
+ * @return In case of success array of strings (arguments for the module binary) is returned, otherwise NULL.
+ */
+char **prep_module_args(const uint32_t module_idx);
+
 int get_number_from_input_choosing_option();
 int get_numbers_from_input_dis_enable_module(int **array);
 void init_module_variables(int module_number);
