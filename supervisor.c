@@ -442,17 +442,14 @@ char **prep_module_args(const uint32_t module_idx)
 
    /* prepare trap interfaces specifier (e.g. "t:1234,u:sock,s:service_sock") */
    if (running_modules[module_idx].module_ifces_cnt > 0) {
-      for (y = 0; y < 3; y++) {
-         // To get first input ifces than output ifces and in the end service ifc
+      for (y = 0; y < 2; y++) {
+         // To get first input ifces and than output ifces
          switch (y) {
          case 0:
             act_dir = IN_MODULE_IFC_DIRECTION;
             break;
          case 1:
             act_dir = OUT_MODULE_IFC_DIRECTION;
-            break;
-         case 2:
-            act_dir = SERVICE_MODULE_IFC_DIRECTION;
             break;
          }
 
@@ -464,9 +461,6 @@ char **prep_module_args(const uint32_t module_idx)
                   ptr+=2;
                } else if (running_modules[module_idx].module_ifces[x].int_ifc_type == UNIXSOCKET_MODULE_IFC_TYPE) {
                   strncpy(ifc_spec + ptr, "u:", 2);
-                  ptr+=2;
-               } else if (running_modules[module_idx].module_ifces[x].int_ifc_type == SERVICE_MODULE_IFC_TYPE) {
-                  strncpy(ifc_spec + ptr, "s:", 2);
                   ptr+=2;
                } else if (running_modules[module_idx].module_ifces[x].int_ifc_type == FILE_MODULE_IFC_TYPE) {
                   strncpy(ifc_spec + ptr, "f:", 2);
@@ -1761,16 +1755,21 @@ void service_stop_modules_sigint()
 
 void service_stop_modules_sigkill()
 {
+   // service_sock_spec size is length of "service_PID" where PID is max 5 chars (8 + 5 + 1 zero terminating)
+   char service_sock_spec[14];
    char *dest_port = NULL;
    char buffer[DEFAULT_SIZE_OF_BUFFER];
    unsigned int x, y;
-   for (x=0; x<loaded_modules_cnt; x++) {
-      if (running_modules[x].module_status && running_modules[x].module_enabled == FALSE && running_modules[x].sent_sigint == TRUE) {
+
+   for (x = 0; x < loaded_modules_cnt; x++) {
+      if (running_modules[x].module_status == TRUE && running_modules[x].module_enabled == FALSE && running_modules[x].sent_sigint == TRUE) {
          VERBOSE(MODULE_EVENT, "%s [STOP] Stopping module %s... sending SIGKILL\n", get_formatted_time(), running_modules[x].module_name);
          kill(running_modules[x].module_pid,9);
-         for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
-            if (running_modules[x].module_ifces[y].int_ifc_type == SERVICE_MODULE_IFC_TYPE || ((running_modules[x].module_ifces[y].int_ifc_type == UNIXSOCKET_MODULE_IFC_TYPE)
-                                                                                          && (running_modules[x].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION))) {
+
+         // Delete all unix-socket files after killing the module
+         for (y = 0; y < running_modules[x].module_ifces_cnt; y++) {
+            // Delete unix-socket created by modules output interface
+            if ((running_modules[x].module_ifces[y].int_ifc_type == UNIXSOCKET_MODULE_IFC_TYPE) && (running_modules[x].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION)) {
                if (running_modules[x].module_ifces[y].ifc_params == NULL) {
                   continue;
                }
@@ -1781,6 +1780,15 @@ void service_stop_modules_sigkill()
                unlink(buffer);
                NULLP_TEST_AND_FREE(dest_port)
             }
+         }
+
+         // Delete unix-socket created by modules service interface
+         if (running_modules[x].module_ifces_cnt > 0) {
+            memset(service_sock_spec, 0, 14 * sizeof(char));
+            sprintf(service_sock_spec, "service_%d", running_modules[x].module_pid);
+            sprintf(buffer, MODULES_UNIXSOCKET_PATH_FILENAME_FORMAT, service_sock_spec);
+            VERBOSE(MODULE_EVENT, "%s [CLEAN] Deleting socket %s - module %s\n", get_formatted_time(), buffer, running_modules[x].module_name);
+            unlink(buffer);
          }
       }
    }
@@ -1821,7 +1829,7 @@ void service_update_modules_status()
 
 void service_check_connections()
 {
-   uint x = 0, y = 0;
+   uint x = 0;
 
     for (x = 0; x < loaded_modules_cnt; x++) {
          // If supervisor couldn't connect to service interface or too many errors during sending/receiving occurred, connecting is blocked
@@ -1845,20 +1853,12 @@ void service_check_connections()
 
             // Check connection between module and supervisor, if they are not connected and number of attempts <= 3, try to connect
             if (running_modules[x].module_service_ifc_isconnected == FALSE) {
-               y=0;
-               while (1) {
-                  if (running_modules[x].module_ifces[y].int_ifc_type == SERVICE_MODULE_IFC_TYPE) {
-                     break;
-                  }
-                  y++;
-               }
-
                // Check module socket descriptor, closed socket has descriptor set to -1
                if (running_modules[x].module_service_sd != -1) {
                   close(running_modules[x].module_service_sd);
                   running_modules[x].module_service_sd = -1;
                }
-               service_connect_to_module(x,y);
+               service_connect_to_module(x);
             }
          }
       }
@@ -1918,9 +1918,10 @@ int service_send_data(int module_idx, uint32_t size, void **data)
    return 0;
 }
 
-void service_connect_to_module(int module, int num_ifc)
+void service_connect_to_module(const int module)
 {
-   char *dest_port = NULL;
+   // service_sock_spec size is length of "service_PID" where PID is max 5 chars (8 + 5 + 1 zero terminating)
+   char service_sock_spec[14];
    int sockfd = -1;
    union tcpip_socket_addr addr;
 
@@ -1933,35 +1934,29 @@ void service_connect_to_module(int module, int num_ifc)
       return;
    }
 
-   if (running_modules[module].module_ifces[num_ifc].ifc_params == NULL) {
-      running_modules[module].module_service_ifc_isconnected = FALSE;
-      return;
-   }
-   get_param_by_delimiter(running_modules[module].module_ifces[num_ifc].ifc_params, &dest_port, ',');
-   VERBOSE(MODULE_EVENT,"%s [SERVICE] Connecting to module %s on port %s...\n", get_formatted_time(), running_modules[module].module_name, dest_port);
+   memset(service_sock_spec, 0, 14 * sizeof(char));
+   sprintf(service_sock_spec, "service_%d", running_modules[module].module_pid);
+   VERBOSE(MODULE_EVENT,"%s [SERVICE] Connecting to module %s on port %s...\n", get_formatted_time(), running_modules[module].module_name, service_sock_spec);
 
    memset(&addr, 0, sizeof(addr));
 
    addr.unix_addr.sun_family = AF_UNIX;
-   snprintf(addr.unix_addr.sun_path, sizeof(addr.unix_addr.sun_path) - 1, MODULES_UNIXSOCKET_PATH_FILENAME_FORMAT, dest_port);
+   snprintf(addr.unix_addr.sun_path, sizeof(addr.unix_addr.sun_path) - 1, MODULES_UNIXSOCKET_PATH_FILENAME_FORMAT, service_sock_spec);
    sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
    if (sockfd == -1) {
       VERBOSE(MODULE_EVENT,"%s [SERVICE] Error while opening socket for connection with module %s.\n", get_formatted_time(), running_modules[module].module_name);
       running_modules[module].module_service_ifc_isconnected = FALSE;
-      NULLP_TEST_AND_FREE(dest_port)
       return;
    }
    if (connect(sockfd, (struct sockaddr *) &addr.unix_addr, sizeof(addr.unix_addr)) == -1) {
-      VERBOSE(MODULE_EVENT,"%s [SERVICE] Error while connecting to module %s on port %s\n", get_formatted_time(), running_modules[module].module_name, dest_port);
+      VERBOSE(MODULE_EVENT,"%s [SERVICE] Error while connecting to module %s on port %s\n", get_formatted_time(), running_modules[module].module_name, service_sock_spec);
       running_modules[module].module_service_ifc_isconnected = FALSE;
-      NULLP_TEST_AND_FREE(dest_port)
       close(sockfd);
       return;
    }
    running_modules[module].module_service_sd = sockfd;
    running_modules[module].module_service_ifc_isconnected = TRUE;
    VERBOSE(MODULE_EVENT,"%s [SERVICE] Connected to module %s.\n", get_formatted_time(), running_modules[module].module_name);
-   NULLP_TEST_AND_FREE(dest_port)
 }
 
 void *service_thread_routine(void *arg __attribute__ ((unused)))

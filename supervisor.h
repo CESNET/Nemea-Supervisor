@@ -574,9 +574,8 @@ void service_check_connections();
  * It also checks number of connection attempts and if the limit is reached, connection is blocked.
  *
  * @param[in] module_idx Index to array of modules (array of structures).
- * @param[in] ifc_idx Index to array of modules interfaces.
  */
-void service_connect_to_module(int module_idx, int ifc_idx);
+void service_connect_to_module(const int module_idx);
 
 /**
  * Closes the connection with service interface of the specified module.
