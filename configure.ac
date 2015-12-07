@@ -17,6 +17,16 @@ AC_SUBST(USERMAIL)
 AC_CHECK_PROG(RPMBUILD, rpmbuild, rpmbuild, [""])
 AM_CONDITIONAL(MAKE_RPMS, test x$RPMBUILD != x)
 
+# get IFC of default gateway
+NIC_NAME=$(route -n | awk '/^0\.0\.0\.0/ {print $NF}')
+
+if [[ -n "$NIC_NAME" ]]; then
+    AC_MSG_RESULT([$NIC_NAME])
+    AC_SUBST([NIC_NAME])
+else
+    AC_MSG_RESULT([not found])
+fi
+
 AC_CONFIG_MACRO_DIR([m4])
 
 AC_ARG_ENABLE([debug],
