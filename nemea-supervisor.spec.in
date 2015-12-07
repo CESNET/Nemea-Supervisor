@@ -26,7 +26,8 @@ make -j5
 make -j5 DESTDIR=$RPM_BUILD_ROOT install
 
 %post
-chkconfig --add nemea-supervisor
+chkconfig --add nemea-supervisor 2> /dev/null || true
+systemctl enable nemea-supervisor.service 2> /dev/null || true
 
 %files
 %{_bindir}/nemea/*
