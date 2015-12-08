@@ -138,7 +138,10 @@ Optional element "supervisor" in the root element "nemea-supervisor" containts s
 
 // TODO ref to data model
 
-
+The [./configs](configs/) directory contains samples of configuration for some modules that are
+shipped in the Nemea packages.  The samples are used for creation of default configuration file
+that is used e.g. in RPM package.  To extend the default configuration, see
+[./configs/README.md](configs/README.md) and create files according to existing examples.
 
 ## Configuring modules
 

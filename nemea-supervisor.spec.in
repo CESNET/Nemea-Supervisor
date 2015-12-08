@@ -28,9 +28,8 @@ make -j5 DESTDIR=$RPM_BUILD_ROOT install
 %post
 chkconfig --add nemea-supervisor 2> /dev/null || true
 systemctl enable nemea-supervisor.service 2> /dev/null || true
-sed '/<name>flow_meter/,/<trapinterfaces>/ s/@NIC_NAME@/'$(route -n | \
-   awk '/^0\.0\.0\.0/ {print $NF}')'/' /etc/nemea/supervisor_config.xml > /tmp/sp.xml && \
-   mv /tmp/sp.xml /etc/nemea/supervisor_config.xml
+cd "%{_sysconfdir}/nemea" && "%{_bindir}"/nemea/prepare_default_config.sh install
+%{_bindir}/nemea/set_default_nic.sh %{_sysconfdir}/nemea/supervisor_config.xml
 
 
 %files
@@ -40,4 +39,5 @@ sed '/<name>flow_meter/,/<trapinterfaces>/ s/@NIC_NAME@/'$(route -n | \
 %config(noreplace) %{_sysconfdir}/nemea/supervisor_config.xml
 %{_sysconfdir}/init.d/nemea-supervisor
 %{_datarootdir}/munin/plugins/nemea_supervisor
+%{_datarootdir}/nemea-supervisor/*
 @SYSTEMD_UNIT_DIR@/nemea-supervisor.service

@@ -17,15 +17,8 @@ AC_SUBST(USERMAIL)
 AC_CHECK_PROG(RPMBUILD, rpmbuild, rpmbuild, [""])
 AM_CONDITIONAL(MAKE_RPMS, test x$RPMBUILD != x)
 
-# get IFC of default gateway
-NIC_NAME=$(route -n | awk '/^0\.0\.0\.0/ {print $NF}')
-
-if [[ -n "$NIC_NAME" ]]; then
-    AC_MSG_RESULT([$NIC_NAME])
-    AC_SUBST([NIC_NAME])
-else
-    AC_MSG_RESULT([not found])
-fi
+pkgdatadir=${datadir}/nemea-supervisor
+AC_SUBST(pkgdatadir)
 
 AC_CONFIG_MACRO_DIR([m4])
 
@@ -119,7 +112,7 @@ else
 	AM_CONDITIONAL([HAVE_SYSTEMD], [false])
 fi
 
-AC_CONFIG_FILES([Makefile nemea-supervisor.spec nemea-supervisor nemea-supervisor.service munin/Makefile])
+AC_CONFIG_FILES([Makefile nemea-supervisor.spec nemea-supervisor nemea-supervisor.service munin/Makefile configs/Makefile configs/prepare_default_config.sh])
 AC_OUTPUT
 echo
 echo

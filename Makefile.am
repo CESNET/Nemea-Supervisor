@@ -1,24 +1,15 @@
 ACLOCAL_AMFLAGS = -I m4
 
-SUBDIRS=munin
+SUBDIRS=munin configs
 
 bin_PROGRAMS=supervisor supervisor_cli
 supervisor_SOURCES= supervisor.c supervisor.h supervisor_api.h supervisor_main.c internal.c internal.h
 supervisor_LDADD = -lpthread -ltrap
 supervisor_cli_SOURCES= supervisor_cli.c internal.h internal.c
 doc_DATA=README.md
-EXTRA_DIST = supervisor_config.xml supervisor_config.xml.example nemea-supervisor README.md
-sysconf_DATA = supervisor_config.xml
+EXTRA_DIST = nemea-supervisor README.md
 bin_SCRIPTS=nemea-supervisor
 
-
-supervisor_config.xml:
-	@if [ -d ${top_srcdir}/../config-examples ]; then \
-		test -f ${top_srcdir}/../config-examples/supervisor_config.xml || make -C ${top_srcdir}/../config-examples; \
-		cp ${top_srcdir}/../config-examples/supervisor_config.xml .; \
-	else \
-		cp supervisor_config.xml.example supervisor_config.xml; \
-	fi
 
 DISTCHECK_CONFIGURE_FLAGS="--without-systemd"
 if HAVE_SYSTEMD
