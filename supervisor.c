@@ -717,7 +717,7 @@ char *make_formated_statistics(uint8_t stats_mask)
 
    if (print_ifc_stats == TRUE) {
       for (x=0; x<loaded_modules_cnt; x++) {
-         if (running_modules[x].module_status == TRUE && running_modules[x].module_has_service_ifc == TRUE && running_modules[x].module_service_ifc_isconnected == TRUE) {
+         if (running_modules[x].module_status == TRUE && running_modules[x].module_service_ifc_isconnected == TRUE) {
             counter = 0;
             for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
                if (running_modules[x].module_ifces[y].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
@@ -1664,7 +1664,7 @@ execute_fail:
 
 void service_disconnect_from_module(const int module_idx)
 {
-   if ((running_modules[module_idx].module_has_service_ifc == TRUE) && (running_modules[module_idx].module_service_ifc_isconnected == TRUE)) {
+   if (running_modules[module_idx].module_service_ifc_isconnected == TRUE) {
       VERBOSE(MODULE_EVENT,"%s [SERVICE] Disconnecting from module %s\n", get_formatted_time(), running_modules[module_idx].module_name);
       if (running_modules[module_idx].module_service_sd != -1) {
          close(running_modules[module_idx].module_service_sd);
@@ -1838,7 +1838,7 @@ void service_check_connections()
          }
 
          // Check whether the module has service interface and is running
-         if (running_modules[x].module_has_service_ifc == TRUE && running_modules[x].module_status == TRUE) {
+         if (running_modules[x].module_status == TRUE) {
 
             if (++running_modules[x].module_service_ifc_timer >= NUM_SERVICE_IFC_PERIODS) {
                running_modules[x].module_service_ifc_timer = 0;
@@ -2037,7 +2037,7 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
 
       for (x=0;x<loaded_modules_cnt;x++) {
          // Check whether the module is running and is connected with supervisor via service interface
-         if (running_modules[x].module_has_service_ifc == TRUE && running_modules[x].module_status == TRUE && running_modules[x].module_service_ifc_isconnected == TRUE) {
+         if (running_modules[x].module_status == TRUE && running_modules[x].module_service_ifc_isconnected == TRUE) {
             // Receive reply header
             if (service_recv_data(x, sizeof(service_msg_header_t), (void **) &header) == -1) {
                VERBOSE(MODULE_EVENT, "%s [SERVICE] Error while receiving reply header from module %d_%s.\n", get_formatted_time(), x, running_modules[x].module_name);
@@ -3588,7 +3588,6 @@ void reload_count_module_interfaces(reload_config_vars_t **config_vars)
 {
    int x = 0;
 
-   running_modules[(*config_vars)->current_module_idx].module_has_service_ifc = FALSE;
    running_modules[(*config_vars)->current_module_idx].module_num_in_ifc = 0;
    running_modules[(*config_vars)->current_module_idx].module_num_out_ifc = 0;
 
@@ -3617,7 +3616,6 @@ void reload_count_module_interfaces(reload_config_vars_t **config_vars)
          } else if (strncmp(running_modules[(*config_vars)->current_module_idx].module_ifces[x].ifc_type, "FILE", 4) == 0) {
             running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_type = FILE_MODULE_IFC_TYPE;
          } else if (strncmp(running_modules[(*config_vars)->current_module_idx].module_ifces[x].ifc_type, "SERVICE", 7) == 0) {
-            running_modules[(*config_vars)->current_module_idx].module_has_service_ifc = TRUE;
             running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_type = SERVICE_MODULE_IFC_TYPE;
          } else {
             running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_type = INVALID_MODULE_IFC_ATTR;
@@ -4375,7 +4373,7 @@ xmlDocPtr netconf_get_state_data()
                   xmlNewChild(module_elem, NULL, BAD_CAST "restart-counter", BAD_CAST buffer);
                }
 
-               if (running_modules[x].module_has_service_ifc && running_modules[x].module_status) {
+               if (running_modules[x].module_service_ifc_isconnected == TRUE && running_modules[x].module_status) {
                   trapinterfaces_elem = xmlNewChild(module_elem, NULL, BAD_CAST "trapinterfaces", NULL);
                   for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
                      if (running_modules[x].module_ifces[y].int_ifc_direction != INVALID_MODULE_IFC_ATTR && running_modules[x].module_ifces[y].ifc_params != NULL && running_modules[x].module_ifces[y].int_ifc_type != INVALID_MODULE_IFC_ATTR) {
@@ -4454,7 +4452,7 @@ xmlDocPtr netconf_get_state_data()
                   xmlNewChild(module_elem, NULL, BAD_CAST "restart-counter", BAD_CAST buffer);
                }
 
-               if (running_modules[x].module_has_service_ifc && running_modules[x].module_status) {
+               if (running_modules[x].module_service_ifc_isconnected == TRUE && running_modules[x].module_status) {
                   trapinterfaces_elem = xmlNewChild(module_elem, NULL, BAD_CAST "trapinterfaces", NULL);
                   for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
                      if (running_modules[x].module_ifces[y].int_ifc_direction != INVALID_MODULE_IFC_ATTR && running_modules[x].module_ifces[y].ifc_params != NULL && running_modules[x].module_ifces[y].int_ifc_type != INVALID_MODULE_IFC_ATTR) {

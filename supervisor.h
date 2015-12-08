@@ -173,7 +173,6 @@ typedef struct running_module_s {
    int overall_percent_module_cpu_usage_kernel_mode;   /*** INIT ***/
    int overall_percent_module_cpu_usage_user_mode;   /*** INIT ***/
 
-   int module_has_service_ifc; ///< if module has service interface ~ TRUE, else ~ FALSE   /*** RELOAD ***/
    int module_service_sd; ///< Socket descriptor of the service connection.   /*** INIT ***/
    int module_service_ifc_isconnected; ///< if supervisor is connected to module ~ TRUE, else ~ FALSE   /*** INIT ***/
    int module_service_ifc_conn_attempts; // Count of supervisor's connection attempts to module's service interface    /*** INIT ***/
