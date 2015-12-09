@@ -40,8 +40,8 @@ if [ -r "$configfile" -a -w "$configfile" ]; then
         NIC_NAME=`route -n | awk '/^0\.0\.0\.0/ {print $NF}'`
         echo "Detected NIC according to routing table: $NIC_NAME"
         t=`mktemp`
-        sed '/<name>flow_meter/,/<trapinterfaces>/ s/-I \([a-zA-Z0-9]\+\)/-I '$NIC_NAME'/' "$configfile" > "$t" && mv "$tmpfile" "$configfile"
-        rm -f "$tmpfile"
+        sed '/<name>flow_meter/,/<trapinterfaces>/ s/-I \([a-zA-Z0-9]\+\)/-I '$NIC_NAME'/' "$configfile" > "$t" && mv "$t" "$configfile"
+        rm -f "$t"
 else
         echo "Cannot open '$configfile' (need read&write permissions)" > /dev/stderr
 fi
