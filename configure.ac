@@ -104,6 +104,8 @@ AC_ARG_WITH([systemd],
 if test "x$withsystemd" = "xyes"; then
 	PKG_CHECK_MODULES([systemd], [systemd], [
 	SYSTEMD_UNIT_DIR=$(pkg-config --variable=systemdsystemunitdir systemd)
+	SYSTEMD_SERVICE_FILE="$SYSTEMD_UNIT_DIR/nemea-supervisor.service"
+	AC_SUBST(SYSTEMD_SERVICE_FILE)
 	AC_SUBST(SYSTEMD_UNIT_DIR)
 	AM_CONDITIONAL([HAVE_SYSTEMD], [true])
 	], [AM_CONDITIONAL([HAVE_SYSTEMD], [false])])

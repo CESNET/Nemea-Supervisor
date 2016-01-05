@@ -40,4 +40,5 @@ cd "%{_sysconfdir}/nemea" && "%{_bindir}"/nemea/prepare_default_config.sh instal
 %{_sysconfdir}/init.d/nemea-supervisor
 %{_datarootdir}/munin/plugins/nemea_supervisor
 %{_datarootdir}/nemea-supervisor/*
-@SYSTEMD_UNIT_DIR@/nemea-supervisor.service
+@SYSTEMD_SERVICE_FILE@
+
