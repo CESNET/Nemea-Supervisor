@@ -23,7 +23,7 @@
   <note/>
   <type>UNIXSOCKET</type>
   <direction>IN</direction>
-  <params>flow_meter</params>
+  <params>flow_data_source</params>
 </interface>
 </trapinterfaces>
 </module>
