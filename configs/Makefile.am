@@ -1,7 +1,11 @@
 EXTRA_DIST=amplification_detection.mkdir \
 	   amplification_detection.sup \
+	   flow_meter.mkdir \
+	   flow_meter.sup \
 	   hoststats.mkdir \
 	   hoststats.sup \
+	   ipblacklistfilter.mkdir \
+	   ipblacklistfilter.sup \
 	   prepare_default_config.sh \
 	   set_default_nic.sh \
 	   supervisor.mkdir \
