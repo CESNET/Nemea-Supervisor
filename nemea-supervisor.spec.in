@@ -19,7 +19,7 @@ Provides: nemea-supervisor
 %setup
 
 %build
-./configure --prefix=%{_prefix} --libdir=%{_libdir} --sysconfdir=%{_sysconfdir}/nemea --bindir=%{_bindir}/nemea --datarootdir=%{_datarootdir} --docdir=%{_docdir}/nemea-supervisor -q --enable-silent-rules --disable-repobuild;
+./configure --prefix=%{_prefix} --libdir=%{_libdir} --sysconfdir=%{_sysconfdir}/nemea --bindir=%{_bindir}/nemea --datarootdir=%{_datarootdir} --docdir=%{_docdir}/nemea-supervisor --localstatedir=%{_localstatedir} -q --enable-silent-rules --disable-repobuild;
 make -j5
 
 %install

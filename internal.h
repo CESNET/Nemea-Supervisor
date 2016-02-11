@@ -45,6 +45,8 @@
 #ifndef INTERNAL_H
 #define INTERNAL_H
 
+#include <config.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 

@@ -83,7 +83,7 @@
 #define MAX_SERVICE_IFC_CONN_FAILS   3
 
 #define MODULES_UNIXSOCKET_PATH_FILENAME_FORMAT   "/tmp/trap-localhost-%s.sock" ///< Modules output interfaces socket, to which connects service thread.
-#define DEFAULT_DAEMON_SERVER_SOCKET   "/tmp/daemon_supervisor.sock"  ///<  Daemon server socket
+#define DEFAULT_DAEMON_SERVER_SOCKET   DEFAULT_PATH_TO_SOCKET  ///<  Daemon server socket
 #define DEFAULT_NETCONF_SERVER_SOCKET   "/tmp/netconf_supervisor.sock"  ///<  Netconf server socket
 
 #define INIT_TMP_LOG_PATH   "/tmp/sup_tmp_log_file"

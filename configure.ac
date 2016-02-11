@@ -19,6 +19,8 @@ AM_CONDITIONAL(MAKE_RPMS, test x$RPMBUILD != x)
 
 pkgdatadir=${datadir}/nemea-supervisor
 AC_SUBST(pkgdatadir)
+defaultsocketdir=${localstatedir}/run
+AC_SUBST(defaultsocketdir)
 
 AC_CONFIG_MACRO_DIR([m4])
 
@@ -34,6 +36,10 @@ AM_CONDITIONAL(DEBUG, test x"$debug" = x"true")
 
 AC_DEFINE_DIR(initdir, [sysconfdir]/../init.d, [Path to init.d (init script)])
 AC_DEFINE_DIR(bindir, [bindir], [Path to binaries])
+AC_DEFINE_DIR(defaultsocketdir, [defaultsocketdir], [Default path to socket directory])
+
+DEFAULT_PATH_TO_SOCKET=${defaultsocketdir}/daemon_supervisor.sock
+AC_DEFINE_UNQUOTED([DEFAULT_PATH_TO_SOCKET], "${DEFAULT_PATH_TO_SOCKET}", [Default path to daemon socket])
 
 # Checks for programs.
 AC_PROG_CC
