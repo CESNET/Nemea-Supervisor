@@ -28,7 +28,7 @@ make -j5 DESTDIR=$RPM_BUILD_ROOT install
 %post
 chkconfig --add nemea-supervisor 2> /dev/null || true
 systemctl enable nemea-supervisor.service 2> /dev/null || true
-cd "%{_sysconfdir}/nemea" && "%{_bindir}"/nemea/prepare_default_config.sh install
+cd %{_sysconfdir}/nemea && bash %{_bindir}/nemea/prepare_default_config.sh install
 %{_bindir}/nemea/set_default_nic.sh %{_sysconfdir}/nemea/supervisor_config.xml
 
 
