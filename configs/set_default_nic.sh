@@ -37,7 +37,13 @@
 configfile="$1"
 
 if [ -r "$configfile" -a -w "$configfile" ]; then
-        NIC_NAME=`route -n | awk '/^0\.0\.0\.0/ {print $NF}'`
+        NIC_NAME=`ip route 2>/dev/null | fgrep default | sed 's/^.*dev\s\+\([^ ]\+\)\s.*/\1/'`
+
+        if [ -z "$NIC_NAME" ]; then
+                # fallback in case the system does not know ip route
+                NIC_NAME=`route -n 2>/dev/null | awk '/^0\.0\.0\.0/ {print $NF}'`
+        fi
+
         echo "Detected NIC according to routing table: $NIC_NAME"
         t=`mktemp`
         sed '/<name>flow_meter/,/<trapinterfaces>/ s/-I \([a-zA-Z0-9]\+\)/-I '$NIC_NAME'/' "$configfile" > "$t" && mv "$t" "$configfile"
