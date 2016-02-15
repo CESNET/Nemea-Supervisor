@@ -61,7 +61,7 @@
 #include <fcntl.h>
 #include <signal.h>
 
-#define DEFAULT_DAEMON_SERVER_SOCKET   "/tmp/daemon_supervisor.sock"  ///<  Daemon server socket
+#define DEFAULT_DAEMON_SERVER_SOCKET   DEFAULT_PATH_TO_SOCKET  ///<  Daemon server socket
 
 typedef struct client_internals_s {
    FILE *supervisor_input_stream;

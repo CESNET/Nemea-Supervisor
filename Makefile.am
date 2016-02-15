@@ -38,5 +38,5 @@ EXTRA_DIST += ncnemea/nemea-data.rng ncnemea/libtool ncnemea/nemea.c ncnemea/con
 
 install-exec-hook:
 	mkdir -p $(DESTDIR)/$(initdir)
-	$(LN_S) $(bindir)/nemea-supervisor $(DESTDIR)/$(initdir)/nemea-supervisor
+	$(LN_S) -f $(bindir)/nemea-supervisor $(DESTDIR)/$(initdir)/nemea-supervisor
 
