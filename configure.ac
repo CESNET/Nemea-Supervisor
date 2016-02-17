@@ -38,7 +38,7 @@ AC_DEFINE_DIR(initdir, [sysconfdir]/../init.d, [Path to init.d (init script)])
 AC_DEFINE_DIR(bindir, [bindir], [Path to binaries])
 AC_DEFINE_DIR(defaultsocketdir, [defaultsocketdir], [Default path to socket directory])
 
-DEFAULT_PATH_TO_SOCKET=${defaultsocketdir}/daemon_supervisor.sock
+DEFAULT_PATH_TO_SOCKET=${defaultsocketdir}/nemea-supervisor.sock
 AC_DEFINE_UNQUOTED([DEFAULT_PATH_TO_SOCKET], "${DEFAULT_PATH_TO_SOCKET}", [Default path to daemon socket])
 
 # Checks for programs.

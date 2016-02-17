@@ -30,7 +30,6 @@ BINDIR="@bindir@"
 CONFIG_FILE="@sysconfdir@/supervisor_config.xml"
 LOGDIR="/var/log/nemea-supervisor"
 LOGFILE="/var/log/nemea-supervisor/init.log"
-DAEMON_SOCKET="/var/run/nemea-supervisor.sock"
 PID_FILE="/var/run/nemea-supervisor.pid"
 SUPERVISOR="$BINDIR/supervisor"
 SUPERVISOR_CLI="$BINDIR/supervisor_cli"
@@ -77,7 +76,7 @@ start )
 	fi
 
         TMPFILE=$(mktemp)
-	$SUPERVISOR  --daemon -f "$CONFIG_FILE" -s "$DAEMON_SOCKET" -L "$LOGDIR" > "$TMPFILE"
+	$SUPERVISOR  --daemon -f "$CONFIG_FILE" -L "$LOGDIR" > "$TMPFILE"
         sed 's/.*PID of daemon process: \([0-9]*\)\./\1/' "$TMPFILE" > "$PID_FILE"
         rm "$TMPFILE"
 
@@ -126,7 +125,7 @@ restart )
 
 reload )
         # TODO complete reload config
-	$SUPERVISOR_CLI -r -s "$DAEMON_SOCKET"
+	$SUPERVISOR_CLI -r
         ;;
 
 status )
