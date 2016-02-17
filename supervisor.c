@@ -3380,7 +3380,7 @@ int reload_find_and_check_module_basic_elements(reload_config_vars_t **config_va
 {
    int move_to_next_module = FALSE;
    int ret_val = 0;
-   int last_module = FALSE;
+   uint8_t last_module = FALSE, unique_name = TRUE;
    xmlChar *key = NULL;
    int basic_elements[3], name_elem_idx = 0, path_elem_idx = 1, trapifc_elem_idx = 2;
    memset(basic_elements, 0, 3*sizeof(int));
@@ -3400,6 +3400,10 @@ int reload_find_and_check_module_basic_elements(reload_config_vars_t **config_va
                   (*config_vars)->new_module = TRUE;
                   (*config_vars)->module_ifc_insert = TRUE;
                } else { // Found already loaded module with same name -> check it's values
+                  if (running_modules[ret_val].module_checked_by_reload == TRUE) {
+                     move_to_next_module = TRUE;
+                     unique_name = FALSE;
+                  }
                   (*config_vars)->current_module_idx = ret_val;
                   (*config_vars)->new_module = FALSE;
                   (*config_vars)->module_ifc_insert = FALSE;
@@ -3437,7 +3441,10 @@ int reload_find_and_check_module_basic_elements(reload_config_vars_t **config_va
       }
 
       if (move_to_next_module) {
-         if (basic_elements[name_elem_idx] > 1) {
+         if (unique_name == FALSE) {
+            VERBOSE(N_STDOUT, "[WARNING] Reloading module \"%s\" - module with the same name was already found in the configuration file (module name must be unique!) -> skipping this module.\n",
+                                      running_modules[ret_val].module_name);
+         } else if (basic_elements[name_elem_idx] > 1) {
             VERBOSE(N_STDOUT, "[WARNING] Reloading error - found more \"name\" elements in module -> moving to next module.\n");
          } else if (basic_elements[name_elem_idx] == 0) {
             VERBOSE(N_STDOUT, "[WARNING] Reloading error - didn't find \"name\" element in module -> moving to next module.\n");
@@ -3468,6 +3475,7 @@ int reload_find_and_check_module_basic_elements(reload_config_vars_t **config_va
             (*config_vars)->module_atr_elem = (*config_vars)->module_elem->xmlChildrenNode;
          }
          move_to_next_module = FALSE;
+         unique_name = TRUE;
          continue;
       }
 
@@ -3735,8 +3743,6 @@ int reload_configuration(const int choice, xmlNodePtr *node)
    unsigned int x = 0;
    int number = 0;
    unsigned int original_loaded_modules_cnt = loaded_modules_cnt;
-   int already_loaded_modules_found[loaded_modules_cnt];
-   memset(already_loaded_modules_found, 0, loaded_modules_cnt*sizeof(int));
    char *buffer = NULL;
    int ifc_cnt = 0;
    reload_config_vars_t * config_vars = (reload_config_vars_t *) calloc(1, sizeof(reload_config_vars_t));
@@ -3901,6 +3907,7 @@ parse_default_config_file:
 
    /*****************/
    for (x=0; x<running_modules_array_size; x++) {
+      running_modules[x].module_checked_by_reload = FALSE;
       running_modules[x].module_modified_by_reload = FALSE;
       running_modules[x].modules_profile = NULL;
       running_modules[x].module_max_restarts_per_minute = -1;
@@ -3964,9 +3971,7 @@ parse_default_config_file:
                   // VERBOSE(N_STDOUT, "[WARNING] Reloading error - last module is invalid, breaking the loop.\n");
                   break;
                } else {
-                  if (config_vars->current_module_idx != loaded_modules_cnt) {
-                     already_loaded_modules_found[config_vars->current_module_idx] = TRUE;
-                  }
+                  running_modules[config_vars->current_module_idx].module_checked_by_reload = TRUE;
                }
 
                // Get module's PID from "module" element if it exists
@@ -4099,8 +4104,8 @@ parse_default_config_file:
    }
 
    // Stop and remove missing modules from loaded configuration (modules deleted by user)
-   for (x=0; x<original_loaded_modules_cnt; x++) {
-      if (already_loaded_modules_found[x] == FALSE) {
+   for (x = 0; x < original_loaded_modules_cnt; x++) {
+      if (running_modules[x].module_checked_by_reload == FALSE) {
          VERBOSE(N_STDOUT, "[WARNING] %s was not found in new configuration, it will be stopped and removed.\n", running_modules[x].module_name);
          running_modules[x].module_enabled = FALSE;
          running_modules[x].remove_module = TRUE;
