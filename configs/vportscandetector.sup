@@ -1,0 +1,57 @@
+<module>
+<name>vportscan_detector</name>
+<enabled>true</enabled>
+<path>/usr/bin/nemea/vportscan_detector</path>
+<params></params>
+<trapinterfaces>
+<interface>
+  <note/>
+  <type>UNIXSOCKET</type>
+  <direction>IN</direction>
+  <params>flow_data_source</params>
+</interface>
+<interface>
+  <note/>
+  <type>UNIXSOCKET</type>
+  <direction>OUT</direction>
+  <params>vportscan_out</params>
+</interface>
+</trapinterfaces>
+</module>
+
+<module>
+<name>vportscan_aggregator</name>
+<enabled>true</enabled>
+<path>python</path>
+<params>/usr/bin/nemea/vportscan_aggregator.py -t 10</params>
+<trapinterfaces>
+<interface>
+  <note/>
+  <type>UNIXSOCKET</type>
+  <direction>IN</direction>
+  <params>vportscan_out</params>
+</interface>
+<interface>
+  <note/>
+  <type>TCP</type>
+  <direction>OUT</direction>
+  <params>12005</params>
+</interface>
+</trapinterfaces>
+</module>
+
+<module>
+<name>vportscan_agg_logger</name>
+<enabled>true</enabled>
+<path>/usr/bin/nemea/logger</path>
+<params>-t -T -a /data/vportscan/alerts.log</params>
+<trapinterfaces>
+<interface>
+  <note/>
+  <type>TCP</type>
+  <direction>IN</direction>
+  <params>12005</params>
+</interface>
+</trapinterfaces>
+</module>
+
