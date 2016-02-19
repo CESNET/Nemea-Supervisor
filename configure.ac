@@ -19,7 +19,7 @@ AM_CONDITIONAL(MAKE_RPMS, test x$RPMBUILD != x)
 
 pkgdatadir=${datadir}/nemea-supervisor
 AC_SUBST(pkgdatadir)
-defaultsocketdir=${localstatedir}/run
+defaultsocketdir=${localstatedir}/run/nemea-supervisor
 AC_SUBST(defaultsocketdir)
 
 AC_CONFIG_MACRO_DIR([m4])

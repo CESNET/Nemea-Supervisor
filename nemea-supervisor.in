@@ -30,7 +30,7 @@ BINDIR="@bindir@"
 CONFIG_FILE="@sysconfdir@/supervisor_config.xml"
 LOGDIR="/var/log/nemea-supervisor"
 LOGFILE="/var/log/nemea-supervisor/init.log"
-PID_FILE="/var/run/nemea-supervisor.pid"
+PID_FILE="@defaultsocketdir@/nemea-supervisor.pid"
 SUPERVISOR="$BINDIR/supervisor"
 SUPERVISOR_CLI="$BINDIR/supervisor_cli"
 

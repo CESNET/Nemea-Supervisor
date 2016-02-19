@@ -21,6 +21,8 @@ After=network.target local-fs.target remote-fs.target
 [Service]
 Type=forking
 Environment=LANG=C
+User=nemead
+Group=nemead
 
 ExecStart=@bindir@/nemea-supervisor start
 ExecReload=@bindir@/nemea-supervisor restart

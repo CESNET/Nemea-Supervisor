@@ -96,6 +96,9 @@ if [ "$1" = "install" ]; then
                         mkdir -p "$d"
                         ## This is not secure enough! It grants full access to the directory:
                         #chmod 777 "$d"
+                        if getent passwd nemead > /dev/null && getent group nemead; then
+                                chown nemead:nemead "$d"
+                        fi
                 done
         done
 fi

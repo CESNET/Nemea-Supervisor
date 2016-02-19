@@ -10,6 +10,8 @@ Vendor: CESNET, z.s.p.o.
 Packager: @USERNAME@ <@USERMAIL@>
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}
 Requires: libtrap libxml2
+Requires(pre): /usr/sbin/useradd, /usr/bin/getent
+Requires(postun): /usr/sbin/userdel
 BuildRequires: gcc make doxygen pkgconfig libtrap-devel libxml2-devel
 Provides: nemea-supervisor
 
@@ -24,21 +26,36 @@ make -j5
 
 %install
 make -j5 DESTDIR=$RPM_BUILD_ROOT install
+mkdir -p $RPM_BUILD_ROOT/%{_localstatedir}/run/nemea-supervisor
+mkdir -p $RPM_BUILD_ROOT/%{_localstatedir}/log/nemea-supervisor
+
+%pre
+/usr/bin/getent group nemead >/dev/null || /usr/sbin/groupadd -r nemead
+/usr/bin/getent passwd nemead >/dev/null || /usr/sbin/useradd -r -d %{_sysconfdir}/nemea -s /sbin/nologin -g nemead nemead
 
 %post
 chkconfig --add nemea-supervisor 2> /dev/null || true
+systemctl daemon-reload
 systemctl enable nemea-supervisor.service 2> /dev/null || true
-cd %{_sysconfdir}/nemea && bash %{_bindir}/nemea/prepare_default_config.sh install
+cd %{_sysconfdir}/nemea && bash %{_bindir}/nemea/prepare_default_config.sh install > /dev/null
 %{_bindir}/nemea/set_default_nic.sh %{_sysconfdir}/nemea/supervisor_config.xml
+chown nemead:nemead %{_sysconfdir}/nemea/supervisor_config.xml
+chmod 644 %{_sysconfdir}/nemea/supervisor_config.xml
 
+%postun
+/usr/sbin/userdel nemead
 
 %files
 %{_bindir}/nemea/*
 %{_docdir}/nemea-supervisor/README.md
 %{_docdir}/nemea-supervisor/README.munin
-%config(noreplace) %{_sysconfdir}/nemea/supervisor_config.xml
 %{_sysconfdir}/init.d/nemea-supervisor
 %{_datarootdir}/munin/plugins/nemea_supervisor
 %{_datarootdir}/nemea-supervisor/*
 @SYSTEMD_SERVICE_FILE@
+%defattr(666, nemead, nemead)
+%{_localstatedir}/run/nemea-supervisor
+%defattr(666, nemead, nemead)
+%{_localstatedir}/log/nemea-supervisor
+%config(noreplace) %{_sysconfdir}/nemea/supervisor_config.xml
 
