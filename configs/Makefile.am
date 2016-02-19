@@ -10,6 +10,8 @@ EXTRA_DIST=amplification_detection.mkdir \
 	   set_default_nic.sh \
 	   supervisor.mkdir \
 	   traffic_repeater.sup \
+	   vportscandetector.mkdir \
+	   vportscandetector.sup \
 	   README.md
 
 BUILT_SOURCES=supervisor_config.xml
