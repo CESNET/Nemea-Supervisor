@@ -12,9 +12,9 @@
 </interface>
 <interface>
   <note/>
-  <type>UNIXSOCKET</type>
+  <type>TCP</type>
   <direction>OUT</direction>
-  <params>hs_nemea_reports</params>
+  <params>12002</params>
 </interface>
 </trapinterfaces>
 </module>
@@ -27,9 +27,25 @@
 <trapinterfaces>
 <interface>
   <note/>
-  <type>UNIXSOCKET</type>
+  <type>TCP</type>
   <direction>IN</direction>
-  <params>hs_nemea_reports</params>
+  <params>12002</params>
 </interface>
 </trapinterfaces>
 </module>
+
+<module>
+<name>hoststats2idea</name>
+<enabled>false</enabled>
+<path>python</path>
+<params>/usr/bin/nemea/hoststats2idea.py --name=cz.cesnet.nemea.hoststats --mongodb=nemeadb --mongodb-coll=alerts_new</params>
+<trapinterfaces>
+<interface>
+  <note/>
+  <type>TCP</type>
+  <direction>IN</direction>
+  <params>12002</params>
+</interface>
+</trapinterfaces>
+</module>
+
