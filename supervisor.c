@@ -4330,7 +4330,7 @@ parse_default_config_file:
                      if (errno == EACCES) {
                         VERBOSE(N_STDOUT, "%s [WARNING] I don't have permissions to read backup file with path \"%s\", I'm gonna load default config file!\n", get_formatted_time(), backup_file_name);
                      } else if (errno == ENOENT) {
-                        VERBOSE(N_STDOUT, "%s [WARNING] Backup file with path \"%s\" does not exist, I'm gonna load default config file!\n", get_formatted_time(), backup_file_name);
+                        VERBOSE(N_STDOUT, "%s [WARNING] Backup file does not exist, I'm gonna load default config file!\n", get_formatted_time());
                      }
                   } else {
                      VERBOSE(N_STDOUT,"%s [WARNING] Backup file with path \"%s\" was not parsed successfully, I'm gonna load default config file!\n", get_formatted_time(), backup_file_name);
@@ -4668,11 +4668,12 @@ parse_default_config_file:
    }
 
    // Print reload statistics
-   VERBOSE(N_STDOUT,"Inserted modules:\t%d\n", config_vars->inserted_modules);
-   VERBOSE(N_STDOUT,"Removed modules:\t%d\n", config_vars->removed_modules);
-   VERBOSE(N_STDOUT,"Modified modules:\t%d\n", config_vars->modified_modules);
-   VERBOSE(N_STDOUT,"Unmodified modules:\t%d\n", original_loaded_modules_cnt - config_vars->modified_modules - config_vars->removed_modules);
-
+   VERBOSE(N_STDOUT, "\n[RELOAD] Result:\n");
+   VERBOSE(N_STDOUT, "Inserted modules:\t%d\n", config_vars->inserted_modules);
+   VERBOSE(N_STDOUT, "Removed modules:\t%d\n", config_vars->removed_modules);
+   VERBOSE(N_STDOUT, "Modified modules:\t%d\n", config_vars->modified_modules);
+   VERBOSE(N_STDOUT, "Unmodified modules:\t%d\n", original_loaded_modules_cnt - config_vars->modified_modules - config_vars->removed_modules);
+   VERBOSE(N_STDOUT, "[RELOAD] Processing of the new configuration successfully finished.\n- - -\n");
    pthread_mutex_unlock(&running_modules_lock);
    free(config_vars);
    return TRUE;
