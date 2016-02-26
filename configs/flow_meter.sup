@@ -5,7 +5,6 @@
 <params>-I eth0</params>
 <trapinterfaces>
 <interface>
-  <note/>
   <type>UNIXSOCKET</type>
   <direction>OUT</direction>
   <params>flow_data_source</params>
@@ -20,7 +19,6 @@
 <params>-t -T -a /data/flow_meter/flows.log</params>
 <trapinterfaces>
 <interface>
-  <note/>
   <type>UNIXSOCKET</type>
   <direction>IN</direction>
   <params>flow_data_source</params>

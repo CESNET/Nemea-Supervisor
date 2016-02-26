@@ -5,13 +5,11 @@
 <params>-c /etc/nemea/hoststats.conf</params>
 <trapinterfaces>
 <interface>
-  <note/>
   <type>UNIXSOCKET</type>
   <direction>IN</direction>
   <params>flow_data_source</params>
 </interface>
 <interface>
-  <note/>
   <type>TCP</type>
   <direction>OUT</direction>
   <params>12002</params>
@@ -26,7 +24,6 @@
 <params>-t -T -a /data/hoststatsnemea/detected.log</params>
 <trapinterfaces>
 <interface>
-  <note/>
   <type>TCP</type>
   <direction>IN</direction>
   <params>12002</params>
@@ -41,7 +38,6 @@
 <params>/usr/bin/nemea/hoststats2idea.py --name=cz.cesnet.nemea.hoststats --mongodb=nemeadb --mongodb-coll=alerts_new</params>
 <trapinterfaces>
 <interface>
-  <note/>
   <type>TCP</type>
   <direction>IN</direction>
   <params>12002</params>
