@@ -4667,12 +4667,6 @@ parse_default_config_file:
       }
    }
 
-   // Check whether some module misses an attribute in it's interfaces
-   check_missing_interface_attributes();
-
-   // Check whether some modules have output interfaces with same port
-   check_duplicated_ports();
-
    // Print reload statistics
    VERBOSE(N_STDOUT,"Inserted modules:\t%d\n", config_vars->inserted_modules);
    VERBOSE(N_STDOUT,"Removed modules:\t%d\n", config_vars->removed_modules);
@@ -4683,85 +4677,6 @@ parse_default_config_file:
    free(config_vars);
    return TRUE;
 }
-
-void check_missing_interface_attributes()
-{
-   unsigned int x = 0, y = 0;
-
-   for (x = 0; x < loaded_modules_cnt; x++) {
-      if (running_modules[x].remove_module == FALSE) {
-         for (y = 0; y<running_modules[x].module_ifces_cnt; y++) {
-            if (running_modules[x].module_ifces[y].ifc_direction == NULL) {
-               VERBOSE(N_STDOUT, "[WARNING] Checking missing attributes - %s's interface %d doesn't have filled direction!\n", running_modules[x].module_name, y);
-               if (running_modules[x].module_ifces[y].int_ifc_type == SERVICE_MODULE_IFC_TYPE) {
-                  VERBOSE(N_STDOUT, "[INFO] Service interface must have \"SERVICE\" also in direction.\n");
-               }
-            }
-            if (running_modules[x].module_ifces[y].ifc_type == NULL) {
-               VERBOSE(N_STDOUT, "[WARNING] Checking missing attributes - %s's interface %d doesn't have filled type!\n", running_modules[x].module_name, y);
-               if (running_modules[x].module_ifces[y].int_ifc_direction == SERVICE_MODULE_IFC_DIRECTION) {
-                  VERBOSE(N_STDOUT, "[INFO] Service interface must have \"SERVICE\" also in type.\n");
-               }
-            }
-            if (running_modules[x].module_ifces[y].ifc_params == NULL) {
-               VERBOSE(N_STDOUT, "[WARNING] Checking missing attributes - %s's interface %d doesn't have filled params!\n", running_modules[x].module_name, y);
-            }
-         }
-      }
-   }
-}
-
-void check_duplicated_ports()
-{
-   unsigned int v = 0, x = 0, y = 0, z = 0;
-   char *port1 = NULL, *port2 = NULL;
-   int str_len_port1 = 0, str_len_port2 = 0;
-
-   for (v = 0; v < loaded_modules_cnt; v++) {
-      if (running_modules[v].remove_module == FALSE) {
-         for (x = 0; x < running_modules[v].module_ifces_cnt; x++) {
-            if ((running_modules[v].module_ifces[x].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) || (running_modules[v].module_ifces[x].int_ifc_direction == SERVICE_MODULE_IFC_DIRECTION)) {
-               for (y = (v+1); y < loaded_modules_cnt; y++) {
-                  if (running_modules[y].remove_module == FALSE) {
-                     for (z = 0; z < running_modules[y].module_ifces_cnt; z++) {
-                        if (running_modules[y].module_ifces[z].int_ifc_direction == running_modules[v].module_ifces[x].int_ifc_direction) {
-                           if (running_modules[v].module_ifces[x].int_ifc_type == running_modules[y].module_ifces[z].int_ifc_type &&
-                               (running_modules[v].module_ifces[x].ifc_params != NULL && running_modules[y].module_ifces[z].ifc_params != NULL)) {
-                              get_param_by_delimiter(running_modules[v].module_ifces[x].ifc_params, &port1, ',');
-                              get_param_by_delimiter(running_modules[y].module_ifces[z].ifc_params, &port2, ',');
-                              if (port1 != NULL && port2 != NULL) {
-                                 str_len_port1 = strlen(port1);
-                                 str_len_port2 = strlen(port2);
-                                 if (str_len_port1 == str_len_port2) {
-                                    if (strncmp(port1, port2, str_len_port1) == 0) {
-                                       VERBOSE(N_STDOUT, "[WARNING] Checking duplicated ports - %s's output interface %d has the same port as %s's output interface %d!\n",
-                                          running_modules[v].module_name, x, running_modules[y].module_name, z);
-                                    }
-                                 }
-                                 free(port1);
-                                 port1 = NULL;
-                                 str_len_port1 = 0;
-                                 free(port2);
-                                 port2 = NULL;
-                                 str_len_port2 = 0;
-                              } else if (port1 != NULL) {
-                                 free(port1);
-                                 port1 = NULL;
-                              } else if (port2 != NULL) {
-                                 free(port2);
-                                 port2 = NULL;
-                              }
-                           }
-                        }
-                     }
-                  }
-               }
-            }
-         }
-      }
-   }
-}
-
 
 
 /*****************************************************************

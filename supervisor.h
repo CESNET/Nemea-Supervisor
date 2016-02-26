@@ -353,8 +353,6 @@ void reload_check_module_allocated_interfaces(const int running_module_idx, cons
 void check_running_modules_allocated_memory();
 void reload_resolve_module_enabled(reload_config_vars_t **config_vars, const int modules_got_profile);
 int reload_configuration(const int choice, xmlNodePtr *node);
-void check_missing_interface_attributes();
-void check_duplicated_ports();
 /**@}*/
 
 
