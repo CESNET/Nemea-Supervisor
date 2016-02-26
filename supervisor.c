@@ -3169,6 +3169,71 @@ int parse_prog_args(int *argc, char **argv)
  * Reload function and functions used by reload *
  *****************************************************************/
 
+int reload_check_supervisor_element(reload_config_vars_t **config_vars)
+{
+   xmlChar *key = NULL;
+   int number = 0;
+   int basic_elements[2];
+   memset(basic_elements, 0, 2 * sizeof(int));
+   uint8_t restarts_elem_idx = 0, logsdir_elem_idx = 1;
+
+   while ((*config_vars)->module_elem != NULL) {
+      if (!xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "module-restarts")) {
+         basic_elements[restarts_elem_idx]++;
+         /* Check the number of found elements module-restarts (at most 1 is allowed) */
+         if (basic_elements[restarts_elem_idx] > 1) {
+            VERBOSE(N_STDOUT, "[ERROR] Too much \"module-restarts\" elements in \"supervisor\" element!\n");
+            goto error_label;
+         }
+         key = xmlNodeListGetString((*config_vars)->doc_tree_ptr, (*config_vars)->module_elem->xmlChildrenNode, 1);
+         if (key != NULL) {
+            /* The value in module-restarts element must be positive number (including 0) */
+            if ((sscanf((const char *) key,"%d",&number) != 1) || (number < 0)) {
+               VERBOSE(N_STDOUT, "[ERROR] Value in \"module-restarts\" element must be positive number!\n");
+               goto error_label;
+            }
+         } else {
+            /* Empty module-restarts element is not allowed */
+            VERBOSE(N_STDOUT, "[ERROR] Empty value in \"module-restarts\" element!\n");
+            goto error_label;
+         }
+      } else if (!xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "logs-directory")) {
+         basic_elements[logsdir_elem_idx]++;
+         /* Check the number of found elements logs-directory (at most 1 is allowed) */
+         if (basic_elements[logsdir_elem_idx] > 1) {
+            VERBOSE(N_STDOUT, "[ERROR] Too much \"logs-directory\" elements in \"supervisor\" element!\n");
+            goto error_label;
+         }
+         key = xmlNodeListGetString((*config_vars)->doc_tree_ptr, (*config_vars)->module_elem->xmlChildrenNode, 1);
+         if (key != NULL) {
+            // TODO check whether the directory can be created or not
+         } else {
+            /* Empty logs-directory element is not allowed */
+            VERBOSE(N_STDOUT, "[ERROR] Empty value in \"logs-directory\" element!\n");
+            goto error_label;
+         }
+      } else if (xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "text") != 0) {
+         /* All other elements are unexpected and are not allowed */
+         VERBOSE(N_STDOUT, "[ERROR] Unexpected element \"%s\" in \"supervisor\" element!\n", (char *)(*config_vars)->module_elem->name);
+         goto error_label;
+      }
+      if (key != NULL) {
+         xmlFree(key);
+         key = NULL;
+      }
+      (*config_vars)->module_elem = (*config_vars)->module_elem->next;
+   }
+
+   return 0;
+
+error_label:
+   if (key != NULL) {
+      xmlFree(key);
+      key = NULL;
+   }
+   return -1;
+}
+
 void reload_process_supervisor_element(reload_config_vars_t **config_vars)
 {
    xmlChar *key = NULL;
@@ -3275,6 +3340,100 @@ void reload_process_module_atribute(reload_config_vars_t **config_vars, char **m
    return;
 }
 
+int reload_check_interface_element(reload_config_vars_t **config_vars)
+{
+   xmlChar *key = NULL;
+   int basic_elements[4];
+   memset(basic_elements, 0, 4 * sizeof(int));
+   uint8_t note_elem_idx = 0, type_elem_idx = 1, dir_elem_idx = 2, params_elem_idx = 3;
+
+   while ((*config_vars)->ifc_atr_elem != NULL) {
+      if ((!xmlStrcmp((*config_vars)->ifc_atr_elem->name,BAD_CAST "note"))) {
+         basic_elements[note_elem_idx]++;
+         /* Check the number of found elements note (at most 1 is allowed) */
+         if (basic_elements[note_elem_idx] > 1) {
+            VERBOSE(N_STDOUT, "[ERROR] Too much \"note\" elements in \"interface\" element!\n");
+            goto error_label;
+         }
+         key = xmlNodeListGetString((*config_vars)->doc_tree_ptr, (*config_vars)->ifc_atr_elem->xmlChildrenNode, 1);
+         if (key == NULL) {
+            /* Empty note element is not allowed */
+            VERBOSE(N_STDOUT, "[ERROR] Empty value in \"note\" element!\n");
+            goto error_label;
+         }
+      } else if ((!xmlStrcmp((*config_vars)->ifc_atr_elem->name,BAD_CAST "type"))) {
+         basic_elements[type_elem_idx]++;
+         /* Check the number of found elements type (at most 1 is allowed) */
+         if (basic_elements[type_elem_idx] > 1) {
+            VERBOSE(N_STDOUT, "[ERROR] Too much \"type\" elements in \"interface\" element!\n");
+            goto error_label;
+         }
+         key = xmlNodeListGetString((*config_vars)->doc_tree_ptr, (*config_vars)->ifc_atr_elem->xmlChildrenNode, 1);
+         if (key != NULL) {
+            /* Only "TCP" or "UNIXSOCKET" values in element type are allowed */
+            if (xmlStrcmp(key, BAD_CAST "TCP") != 0 && xmlStrcmp(key, BAD_CAST "UNIXSOCKET") != 0) {
+               VERBOSE(N_STDOUT, "[ERROR] Expected one of {TCP,UNIXSOCKET} values in \"type\" element!\n");
+               goto error_label;
+            }
+         } else {
+            /* Empty type element is not allowed */
+            VERBOSE(N_STDOUT, "[ERROR] Empty value in \"type\" element!\n");
+            goto error_label;
+         }
+      } else if ((!xmlStrcmp((*config_vars)->ifc_atr_elem->name,BAD_CAST "direction"))) {
+         basic_elements[dir_elem_idx]++;
+         /* Check the number of found elements direction (at most 1 is allowed) */
+         if (basic_elements[dir_elem_idx] > 1) {
+            VERBOSE(N_STDOUT, "[ERROR] Too much \"direction\" elements in \"interface\" element!\n");
+            goto error_label;
+         }
+         key = xmlNodeListGetString((*config_vars)->doc_tree_ptr, (*config_vars)->ifc_atr_elem->xmlChildrenNode, 1);
+         if (key != NULL) {
+            /* Only "IN" or "OUT" values in element type are allowed */
+            if (xmlStrcmp(key, BAD_CAST "IN") != 0 && xmlStrcmp(key, BAD_CAST "OUT") != 0) {
+               VERBOSE(N_STDOUT, "[ERROR] Expected one of {IN,OUT} values in \"direction\" element!\n");
+               goto error_label;
+            }
+         } else {
+            /* Empty direction element is not allowed */
+            VERBOSE(N_STDOUT, "[ERROR] Empty value in \"direction\" element!\n");
+            goto error_label;
+         }
+      } else if ((!xmlStrcmp((*config_vars)->ifc_atr_elem->name,BAD_CAST "params"))) {
+         basic_elements[params_elem_idx]++;
+         /* Check the number of found elements params (at most 1 is allowed) */
+         if (basic_elements[params_elem_idx] > 1) {
+            VERBOSE(N_STDOUT, "[ERROR] Too much \"params\" elements in \"interface\" element!\n");
+            goto error_label;
+         }
+         key = xmlNodeListGetString((*config_vars)->doc_tree_ptr, (*config_vars)->ifc_atr_elem->xmlChildrenNode, 1);
+         if (key == NULL) {
+            /* Empty params element is not allowed */
+            VERBOSE(N_STDOUT, "[ERROR] Empty value in \"params\" element!\n");
+            goto error_label;
+         }
+      } else if (xmlStrcmp((*config_vars)->ifc_atr_elem->name, BAD_CAST "text") != 0) {
+         /* All other elements are unexpected and are not allowed */
+         VERBOSE(N_STDOUT, "[ERROR] Unexpected element \"%s\" in \"interface\" element!\n", (char *)(*config_vars)->ifc_atr_elem->name);
+         goto error_label;
+      }
+      (*config_vars)->ifc_atr_elem=(*config_vars)->ifc_atr_elem->next;
+      if (key != NULL) {
+         xmlFree(key);
+         key = NULL;
+      }
+   }
+
+   return 0;
+
+error_label:
+   if (key != NULL) {
+      xmlFree(key);
+      key = NULL;
+   }
+   return -1;
+}
+
 int reload_process_module_interface_atribute(reload_config_vars_t **config_vars, char **module_ifc_atr)
 {
    int str_len = 0;
@@ -3374,6 +3533,162 @@ void reload_check_modules_interfaces_count(reload_config_vars_t  **config_vars)
    }
 
    return;
+}
+
+int reload_check_module_element(reload_config_vars_t **config_vars, str_lst_t **first_module_name, str_lst_t **last_module_name)
+{
+   int number = 0;
+   str_lst_t *ptr1 = NULL;
+   char *new_module_name = NULL;
+   xmlChar *key = NULL;
+   int basic_elements[6], name_elem_idx = 0, path_elem_idx = 1, trapifc_elem_idx = 2, enabled_elem_idx = 3, restarts_elem_idx = 4, params_elem_idx = 5;
+   memset(basic_elements, 0, 6 * sizeof(int));
+
+   while ((*config_vars)->module_atr_elem != NULL) {
+      if ((!xmlStrcmp((*config_vars)->module_atr_elem->name, BAD_CAST "name"))) {
+         basic_elements[name_elem_idx]++;
+         /* Check the number of found elements name (at most 1 is allowed) */
+         if (basic_elements[name_elem_idx] > 1) {
+            VERBOSE(N_STDOUT, "[ERROR] Too much \"name\" elements in \"module\" element!\n");
+            goto error_label;
+         }
+         key = xmlNodeListGetString((*config_vars)->doc_tree_ptr, (*config_vars)->module_atr_elem->xmlChildrenNode, 1);
+         if (key != NULL) {
+            new_module_name = strdup((char *) key);
+            /* Add the module name to linked list */
+            if ((*first_module_name) == NULL) {
+               (*first_module_name) = (str_lst_t *) calloc(1, sizeof(str_lst_t));
+               (*first_module_name)->str = new_module_name;
+               (*first_module_name)->next = NULL;
+               (*last_module_name) = (*first_module_name);
+            } else {
+               ptr1 = (*first_module_name);
+               while (ptr1 != NULL) {
+                  // Check whether the module name is duplicated
+                  if ((strlen(new_module_name) == strlen(ptr1->str)) && strcmp(new_module_name, ptr1->str) == 0) {
+                     VERBOSE(N_STDOUT, "[ERROR] Duplicated module name \"%s\"\n", new_module_name);
+                     NULLP_TEST_AND_FREE(new_module_name)
+                     goto error_label;
+                  }
+                  ptr1 = ptr1->next;
+               }
+               ptr1 = (str_lst_t *) calloc(1, sizeof(str_lst_t));
+               ptr1->str = new_module_name;
+               ptr1->next = NULL;
+               (*last_module_name)->next = ptr1;
+               (*last_module_name) = ptr1;
+            }
+         } else {
+            /* Empty element name is not allowed */
+            VERBOSE(N_STDOUT, "[ERROR] Empty value in \"name\" element!\n");
+            goto error_label;
+         }
+      } else if (xmlStrcmp((*config_vars)->module_atr_elem->name, BAD_CAST "enabled") == 0) {
+         basic_elements[enabled_elem_idx]++;
+         /* Check the number of found elements enabled (at most 1 is allowed) */
+         if (basic_elements[enabled_elem_idx] > 1) {
+            VERBOSE(N_STDOUT, "[ERROR] Too much \"enabled\" elements in \"module\" element!\n");
+            goto error_label;
+         }
+         key = xmlNodeListGetString((*config_vars)->doc_tree_ptr, (*config_vars)->module_atr_elem->xmlChildrenNode, 1);
+         if (key != NULL) {
+            /* Only "true" or "false" values in element enabled are allowed */
+            if (xmlStrcmp(key, BAD_CAST "true") != 0 && xmlStrcmp(key, BAD_CAST "false") != 0) {
+               VERBOSE(N_STDOUT, "[ERROR] Expected one of {true,false} values in \"enabled\" element!\n");
+               goto error_label;
+            }
+         } else {
+            /* Empty element enabled is not allowed */
+            VERBOSE(N_STDOUT, "[ERROR] Empty value in \"enabled\" element!\n");
+            goto error_label;
+         }
+      } else if ((!xmlStrcmp((*config_vars)->module_atr_elem->name,BAD_CAST "path"))) {
+         basic_elements[path_elem_idx]++;
+         /* Check the number of found elements path (at most 1 is allowed) */
+         if (basic_elements[path_elem_idx] > 1) {
+            VERBOSE(N_STDOUT, "[ERROR] Too much \"path\" elements in \"module\" element!\n");
+            goto error_label;
+         }
+         key = xmlNodeListGetString((*config_vars)->doc_tree_ptr, (*config_vars)->module_atr_elem->xmlChildrenNode, 1);
+         if (key != NULL) {
+            // TODO check whether the directory can be created or not
+         } else {
+            /* Empty element path is not allowed */
+            VERBOSE(N_STDOUT, "[ERROR] Empty value in \"path\" element!\n");
+            goto error_label;
+         }
+      } else if ((!xmlStrcmp((*config_vars)->module_atr_elem->name,BAD_CAST "trapinterfaces"))) {
+         basic_elements[trapifc_elem_idx]++;
+         /* Check the number of found elements trapinterfaces (at most 1 is allowed) */
+         if (basic_elements[trapifc_elem_idx] > 1) {
+            VERBOSE(N_STDOUT, "[ERROR] Too much \"trapinterfaces\" elements in \"module\" element!\n");
+            goto error_label;
+         }
+      } else if (!xmlStrcmp((*config_vars)->module_atr_elem->name, BAD_CAST "module-restarts")) {
+         basic_elements[restarts_elem_idx]++;
+         /* Check the number of found elements module-restarts (at most 1 is allowed) */
+         if (basic_elements[restarts_elem_idx] > 1) {
+            VERBOSE(N_STDOUT, "[ERROR] Too much \"module-restarts\" elements in \"module\" element!\n");
+            goto error_label;
+         }
+         key = xmlNodeListGetString((*config_vars)->doc_tree_ptr, (*config_vars)->module_atr_elem->xmlChildrenNode, 1);
+         if (key != NULL) {
+            /* The value in module-restarts element must be positive number (including 0) */
+            if ((sscanf((const char *) key,"%d",&number) != 1) || (number < 0)) {
+               VERBOSE(N_STDOUT, "[ERROR] Value in \"module-restarts\" element must be positive number!\n");
+               goto error_label;
+            }
+         } else {
+            /* Empty module-restarts element is not allowed */
+            VERBOSE(N_STDOUT, "[ERROR] Empty value in \"module-restarts\" element!\n");
+            goto error_label;
+         }
+
+      } else if ((!xmlStrcmp((*config_vars)->module_atr_elem->name,BAD_CAST "params"))) {
+         basic_elements[params_elem_idx]++;
+         /* Check the number of found elements params (at most 1 is allowed) */
+         if (basic_elements[params_elem_idx] > 1) {
+            VERBOSE(N_STDOUT, "[ERROR] Too much \"params\" elements in \"module\" element!\n");
+            goto error_label;
+         }
+         key = xmlNodeListGetString((*config_vars)->doc_tree_ptr, (*config_vars)->module_atr_elem->xmlChildrenNode, 1);
+         if (key == NULL) {
+            /* Empty element params is not allowed */
+            VERBOSE(N_STDOUT, "[ERROR] Empty value in \"params\" element!\n");
+            goto error_label;
+         }
+      } else if (xmlStrcmp((*config_vars)->module_atr_elem->name, BAD_CAST "text") != 0) {
+         /* All other elements are unexpected and are not allowed */
+         VERBOSE(N_STDOUT, "[ERROR] Unexpected element \"%s\" in \"module\" element!\n", (char *)(*config_vars)->module_atr_elem->name);
+         goto error_label;
+      }
+      if (key != NULL) {
+         xmlFree(key);
+         key = NULL;
+      }
+      (*config_vars)->module_atr_elem = (*config_vars)->module_atr_elem->next;
+   }
+
+   /* Check whether the mandatory elements were found */
+   if (basic_elements[name_elem_idx] == 0) {
+      VERBOSE(N_STDOUT, "[ERROR] Missing \"name\" element in \"module\" element!\n");
+      goto error_label;
+   } else if (basic_elements[path_elem_idx] == 0) {
+      VERBOSE(N_STDOUT, "[ERROR] Missing \"path\" element in \"module\" element!\n");
+      goto error_label;
+   } else if (basic_elements[enabled_elem_idx] == 0) {
+      VERBOSE(N_STDOUT, "[ERROR] Missing \"enabled\" element in \"module\" element!\n");
+      goto error_label;
+   }
+
+   return 0;
+
+error_label:
+   if (key != NULL) {
+      xmlFree(key);
+      key = NULL;
+   }
+   return -1;
 }
 
 int reload_find_and_check_module_basic_elements(reload_config_vars_t **config_vars)
@@ -3503,6 +3818,95 @@ int reload_find_and_check_module_basic_elements(reload_config_vars_t **config_va
    }
 
    return 0;
+}
+
+int reload_check_modules_element(reload_config_vars_t **config_vars, str_lst_t **first_profile_name, str_lst_t **last_profile_name)
+{
+   str_lst_t *ptr1 = NULL;
+   char *new_profile_name = NULL;
+   xmlChar *key = NULL;
+   int basic_elements[2], name_elem_idx = 0, enabled_elem_idx = 1;
+   memset(basic_elements, 0, 2*sizeof(int));
+
+   while ((*config_vars)->module_elem != NULL) {
+      if (xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "name") == 0) {
+         basic_elements[name_elem_idx]++;
+         /* Check the number of found elements name (at most 1 is allowed) */
+         if (basic_elements[name_elem_idx] > 1) {
+            VERBOSE(N_STDOUT, "[ERROR] Too much \"name\" elements in \"modules\" element!\n");
+            goto error_label;
+         }
+         key = xmlNodeListGetString((*config_vars)->doc_tree_ptr, (*config_vars)->module_elem->xmlChildrenNode, 1);
+         if (key != NULL) {
+            new_profile_name = strdup((char *) key);
+            /* Add the profile name to linked list */
+            if ((*first_profile_name) == NULL) {
+               (*first_profile_name) = (str_lst_t *) calloc(1, sizeof(str_lst_t));
+               (*first_profile_name)->str = new_profile_name;
+               (*first_profile_name)->next = NULL;
+               (*last_profile_name) = (*first_profile_name);
+            } else {
+               ptr1 = (*first_profile_name);
+               while (ptr1 != NULL) {
+                  // Check whether the profile name is duplicated
+                  if ((strlen(new_profile_name) == strlen(ptr1->str)) && strcmp(new_profile_name, ptr1->str) == 0) {
+                     VERBOSE(N_STDOUT, "[ERROR] Duplicated profile name \"%s\"\n", new_profile_name);
+                     NULLP_TEST_AND_FREE(new_profile_name)
+                     goto error_label;
+                  }
+                  ptr1 = ptr1->next;
+               }
+               ptr1 = (str_lst_t *) calloc(1, sizeof(str_lst_t));
+               ptr1->str = new_profile_name;
+               ptr1->next = NULL;
+               (*last_profile_name)->next = ptr1;
+               (*last_profile_name) = ptr1;
+            }
+         } else {
+            /* Empty element name is not allowed */
+            VERBOSE(N_STDOUT, "[ERROR] Empty value in \"name\" element!\n");
+            goto error_label;
+         }
+      } else if (xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "enabled") == 0) {
+         basic_elements[enabled_elem_idx]++;
+         /* Check the number of found elements enabled (at most 1 is allowed) */
+         if (basic_elements[enabled_elem_idx] > 1) {
+            VERBOSE(N_STDOUT, "[ERROR] Too much \"enabled\" elements in \"modules\" element!\n");
+            goto error_label;
+         }
+         key = xmlNodeListGetString((*config_vars)->doc_tree_ptr, (*config_vars)->module_elem->xmlChildrenNode, 1);
+         if (key != NULL) {
+            /* Only "true" or "false" values in element enabled are allowed */
+            if (xmlStrcmp(key, BAD_CAST "true") != 0 && xmlStrcmp(key, BAD_CAST "false") != 0) {
+               VERBOSE(N_STDOUT, "[ERROR] Expected one of {true,false} values in \"enabled\" element!\n");
+               goto error_label;
+            }
+         } else {
+            /* Empty element enabled is not allowed */
+            VERBOSE(N_STDOUT, "[ERROR] Empty value in \"enabled\" element!\n");
+            goto error_label;
+         }
+      } else if (xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "module") != 0 && xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "text") != 0) {
+         /* All other elements except "module" element are unexpected and are not allowed */
+         VERBOSE(N_STDOUT, "[ERROR] Unexpected element \"%s\" in \"modules\" element!\n", (char *)(*config_vars)->module_elem->name);
+         goto error_label;
+      }
+
+      if (key != NULL) {
+         xmlFree(key);
+         key = NULL;
+      }
+      (*config_vars)->module_elem = (*config_vars)->module_elem->next;
+   }
+
+   return 0;
+
+error_label:
+   if (key != NULL) {
+      xmlFree(key);
+      key = NULL;
+   }
+   return -1;
 }
 
 int reload_find_and_check_modules_profile_basic_elements(reload_config_vars_t **config_vars)
@@ -3734,9 +4138,152 @@ void reload_resolve_module_enabled(reload_config_vars_t **config_vars, const int
    return;
 }
 
+int validate_configuration(reload_config_vars_t **config_vars)
+{
+   int ret_val = 0;
+   uint8_t supervisor_elem_cnt = 0;
+   str_lst_t *first_module_name = NULL, *last_module_name = NULL;
+   str_lst_t *first_profile_name = NULL, *last_profile_name = NULL;
+   str_lst_t *ptr1 = NULL;
+
+   VERBOSE(N_STDOUT, "- - -\n[RELOAD] Validating the configuration file...\n");
+
+   /* Basic tests of the document */
+   if ((*config_vars)->root_node == NULL) {
+      VERBOSE(N_STDOUT,"[ERROR] Empty document.\n");
+      ret_val = -1;
+      goto end_label;
+   } else if (xmlStrcmp((*config_vars)->root_node->name, BAD_CAST "nemea-supervisor")) {
+      VERBOSE(N_STDOUT,"[ERROR] Document of the wrong type, missing root element \"nemea-supervisor\".\n");
+      ret_val = -1;
+      goto end_label;
+   } else if ((*config_vars)->root_node->xmlChildrenNode == NULL) {
+      VERBOSE(N_STDOUT,"[ERROR] There is no child element of the root element \"nemea-supervisor\".\n");
+      ret_val = -1;
+      goto end_label;
+   }
+
+   (*config_vars)->current_node = (*config_vars)->root_node->xmlChildrenNode;
+
+   while ((*config_vars)->current_node != NULL) {
+      if (!xmlStrcmp((*config_vars)->current_node->name, BAD_CAST "supervisor")) {
+         supervisor_elem_cnt++;
+         /* Check the number of found elements supervisor (at most 1 is allowed) */
+         if (supervisor_elem_cnt > 1) {
+            VERBOSE(N_STDOUT, "[ERROR] Too much \"supervisor\" elements!\n");
+            ret_val = -1;
+            goto end_label;
+         }
+         (*config_vars)->module_elem = (*config_vars)->current_node->xmlChildrenNode;
+         if ((*config_vars)->module_elem == NULL) {
+            /* Empty element supervisor is not allowed */
+            VERBOSE(N_STDOUT, "[ERROR] Empty element \"supervisor\".\n");
+            ret_val = -1;
+            goto end_label;
+         }
+         if (reload_check_supervisor_element(config_vars) == -1) {
+            ret_val = -1;
+            goto end_label;
+         }
+      } else if (!xmlStrcmp((*config_vars)->current_node->name, BAD_CAST "modules")) {
+         (*config_vars)->module_elem = (*config_vars)->current_node->xmlChildrenNode;
+         if ((*config_vars)->module_elem == NULL) {
+            /* Empty element modules is not allowed */
+            VERBOSE(N_STDOUT, "[ERROR] Empty element \"modules\".\n");
+            ret_val = -1;
+            goto end_label;
+         }
+         (*config_vars)->module_atr_elem = NULL, (*config_vars)->ifc_elem = NULL, (*config_vars)->ifc_atr_elem = NULL;
+         if (reload_check_modules_element(config_vars, &first_profile_name, &last_profile_name) == -1) {
+            ret_val = -1;
+            goto end_label;
+         }
+         (*config_vars)->module_elem = (*config_vars)->current_node->xmlChildrenNode;
+
+         while ((*config_vars)->module_elem != NULL) {
+            if (!xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "module")) {
+               (*config_vars)->module_atr_elem = (*config_vars)->module_elem->xmlChildrenNode;
+               if ((*config_vars)->module_atr_elem == NULL) {
+                  /* Empty element module is not allowed */
+                  VERBOSE(N_STDOUT, "[ERROR] Empty element \"module\".\n");
+                  ret_val = -1;
+                  goto end_label;
+               }
+               if (reload_check_module_element(config_vars, &first_module_name, &last_module_name) == -1) {
+                  ret_val = -1;
+                  goto end_label;
+               }
+
+               (*config_vars)->module_atr_elem = (*config_vars)->module_elem->xmlChildrenNode;
+
+               while ((*config_vars)->module_atr_elem != NULL) {
+                  if ((!xmlStrcmp((*config_vars)->module_atr_elem->name,BAD_CAST "trapinterfaces"))) {
+                     (*config_vars)->ifc_elem = (*config_vars)->module_atr_elem->xmlChildrenNode;
+
+                     while ((*config_vars)->ifc_elem != NULL) {
+                        if (!xmlStrcmp((*config_vars)->ifc_elem->name,BAD_CAST "interface")) {
+                           (*config_vars)->ifc_atr_elem = (*config_vars)->ifc_elem->xmlChildrenNode;
+
+                           if ((*config_vars)->ifc_atr_elem == NULL) {
+                              /* Empty element interface is not allowed */
+                              VERBOSE(N_STDOUT, "[ERROR] Empty element \"interface\".\n");
+                              ret_val = -1;
+                              goto end_label;
+                           }
+                           if (reload_check_interface_element(config_vars) == -1) {
+                              ret_val = -1;
+                              goto end_label;
+                           }
+                        } else if (xmlStrcmp((*config_vars)->ifc_elem->name, BAD_CAST "text") != 0) {
+                           /* All other elements are unexpected and are not allowed */
+                           VERBOSE(N_STDOUT, "[ERROR] Unexpected element \"%s\" in \"trapinterfaces\" element!\n", (char *)(*config_vars)->ifc_elem->name);
+                           ret_val = -1;
+                           goto end_label;
+                        }
+                        (*config_vars)->ifc_elem = (*config_vars)->ifc_elem->next;
+                     }
+                  }
+
+                  (*config_vars)->module_atr_elem = (*config_vars)->module_atr_elem->next;
+               }
+            }
+            (*config_vars)->module_elem = (*config_vars)->module_elem->next;
+         }
+      }
+      (*config_vars)->current_node = (*config_vars)->current_node->next;
+   }
+
+end_label:
+   ptr1 = NULL;
+   // free linked list of module names
+   while (first_module_name != NULL) {
+      ptr1 = first_module_name;
+      first_module_name = first_module_name->next;
+      NULLP_TEST_AND_FREE(ptr1->str)
+      NULLP_TEST_AND_FREE(ptr1)
+   }
+   ptr1 = NULL;
+   // free linked list of profile names
+   while (first_profile_name != NULL) {
+      ptr1 = first_profile_name;
+      first_profile_name = first_profile_name->next;
+      NULLP_TEST_AND_FREE(ptr1->str)
+      NULLP_TEST_AND_FREE(ptr1)
+   }
+   if (ret_val == 0) {
+      VERBOSE(N_STDOUT, "[RELOAD] Validation of the configuration file successfully finished.\n- - -\n");
+      return 0;
+   }
+   VERBOSE(N_STDOUT, "[RELOAD] Validation of the configuration file failed.\n- - -\n");
+   return -1;
+}
+
+
 int reload_configuration(const int choice, xmlNodePtr *node)
 {
    pthread_mutex_lock(&running_modules_lock);
+   modules_profile_t *ptr1 = NULL, *ptr2 = NULL;
+   int ret_val = 0;
    FILE *tmp_err = NULL;
    char *backup_file_name = NULL;
    int modules_got_profile;
@@ -3767,6 +4314,7 @@ parse_default_config_file:
                   } else {
                      VERBOSE(N_STDOUT,"%s [WARNING] Config file with path \"%s\" was not parsed successfully!\n", get_formatted_time(), config_file);
                   }
+                  NULLP_TEST_AND_FREE(backup_file_name)
                   pthread_mutex_unlock(&running_modules_lock);
                   xmlCleanupParser();
                   free(config_vars);
@@ -3799,7 +4347,7 @@ parse_default_config_file:
                }
             }
             NULLP_TEST_AND_FREE(backup_file_name)
-            config_vars->current_node = xmlDocGetRootElement(config_vars->doc_tree_ptr);
+            config_vars->root_node = xmlDocGetRootElement(config_vars->doc_tree_ptr);
          }
          break;
 
@@ -3811,11 +4359,11 @@ parse_default_config_file:
             free(config_vars);
             return FALSE;
          }
-         config_vars->current_node = xmlDocGetRootElement(config_vars->doc_tree_ptr);
+         config_vars->root_node = xmlDocGetRootElement(config_vars->doc_tree_ptr);
          break;
 
       case RELOAD_CALLBACK_ROOT_ELEM:
-         config_vars->current_node = *node;
+         config_vars->root_node = *node;
          break;
 
       case RELOAD_INTERACTIVE: {
@@ -3852,7 +4400,7 @@ parse_default_config_file:
             free(config_vars);
             return FALSE;
          }
-         config_vars->current_node = xmlDocGetRootElement(config_vars->doc_tree_ptr);
+         config_vars->root_node = xmlDocGetRootElement(config_vars->doc_tree_ptr);
          break;
       }
 
@@ -3863,8 +4411,10 @@ parse_default_config_file:
          return FALSE;
    }
 
-   if (config_vars->current_node == NULL) {
-      VERBOSE(DEBUG,"[WARNING] Reload error - empty document.\n");
+   // Validate configuration file
+   ret_val = validate_configuration(&config_vars);
+
+   if (ret_val == -1) { // error
       // do not free libnetconf xml structures or parsers data!!!
       if (choice != RELOAD_CALLBACK_ROOT_ELEM) {
          xmlFreeDoc(config_vars->doc_tree_ptr);
@@ -3875,35 +4425,13 @@ parse_default_config_file:
       return FALSE;
    }
 
-   if (xmlStrcmp(config_vars->current_node->name, BAD_CAST "nemea-supervisor")) {
-      VERBOSE(DEBUG,"[WARNING] Reload error - document of the wrong type, root node != nemea-supervisor.\n");
-      // do not free libnetconf xml structures or parsers data!!!
-      if (choice != RELOAD_CALLBACK_ROOT_ELEM) {
-         xmlFreeDoc(config_vars->doc_tree_ptr);
-         xmlCleanupParser();
-      }
-      pthread_mutex_unlock(&running_modules_lock);
-      free(config_vars);
-      return FALSE;
-   }
 
-   if (config_vars->current_node->xmlChildrenNode == NULL) {
-      VERBOSE(DEBUG,"[WARNING] Reload error - no child of nemea-supervisor element found.\n");
-      // do not free libnetconf xml structures or parsers data!!!
-      if (choice != RELOAD_CALLBACK_ROOT_ELEM) {
-         xmlFreeDoc(config_vars->doc_tree_ptr);
-         xmlCleanupParser();
-      }
-      pthread_mutex_unlock(&running_modules_lock);
-      free(config_vars);
-      return FALSE;
-   }
 
    // Print XML configuration to supervisor debug log
    VERBOSE(DEBUG, "\n\n%s [DEBUG] Request to reload this configuration --->\n\n", get_formatted_time());
-   print_xmlDoc_to_stream(config_vars->current_node->doc, supervisor_debug_log_fd);
+   print_xmlDoc_to_stream(config_vars->root_node->doc, supervisor_debug_log_fd);
 
-   config_vars->current_node = config_vars->current_node->xmlChildrenNode;
+   config_vars->current_node = config_vars->root_node->xmlChildrenNode;
 
    /*****************/
    for (x=0; x<running_modules_array_size; x++) {
@@ -3916,19 +4444,19 @@ parse_default_config_file:
       running_modules[x].remove_module = FALSE;
    }
 
-   modules_profile_t * ptr = first_profile_ptr;
-   modules_profile_t * p = NULL;
-   while (ptr != NULL) {
-      p = ptr;
-      ptr = ptr->next;
-      NULLP_TEST_AND_FREE(p->profile_name)
-      NULLP_TEST_AND_FREE(p)
+   ptr1 = first_profile_ptr;
+   ptr2 = NULL;
+   while (ptr1 != NULL) {
+      ptr2 = ptr1;
+      ptr1 = ptr1->next;
+      NULLP_TEST_AND_FREE(ptr2->profile_name)
+      NULLP_TEST_AND_FREE(ptr2)
    }
    first_profile_ptr = NULL;
    actual_profile_ptr = NULL;
 
    /*****************/
-   VERBOSE(N_STDOUT,"- - -\n[RELOAD] Processing new configuration...\n");
+   VERBOSE(N_STDOUT,"[RELOAD] Processing new configuration...\n");
 
    while (config_vars->current_node != NULL) {
       if (!xmlStrcmp(config_vars->current_node->name, BAD_CAST "supervisor")) {

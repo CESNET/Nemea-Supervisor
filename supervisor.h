@@ -109,6 +109,13 @@ const char sup_package_version[] __attribute__((used)) = PACKAGE_VERSION;
 const char sup_git_version[] __attribute__((used)) = GIT_VERSION;
 
 /***********STRUCTURES***********/
+typedef struct str_lst_s str_lst_t;
+
+/* Structure used as a linked list of strings */
+struct str_lst_s {
+   char *str;
+   str_lst_t *next;
+};
 
 typedef struct in_ifc_stats_s {
    uint64_t recv_msg_cnt;
@@ -216,6 +223,7 @@ typedef struct server_internals_s {
 
 typedef struct reload_config_vars_s {
    xmlDocPtr doc_tree_ptr;
+   xmlNodePtr root_node;
    xmlNodePtr current_node;
    xmlNodePtr module_elem;
    xmlNodePtr module_atr_elem;
