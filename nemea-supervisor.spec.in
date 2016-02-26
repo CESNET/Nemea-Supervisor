@@ -53,9 +53,9 @@ chmod 644 %{_sysconfdir}/nemea/supervisor_config.xml
 %{_datarootdir}/munin/plugins/nemea_supervisor
 %{_datarootdir}/nemea-supervisor/*
 @SYSTEMD_SERVICE_FILE@
-%defattr(666, nemead, nemead)
+%defattr(755, nemead, nemead)
 %{_localstatedir}/run/nemea-supervisor
-%defattr(666, nemead, nemead)
+%defattr(755, nemead, nemead)
 %{_localstatedir}/log/nemea-supervisor
 %config(noreplace) %{_sysconfdir}/nemea/supervisor_config.xml
 
