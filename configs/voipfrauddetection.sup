@@ -1,0 +1,33 @@
+<module>
+<name>voip_fraud_detection</name>
+<enabled>true</enabled>
+<path>/usr/bin/nemea/voip_fraud_detection</path>
+<params>-o -w -l /data/voip_faud_detection/log</params>
+<trapinterfaces>
+<interface>
+  <type>TCP</type>
+  <direction>IN</direction>
+  <params>7501</params>
+</interface>
+<interface>
+  <type>TCP</type>
+  <direction>OUT</direction>
+  <params>12003</params>
+</interface>
+</trapinterfaces>
+</module>
+
+<module>
+<name>vportscan_agg_logger</name>
+<enabled>true</enabled>
+<path>/usr/bin/nemea/logger</path>
+<params>-t -T -a /data/voip_fraud_detection/alerts.log</params>
+<trapinterfaces>
+<interface>
+  <type>TCP</type>
+  <direction>IN</direction>
+  <params>12003</params>
+</interface>
+</trapinterfaces>
+</module>
+
