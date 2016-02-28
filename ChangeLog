@@ -1,2 +1,7 @@
+2016-02-28 supervisor-1.3.0
+	* service runs as nemead uid
+	* add config of some modules
+	* improved validation of configuration
+
 2016-02-17 (Marek Svepes) supervisor: solved path to socket after installation
 2016-02-16 (Tomas Jansky) supervisor: published at GitHub, created first release
