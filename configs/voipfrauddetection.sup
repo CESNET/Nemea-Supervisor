@@ -2,7 +2,7 @@
 <name>voip_fraud_detection</name>
 <enabled>true</enabled>
 <path>/usr/bin/nemea/voip_fraud_detection</path>
-<params>-o -w -l /data/voip_faud_detection/log</params>
+<params>-o -w -l /data/voip_fraud_detection/log</params>
 <trapinterfaces>
 <interface>
   <type>TCP</type>
