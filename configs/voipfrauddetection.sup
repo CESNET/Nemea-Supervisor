@@ -18,7 +18,7 @@
 </module>
 
 <module>
-<name>vportscan_agg_logger</name>
+<name>voip_fraud_logger</name>
 <enabled>true</enabled>
 <path>/usr/bin/nemea/logger</path>
 <params>-t -T -a /data/voip_fraud_detection/alerts.log</params>
