@@ -6,6 +6,7 @@ EXTRA_DIST=amplification_detection.mkdir \
 	   hoststats.sup \
 	   ipblacklistfilter.mkdir \
 	   ipblacklistfilter.sup \
+      ipfixcol.sup \
 	   prepare_default_config.sh \
 	   set_default_nic.sh \
 	   supervisor.mkdir \
