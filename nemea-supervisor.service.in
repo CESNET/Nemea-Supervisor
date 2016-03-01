@@ -29,6 +29,9 @@ ExecReload=@bindir@/nemea-supervisor restart
 ExecStop=@bindir@/nemea-supervisor stop
 KillMode=none
 PrivateTmp=false
+PermissionsStartOnly=true
+ExecStartPre=/usr/bin/mkdir -p @rundir@/nemea-supervisor
+ExecStartPre=/usr/bin/chown -R nemead:nemead @rundir@/nemea-supervisor
 
 [Install]
 WantedBy=multi-user.target
