@@ -1,0 +1,54 @@
+<?xml version="1.0"?>
+<nemea-supervisor>
+
+  <modules>
+    <name>Example profile</name>
+    <enabled>true</enabled>
+
+    <module>
+      <name>traffic_repeater_example</name>
+      <enabled>true</enabled>
+      <path>/usr/bin/nemea/traffic_repeater</path>
+      <params>-v</params>
+      <trapinterfaces>
+        <interface>
+          <type>TCP</type>
+          <direction>IN</direction>
+          <params>7600</params>
+        </interface>
+        <interface>
+          <type>UNIXSOCKET</type>
+          <direction>OUT</direction>
+          <params>trafrep_example_output</params>
+        </interface>
+      </trapinterfaces>
+    </module>
+  </modules>
+
+  <modules>
+    <name>Data sources</name>
+    <enabled>true</enabled>
+    <!-- include ipfixcol.sup -->
+    <!-- include flow_meter.sup -->
+  </modules>  
+  
+  <modules>
+    <name>Vportscan detection</name>
+    <enabled>true</enabled>
+    <!-- include vportscandetector.sup -->
+  </modules>
+
+  <modules>
+    <name>Voipfraud detection</name>
+    <enabled>true</enabled>
+    <!-- include voipfrauddetection.sup -->
+  </modules>
+
+  <modules>
+    <name>Detection</name>
+    <enabled>true</enabled>
+    <!-- include ipblacklistfilter.sup -->
+    <!-- include hoststats.sup -->
+    <!-- include amplification_detection.sup -->
+  </modules>
+</nemea-supervisor>
