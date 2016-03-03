@@ -3178,7 +3178,7 @@ int reload_check_supervisor_element(reload_config_vars_t **config_vars)
    uint8_t restarts_elem_idx = 0, logsdir_elem_idx = 1;
 
    while ((*config_vars)->module_elem != NULL) {
-      if (!xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "module-restarts")) {
+      if ((*config_vars)->module_elem->type == XML_ELEMENT_NODE && (xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "module-restarts") == 0)) {
          basic_elements[restarts_elem_idx]++;
          /* Check the number of found elements module-restarts (at most 1 is allowed) */
          if (basic_elements[restarts_elem_idx] > 1) {
@@ -3197,7 +3197,7 @@ int reload_check_supervisor_element(reload_config_vars_t **config_vars)
             VERBOSE(N_STDOUT, "[ERROR] Empty value in \"module-restarts\" element!\n");
             goto error_label;
          }
-      } else if (!xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "logs-directory")) {
+      } else if ((*config_vars)->module_elem->type == XML_ELEMENT_NODE && (xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "logs-directory") == 0)) {
          basic_elements[logsdir_elem_idx]++;
          /* Check the number of found elements logs-directory (at most 1 is allowed) */
          if (basic_elements[logsdir_elem_idx] > 1) {
@@ -3212,9 +3212,11 @@ int reload_check_supervisor_element(reload_config_vars_t **config_vars)
             VERBOSE(N_STDOUT, "[ERROR] Empty value in \"logs-directory\" element!\n");
             goto error_label;
          }
-      } else if (xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "text") != 0) {
-         /* All other elements are unexpected and are not allowed */
-         VERBOSE(N_STDOUT, "[ERROR] Unexpected element \"%s\" in \"supervisor\" element!\n", (char *)(*config_vars)->module_elem->name);
+      } else if ((*config_vars)->module_elem->type == XML_COMMENT_NODE || (*config_vars)->module_elem->type == XML_TEXT_NODE) {
+         // Nothing to do here
+      } else {
+         /* All other nodes are unexpected and are not allowed */
+         VERBOSE(N_STDOUT, "[ERROR] Unexpected node (type: %d, name: %s) in \"supervisor\" element!\n", (*config_vars)->module_elem->type, (char *)(*config_vars)->module_elem->name);
          goto error_label;
       }
       if (key != NULL) {
@@ -3348,7 +3350,7 @@ int reload_check_interface_element(reload_config_vars_t **config_vars)
    uint8_t note_elem_idx = 0, type_elem_idx = 1, dir_elem_idx = 2, params_elem_idx = 3;
 
    while ((*config_vars)->ifc_atr_elem != NULL) {
-      if ((!xmlStrcmp((*config_vars)->ifc_atr_elem->name,BAD_CAST "note"))) {
+      if ((*config_vars)->ifc_atr_elem->type == XML_ELEMENT_NODE && (xmlStrcmp((*config_vars)->ifc_atr_elem->name,BAD_CAST "note") == 0)) {
          basic_elements[note_elem_idx]++;
          /* Check the number of found elements note (at most 1 is allowed) */
          if (basic_elements[note_elem_idx] > 1) {
@@ -3361,7 +3363,7 @@ int reload_check_interface_element(reload_config_vars_t **config_vars)
             VERBOSE(N_STDOUT, "[ERROR] Empty value in \"note\" element!\n");
             goto error_label;
          }
-      } else if ((!xmlStrcmp((*config_vars)->ifc_atr_elem->name,BAD_CAST "type"))) {
+      } else if ((*config_vars)->ifc_atr_elem->type == XML_ELEMENT_NODE && (xmlStrcmp((*config_vars)->ifc_atr_elem->name,BAD_CAST "type") == 0)) {
          basic_elements[type_elem_idx]++;
          /* Check the number of found elements type (at most 1 is allowed) */
          if (basic_elements[type_elem_idx] > 1) {
@@ -3380,7 +3382,7 @@ int reload_check_interface_element(reload_config_vars_t **config_vars)
             VERBOSE(N_STDOUT, "[ERROR] Empty value in \"type\" element!\n");
             goto error_label;
          }
-      } else if ((!xmlStrcmp((*config_vars)->ifc_atr_elem->name,BAD_CAST "direction"))) {
+      } else if ((*config_vars)->ifc_atr_elem->type == XML_ELEMENT_NODE && (xmlStrcmp((*config_vars)->ifc_atr_elem->name,BAD_CAST "direction") == 0)) {
          basic_elements[dir_elem_idx]++;
          /* Check the number of found elements direction (at most 1 is allowed) */
          if (basic_elements[dir_elem_idx] > 1) {
@@ -3399,7 +3401,7 @@ int reload_check_interface_element(reload_config_vars_t **config_vars)
             VERBOSE(N_STDOUT, "[ERROR] Empty value in \"direction\" element!\n");
             goto error_label;
          }
-      } else if ((!xmlStrcmp((*config_vars)->ifc_atr_elem->name,BAD_CAST "params"))) {
+      } else if ((*config_vars)->ifc_atr_elem->type == XML_ELEMENT_NODE && (xmlStrcmp((*config_vars)->ifc_atr_elem->name,BAD_CAST "params") == 0)) {
          basic_elements[params_elem_idx]++;
          /* Check the number of found elements params (at most 1 is allowed) */
          if (basic_elements[params_elem_idx] > 1) {
@@ -3412,9 +3414,11 @@ int reload_check_interface_element(reload_config_vars_t **config_vars)
             VERBOSE(N_STDOUT, "[ERROR] Empty value in \"params\" element!\n");
             goto error_label;
          }
-      } else if (xmlStrcmp((*config_vars)->ifc_atr_elem->name, BAD_CAST "text") != 0) {
-         /* All other elements are unexpected and are not allowed */
-         VERBOSE(N_STDOUT, "[ERROR] Unexpected element \"%s\" in \"interface\" element!\n", (char *)(*config_vars)->ifc_atr_elem->name);
+      } else if ((*config_vars)->ifc_atr_elem->type == XML_COMMENT_NODE || (*config_vars)->ifc_atr_elem->type == XML_TEXT_NODE) {
+         // Nothing to do here
+      } else {
+         /* All other nodes are unexpected and are not allowed */
+         VERBOSE(N_STDOUT, "[ERROR] Unexpected node (type: %d, name: %s) in \"interface\" element!\n", (*config_vars)->ifc_atr_elem->type, (char *)(*config_vars)->ifc_atr_elem->name);
          goto error_label;
       }
       (*config_vars)->ifc_atr_elem=(*config_vars)->ifc_atr_elem->next;
@@ -3545,7 +3549,7 @@ int reload_check_module_element(reload_config_vars_t **config_vars, str_lst_t **
    memset(basic_elements, 0, 6 * sizeof(int));
 
    while ((*config_vars)->module_atr_elem != NULL) {
-      if ((!xmlStrcmp((*config_vars)->module_atr_elem->name, BAD_CAST "name"))) {
+      if ((*config_vars)->module_atr_elem->type == XML_ELEMENT_NODE && (xmlStrcmp((*config_vars)->module_atr_elem->name, BAD_CAST "name") == 0)) {
          basic_elements[name_elem_idx]++;
          /* Check the number of found elements name (at most 1 is allowed) */
          if (basic_elements[name_elem_idx] > 1) {
@@ -3583,7 +3587,7 @@ int reload_check_module_element(reload_config_vars_t **config_vars, str_lst_t **
             VERBOSE(N_STDOUT, "[ERROR] Empty value in \"name\" element!\n");
             goto error_label;
          }
-      } else if (xmlStrcmp((*config_vars)->module_atr_elem->name, BAD_CAST "enabled") == 0) {
+      } else if ((*config_vars)->module_atr_elem->type == XML_ELEMENT_NODE && (xmlStrcmp((*config_vars)->module_atr_elem->name, BAD_CAST "enabled") == 0)) {
          basic_elements[enabled_elem_idx]++;
          /* Check the number of found elements enabled (at most 1 is allowed) */
          if (basic_elements[enabled_elem_idx] > 1) {
@@ -3602,7 +3606,7 @@ int reload_check_module_element(reload_config_vars_t **config_vars, str_lst_t **
             VERBOSE(N_STDOUT, "[ERROR] Empty value in \"enabled\" element!\n");
             goto error_label;
          }
-      } else if ((!xmlStrcmp((*config_vars)->module_atr_elem->name,BAD_CAST "path"))) {
+      } else if ((*config_vars)->module_atr_elem->type == XML_ELEMENT_NODE && (xmlStrcmp((*config_vars)->module_atr_elem->name,BAD_CAST "path") == 0)) {
          basic_elements[path_elem_idx]++;
          /* Check the number of found elements path (at most 1 is allowed) */
          if (basic_elements[path_elem_idx] > 1) {
@@ -3617,14 +3621,14 @@ int reload_check_module_element(reload_config_vars_t **config_vars, str_lst_t **
             VERBOSE(N_STDOUT, "[ERROR] Empty value in \"path\" element!\n");
             goto error_label;
          }
-      } else if ((!xmlStrcmp((*config_vars)->module_atr_elem->name,BAD_CAST "trapinterfaces"))) {
+      } else if ((*config_vars)->module_atr_elem->type == XML_ELEMENT_NODE && (xmlStrcmp((*config_vars)->module_atr_elem->name,BAD_CAST "trapinterfaces") == 0)) {
          basic_elements[trapifc_elem_idx]++;
          /* Check the number of found elements trapinterfaces (at most 1 is allowed) */
          if (basic_elements[trapifc_elem_idx] > 1) {
             VERBOSE(N_STDOUT, "[ERROR] Too much \"trapinterfaces\" elements in \"module\" element!\n");
             goto error_label;
          }
-      } else if (!xmlStrcmp((*config_vars)->module_atr_elem->name, BAD_CAST "module-restarts")) {
+      } else if ((*config_vars)->module_atr_elem->type == XML_ELEMENT_NODE && (xmlStrcmp((*config_vars)->module_atr_elem->name, BAD_CAST "module-restarts") == 0)) {
          basic_elements[restarts_elem_idx]++;
          /* Check the number of found elements module-restarts (at most 1 is allowed) */
          if (basic_elements[restarts_elem_idx] > 1) {
@@ -3644,7 +3648,7 @@ int reload_check_module_element(reload_config_vars_t **config_vars, str_lst_t **
             goto error_label;
          }
 
-      } else if ((!xmlStrcmp((*config_vars)->module_atr_elem->name,BAD_CAST "params"))) {
+      } else if ((*config_vars)->module_atr_elem->type == XML_ELEMENT_NODE && (xmlStrcmp((*config_vars)->module_atr_elem->name,BAD_CAST "params") == 0)) {
          basic_elements[params_elem_idx]++;
          /* Check the number of found elements params (at most 1 is allowed) */
          if (basic_elements[params_elem_idx] > 1) {
@@ -3657,9 +3661,11 @@ int reload_check_module_element(reload_config_vars_t **config_vars, str_lst_t **
             VERBOSE(N_STDOUT, "[ERROR] Empty value in \"params\" element!\n");
             goto error_label;
          }
-      } else if (xmlStrcmp((*config_vars)->module_atr_elem->name, BAD_CAST "text") != 0) {
-         /* All other elements are unexpected and are not allowed */
-         VERBOSE(N_STDOUT, "[ERROR] Unexpected element \"%s\" in \"module\" element!\n", (char *)(*config_vars)->module_atr_elem->name);
+      } else if ((*config_vars)->module_atr_elem->type == XML_COMMENT_NODE || (*config_vars)->module_atr_elem->type == XML_TEXT_NODE) {
+         // Nothing to do here
+      } else {
+         /* All other nodes are unexpected and are not allowed */
+         VERBOSE(N_STDOUT, "[ERROR] Unexpected node (type: %d, name: %s) in \"module\" element!\n", (*config_vars)->module_atr_elem->type, (char *)(*config_vars)->module_atr_elem->name);
          goto error_label;
       }
       if (key != NULL) {
@@ -3829,7 +3835,7 @@ int reload_check_modules_element(reload_config_vars_t **config_vars, str_lst_t *
    memset(basic_elements, 0, 2*sizeof(int));
 
    while ((*config_vars)->module_elem != NULL) {
-      if (xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "name") == 0) {
+      if ((*config_vars)->module_elem->type == XML_ELEMENT_NODE && (xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "name") == 0)) {
          basic_elements[name_elem_idx]++;
          /* Check the number of found elements name (at most 1 is allowed) */
          if (basic_elements[name_elem_idx] > 1) {
@@ -3867,7 +3873,7 @@ int reload_check_modules_element(reload_config_vars_t **config_vars, str_lst_t *
             VERBOSE(N_STDOUT, "[ERROR] Empty value in \"name\" element!\n");
             goto error_label;
          }
-      } else if (xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "enabled") == 0) {
+      } else if ((*config_vars)->module_elem->type == XML_ELEMENT_NODE && (xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "enabled") == 0)) {
          basic_elements[enabled_elem_idx]++;
          /* Check the number of found elements enabled (at most 1 is allowed) */
          if (basic_elements[enabled_elem_idx] > 1) {
@@ -3886,12 +3892,15 @@ int reload_check_modules_element(reload_config_vars_t **config_vars, str_lst_t *
             VERBOSE(N_STDOUT, "[ERROR] Empty value in \"enabled\" element!\n");
             goto error_label;
          }
-      } else if (xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "module") != 0 && xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "text") != 0) {
-         /* All other elements except "module" element are unexpected and are not allowed */
-         VERBOSE(N_STDOUT, "[ERROR] Unexpected element \"%s\" in \"modules\" element!\n", (char *)(*config_vars)->module_elem->name);
+      } else if ((*config_vars)->module_elem->type == XML_ELEMENT_NODE && (xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "module") == 0)) {
+         // Nothing to do here
+      } else if ((*config_vars)->module_elem->type == XML_COMMENT_NODE || (*config_vars)->module_elem->type == XML_TEXT_NODE) {
+         // Nothing to do here
+      } else {
+         /* All other nodes are unexpected and are not allowed */
+         VERBOSE(N_STDOUT, "[ERROR] Unexpected node (type: %d, name: %s) in \"modules\" element!\n", (*config_vars)->module_elem->type, (char *)(*config_vars)->module_elem->name);
          goto error_label;
       }
-
       if (key != NULL) {
          xmlFree(key);
          key = NULL;
@@ -4166,7 +4175,7 @@ int validate_configuration(reload_config_vars_t **config_vars)
    (*config_vars)->current_node = (*config_vars)->root_node->xmlChildrenNode;
 
    while ((*config_vars)->current_node != NULL) {
-      if (!xmlStrcmp((*config_vars)->current_node->name, BAD_CAST "supervisor")) {
+      if ((*config_vars)->current_node->type == XML_ELEMENT_NODE && (xmlStrcmp((*config_vars)->current_node->name, BAD_CAST "supervisor") == 0)) {
          supervisor_elem_cnt++;
          /* Check the number of found elements supervisor (at most 1 is allowed) */
          if (supervisor_elem_cnt > 1) {
@@ -4185,7 +4194,7 @@ int validate_configuration(reload_config_vars_t **config_vars)
             ret_val = -1;
             goto end_label;
          }
-      } else if (!xmlStrcmp((*config_vars)->current_node->name, BAD_CAST "modules")) {
+      } else if ((*config_vars)->current_node->type == XML_ELEMENT_NODE && (xmlStrcmp((*config_vars)->current_node->name, BAD_CAST "modules") == 0)) {
          (*config_vars)->module_elem = (*config_vars)->current_node->xmlChildrenNode;
          if ((*config_vars)->module_elem == NULL) {
             /* Empty element modules is not allowed */
@@ -4201,7 +4210,7 @@ int validate_configuration(reload_config_vars_t **config_vars)
          (*config_vars)->module_elem = (*config_vars)->current_node->xmlChildrenNode;
 
          while ((*config_vars)->module_elem != NULL) {
-            if (!xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "module")) {
+            if ((*config_vars)->module_elem->type == XML_ELEMENT_NODE && (xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "module") == 0)) {
                (*config_vars)->module_atr_elem = (*config_vars)->module_elem->xmlChildrenNode;
                if ((*config_vars)->module_atr_elem == NULL) {
                   /* Empty element module is not allowed */
@@ -4217,11 +4226,11 @@ int validate_configuration(reload_config_vars_t **config_vars)
                (*config_vars)->module_atr_elem = (*config_vars)->module_elem->xmlChildrenNode;
 
                while ((*config_vars)->module_atr_elem != NULL) {
-                  if ((!xmlStrcmp((*config_vars)->module_atr_elem->name,BAD_CAST "trapinterfaces"))) {
+                  if ((*config_vars)->module_atr_elem->type == XML_ELEMENT_NODE && (xmlStrcmp((*config_vars)->module_atr_elem->name,BAD_CAST "trapinterfaces") == 0)) {
                      (*config_vars)->ifc_elem = (*config_vars)->module_atr_elem->xmlChildrenNode;
 
                      while ((*config_vars)->ifc_elem != NULL) {
-                        if (!xmlStrcmp((*config_vars)->ifc_elem->name,BAD_CAST "interface")) {
+                        if ((*config_vars)->ifc_elem->type == XML_ELEMENT_NODE && (xmlStrcmp((*config_vars)->ifc_elem->name,BAD_CAST "interface") == 0)) {
                            (*config_vars)->ifc_atr_elem = (*config_vars)->ifc_elem->xmlChildrenNode;
 
                            if ((*config_vars)->ifc_atr_elem == NULL) {
@@ -4234,9 +4243,11 @@ int validate_configuration(reload_config_vars_t **config_vars)
                               ret_val = -1;
                               goto end_label;
                            }
-                        } else if (xmlStrcmp((*config_vars)->ifc_elem->name, BAD_CAST "text") != 0) {
-                           /* All other elements are unexpected and are not allowed */
-                           VERBOSE(N_STDOUT, "[ERROR] Unexpected element \"%s\" in \"trapinterfaces\" element!\n", (char *)(*config_vars)->ifc_elem->name);
+                        } else if ((*config_vars)->ifc_elem->type == XML_COMMENT_NODE || (*config_vars)->ifc_elem->type == XML_TEXT_NODE) {
+                           // Nothing to do here
+                        } else {
+                           /* All other nodes are unexpected and are not allowed */
+                           VERBOSE(N_STDOUT, "[ERROR] Unexpected node (type: %d, name: %s) in \"trapinterfaces\" element!\n", (*config_vars)->ifc_elem->type, (char *)(*config_vars)->ifc_elem->name);
                            ret_val = -1;
                            goto end_label;
                         }
@@ -4249,6 +4260,13 @@ int validate_configuration(reload_config_vars_t **config_vars)
             }
             (*config_vars)->module_elem = (*config_vars)->module_elem->next;
          }
+      } else if ((*config_vars)->current_node->type == XML_COMMENT_NODE || (*config_vars)->current_node->type == XML_TEXT_NODE) {
+         // Nothing to do here
+      } else {
+         /* All other nodes are unexpected and are not allowed */
+         VERBOSE(N_STDOUT, "[ERROR] Unexpected node (type: %d, name: %s) in \"nemea-supervisor\" element!\n", (*config_vars)->current_node->type, (char *)(*config_vars)->current_node->name);
+         ret_val = -1;
+         goto end_label;
       }
       (*config_vars)->current_node = (*config_vars)->current_node->next;
    }
