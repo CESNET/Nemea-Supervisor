@@ -57,7 +57,7 @@ LOG_LEVEL = logging.ERROR
 test = False
 
 # path to supervisor socket
-supervisor_socket = "/var/run/nemea-supervisor.sock"
+supervisor_socket = @DEFAULT_PATH_TO_SOCKET@
 
 # temporary file with downloaded data
 data_temp_file = "/tmp/munin_nemea_data.txt"
@@ -66,7 +66,7 @@ data_temp_file = "/tmp/munin_nemea_data.txt"
 munin_interval = 5*60-5
 
 # path to supervisor_cli
-supervisor_cli = "/usr/bin/nemea/supervisor_cli"
+supervisor_cli = "@bindir@/supervisor_cli"
 
 # labels of counters in graphs
 labels = {
