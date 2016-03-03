@@ -844,22 +844,37 @@ void generate_backup_config_file()
                   sprintf(buffer, "%d", running_modules[x].module_pid);
                   xmlNewProp (module, BAD_CAST "module_pid", BAD_CAST buffer);
 
-                  xmlNewChild(module, NULL, BAD_CAST "name", BAD_CAST running_modules[x].module_name);
-                  xmlNewChild(module, NULL, BAD_CAST "path", BAD_CAST running_modules[x].module_path);
-                  xmlNewChild(module, NULL, BAD_CAST "params", BAD_CAST running_modules[x].module_params);
+                  if (running_modules[x].module_name != NULL) {
+                     xmlNewChild(module, NULL, BAD_CAST "name", BAD_CAST running_modules[x].module_name);
+                  }
+                  if (running_modules[x].module_path != NULL) {
+                     xmlNewChild(module, NULL, BAD_CAST "path", BAD_CAST running_modules[x].module_path);
+                  }
+                  if (running_modules[x].module_params != NULL) {
+                     xmlNewChild(module, NULL, BAD_CAST "params", BAD_CAST running_modules[x].module_params);
+                  }
                   if (running_modules[x].module_enabled) {
                      xmlNewChild(module, NULL, BAD_CAST "enabled", BAD_CAST "true");
                   } else {
                      xmlNewChild(module, NULL, BAD_CAST "enabled", BAD_CAST "false");
                   }
-                  trapinterfaces = xmlNewChild(module, NULL, BAD_CAST "trapinterfaces", NULL);
-
+                  if (running_modules[x].module_ifces_cnt > 0) {
+                     trapinterfaces = xmlNewChild(module, NULL, BAD_CAST "trapinterfaces", NULL);
+                  }
                   for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
                      interface = xmlNewChild(trapinterfaces, NULL, BAD_CAST "interface", NULL);
-                     xmlNewChild(interface, NULL, BAD_CAST "note", BAD_CAST running_modules[x].module_ifces[y].ifc_note);
-                     xmlNewChild(interface, NULL, BAD_CAST "params", BAD_CAST running_modules[x].module_ifces[y].ifc_params);
-                     xmlNewChild(interface, NULL, BAD_CAST "direction", BAD_CAST running_modules[x].module_ifces[y].ifc_direction);
-                     xmlNewChild(interface, NULL, BAD_CAST "type", BAD_CAST running_modules[x].module_ifces[y].ifc_type);
+                     if (running_modules[x].module_ifces[y].ifc_note != NULL) {
+                        xmlNewChild(interface, NULL, BAD_CAST "note", BAD_CAST running_modules[x].module_ifces[y].ifc_note);
+                     }
+                     if (running_modules[x].module_ifces[y].ifc_params != NULL) {
+                        xmlNewChild(interface, NULL, BAD_CAST "params", BAD_CAST running_modules[x].module_ifces[y].ifc_params);
+                     }
+                     if (running_modules[x].module_ifces[y].ifc_direction != NULL) {
+                        xmlNewChild(interface, NULL, BAD_CAST "direction", BAD_CAST running_modules[x].module_ifces[y].ifc_direction);
+                     }
+                     if (running_modules[x].module_ifces[y].ifc_type != NULL) {
+                        xmlNewChild(interface, NULL, BAD_CAST "type", BAD_CAST running_modules[x].module_ifces[y].ifc_type);
+                     }
 
                      if (xmlAddChild(trapinterfaces, interface) == NULL) {
                         xmlFree(interface);
@@ -893,22 +908,37 @@ void generate_backup_config_file()
             sprintf(buffer, "%d", running_modules[x].module_pid);
             xmlNewProp (module, BAD_CAST "module_pid", BAD_CAST buffer);
 
-            xmlNewChild(module, NULL, BAD_CAST "name", BAD_CAST running_modules[x].module_name);
-            xmlNewChild(module, NULL, BAD_CAST "path", BAD_CAST running_modules[x].module_path);
-            xmlNewChild(module, NULL, BAD_CAST "params", BAD_CAST running_modules[x].module_params);
+            if (running_modules[x].module_name != NULL) {
+               xmlNewChild(module, NULL, BAD_CAST "name", BAD_CAST running_modules[x].module_name);
+            }
+            if (running_modules[x].module_path != NULL) {
+               xmlNewChild(module, NULL, BAD_CAST "path", BAD_CAST running_modules[x].module_path);
+            }
+            if (running_modules[x].module_params != NULL) {
+               xmlNewChild(module, NULL, BAD_CAST "params", BAD_CAST running_modules[x].module_params);
+            }
             if (running_modules[x].module_enabled) {
                xmlNewChild(module, NULL, BAD_CAST "enabled", BAD_CAST "true");
             } else {
                xmlNewChild(module, NULL, BAD_CAST "enabled", BAD_CAST "false");
             }
-            trapinterfaces = xmlNewChild(module, NULL, BAD_CAST "trapinterfaces", NULL);
-
+            if (running_modules[x].module_ifces_cnt > 0) {
+               trapinterfaces = xmlNewChild(module, NULL, BAD_CAST "trapinterfaces", NULL);
+            }
             for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
                interface = xmlNewChild(trapinterfaces, NULL, BAD_CAST "interface", NULL);
-               xmlNewChild(interface, NULL, BAD_CAST "note", BAD_CAST running_modules[x].module_ifces[y].ifc_note);
-               xmlNewChild(interface, NULL, BAD_CAST "params", BAD_CAST running_modules[x].module_ifces[y].ifc_params);
-               xmlNewChild(interface, NULL, BAD_CAST "direction", BAD_CAST running_modules[x].module_ifces[y].ifc_direction);
-               xmlNewChild(interface, NULL, BAD_CAST "type", BAD_CAST running_modules[x].module_ifces[y].ifc_type);
+               if (running_modules[x].module_ifces[y].ifc_note != NULL) {
+                  xmlNewChild(interface, NULL, BAD_CAST "note", BAD_CAST running_modules[x].module_ifces[y].ifc_note);
+               }
+               if (running_modules[x].module_ifces[y].ifc_params != NULL) {
+                  xmlNewChild(interface, NULL, BAD_CAST "params", BAD_CAST running_modules[x].module_ifces[y].ifc_params);
+               }
+               if (running_modules[x].module_ifces[y].ifc_direction != NULL) {
+                  xmlNewChild(interface, NULL, BAD_CAST "direction", BAD_CAST running_modules[x].module_ifces[y].ifc_direction);
+               }
+               if (running_modules[x].module_ifces[y].ifc_type != NULL) {
+                  xmlNewChild(interface, NULL, BAD_CAST "type", BAD_CAST running_modules[x].module_ifces[y].ifc_type);
+               }
 
                if (xmlAddChild(trapinterfaces, interface) == NULL) {
                   xmlFree(interface);
