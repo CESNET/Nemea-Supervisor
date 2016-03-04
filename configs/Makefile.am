@@ -6,6 +6,7 @@ EXTRA_DIST=amplification_detection.mkdir \
 	   hoststats.sup \
 	   ipblacklistfilter.mkdir \
 	   ipblacklistfilter.sup \
+      ipfixcol.sup \
 	   prepare_default_config.sh \
 	   set_default_nic.sh \
 	   supervisor.mkdir \
@@ -16,7 +17,7 @@ EXTRA_DIST=amplification_detection.mkdir \
 	   vportscandetector.sup \
 	   README.md
 
-BUILT_SOURCES=supervisor_config.xml
+BUILT_SOURCES=supervisor_config.xml sup_conf_inline_gener.xml
 sysconf_DATA = supervisor_config.xml
 bin_SCRIPTS=prepare_default_config.sh set_default_nic.sh
 
@@ -24,6 +25,9 @@ pkgdata_DATA=${EXTRA_DIST}
 
 supervisor_config.xml: ${EXTRA_DIST}
 	bash ./prepare_default_config.sh configonly
+
+sup_conf_inline_gener.xml: ${EXTRA_DIST}
+	bash ./generate_sup_conf_inline.sh
 
 clean-local:
 	@rm -f ${BUILT_SOURCES}

@@ -1,0 +1,5 @@
+<module>
+<name>ipfixcol</name>
+<enabled>false</enabled>
+<path>/usr/bin/ipfixcol</path>
+</module>
