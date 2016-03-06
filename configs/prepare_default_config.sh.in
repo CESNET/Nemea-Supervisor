@@ -41,50 +41,70 @@ libdir="@libdir@"
 datarootdir="@datarootdir@"
 datadir="@datadir@"
 pkgdatadir="@pkgdatadir@"
+sysconfdir="@sysconfdir@"
 
-# name of the output file:
-conffile=supervisor_config.xml
+if [ "$1" = "configonly" ]; then
 
-echo "This script expects one argument: 'configonly' or 'install'.
-
-'configonly': creates a config file for Nemea-Supervisor using *.sup files.
-'install':    runs 'configonly' and also creates directories from *.mkdir files.
-
-Note: root permissions are probably needed for 'install'"
-
-if [ "$1" = "configonly" -o "$1" = "install" ]; then
-	cat > "$conffile" <<END
-<?xml version="1.0"?>
-<nemea-supervisor>
-	<supervisor>
-		<module-restarts>4</module-restarts>
-		<logs-directory>/var/log/nemea-supervisor/</logs-directory>
-	</supervisor>
-
-	<modules>
-		<name>basic modules</name>
-		<enabled>true</enabled>
-
-END
-
-        if ls *.sup >/dev/null 2>/dev/null; then
-                supfiles=*.sup
-        else
-                supfiles="${pkgdatadir}"/*.sup
+        prep_script_path="`dirname \"$0\"`"
+        prep_script_path="`( cd \"$prep_script_path\" && pwd )`"
+        if [ -z "$prep_script_path" ] ; then
+          exit 1  # cannot access the script path
         fi
-	cat $supfiles >> "$conffile"
 
-	cat >> "$conffile" <<END
-	</modules>
-</nemea-supervisor>
-END
+        # Input xml file with the template
+        input_file_name="supervisor_config_template.xml"
+        input_file_path="$prep_script_path"/"$input_file_name"
+        # Generated xml config file
+        output_file_name="supervisor_config.xml"
+        output_file_path="$prep_script_path"/"$output_file_name"
 
-	xmllint -format "$conffile" > "$conffile.tmp" && mv "$conffile.tmp" "$conffile"
+        tmp_output_file=`mktemp`
 
-fi
+        if ls "$input_file_path" >/dev/null 2>/dev/null; then
+                # template and .sup files in the same directory as the prep script
+                local_files="1"
+        else
+                # after installation state
+                input_file_path="${pkgdatadir}"/"$input_file_name"
+                output_file_path="${sysconfdir}"/"$output_file_name"
+                local_files="0"
+        fi
 
+        # Init tmp output file
+        echo -n "" > "$tmp_output_file"
+
+        # Parse the input file with template and replace "include" parts with corresponding parts from .sup files:
+        cat "$input_file_path" | while read line; do
+                sup_file_name="$(echo "$line" | sed -n 's/^\s*<!--\s*include\s\s*\([^ ]*\)\s*-->.*/\1/p')";
+                if [ "$local_files" -eq "1" ]; then
+                        sup_file="$prep_script_path"/"$sup_file_name"
+                else
+                        sup_file="${pkgdatadir}"/"$sup_file_name"
+                fi
+                inlined="$(echo $sup_file | xargs cat 2> /dev/null)"
+                echo -n "$inlined" >> "$tmp_output_file";
+                if test -z "$inlined"; then
+                        echo "$line" >> "$tmp_output_file";
+                fi;
+        done
+
+        # Format the final output:
+        xmllint --format "$tmp_output_file" > "$output_file_path" 2> /dev/null
+
+        if [ $? -ne 0 ]; then
+                echo "Warning: xmllint is not installed or does not have permissions to write, cannot format the final $output_file_path file"
+                cat "$tmp_output_file" > "$output_file_path"
+                if [ $? -ne 0 ]; then
+                        echo "Error: does not have write permissions to $output_file_path file"
+                fi
+        fi
+
+        # Delete tmp output file
+        rm -f "$tmp_output_file"
+
+elif [ "$1" = "install" ]; then
 # creation of needed directories and permissions setup
-if [ "$1" = "install" ]; then
+
         if ls *.mkdir >/dev/null 2>/dev/null; then
                 directories=*.mkdir
         else
@@ -100,5 +120,12 @@ if [ "$1" = "install" ]; then
                         fi
                 done
         done
+else
+        echo "This script expects one argument: 'configonly' or 'install'.
+
+        'configonly': creates a config file for Nemea-Supervisor using *.sup files.
+        'install':    runs 'configonly' and also creates directories from *.mkdir files.
+
+        Note: root permissions are probably needed for 'install'"
 fi
 
