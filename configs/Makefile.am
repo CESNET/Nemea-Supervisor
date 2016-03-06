@@ -15,6 +15,7 @@ EXTRA_DIST=amplification_detection.mkdir \
 	   voipfrauddetection.sup \
 	   vportscandetector.mkdir \
 	   vportscandetector.sup \
+	   supervisor_config_template.xml \
 	   README.md
 
 BUILT_SOURCES=supervisor_config.xml
