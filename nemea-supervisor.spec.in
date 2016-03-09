@@ -49,12 +49,15 @@ chmod 664 %{_sysconfdir}/nemea/supervisor_config.xml
 # sysconfdir
 chown nemead:nemead %{_sysconfdir}/nemea
 chmod 775 %{_sysconfdir}/nemea
+# simlink to supervisor_cli
+ln -fs %{_bindir}/nemea/supervisor_cli %{_prefix}/bin/supcli
 
 
 %postun
 if [ "$1" = "0" ]; then
   # call within uninstallation
 	/usr/sbin/userdel nemead
+	rm -f %{_prefix}/bin/supcli
 fi
 
 
