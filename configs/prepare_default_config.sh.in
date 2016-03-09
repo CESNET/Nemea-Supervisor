@@ -96,6 +96,7 @@ if [ "$1" = "configonly" ]; then
                 cat "$tmp_output_file" > "$output_file_path"
                 if [ $? -ne 0 ]; then
                         echo "Error: does not have write permissions to $output_file_path file"
+                        exit 1 # failure
                 fi
         fi
 
