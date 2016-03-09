@@ -41,12 +41,14 @@ function get_pid()
 {
   echo $(cat "$PID_FILE")
 }
+
 function daemon_status()
 {
   test -e "$PID_FILE" || return 1
   PID=$(get_pid)
   test -n "$PID" || return 1
-  `ps "$PID" > /dev/null`
+  `kill -0 "$PID" > /dev/null 2> /dev/null`
+  return $?
 }
 
 function logerror()
