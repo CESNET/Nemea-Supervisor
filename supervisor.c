@@ -518,21 +518,36 @@ char **prep_module_args(const uint32_t module_idx)
 
 int get_number_from_input_choosing_option()
 {
+   int x = 0;
    int option = 0;
    char *input_p = NULL;
+   int input_len = 0;
 
    input_p = get_input_from_stream(input_fd);
    if (input_p == NULL) {
-      return RET_ERROR;
-   } else if (strlen(input_p) == 1 && sscanf(input_p, "%d", &option) == 1 && option >= 0) {
-      free(input_p);
-      input_p = NULL;
-      return option;
+      goto error_label;
    } else {
-      free(input_p);
-      input_p = NULL;
-      return RET_ERROR;
+      input_len = strlen(input_p);
+      // Input must be min 1 and max 3 characters long
+      if (input_len > 3 || input_len < 1) {
+         goto error_label;
+      }
+      // Check if all characters are digits
+      for (x = 0; x < input_len; x++) {
+         if (input_p[x] < '0' || input_p[x] > '9') {
+            goto error_label;
+         }
+      }
+      if (sscanf(input_p, "%d", &option) < 1 || option < 0) {
+         goto error_label;
+      }
    }
+   NULLP_TEST_AND_FREE(input_p)
+   return option;
+
+error_label:
+   NULLP_TEST_AND_FREE(input_p)
+   return RET_ERROR;
 }
 
 /* Returns count of numbers in input (separated by commas) or -1 */
