@@ -50,7 +50,7 @@ void interactive_mode()
 {
    int ret_val = 0;
 
-   while ((ret_val = interactive_get_option()) != 9) {
+   while ((ret_val = interactive_get_option()) != 0) {
       switch (ret_val) {
       case 1:
          interactive_start_configuration();
@@ -75,6 +75,9 @@ void interactive_mode()
          break;
       case 8:
          interactive_print_supervisor_info();
+         break;
+      case 9:
+         interactive_show_logs();
          break;
       default:
          VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Wrong input.\n" ANSI_ATTR_RESET);

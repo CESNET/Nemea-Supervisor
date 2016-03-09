@@ -125,3 +125,25 @@ char *get_input_from_stream (FILE *stream)
       return buffer;
    }
 }
+
+void show_file_with_pager(char **file_path)
+{
+   pid_t pid = fork();
+   int status = 0;
+
+   if (pid == 0) {
+      char *params[3];
+      params[0] = strdup(PAGER);
+      params[1] = *file_path;
+      params[2] = NULL;
+      execvp(PAGER, params);
+      fprintf(stderr, "[ERROR] Execution of \"%s\" failed.\n", PAGER);
+      exit(EXIT_FAILURE);
+   } else if (pid == -1) {
+      VERBOSE(N_STDOUT,"[ERROR] Could not fork supervisor process!\n");
+      return;
+   } else {
+      // Blocking waitid until the PAGER is closed
+      waitpid(pid, &status, 0);
+   }
+}

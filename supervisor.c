@@ -1386,6 +1386,7 @@ void daemon_send_options_to_client()
    VERBOSE(N_STDOUT, "6. AVAILABLE MODULES\n");
    VERBOSE(N_STDOUT, "7. RELOAD CONFIGURATION\n");
    VERBOSE(N_STDOUT, "8. PRINT SUPERVISOR INFO\n");
+   VERBOSE(N_STDOUT, "9. SHOW LOGS\n");
    VERBOSE(N_STDOUT, "-- Type \"Cquit\" to exit client --\n");
    VERBOSE(N_STDOUT, "-- Type \"Dstop\" to stop daemon --\n" ANSI_ATTR_RESET);
    VERBOSE(N_STDOUT, ANSI_YELLOW_BOLD "[INTERACTIVE] Your choice: " ANSI_ATTR_RESET);
@@ -1583,6 +1584,9 @@ void *daemon_serve_client_routine (void *cli)
                interactive_print_supervisor_info();
                break;
             case 9:
+               interactive_show_logs();
+               break;
+            case 0:
                nine_cnt++;
                if (nine_cnt == 3) {
                   pthread_mutex_lock(&server_internals->lock);
@@ -2373,7 +2377,8 @@ int interactive_get_option()
    VERBOSE(N_STDOUT, "6. AVAILABLE MODULES\n");
    VERBOSE(N_STDOUT, "7. RELOAD CONFIGURATION\n");
    VERBOSE(N_STDOUT, "8. PRINT SUPERVISOR INFO\n");
-   VERBOSE(N_STDOUT, "9. STOP SUPERVISOR\n" ANSI_ATTR_RESET);
+   VERBOSE(N_STDOUT, "9. SHOW LOGS\n");
+   VERBOSE(N_STDOUT, "0. STOP SUPERVISOR\n" ANSI_ATTR_RESET);
    VERBOSE(N_STDOUT, ANSI_YELLOW_BOLD "[INTERACTIVE] Your choice: " ANSI_ATTR_RESET);
 
    return get_number_from_input_choosing_option();
@@ -2562,6 +2567,188 @@ void interactive_stop_module()
       modules_to_stop = NULL;
    }
    pthread_mutex_unlock(&running_modules_lock);
+}
+
+void interactive_show_logs()
+{
+   // format vars
+   int log_idx_dig_num = 1;
+   int log_idx_rank = 1;
+   int char_pos = 0;
+   // (stdout + stderr) * modules_cnt + sup_log + sup_log_stats + sup_log_modules_events
+   uint16_t max_num_of_logs = (2 * loaded_modules_cnt) + 3;
+   uint8_t avail_logs[max_num_of_logs];
+   memset(avail_logs, 0, max_num_of_logs * sizeof(uint8_t));
+   int x = 0, log_idx = -1, chosen_log_idx = 0;
+   char *file_path = (char *) calloc(PATH_MAX, sizeof(char));
+   memset(file_path, 0, PATH_MAX);
+   char *file_path_ptr = file_path + strlen(logs_path);
+
+   if (sprintf(file_path, "%s", logs_path) < 1) {
+      VERBOSE(N_STDOUT, "[ERROR] I/O, could not create log file path.\n");
+      goto exit_label;
+   }
+
+   VERBOSE(N_STDOUT, ANSI_BOLD "Available modules logs:" ANSI_ATTR_RESET "\n");
+   VERBOSE(N_STDOUT, "   " ANSI_BOLD "stdout" ANSI_ATTR_RESET " | " ANSI_BOLD "stderr" ANSI_ATTR_RESET " | " ANSI_BOLD "module name" ANSI_ATTR_RESET "\n");
+
+   for (x = 0; x < loaded_modules_cnt; x++) {
+      log_idx++;
+      // Get the number of log_idx digits
+      if (log_idx >= (log_idx_rank * 10)) {
+         log_idx_dig_num++;
+         log_idx_rank*=10;
+      }
+
+      // Test module's stdout log
+      if (sprintf(file_path_ptr, "modules_logs/%s_stdout", running_modules[x].module_name) < 1) {
+         VERBOSE(N_STDOUT, "[ERROR] I/O, could not create log file path.\n");
+         goto exit_label;
+      }
+      file_path_ptr += strlen("modules_logs/_std") + strlen(running_modules[x].module_name);
+      if (access(file_path, R_OK) != 0) {
+         VERBOSE(N_STDOUT, "   " ANSI_RED_BOLD "%d" ANSI_ATTR_RESET, log_idx);
+         avail_logs[log_idx] = FALSE;
+      } else {
+         VERBOSE(N_STDOUT, "   " ANSI_GREEN_BOLD "%d" ANSI_ATTR_RESET, log_idx);
+         avail_logs[log_idx] = TRUE;
+      }
+
+      // Align the stderr column
+      char_pos = 3 + log_idx_dig_num;
+      VERBOSE(N_STDOUT, "%*c| ", (10 - char_pos), ' ');
+      char_pos += (10 - char_pos) + 2;
+
+      log_idx++;
+      // Test module's stderr log
+      if (sprintf(file_path_ptr, "err") < 1) {
+         VERBOSE(N_STDOUT, "[ERROR] I/O, could not create log file path.\n");
+         goto exit_label;
+      }
+      file_path_ptr = file_path + strlen(logs_path);
+      if (access(file_path, R_OK) != 0) {
+         VERBOSE(N_STDOUT, ANSI_RED_BOLD "%d" ANSI_ATTR_RESET, log_idx);
+         avail_logs[log_idx] = FALSE;
+      } else {
+         VERBOSE(N_STDOUT, ANSI_GREEN_BOLD "%d" ANSI_ATTR_RESET, log_idx);
+         avail_logs[log_idx] = TRUE;
+      }
+
+      // ALign the module name column
+      char_pos += log_idx_dig_num;
+      VERBOSE(N_STDOUT, "%*c| %s\n", (19 - char_pos), ' ', running_modules[x].module_name);
+
+      // Zero the rest of file_path memory after "logs_path"
+      memset(file_path + strlen(logs_path), 0, (PATH_MAX - strlen(logs_path)) * sizeof(char));
+   }
+
+   VERBOSE(N_STDOUT, ANSI_BOLD "Available supervisor logs:" ANSI_ATTR_RESET "\n");
+
+   log_idx++;
+   // Test the supervisor_log file
+   if (sprintf(file_path_ptr, "supervisor_log") < 1) {
+      VERBOSE(N_STDOUT, "[ERROR] I/O, could not create log file path.\n");
+      goto exit_label;
+   }
+   if (access(file_path, R_OK) != 0) {
+      VERBOSE(N_STDOUT,"   " ANSI_RED_BOLD "%d" ANSI_ATTR_RESET " | supervisor_log\n", log_idx);
+      avail_logs[log_idx] = FALSE;
+   } else {
+      VERBOSE(N_STDOUT,"   " ANSI_GREEN_BOLD "%d" ANSI_ATTR_RESET " | supervisor_log\n", log_idx);
+      avail_logs[log_idx] = TRUE;
+   }
+
+   log_idx++;
+   // Test the supervisor_log_statistics file (no need to erase file_path string memory - it is overwritten)
+   if (sprintf(file_path_ptr, "supervisor_log_statistics") < 1) {
+      VERBOSE(N_STDOUT, "[ERROR] I/O, could not create log file path.\n");
+      goto exit_label;
+   }
+   if (access(file_path, R_OK) != 0) {
+      VERBOSE(N_STDOUT,"   " ANSI_RED_BOLD "%d" ANSI_ATTR_RESET " | supervisor_log_statistics\n", log_idx);
+      avail_logs[log_idx] = FALSE;
+   } else {
+      VERBOSE(N_STDOUT,"   " ANSI_GREEN_BOLD "%d" ANSI_ATTR_RESET " | supervisor_log_statistics\n", log_idx);
+      avail_logs[log_idx] = TRUE;
+   }
+
+   log_idx++;
+   // Test the supervisor_log_module_event file (no need to erase file_path string memory - it is overwritten)
+   if (sprintf(file_path_ptr, "supervisor_log_module_event") < 1) {
+      VERBOSE(N_STDOUT, "[ERROR] I/O, could not create log file path.\n");
+      goto exit_label;
+   }
+   if (access(file_path, R_OK) != 0) {
+      VERBOSE(N_STDOUT,"   " ANSI_RED_BOLD "%d" ANSI_ATTR_RESET " | supervisor_log_module_event\n", log_idx);
+      avail_logs[log_idx] = FALSE;
+   } else {
+      VERBOSE(N_STDOUT,"   " ANSI_GREEN_BOLD "%d" ANSI_ATTR_RESET " | supervisor_log_module_event\n", log_idx);
+      avail_logs[log_idx] = TRUE;
+   }
+
+   VERBOSE(N_STDOUT, ANSI_YELLOW_BOLD "[INTERACTIVE] Choose the log number: " ANSI_ATTR_RESET);
+   chosen_log_idx = get_number_from_input_choosing_option();
+   if (chosen_log_idx == -1 || chosen_log_idx > max_num_of_logs) {
+      VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Wrong input.\n" ANSI_ATTR_RESET);
+      goto exit_label;
+   }
+
+   if (avail_logs[chosen_log_idx] == FALSE) {
+      VERBOSE(N_STDOUT, ANSI_RED_BOLD "[ERROR] Chosen log is not available\n" ANSI_ATTR_RESET);
+      goto exit_label;
+   }
+
+   memset(file_path, 0, PATH_MAX * sizeof(char));
+   if (chosen_log_idx < (max_num_of_logs - 3)) {
+      if (chosen_log_idx % 2 == 0) {
+         // stdout
+         if (sprintf(file_path, "%smodules_logs/%s_stdout", logs_path, running_modules[chosen_log_idx/2].module_name) < 1) {
+            VERBOSE(N_STDOUT, "[ERROR] I/O, could not create log file path.\n");
+            goto exit_label;
+         }
+      } else {
+         // stderr
+         if (sprintf(file_path, "%smodules_logs/%s_stderr", logs_path, running_modules[chosen_log_idx/2].module_name) < 1) {
+            VERBOSE(N_STDOUT, "[ERROR] I/O, could not create log file path.\n");
+            goto exit_label;
+         }
+      }
+   } else if (chosen_log_idx == (max_num_of_logs - 3)) {
+      if (sprintf(file_path, "%ssupervisor_log", logs_path) < 1) {
+         VERBOSE(N_STDOUT, "[ERROR] I/O, could not create log file path.\n");
+         goto exit_label;
+      }
+   } else if (chosen_log_idx == (max_num_of_logs - 2)) {
+      if (sprintf(file_path, "%ssupervisor_log_statistics", logs_path) < 1) {
+         VERBOSE(N_STDOUT, "[ERROR] I/O, could not create log file path.\n");
+         goto exit_label;
+      }
+   } else {
+      if (sprintf(file_path, "%ssupervisor_log_module_event", logs_path) < 1) {
+         VERBOSE(N_STDOUT, "[ERROR] I/O, could not create log file path.\n");
+         goto exit_label;
+      }
+   }
+
+   if (daemon_flag == TRUE) {
+      // Send the file path to client and it afterwards executes the pager
+      FILE *tmp_file = fopen(SUP_CLI_TMP_FILE, "w");
+      if (tmp_file == NULL) {
+         VERBOSE(N_STDOUT, "[ERROR] Could not deliver log file path to the supervisor client via /tmp/tmp_sup_cli_file.\n");
+         goto exit_label;
+      } else {
+         fprintf(tmp_file, "%d\n%s", (int) strlen(file_path), file_path);
+         fflush(tmp_file);
+         fclose(tmp_file);
+      }
+      goto exit_label;
+   } else {
+      show_file_with_pager(&file_path);
+   }
+
+exit_label:
+   NULLP_TEST_AND_FREE(file_path)
+   return;
 }
 
 void interactive_show_running_modules_status()
