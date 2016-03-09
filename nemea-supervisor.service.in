@@ -25,7 +25,7 @@ User=nemead
 Group=nemead
 
 ExecStart=@bindir@/nemea-supervisor start
-ExecReload=@bindir@/nemea-supervisor restart
+ExecReload=@bindir@/nemea-supervisor reload
 ExecStop=@bindir@/nemea-supervisor stop
 KillMode=none
 PrivateTmp=false
