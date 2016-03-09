@@ -44,7 +44,6 @@
 
 #include "supervisor_api.h"
 #include "internal.h"
-#include <stdio.h>
 
 void interactive_mode()
 {

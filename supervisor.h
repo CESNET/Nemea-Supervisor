@@ -51,19 +51,14 @@
 #include <netdb.h>
 #include <inttypes.h>
 #include <time.h>
-#include <unistd.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <string.h>
-#include <error.h>
 #include <errno.h>
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 #include <sys/types.h>
-#include <sys/wait.h>
 #include <sys/stat.h>
 #include <limits.h>
 

@@ -43,7 +43,6 @@
 
 
 #include "internal.h"
-#include <stdio.h>
 #include <string.h>
 #include <stdio_ext.h> // because of __fpurge(FILE * stream)
 

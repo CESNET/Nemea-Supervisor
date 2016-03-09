@@ -54,28 +54,14 @@
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
 #include <getopt.h>
 #include <pthread.h>
-#include <errno.h>
 #include <semaphore.h>
-#include <signal.h>
 #include <sys/ioctl.h>
 #include <net/if.h>
 #include <ifaddrs.h>
-#include <dirent.h>
 
 #include <libtrap/trap.h>
-
-#include <pwd.h>
-#include <grp.h>
-#include <langinfo.h>
 
 #define TRAP_PARAM   "-i" ///< Interface parameter for libtrap
 #define DEFAULT_MAX_RESTARTS_PER_MINUTE   3  ///< Maximum number of module restarts per minute
