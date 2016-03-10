@@ -10,9 +10,9 @@
   <params>flow_data_source</params>
 </interface>
 <interface>
-  <type>UNIXSOCKET</type>
+  <type>TCP</type>
   <direction>OUT</direction>
-  <params>dns_amp_reports</params>
+  <params>12001</params>
 </interface>
 </trapinterfaces>
 </module>
@@ -24,9 +24,23 @@
 <params>-t -T -a /data/dns_amplification_detection/detected.log</params>
 <trapinterfaces>
 <interface>
-  <type>UNIXSOCKET</type>
+  <type>TCP</type>
   <direction>IN</direction>
-  <params>dns_amp_reports</params>
+  <params>12001</params>
+</interface>
+</trapinterfaces>
+</module>
+
+<module>
+<name>amplification2idea</name>
+<enabled>false</enabled>
+<path>/usr/bin/nemea/amplification2idea.py</path>
+<params>--name=cz.cesnet.nemea.amplification_detection --mongodb=nemeadb --mongodb-coll=alerts_new</params>
+<trapinterfaces>
+<interface>
+  <type>TCP</type>
+  <direction>IN</direction>
+  <params>12001</params>
 </interface>
 </trapinterfaces>
 </module>
