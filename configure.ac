@@ -123,7 +123,7 @@ else
 	AM_CONDITIONAL([HAVE_SYSTEMD], [false])
 fi
 
-AC_CONFIG_FILES([Makefile nemea-supervisor.spec nemea-supervisor nemea-supervisor.service munin/Makefile munin/nemea_supervisor configs/Makefile configs/prepare_default_config.sh])
+AC_CONFIG_FILES([Makefile nemea-supervisor.spec nemea-supervisor nemea-supervisor.service munin/Makefile munin/nemea_supervisor configs/Makefile configs/prepare_default_config.sh configs/warning.sup])
 AC_OUTPUT
 echo
 echo
