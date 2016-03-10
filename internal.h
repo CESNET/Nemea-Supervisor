@@ -85,8 +85,9 @@
 
 /* Log files are being shown with the following pager */
 #define PAGER "less"
+#define SUP_TMP_DIR "/tmp/sup_tmp_dir"
 /* Tmp file used for additional communication between daemon and client (e.g. to keep log file name which is client gonna show) */
-#define SUP_CLI_TMP_FILE "/tmp/sup_cli_tmp_file"
+#define SUP_CLI_TMP_FILE "/tmp/sup_tmp_dir/sup_cli_tmp_file"
 
 /**
  * Macro for NULL pointer testing, freeing and setting pointer to NULL

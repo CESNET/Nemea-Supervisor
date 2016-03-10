@@ -2717,7 +2717,16 @@ void interactive_show_logs()
    }
 
    if (daemon_flag == TRUE) {
-      // Send the file path to client and it afterwards executes the pager
+      // Make sup tmp dir in /tmp
+      if (mkdir(SUP_TMP_DIR, PERM_LOGSDIR) == -1) {
+         if (errno == EACCES) {
+            VERBOSE(N_STDOUT, "[ERROR] I/O, could not create tmp dir \"%s\" because of permissions.\n", SUP_TMP_DIR);
+         } else if (errno == ENOENT || errno == ENOTDIR) {
+            VERBOSE(N_STDOUT, "[ERROR] I/O, could not create tmp dir \"%s\".\n", SUP_TMP_DIR);
+         }
+      }
+
+      // Send the log file path to client via tmp file and it afterwards executes the pager
       FILE *tmp_file = fopen(SUP_CLI_TMP_FILE, "w");
       if (tmp_file == NULL) {
          VERBOSE(N_STDOUT, "[ERROR] Could not deliver log file path to the supervisor client via /tmp/tmp_sup_cli_file.\n");
