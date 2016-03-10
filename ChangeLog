@@ -1,3 +1,19 @@
+2016-03-11 supervisor-1.3.2
+	* public accessible ports now used for output of detectors
+	* bugfixes
+
+2016-03-11 (Tomas Cejka): configs: change config of python modules (moved executable into <path>)
+2016-03-11 (Tomas Cejka): configs: voipfraud: add reporter
+2016-03-11 (Tomas Cejka): configs: ipblacklistfilter: use public accessible port
+2016-03-11 (Tomas Cejka): configs: amplification detection: use public accessible port
+2016-03-11 (Tomas Cejka): configs: add dnstunnel_detection with default settings (without params)
+2016-03-10 (Marek Svepes): configs: added warning about changes in generated config file to the template and removed example profile
+2016-03-10 (Marek Svepes): RPM: marked supervisor config file template with "noreplace"
+2016-03-10 (Marek Svepes): service: testing of the process status with "ps" insted of "kill -0"
+2016-03-10 (Marek Svepes): service: added PIDFile parameter to .service file because of "forking" type of service
+2016-03-10 (Marek Svepes): bugfix: the buffer in service thread routine used for incoming json data was too small after realloc
+2016-03-10 (Marek Svepes): bugfix: sup client executed by another user than nemead could not delete tmp file because of permissions
+
 2016-02-28 supervisor-1.3.0
 	* service runs as nemead uid
 	* add config of some modules
