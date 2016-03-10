@@ -47,7 +47,7 @@ function daemon_status()
   test -e "$PID_FILE" || return 1
   PID=$(get_pid)
   test -n "$PID" || return 1
-  `kill -0 "$PID" > /dev/null 2> /dev/null`
+  `ps "$PID" > /dev/null 2> /dev/null`
   return $?
 }
 
