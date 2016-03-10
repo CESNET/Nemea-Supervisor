@@ -19,8 +19,8 @@
 <module>
 <name>vportscan_aggregator</name>
 <enabled>true</enabled>
-<path>python</path>
-<params>/usr/bin/nemea/vportscan_aggregator.py -t 10</params>
+<path>/usr/bin/nemea/vportscan_aggregator.py</path>
+<params>-t 10</params>
 <trapinterfaces>
 <interface>
   <type>UNIXSOCKET</type>
@@ -52,8 +52,8 @@
 <module>
 <name>vportscan2idea</name>
 <enabled>false</enabled>
-<path>python</path>
-<params>/usr/bin/nemea/vportscan2idea.py --name=cz.cesnet.nemea.vportscan --mongodb=nemeadb --mongodb-coll=alerts_new</params>
+<path>/usr/bin/nemea/vportscan2idea.py</path>
+<params>--name=cz.cesnet.nemea.vportscan --mongodb=nemeadb --mongodb-coll=alerts_new</params>
 <trapinterfaces>
 <interface>
   <type>TCP</type>
