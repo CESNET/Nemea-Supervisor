@@ -20,6 +20,7 @@ After=network.target local-fs.target remote-fs.target
 
 [Service]
 Type=forking
+PIDFile=@defaultsocketdir@/nemea-supervisor.pid
 Environment=LANG=C
 User=nemead
 Group=nemead
