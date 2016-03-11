@@ -13,6 +13,11 @@
   <direction>OUT</direction>
   <params>12004</params>
 </interface>
+<interface>
+  <type>UNIXSOCKET</type>
+  <direction>OUT</direction>
+  <params>dnstunnel_sdmoutput:timeout=NO_WAIT</params>
+</interface>
 </trapinterfaces>
 </module>
 
