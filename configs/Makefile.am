@@ -9,6 +9,8 @@ config_files=amplification_detection.mkdir \
 	   ipblacklistfilter.mkdir \
 	   ipblacklistfilter.sup \
 	   ipfixcol.sup \
+	   multopt.mkdir \
+	   multopt.sup \
 	   prepare_default_config.sh \
 	   set_default_nic.sh \
 	   supervisor.mkdir \
