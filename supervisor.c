@@ -77,7 +77,7 @@
 #define NETCONF_DEFAULT_LOGSDIR_PATH   "/tmp/netconf_supervisor_logs/"
 #define DAEMON_DEFAULT_LOGSDIR_PATH   "/tmp/daemon_supervisor_logs/"
 #define INTERACTIVE_DEFAULT_LOGSDIR_PATH   "/tmp/interactive_supervisor_logs/"
-#define BACKUP_FILE_PREFIX   "/tmp/"
+#define BACKUP_FILE_PREFIX   SUP_TMP_DIR
 #define BACKUP_FILE_SUFIX   "_sup_backup_file.xml"
 
 #define RET_ERROR   -1
@@ -179,8 +179,8 @@ char *create_backup_file_path()
       letter_sum += absolute_config_file_path[x] * (x+1);
    }
 
-   // Create path of the backup file: "/tmp/" + letter_sum + "_sup_backup.xml"
-   if (asprintf(&buffer, "%s%d%s", BACKUP_FILE_PREFIX, letter_sum, BACKUP_FILE_SUFIX) < 0) {
+   // Create path of the backup file: "/tmp/sup_tmp_dir/" + letter_sum + "_sup_backup.xml"
+   if (asprintf(&buffer, "%s/%d%s", BACKUP_FILE_PREFIX, letter_sum, BACKUP_FILE_SUFIX) < 0) {
       return NULL;
    }
 
@@ -2719,15 +2719,6 @@ void interactive_show_logs()
    }
 
    if (daemon_flag == TRUE) {
-      // Make sup tmp dir in /tmp
-      if (mkdir(SUP_TMP_DIR, PERM_LOGSDIR) == -1) {
-         if (errno == EACCES) {
-            VERBOSE(N_STDOUT, "[ERROR] I/O, could not create tmp dir \"%s\" because of permissions.\n", SUP_TMP_DIR);
-         } else if (errno == ENOENT || errno == ENOTDIR) {
-            VERBOSE(N_STDOUT, "[ERROR] I/O, could not create tmp dir \"%s\".\n", SUP_TMP_DIR);
-         }
-      }
-
       // Send the log file path to client via tmp file and it afterwards executes the pager
       FILE *tmp_file = fopen(SUP_CLI_TMP_FILE, "w");
       if (tmp_file == NULL) {
@@ -3268,6 +3259,15 @@ int supervisor_initialization()
       init_sup_logs_files();
       // Append content of tmp log files to already created logs
       append_tmp_logs();
+   }
+
+   // Make sup tmp dir in /tmp
+   if (mkdir(SUP_TMP_DIR, PERM_LOGSDIR) == -1) {
+      if (errno == EACCES) {
+         VERBOSE(N_STDOUT, "[ERROR] I/O, could not create tmp dir \"%s\" because of permissions.\n", SUP_TMP_DIR);
+      } else if (errno == ENOENT || errno == ENOTDIR) {
+         VERBOSE(N_STDOUT, "[ERROR] I/O, could not create tmp dir \"%s\".\n", SUP_TMP_DIR);
+      }
    }
 
    // Create a new thread doing service routine
