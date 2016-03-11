@@ -74,5 +74,6 @@ fi
 %defattr(755, nemead, nemead)
 %{_localstatedir}/log/nemea-supervisor
 %config(noreplace) %{_sysconfdir}/nemea/supervisor_config.xml
+%config(noreplace) %{_sysconfdir}/nemea/ipfixcol-startup.xml
 %config(noreplace) %{_datarootdir}/nemea-supervisor/supervisor_config_template.xml
 
