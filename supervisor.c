@@ -451,6 +451,9 @@ char **prep_module_args(const uint32_t module_idx)
                } else if (running_modules[module_idx].module_ifces[x].int_ifc_type == FILE_MODULE_IFC_TYPE) {
                   strncpy(ifc_spec + ptr, "f:", 2);
                   ptr+=2;
+               } else if (running_modules[module_idx].module_ifces[x].int_ifc_type == BLACKHOLE_MODULE_IFC_TYPE) {
+                  strncpy(ifc_spec + ptr, "b:", 2);
+                  ptr+=2;
                } else {
                   VERBOSE(MODULE_EVENT, "%s [WARNING] Wrong ifc_type in module %d (interface number %d).\n", get_formatted_time(), module_idx, x);
                   NULLP_TEST_AND_FREE(ifc_spec)
@@ -4264,6 +4267,8 @@ void reload_count_module_interfaces(reload_config_vars_t **config_vars)
             running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_type = FILE_MODULE_IFC_TYPE;
          } else if (strncmp(running_modules[(*config_vars)->current_module_idx].module_ifces[x].ifc_type, "SERVICE", 7) == 0) {
             running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_type = SERVICE_MODULE_IFC_TYPE;
+         } else if (strncmp(running_modules[(*config_vars)->current_module_idx].module_ifces[x].ifc_type, "BLACKHOLE", 9) == 0) {
+            running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_type = BLACKHOLE_MODULE_IFC_TYPE;
          } else {
             running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_type = INVALID_MODULE_IFC_ATTR;
          }
