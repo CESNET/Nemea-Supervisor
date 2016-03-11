@@ -2,4 +2,5 @@
 <name>ipfixcol</name>
 <enabled>false</enabled>
 <path>/usr/bin/ipfixcol</path>
+<params>-c @sysconfdir@/ipfixcol-startup.xml</params>
 </module>

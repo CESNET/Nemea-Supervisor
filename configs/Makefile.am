@@ -1,4 +1,4 @@
-EXTRA_DIST=amplification_detection.mkdir \
+config_files=amplification_detection.mkdir \
 	   amplification_detection.sup \
 	   dnstunnel_detection.mkdir \
 	   dnstunnel_detection.sup \
@@ -21,13 +21,15 @@ EXTRA_DIST=amplification_detection.mkdir \
 	   warning.sup \
 	   README.md
 
+EXTRA_DIST=ipfixcol-startup.xml ${config_files}
+
 BUILT_SOURCES=supervisor_config.xml
-sysconf_DATA = supervisor_config.xml
+sysconf_DATA = supervisor_config.xml ipfixcol-startup.xml
 bin_SCRIPTS=prepare_default_config.sh set_default_nic.sh
 
-pkgdata_DATA=${EXTRA_DIST}
+pkgdata_DATA=${config_files}
 
-supervisor_config.xml: ${EXTRA_DIST}
+supervisor_config.xml: ${config_files}
 	bash ./prepare_default_config.sh configonly
 
 clean-local:
