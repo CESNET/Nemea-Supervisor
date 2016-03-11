@@ -17,5 +17,6 @@
     <!-- include vportscandetector.sup -->
     <!-- include amplification_detection.sup -->
     <!-- include voipfrauddetection.sup -->
+    <!-- include dnstunnel_detection.sup -->
   </modules>
 </nemea-supervisor>
