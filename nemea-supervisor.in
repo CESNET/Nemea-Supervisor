@@ -126,10 +126,13 @@ restart )
 	;;
 
 reload )
-	if [ `$BINDIR/prepare_default_config.sh configonly` != 0]; then
-		echo "Error: could not generate $CONFIG_FILE using $BINDIR/prepare_default_config.sh configonly"
-		exit 1
-	fi
+	(
+		cd "`dirname "$CONFIG_FILE"`"
+		if ! "$BINDIR"/prepare_default_config.sh configonly; then
+			echo "Error: could not generate $CONFIG_FILE using $BINDIR/prepare_default_config.sh configonly"
+			exit 1
+		fi
+	)
 	$SUPERVISOR_CLI -r
         ;;
 
