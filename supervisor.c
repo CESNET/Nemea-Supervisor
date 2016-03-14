@@ -77,7 +77,7 @@
 #define NETCONF_DEFAULT_LOGSDIR_PATH   "/tmp/netconf_supervisor_logs/"
 #define DAEMON_DEFAULT_LOGSDIR_PATH   "/tmp/daemon_supervisor_logs/"
 #define INTERACTIVE_DEFAULT_LOGSDIR_PATH   "/tmp/interactive_supervisor_logs/"
-#define BACKUP_FILE_PREFIX   "/tmp/"
+#define BACKUP_FILE_PREFIX   SUP_TMP_DIR
 #define BACKUP_FILE_SUFIX   "_sup_backup_file.xml"
 
 #define RET_ERROR   -1
@@ -179,8 +179,8 @@ char *create_backup_file_path()
       letter_sum += absolute_config_file_path[x] * (x+1);
    }
 
-   // Create path of the backup file: "/tmp/" + letter_sum + "_sup_backup.xml"
-   if (asprintf(&buffer, "%s%d%s", BACKUP_FILE_PREFIX, letter_sum, BACKUP_FILE_SUFIX) < 0) {
+   // Create path of the backup file: "/tmp/sup_tmp_dir/" + letter_sum + "_sup_backup.xml"
+   if (asprintf(&buffer, "%s/%d%s", BACKUP_FILE_PREFIX, letter_sum, BACKUP_FILE_SUFIX) < 0) {
       return NULL;
    }
 
@@ -450,6 +450,9 @@ char **prep_module_args(const uint32_t module_idx)
                   ptr+=2;
                } else if (running_modules[module_idx].module_ifces[x].int_ifc_type == FILE_MODULE_IFC_TYPE) {
                   strncpy(ifc_spec + ptr, "f:", 2);
+                  ptr+=2;
+               } else if (running_modules[module_idx].module_ifces[x].int_ifc_type == BLACKHOLE_MODULE_IFC_TYPE) {
+                  strncpy(ifc_spec + ptr, "b:", 2);
                   ptr+=2;
                } else {
                   VERBOSE(MODULE_EVENT, "%s [WARNING] Wrong ifc_type in module %d (interface number %d).\n", get_formatted_time(), module_idx, x);
@@ -2716,15 +2719,6 @@ void interactive_show_logs()
    }
 
    if (daemon_flag == TRUE) {
-      // Make sup tmp dir in /tmp
-      if (mkdir(SUP_TMP_DIR, PERM_LOGSDIR) == -1) {
-         if (errno == EACCES) {
-            VERBOSE(N_STDOUT, "[ERROR] I/O, could not create tmp dir \"%s\" because of permissions.\n", SUP_TMP_DIR);
-         } else if (errno == ENOENT || errno == ENOTDIR) {
-            VERBOSE(N_STDOUT, "[ERROR] I/O, could not create tmp dir \"%s\".\n", SUP_TMP_DIR);
-         }
-      }
-
       // Send the log file path to client via tmp file and it afterwards executes the pager
       FILE *tmp_file = fopen(SUP_CLI_TMP_FILE, "w");
       if (tmp_file == NULL) {
@@ -3267,6 +3261,15 @@ int supervisor_initialization()
       append_tmp_logs();
    }
 
+   // Make sup tmp dir in /tmp
+   if (mkdir(SUP_TMP_DIR, PERM_LOGSDIR) == -1) {
+      if (errno == EACCES) {
+         VERBOSE(N_STDOUT, "[ERROR] I/O, could not create tmp dir \"%s\" because of permissions.\n", SUP_TMP_DIR);
+      } else if (errno == ENOENT || errno == ENOTDIR) {
+         VERBOSE(N_STDOUT, "[ERROR] I/O, could not create tmp dir \"%s\".\n", SUP_TMP_DIR);
+      }
+   }
+
    // Create a new thread doing service routine
    VERBOSE(N_STDOUT,"[SERVICE] Starting service thread.\n");
    if (start_service_thread() != 0) {
@@ -3598,9 +3601,10 @@ int reload_check_interface_element(reload_config_vars_t **config_vars)
          }
          key = xmlNodeListGetString((*config_vars)->doc_tree_ptr, (*config_vars)->ifc_atr_elem->xmlChildrenNode, 1);
          if (key != NULL) {
-            /* Only "TCP" or "UNIXSOCKET" values in element type are allowed */
-            if (xmlStrcmp(key, BAD_CAST "TCP") != 0 && xmlStrcmp(key, BAD_CAST "UNIXSOCKET") != 0) {
-               VERBOSE(N_STDOUT, "[ERROR] Expected one of {TCP,UNIXSOCKET} values in \"type\" element!\n");
+            /* Only "TCP", "UNIXSOCKET", "FILE" or "BLACKHOLE" values in element type are allowed */
+            if (xmlStrcmp(key, BAD_CAST "TCP") != 0 && xmlStrcmp(key, BAD_CAST "UNIXSOCKET") != 0 &&
+                xmlStrcmp(key, BAD_CAST "FILE") != 0 && xmlStrcmp(key, BAD_CAST "BLACKHOLE") != 0) {
+               VERBOSE(N_STDOUT, "[ERROR] Expected one of {TCP,UNIXSOCKET,FILE,BLACKHOLE} values in \"type\" element!\n");
                goto error_label;
             }
          } else {
@@ -4264,6 +4268,8 @@ void reload_count_module_interfaces(reload_config_vars_t **config_vars)
             running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_type = FILE_MODULE_IFC_TYPE;
          } else if (strncmp(running_modules[(*config_vars)->current_module_idx].module_ifces[x].ifc_type, "SERVICE", 7) == 0) {
             running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_type = SERVICE_MODULE_IFC_TYPE;
+         } else if (strncmp(running_modules[(*config_vars)->current_module_idx].module_ifces[x].ifc_type, "BLACKHOLE", 9) == 0) {
+            running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_type = BLACKHOLE_MODULE_IFC_TYPE;
          } else {
             running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_type = INVALID_MODULE_IFC_ATTR;
          }

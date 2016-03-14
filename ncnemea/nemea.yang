@@ -30,6 +30,10 @@ module "nemea" {
         description
           "Service communication interface for module-supervisor communication.";
       }
+      enum "BLACKHOLE" {
+        description
+          "Output interface dropping everything.";
+      }
     }
   }
   typedef "trapifc-direction" {
