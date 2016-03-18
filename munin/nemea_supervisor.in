@@ -190,6 +190,7 @@ def parseData(data):
 			if not line:
 				continue
 			parsed_line = line.split(',')
+			parsed_line[0] = parsed_line[0].replace("-", "_")
 			counters.append(parsed_line)
 			if parsed_line[0] not in modules:
 				modules[parsed_line[0]] = {}
