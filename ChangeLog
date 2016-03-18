@@ -1,3 +1,16 @@
+2016-03-14 supervisor-1.3.3
+        * added multopt detector to configs
+	* added trapinterface "blackhole"
+	* bugfixes
+
+2016-03-14 (Tomas Cejka): init script: BUGFIX: syntax error! + bad CWD
+2016-03-11 (Zdenek Rosa): configs: Multopt detector added
+2016-03-11 (Marek Svepes): configs: fix in warning.sup file
+2016-03-11 (Marek Svepes): bugfix: backup file is being saved in sup_tmp_dir (/tmp/sup_tmp_dir) because of permissions
+2016-03-11 (Marek Svepes): bugfix: added {FILE,BLACKHOLE} to correct values in TYPE element in xml validation
+2016-03-11 (Marek Svepes): Added a new trapinterface type "blackhole"
+2016-03-11 (Tomas Cejka): configs: add config file for ipfixcol
+
 2016-03-11 supervisor-1.3.2
 	* public accessible ports now used for output of detectors
 	* bugfixes
