@@ -57,7 +57,7 @@ LOG_LEVEL = logging.ERROR
 test = False
 
 # path to supervisor socket
-supervisor_socket = @DEFAULT_PATH_TO_SOCKET@
+supervisor_socket = '@DEFAULT_PATH_TO_SOCKET@'
 
 # temporary file with downloaded data
 data_temp_file = "/tmp/munin_nemea_data.txt"
