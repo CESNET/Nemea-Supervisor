@@ -20,15 +20,19 @@ After=network.target local-fs.target remote-fs.target
 
 [Service]
 Type=forking
+PIDFile=@defaultsocketdir@/nemea-supervisor.pid
 Environment=LANG=C
 User=nemead
 Group=nemead
 
 ExecStart=@bindir@/nemea-supervisor start
-ExecReload=@bindir@/nemea-supervisor restart
+ExecReload=@bindir@/nemea-supervisor reload
 ExecStop=@bindir@/nemea-supervisor stop
 KillMode=none
 PrivateTmp=false
+PermissionsStartOnly=true
+ExecStartPre=/usr/bin/mkdir -p @rundir@/nemea-supervisor
+ExecStartPre=/usr/bin/chown -R nemead:nemead @rundir@/nemea-supervisor
 
 [Install]
 WantedBy=multi-user.target

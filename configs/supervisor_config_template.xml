@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<nemea-supervisor>
+<!-- include warning.sup -->
+
+  <modules>
+    <name>Data sources</name>
+    <enabled>true</enabled>
+    <!-- include ipfixcol.sup -->
+    <!-- include flow_meter.sup -->
+  </modules>
+
+  <modules>
+    <name>Detection</name>
+    <enabled>true</enabled>
+    <!-- include ipblacklistfilter.sup -->
+    <!-- include hoststats.sup -->
+    <!-- include vportscandetector.sup -->
+    <!-- include amplification_detection.sup -->
+    <!-- include voipfrauddetection.sup -->
+    <!-- include dnstunnel_detection.sup -->
+  </modules>
+</nemea-supervisor>

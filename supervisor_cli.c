@@ -139,6 +139,10 @@ int main(int argc, char **argv)
    int just_stats_flag = FALSE;
    int reload_command_flag = FALSE;
 
+   FILE *tmp_file = NULL;
+   char *file_path = NULL;
+   int file_path_len = 0;
+
    int opt;
    while ((opt = getopt(argc, argv, "rhs:x")) != -1) {
       switch (opt) {
@@ -226,8 +230,8 @@ int main(int argc, char **argv)
       FD_SET(client_internals->supervisor_input_stream_fd, &read_fds);
       FD_SET(0, &read_fds);
 
-      tv.tv_sec = 1;
-      tv.tv_usec = 0;
+      tv.tv_sec = 0;
+      tv.tv_usec = 200000;
 
       ret_val = select(client_internals->supervisor_input_stream_fd+1, &read_fds, NULL, NULL, &tv);
       if (ret_val == -1) {
@@ -244,7 +248,7 @@ int main(int argc, char **argv)
                   exit(EXIT_SUCCESS);
                } else if (strcmp(buffer,"Dstop") == 0) {
                   for (x=0; x<3; x++) {
-                     fprintf(client_internals->supervisor_output_stream,"9\n");
+                     fprintf(client_internals->supervisor_output_stream,"0\n");
                      fflush(client_internals->supervisor_output_stream);
                      usleep(300000);
                   }
@@ -273,7 +277,20 @@ int main(int argc, char **argv)
             }
          }
       } else {
-         // timeout, nothing to do
+         // Check whether the tmp_file is available (it should contain path to the log file which has to be shown)
+         if (access(SUP_CLI_TMP_FILE, R_OK) == 0) {
+            tmp_file = fopen(SUP_CLI_TMP_FILE, "r");
+            if (tmp_file != NULL) {
+               if (fscanf(tmp_file, "%d\n", &file_path_len) > 0 && file_path_len > 0) {
+                  file_path = (char *) calloc(file_path_len + 1, sizeof(char));
+                  if (fscanf(tmp_file, "%s", file_path) > 0) {
+                     show_file_with_pager(&file_path);
+                  }
+               }
+            }
+            unlink(SUP_CLI_TMP_FILE);
+            NULLP_TEST_AND_FREE(file_path)
+         }
       }
 
       if (just_stats_flag) {

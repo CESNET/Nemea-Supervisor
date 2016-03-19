@@ -54,28 +54,14 @@
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
 #include <getopt.h>
 #include <pthread.h>
-#include <errno.h>
 #include <semaphore.h>
-#include <signal.h>
 #include <sys/ioctl.h>
 #include <net/if.h>
 #include <ifaddrs.h>
-#include <dirent.h>
 
 #include <libtrap/trap.h>
-
-#include <pwd.h>
-#include <grp.h>
-#include <langinfo.h>
 
 #define TRAP_PARAM   "-i" ///< Interface parameter for libtrap
 #define DEFAULT_MAX_RESTARTS_PER_MINUTE   3  ///< Maximum number of module restarts per minute
@@ -91,7 +77,7 @@
 #define NETCONF_DEFAULT_LOGSDIR_PATH   "/tmp/netconf_supervisor_logs/"
 #define DAEMON_DEFAULT_LOGSDIR_PATH   "/tmp/daemon_supervisor_logs/"
 #define INTERACTIVE_DEFAULT_LOGSDIR_PATH   "/tmp/interactive_supervisor_logs/"
-#define BACKUP_FILE_PREFIX   "/tmp/"
+#define BACKUP_FILE_PREFIX   SUP_TMP_DIR
 #define BACKUP_FILE_SUFIX   "_sup_backup_file.xml"
 
 #define RET_ERROR   -1
@@ -193,8 +179,8 @@ char *create_backup_file_path()
       letter_sum += absolute_config_file_path[x] * (x+1);
    }
 
-   // Create path of the backup file: "/tmp/" + letter_sum + "_sup_backup.xml"
-   if (asprintf(&buffer, "%s%d%s", BACKUP_FILE_PREFIX, letter_sum, BACKUP_FILE_SUFIX) < 0) {
+   // Create path of the backup file: "/tmp/sup_tmp_dir/" + letter_sum + "_sup_backup.xml"
+   if (asprintf(&buffer, "%s/%d%s", BACKUP_FILE_PREFIX, letter_sum, BACKUP_FILE_SUFIX) < 0) {
       return NULL;
    }
 
@@ -465,6 +451,9 @@ char **prep_module_args(const uint32_t module_idx)
                } else if (running_modules[module_idx].module_ifces[x].int_ifc_type == FILE_MODULE_IFC_TYPE) {
                   strncpy(ifc_spec + ptr, "f:", 2);
                   ptr+=2;
+               } else if (running_modules[module_idx].module_ifces[x].int_ifc_type == BLACKHOLE_MODULE_IFC_TYPE) {
+                  strncpy(ifc_spec + ptr, "b:", 2);
+                  ptr+=2;
                } else {
                   VERBOSE(MODULE_EVENT, "%s [WARNING] Wrong ifc_type in module %d (interface number %d).\n", get_formatted_time(), module_idx, x);
                   NULLP_TEST_AND_FREE(ifc_spec)
@@ -518,21 +507,36 @@ char **prep_module_args(const uint32_t module_idx)
 
 int get_number_from_input_choosing_option()
 {
+   int x = 0;
    int option = 0;
    char *input_p = NULL;
+   int input_len = 0;
 
    input_p = get_input_from_stream(input_fd);
    if (input_p == NULL) {
-      return RET_ERROR;
-   } else if (strlen(input_p) == 1 && sscanf(input_p, "%d", &option) == 1 && option >= 0) {
-      free(input_p);
-      input_p = NULL;
-      return option;
+      goto error_label;
    } else {
-      free(input_p);
-      input_p = NULL;
-      return RET_ERROR;
+      input_len = strlen(input_p);
+      // Input must be min 1 and max 3 characters long
+      if (input_len > 3 || input_len < 1) {
+         goto error_label;
+      }
+      // Check if all characters are digits
+      for (x = 0; x < input_len; x++) {
+         if (input_p[x] < '0' || input_p[x] > '9') {
+            goto error_label;
+         }
+      }
+      if (sscanf(input_p, "%d", &option) < 1 || option < 0) {
+         goto error_label;
+      }
    }
+   NULLP_TEST_AND_FREE(input_p)
+   return option;
+
+error_label:
+   NULLP_TEST_AND_FREE(input_p)
+   return RET_ERROR;
 }
 
 /* Returns count of numbers in input (separated by commas) or -1 */
@@ -844,22 +848,37 @@ void generate_backup_config_file()
                   sprintf(buffer, "%d", running_modules[x].module_pid);
                   xmlNewProp (module, BAD_CAST "module_pid", BAD_CAST buffer);
 
-                  xmlNewChild(module, NULL, BAD_CAST "name", BAD_CAST running_modules[x].module_name);
-                  xmlNewChild(module, NULL, BAD_CAST "path", BAD_CAST running_modules[x].module_path);
-                  xmlNewChild(module, NULL, BAD_CAST "params", BAD_CAST running_modules[x].module_params);
+                  if (running_modules[x].module_name != NULL) {
+                     xmlNewChild(module, NULL, BAD_CAST "name", BAD_CAST running_modules[x].module_name);
+                  }
+                  if (running_modules[x].module_path != NULL) {
+                     xmlNewChild(module, NULL, BAD_CAST "path", BAD_CAST running_modules[x].module_path);
+                  }
+                  if (running_modules[x].module_params != NULL) {
+                     xmlNewChild(module, NULL, BAD_CAST "params", BAD_CAST running_modules[x].module_params);
+                  }
                   if (running_modules[x].module_enabled) {
                      xmlNewChild(module, NULL, BAD_CAST "enabled", BAD_CAST "true");
                   } else {
                      xmlNewChild(module, NULL, BAD_CAST "enabled", BAD_CAST "false");
                   }
-                  trapinterfaces = xmlNewChild(module, NULL, BAD_CAST "trapinterfaces", NULL);
-
+                  if (running_modules[x].module_ifces_cnt > 0) {
+                     trapinterfaces = xmlNewChild(module, NULL, BAD_CAST "trapinterfaces", NULL);
+                  }
                   for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
                      interface = xmlNewChild(trapinterfaces, NULL, BAD_CAST "interface", NULL);
-                     xmlNewChild(interface, NULL, BAD_CAST "note", BAD_CAST running_modules[x].module_ifces[y].ifc_note);
-                     xmlNewChild(interface, NULL, BAD_CAST "params", BAD_CAST running_modules[x].module_ifces[y].ifc_params);
-                     xmlNewChild(interface, NULL, BAD_CAST "direction", BAD_CAST running_modules[x].module_ifces[y].ifc_direction);
-                     xmlNewChild(interface, NULL, BAD_CAST "type", BAD_CAST running_modules[x].module_ifces[y].ifc_type);
+                     if (running_modules[x].module_ifces[y].ifc_note != NULL) {
+                        xmlNewChild(interface, NULL, BAD_CAST "note", BAD_CAST running_modules[x].module_ifces[y].ifc_note);
+                     }
+                     if (running_modules[x].module_ifces[y].ifc_params != NULL) {
+                        xmlNewChild(interface, NULL, BAD_CAST "params", BAD_CAST running_modules[x].module_ifces[y].ifc_params);
+                     }
+                     if (running_modules[x].module_ifces[y].ifc_direction != NULL) {
+                        xmlNewChild(interface, NULL, BAD_CAST "direction", BAD_CAST running_modules[x].module_ifces[y].ifc_direction);
+                     }
+                     if (running_modules[x].module_ifces[y].ifc_type != NULL) {
+                        xmlNewChild(interface, NULL, BAD_CAST "type", BAD_CAST running_modules[x].module_ifces[y].ifc_type);
+                     }
 
                      if (xmlAddChild(trapinterfaces, interface) == NULL) {
                         xmlFree(interface);
@@ -893,22 +912,37 @@ void generate_backup_config_file()
             sprintf(buffer, "%d", running_modules[x].module_pid);
             xmlNewProp (module, BAD_CAST "module_pid", BAD_CAST buffer);
 
-            xmlNewChild(module, NULL, BAD_CAST "name", BAD_CAST running_modules[x].module_name);
-            xmlNewChild(module, NULL, BAD_CAST "path", BAD_CAST running_modules[x].module_path);
-            xmlNewChild(module, NULL, BAD_CAST "params", BAD_CAST running_modules[x].module_params);
+            if (running_modules[x].module_name != NULL) {
+               xmlNewChild(module, NULL, BAD_CAST "name", BAD_CAST running_modules[x].module_name);
+            }
+            if (running_modules[x].module_path != NULL) {
+               xmlNewChild(module, NULL, BAD_CAST "path", BAD_CAST running_modules[x].module_path);
+            }
+            if (running_modules[x].module_params != NULL) {
+               xmlNewChild(module, NULL, BAD_CAST "params", BAD_CAST running_modules[x].module_params);
+            }
             if (running_modules[x].module_enabled) {
                xmlNewChild(module, NULL, BAD_CAST "enabled", BAD_CAST "true");
             } else {
                xmlNewChild(module, NULL, BAD_CAST "enabled", BAD_CAST "false");
             }
-            trapinterfaces = xmlNewChild(module, NULL, BAD_CAST "trapinterfaces", NULL);
-
+            if (running_modules[x].module_ifces_cnt > 0) {
+               trapinterfaces = xmlNewChild(module, NULL, BAD_CAST "trapinterfaces", NULL);
+            }
             for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
                interface = xmlNewChild(trapinterfaces, NULL, BAD_CAST "interface", NULL);
-               xmlNewChild(interface, NULL, BAD_CAST "note", BAD_CAST running_modules[x].module_ifces[y].ifc_note);
-               xmlNewChild(interface, NULL, BAD_CAST "params", BAD_CAST running_modules[x].module_ifces[y].ifc_params);
-               xmlNewChild(interface, NULL, BAD_CAST "direction", BAD_CAST running_modules[x].module_ifces[y].ifc_direction);
-               xmlNewChild(interface, NULL, BAD_CAST "type", BAD_CAST running_modules[x].module_ifces[y].ifc_type);
+               if (running_modules[x].module_ifces[y].ifc_note != NULL) {
+                  xmlNewChild(interface, NULL, BAD_CAST "note", BAD_CAST running_modules[x].module_ifces[y].ifc_note);
+               }
+               if (running_modules[x].module_ifces[y].ifc_params != NULL) {
+                  xmlNewChild(interface, NULL, BAD_CAST "params", BAD_CAST running_modules[x].module_ifces[y].ifc_params);
+               }
+               if (running_modules[x].module_ifces[y].ifc_direction != NULL) {
+                  xmlNewChild(interface, NULL, BAD_CAST "direction", BAD_CAST running_modules[x].module_ifces[y].ifc_direction);
+               }
+               if (running_modules[x].module_ifces[y].ifc_type != NULL) {
+                  xmlNewChild(interface, NULL, BAD_CAST "type", BAD_CAST running_modules[x].module_ifces[y].ifc_type);
+               }
 
                if (xmlAddChild(trapinterfaces, interface) == NULL) {
                   xmlFree(interface);
@@ -1341,6 +1375,7 @@ void daemon_send_options_to_client()
    VERBOSE(N_STDOUT, "6. AVAILABLE MODULES\n");
    VERBOSE(N_STDOUT, "7. RELOAD CONFIGURATION\n");
    VERBOSE(N_STDOUT, "8. PRINT SUPERVISOR INFO\n");
+   VERBOSE(N_STDOUT, "9. SHOW LOGS\n");
    VERBOSE(N_STDOUT, "-- Type \"Cquit\" to exit client --\n");
    VERBOSE(N_STDOUT, "-- Type \"Dstop\" to stop daemon --\n" ANSI_ATTR_RESET);
    VERBOSE(N_STDOUT, ANSI_YELLOW_BOLD "[INTERACTIVE] Your choice: " ANSI_ATTR_RESET);
@@ -1538,6 +1573,9 @@ void *daemon_serve_client_routine (void *cli)
                interactive_print_supervisor_info();
                break;
             case 9:
+               interactive_show_logs();
+               break;
+            case 0:
                nine_cnt++;
                if (nine_cnt == 3) {
                   pthread_mutex_lock(&server_internals->lock);
@@ -2052,13 +2090,12 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
                continue;
             }
 
-            memset(buffer, 0, buffer_size);
             if (header->data_size > buffer_size) {
                // Reallocate buffer for incoming data
-               buffer_size += buffer_size / 2;
+               buffer_size += (header->data_size - buffer_size) + 1;
                buffer = (char *) realloc(buffer, buffer_size * sizeof(char));
-               memset(buffer + (2 * (buffer_size / 3)), 0, (buffer_size / 3) * sizeof(char));
             }
+            memset(buffer, 0, buffer_size * sizeof(char));
 
             // Receive module stats in json format
             if (service_recv_data(x, header->data_size, (void **) &buffer) == -1) {
@@ -2328,7 +2365,8 @@ int interactive_get_option()
    VERBOSE(N_STDOUT, "6. AVAILABLE MODULES\n");
    VERBOSE(N_STDOUT, "7. RELOAD CONFIGURATION\n");
    VERBOSE(N_STDOUT, "8. PRINT SUPERVISOR INFO\n");
-   VERBOSE(N_STDOUT, "9. STOP SUPERVISOR\n" ANSI_ATTR_RESET);
+   VERBOSE(N_STDOUT, "9. SHOW LOGS\n");
+   VERBOSE(N_STDOUT, "0. STOP SUPERVISOR\n" ANSI_ATTR_RESET);
    VERBOSE(N_STDOUT, ANSI_YELLOW_BOLD "[INTERACTIVE] Your choice: " ANSI_ATTR_RESET);
 
    return get_number_from_input_choosing_option();
@@ -2517,6 +2555,188 @@ void interactive_stop_module()
       modules_to_stop = NULL;
    }
    pthread_mutex_unlock(&running_modules_lock);
+}
+
+void interactive_show_logs()
+{
+   // format vars
+   int log_idx_dig_num = 1;
+   int log_idx_rank = 1;
+   int char_pos = 0;
+   // (stdout + stderr) * modules_cnt + sup_log + sup_log_stats + sup_log_modules_events
+   uint16_t max_num_of_logs = (2 * loaded_modules_cnt) + 3;
+   uint8_t avail_logs[max_num_of_logs];
+   memset(avail_logs, 0, max_num_of_logs * sizeof(uint8_t));
+   int x = 0, log_idx = -1, chosen_log_idx = 0;
+   char *file_path = (char *) calloc(PATH_MAX, sizeof(char));
+   memset(file_path, 0, PATH_MAX);
+   char *file_path_ptr = file_path + strlen(logs_path);
+
+   if (sprintf(file_path, "%s", logs_path) < 1) {
+      VERBOSE(N_STDOUT, "[ERROR] I/O, could not create log file path.\n");
+      goto exit_label;
+   }
+
+   VERBOSE(N_STDOUT, ANSI_BOLD "Available modules logs:" ANSI_ATTR_RESET "\n");
+   VERBOSE(N_STDOUT, "   " ANSI_BOLD "stdout" ANSI_ATTR_RESET " | " ANSI_BOLD "stderr" ANSI_ATTR_RESET " | " ANSI_BOLD "module name" ANSI_ATTR_RESET "\n");
+
+   for (x = 0; x < loaded_modules_cnt; x++) {
+      log_idx++;
+      // Get the number of log_idx digits
+      if (log_idx >= (log_idx_rank * 10)) {
+         log_idx_dig_num++;
+         log_idx_rank*=10;
+      }
+
+      // Test module's stdout log
+      if (sprintf(file_path_ptr, "modules_logs/%s_stdout", running_modules[x].module_name) < 1) {
+         VERBOSE(N_STDOUT, "[ERROR] I/O, could not create log file path.\n");
+         goto exit_label;
+      }
+      file_path_ptr += strlen("modules_logs/_std") + strlen(running_modules[x].module_name);
+      if (access(file_path, R_OK) != 0) {
+         VERBOSE(N_STDOUT, "   " ANSI_RED_BOLD "%d" ANSI_ATTR_RESET, log_idx);
+         avail_logs[log_idx] = FALSE;
+      } else {
+         VERBOSE(N_STDOUT, "   " ANSI_GREEN_BOLD "%d" ANSI_ATTR_RESET, log_idx);
+         avail_logs[log_idx] = TRUE;
+      }
+
+      // Align the stderr column
+      char_pos = 3 + log_idx_dig_num;
+      VERBOSE(N_STDOUT, "%*c| ", (10 - char_pos), ' ');
+      char_pos += (10 - char_pos) + 2;
+
+      log_idx++;
+      // Test module's stderr log
+      if (sprintf(file_path_ptr, "err") < 1) {
+         VERBOSE(N_STDOUT, "[ERROR] I/O, could not create log file path.\n");
+         goto exit_label;
+      }
+      file_path_ptr = file_path + strlen(logs_path);
+      if (access(file_path, R_OK) != 0) {
+         VERBOSE(N_STDOUT, ANSI_RED_BOLD "%d" ANSI_ATTR_RESET, log_idx);
+         avail_logs[log_idx] = FALSE;
+      } else {
+         VERBOSE(N_STDOUT, ANSI_GREEN_BOLD "%d" ANSI_ATTR_RESET, log_idx);
+         avail_logs[log_idx] = TRUE;
+      }
+
+      // ALign the module name column
+      char_pos += log_idx_dig_num;
+      VERBOSE(N_STDOUT, "%*c| %s\n", (19 - char_pos), ' ', running_modules[x].module_name);
+
+      // Zero the rest of file_path memory after "logs_path"
+      memset(file_path + strlen(logs_path), 0, (PATH_MAX - strlen(logs_path)) * sizeof(char));
+   }
+
+   VERBOSE(N_STDOUT, ANSI_BOLD "Available supervisor logs:" ANSI_ATTR_RESET "\n");
+
+   log_idx++;
+   // Test the supervisor_log file
+   if (sprintf(file_path_ptr, "supervisor_log") < 1) {
+      VERBOSE(N_STDOUT, "[ERROR] I/O, could not create log file path.\n");
+      goto exit_label;
+   }
+   if (access(file_path, R_OK) != 0) {
+      VERBOSE(N_STDOUT,"   " ANSI_RED_BOLD "%d" ANSI_ATTR_RESET " | supervisor_log\n", log_idx);
+      avail_logs[log_idx] = FALSE;
+   } else {
+      VERBOSE(N_STDOUT,"   " ANSI_GREEN_BOLD "%d" ANSI_ATTR_RESET " | supervisor_log\n", log_idx);
+      avail_logs[log_idx] = TRUE;
+   }
+
+   log_idx++;
+   // Test the supervisor_log_statistics file (no need to erase file_path string memory - it is overwritten)
+   if (sprintf(file_path_ptr, "supervisor_log_statistics") < 1) {
+      VERBOSE(N_STDOUT, "[ERROR] I/O, could not create log file path.\n");
+      goto exit_label;
+   }
+   if (access(file_path, R_OK) != 0) {
+      VERBOSE(N_STDOUT,"   " ANSI_RED_BOLD "%d" ANSI_ATTR_RESET " | supervisor_log_statistics\n", log_idx);
+      avail_logs[log_idx] = FALSE;
+   } else {
+      VERBOSE(N_STDOUT,"   " ANSI_GREEN_BOLD "%d" ANSI_ATTR_RESET " | supervisor_log_statistics\n", log_idx);
+      avail_logs[log_idx] = TRUE;
+   }
+
+   log_idx++;
+   // Test the supervisor_log_module_event file (no need to erase file_path string memory - it is overwritten)
+   if (sprintf(file_path_ptr, "supervisor_log_module_event") < 1) {
+      VERBOSE(N_STDOUT, "[ERROR] I/O, could not create log file path.\n");
+      goto exit_label;
+   }
+   if (access(file_path, R_OK) != 0) {
+      VERBOSE(N_STDOUT,"   " ANSI_RED_BOLD "%d" ANSI_ATTR_RESET " | supervisor_log_module_event\n", log_idx);
+      avail_logs[log_idx] = FALSE;
+   } else {
+      VERBOSE(N_STDOUT,"   " ANSI_GREEN_BOLD "%d" ANSI_ATTR_RESET " | supervisor_log_module_event\n", log_idx);
+      avail_logs[log_idx] = TRUE;
+   }
+
+   VERBOSE(N_STDOUT, ANSI_YELLOW_BOLD "[INTERACTIVE] Choose the log number: " ANSI_ATTR_RESET);
+   chosen_log_idx = get_number_from_input_choosing_option();
+   if (chosen_log_idx == -1 || chosen_log_idx > max_num_of_logs) {
+      VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Wrong input.\n" ANSI_ATTR_RESET);
+      goto exit_label;
+   }
+
+   if (avail_logs[chosen_log_idx] == FALSE) {
+      VERBOSE(N_STDOUT, ANSI_RED_BOLD "[ERROR] Chosen log is not available\n" ANSI_ATTR_RESET);
+      goto exit_label;
+   }
+
+   memset(file_path, 0, PATH_MAX * sizeof(char));
+   if (chosen_log_idx < (max_num_of_logs - 3)) {
+      if (chosen_log_idx % 2 == 0) {
+         // stdout
+         if (sprintf(file_path, "%smodules_logs/%s_stdout", logs_path, running_modules[chosen_log_idx/2].module_name) < 1) {
+            VERBOSE(N_STDOUT, "[ERROR] I/O, could not create log file path.\n");
+            goto exit_label;
+         }
+      } else {
+         // stderr
+         if (sprintf(file_path, "%smodules_logs/%s_stderr", logs_path, running_modules[chosen_log_idx/2].module_name) < 1) {
+            VERBOSE(N_STDOUT, "[ERROR] I/O, could not create log file path.\n");
+            goto exit_label;
+         }
+      }
+   } else if (chosen_log_idx == (max_num_of_logs - 3)) {
+      if (sprintf(file_path, "%ssupervisor_log", logs_path) < 1) {
+         VERBOSE(N_STDOUT, "[ERROR] I/O, could not create log file path.\n");
+         goto exit_label;
+      }
+   } else if (chosen_log_idx == (max_num_of_logs - 2)) {
+      if (sprintf(file_path, "%ssupervisor_log_statistics", logs_path) < 1) {
+         VERBOSE(N_STDOUT, "[ERROR] I/O, could not create log file path.\n");
+         goto exit_label;
+      }
+   } else {
+      if (sprintf(file_path, "%ssupervisor_log_module_event", logs_path) < 1) {
+         VERBOSE(N_STDOUT, "[ERROR] I/O, could not create log file path.\n");
+         goto exit_label;
+      }
+   }
+
+   if (daemon_flag == TRUE) {
+      // Send the log file path to client via tmp file and it afterwards executes the pager
+      FILE *tmp_file = fopen(SUP_CLI_TMP_FILE, "w");
+      if (tmp_file == NULL) {
+         VERBOSE(N_STDOUT, "[ERROR] Could not deliver log file path to the supervisor client via /tmp/tmp_sup_cli_file.\n");
+         goto exit_label;
+      } else {
+         fprintf(tmp_file, "%d\n%s", (int) strlen(file_path), file_path);
+         fflush(tmp_file);
+         fclose(tmp_file);
+      }
+      goto exit_label;
+   } else {
+      show_file_with_pager(&file_path);
+   }
+
+exit_label:
+   NULLP_TEST_AND_FREE(file_path)
+   return;
 }
 
 void interactive_show_running_modules_status()
@@ -3041,6 +3261,15 @@ int supervisor_initialization()
       append_tmp_logs();
    }
 
+   // Make sup tmp dir in /tmp
+   if (mkdir(SUP_TMP_DIR, PERM_LOGSDIR) == -1) {
+      if (errno == EACCES) {
+         VERBOSE(N_STDOUT, "[ERROR] I/O, could not create tmp dir \"%s\" because of permissions.\n", SUP_TMP_DIR);
+      } else if (errno == ENOENT || errno == ENOTDIR) {
+         VERBOSE(N_STDOUT, "[ERROR] I/O, could not create tmp dir \"%s\".\n", SUP_TMP_DIR);
+      }
+   }
+
    // Create a new thread doing service routine
    VERBOSE(N_STDOUT,"[SERVICE] Starting service thread.\n");
    if (start_service_thread() != 0) {
@@ -3178,7 +3407,7 @@ int reload_check_supervisor_element(reload_config_vars_t **config_vars)
    uint8_t restarts_elem_idx = 0, logsdir_elem_idx = 1;
 
    while ((*config_vars)->module_elem != NULL) {
-      if (!xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "module-restarts")) {
+      if ((*config_vars)->module_elem->type == XML_ELEMENT_NODE && (xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "module-restarts") == 0)) {
          basic_elements[restarts_elem_idx]++;
          /* Check the number of found elements module-restarts (at most 1 is allowed) */
          if (basic_elements[restarts_elem_idx] > 1) {
@@ -3197,7 +3426,7 @@ int reload_check_supervisor_element(reload_config_vars_t **config_vars)
             VERBOSE(N_STDOUT, "[ERROR] Empty value in \"module-restarts\" element!\n");
             goto error_label;
          }
-      } else if (!xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "logs-directory")) {
+      } else if ((*config_vars)->module_elem->type == XML_ELEMENT_NODE && (xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "logs-directory") == 0)) {
          basic_elements[logsdir_elem_idx]++;
          /* Check the number of found elements logs-directory (at most 1 is allowed) */
          if (basic_elements[logsdir_elem_idx] > 1) {
@@ -3212,9 +3441,11 @@ int reload_check_supervisor_element(reload_config_vars_t **config_vars)
             VERBOSE(N_STDOUT, "[ERROR] Empty value in \"logs-directory\" element!\n");
             goto error_label;
          }
-      } else if (xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "text") != 0) {
-         /* All other elements are unexpected and are not allowed */
-         VERBOSE(N_STDOUT, "[ERROR] Unexpected element \"%s\" in \"supervisor\" element!\n", (char *)(*config_vars)->module_elem->name);
+      } else if ((*config_vars)->module_elem->type == XML_COMMENT_NODE || (*config_vars)->module_elem->type == XML_TEXT_NODE) {
+         // Nothing to do here
+      } else {
+         /* All other nodes are unexpected and are not allowed */
+         VERBOSE(N_STDOUT, "[ERROR] Unexpected node (type: %d, name: %s) in \"supervisor\" element!\n", (*config_vars)->module_elem->type, (char *)(*config_vars)->module_elem->name);
          goto error_label;
       }
       if (key != NULL) {
@@ -3348,7 +3579,7 @@ int reload_check_interface_element(reload_config_vars_t **config_vars)
    uint8_t note_elem_idx = 0, type_elem_idx = 1, dir_elem_idx = 2, params_elem_idx = 3;
 
    while ((*config_vars)->ifc_atr_elem != NULL) {
-      if ((!xmlStrcmp((*config_vars)->ifc_atr_elem->name,BAD_CAST "note"))) {
+      if ((*config_vars)->ifc_atr_elem->type == XML_ELEMENT_NODE && (xmlStrcmp((*config_vars)->ifc_atr_elem->name,BAD_CAST "note") == 0)) {
          basic_elements[note_elem_idx]++;
          /* Check the number of found elements note (at most 1 is allowed) */
          if (basic_elements[note_elem_idx] > 1) {
@@ -3361,7 +3592,7 @@ int reload_check_interface_element(reload_config_vars_t **config_vars)
             VERBOSE(N_STDOUT, "[ERROR] Empty value in \"note\" element!\n");
             goto error_label;
          }
-      } else if ((!xmlStrcmp((*config_vars)->ifc_atr_elem->name,BAD_CAST "type"))) {
+      } else if ((*config_vars)->ifc_atr_elem->type == XML_ELEMENT_NODE && (xmlStrcmp((*config_vars)->ifc_atr_elem->name,BAD_CAST "type") == 0)) {
          basic_elements[type_elem_idx]++;
          /* Check the number of found elements type (at most 1 is allowed) */
          if (basic_elements[type_elem_idx] > 1) {
@@ -3370,9 +3601,10 @@ int reload_check_interface_element(reload_config_vars_t **config_vars)
          }
          key = xmlNodeListGetString((*config_vars)->doc_tree_ptr, (*config_vars)->ifc_atr_elem->xmlChildrenNode, 1);
          if (key != NULL) {
-            /* Only "TCP" or "UNIXSOCKET" values in element type are allowed */
-            if (xmlStrcmp(key, BAD_CAST "TCP") != 0 && xmlStrcmp(key, BAD_CAST "UNIXSOCKET") != 0) {
-               VERBOSE(N_STDOUT, "[ERROR] Expected one of {TCP,UNIXSOCKET} values in \"type\" element!\n");
+            /* Only "TCP", "UNIXSOCKET", "FILE" or "BLACKHOLE" values in element type are allowed */
+            if (xmlStrcmp(key, BAD_CAST "TCP") != 0 && xmlStrcmp(key, BAD_CAST "UNIXSOCKET") != 0 &&
+                xmlStrcmp(key, BAD_CAST "FILE") != 0 && xmlStrcmp(key, BAD_CAST "BLACKHOLE") != 0) {
+               VERBOSE(N_STDOUT, "[ERROR] Expected one of {TCP,UNIXSOCKET,FILE,BLACKHOLE} values in \"type\" element!\n");
                goto error_label;
             }
          } else {
@@ -3380,7 +3612,7 @@ int reload_check_interface_element(reload_config_vars_t **config_vars)
             VERBOSE(N_STDOUT, "[ERROR] Empty value in \"type\" element!\n");
             goto error_label;
          }
-      } else if ((!xmlStrcmp((*config_vars)->ifc_atr_elem->name,BAD_CAST "direction"))) {
+      } else if ((*config_vars)->ifc_atr_elem->type == XML_ELEMENT_NODE && (xmlStrcmp((*config_vars)->ifc_atr_elem->name,BAD_CAST "direction") == 0)) {
          basic_elements[dir_elem_idx]++;
          /* Check the number of found elements direction (at most 1 is allowed) */
          if (basic_elements[dir_elem_idx] > 1) {
@@ -3399,7 +3631,7 @@ int reload_check_interface_element(reload_config_vars_t **config_vars)
             VERBOSE(N_STDOUT, "[ERROR] Empty value in \"direction\" element!\n");
             goto error_label;
          }
-      } else if ((!xmlStrcmp((*config_vars)->ifc_atr_elem->name,BAD_CAST "params"))) {
+      } else if ((*config_vars)->ifc_atr_elem->type == XML_ELEMENT_NODE && (xmlStrcmp((*config_vars)->ifc_atr_elem->name,BAD_CAST "params") == 0)) {
          basic_elements[params_elem_idx]++;
          /* Check the number of found elements params (at most 1 is allowed) */
          if (basic_elements[params_elem_idx] > 1) {
@@ -3412,9 +3644,11 @@ int reload_check_interface_element(reload_config_vars_t **config_vars)
             VERBOSE(N_STDOUT, "[ERROR] Empty value in \"params\" element!\n");
             goto error_label;
          }
-      } else if (xmlStrcmp((*config_vars)->ifc_atr_elem->name, BAD_CAST "text") != 0) {
-         /* All other elements are unexpected and are not allowed */
-         VERBOSE(N_STDOUT, "[ERROR] Unexpected element \"%s\" in \"interface\" element!\n", (char *)(*config_vars)->ifc_atr_elem->name);
+      } else if ((*config_vars)->ifc_atr_elem->type == XML_COMMENT_NODE || (*config_vars)->ifc_atr_elem->type == XML_TEXT_NODE) {
+         // Nothing to do here
+      } else {
+         /* All other nodes are unexpected and are not allowed */
+         VERBOSE(N_STDOUT, "[ERROR] Unexpected node (type: %d, name: %s) in \"interface\" element!\n", (*config_vars)->ifc_atr_elem->type, (char *)(*config_vars)->ifc_atr_elem->name);
          goto error_label;
       }
       (*config_vars)->ifc_atr_elem=(*config_vars)->ifc_atr_elem->next;
@@ -3545,7 +3779,7 @@ int reload_check_module_element(reload_config_vars_t **config_vars, str_lst_t **
    memset(basic_elements, 0, 6 * sizeof(int));
 
    while ((*config_vars)->module_atr_elem != NULL) {
-      if ((!xmlStrcmp((*config_vars)->module_atr_elem->name, BAD_CAST "name"))) {
+      if ((*config_vars)->module_atr_elem->type == XML_ELEMENT_NODE && (xmlStrcmp((*config_vars)->module_atr_elem->name, BAD_CAST "name") == 0)) {
          basic_elements[name_elem_idx]++;
          /* Check the number of found elements name (at most 1 is allowed) */
          if (basic_elements[name_elem_idx] > 1) {
@@ -3583,7 +3817,7 @@ int reload_check_module_element(reload_config_vars_t **config_vars, str_lst_t **
             VERBOSE(N_STDOUT, "[ERROR] Empty value in \"name\" element!\n");
             goto error_label;
          }
-      } else if (xmlStrcmp((*config_vars)->module_atr_elem->name, BAD_CAST "enabled") == 0) {
+      } else if ((*config_vars)->module_atr_elem->type == XML_ELEMENT_NODE && (xmlStrcmp((*config_vars)->module_atr_elem->name, BAD_CAST "enabled") == 0)) {
          basic_elements[enabled_elem_idx]++;
          /* Check the number of found elements enabled (at most 1 is allowed) */
          if (basic_elements[enabled_elem_idx] > 1) {
@@ -3602,7 +3836,7 @@ int reload_check_module_element(reload_config_vars_t **config_vars, str_lst_t **
             VERBOSE(N_STDOUT, "[ERROR] Empty value in \"enabled\" element!\n");
             goto error_label;
          }
-      } else if ((!xmlStrcmp((*config_vars)->module_atr_elem->name,BAD_CAST "path"))) {
+      } else if ((*config_vars)->module_atr_elem->type == XML_ELEMENT_NODE && (xmlStrcmp((*config_vars)->module_atr_elem->name,BAD_CAST "path") == 0)) {
          basic_elements[path_elem_idx]++;
          /* Check the number of found elements path (at most 1 is allowed) */
          if (basic_elements[path_elem_idx] > 1) {
@@ -3617,14 +3851,14 @@ int reload_check_module_element(reload_config_vars_t **config_vars, str_lst_t **
             VERBOSE(N_STDOUT, "[ERROR] Empty value in \"path\" element!\n");
             goto error_label;
          }
-      } else if ((!xmlStrcmp((*config_vars)->module_atr_elem->name,BAD_CAST "trapinterfaces"))) {
+      } else if ((*config_vars)->module_atr_elem->type == XML_ELEMENT_NODE && (xmlStrcmp((*config_vars)->module_atr_elem->name,BAD_CAST "trapinterfaces") == 0)) {
          basic_elements[trapifc_elem_idx]++;
          /* Check the number of found elements trapinterfaces (at most 1 is allowed) */
          if (basic_elements[trapifc_elem_idx] > 1) {
             VERBOSE(N_STDOUT, "[ERROR] Too much \"trapinterfaces\" elements in \"module\" element!\n");
             goto error_label;
          }
-      } else if (!xmlStrcmp((*config_vars)->module_atr_elem->name, BAD_CAST "module-restarts")) {
+      } else if ((*config_vars)->module_atr_elem->type == XML_ELEMENT_NODE && (xmlStrcmp((*config_vars)->module_atr_elem->name, BAD_CAST "module-restarts") == 0)) {
          basic_elements[restarts_elem_idx]++;
          /* Check the number of found elements module-restarts (at most 1 is allowed) */
          if (basic_elements[restarts_elem_idx] > 1) {
@@ -3644,7 +3878,7 @@ int reload_check_module_element(reload_config_vars_t **config_vars, str_lst_t **
             goto error_label;
          }
 
-      } else if ((!xmlStrcmp((*config_vars)->module_atr_elem->name,BAD_CAST "params"))) {
+      } else if ((*config_vars)->module_atr_elem->type == XML_ELEMENT_NODE && (xmlStrcmp((*config_vars)->module_atr_elem->name,BAD_CAST "params") == 0)) {
          basic_elements[params_elem_idx]++;
          /* Check the number of found elements params (at most 1 is allowed) */
          if (basic_elements[params_elem_idx] > 1) {
@@ -3657,9 +3891,11 @@ int reload_check_module_element(reload_config_vars_t **config_vars, str_lst_t **
             VERBOSE(N_STDOUT, "[ERROR] Empty value in \"params\" element!\n");
             goto error_label;
          }
-      } else if (xmlStrcmp((*config_vars)->module_atr_elem->name, BAD_CAST "text") != 0) {
-         /* All other elements are unexpected and are not allowed */
-         VERBOSE(N_STDOUT, "[ERROR] Unexpected element \"%s\" in \"module\" element!\n", (char *)(*config_vars)->module_atr_elem->name);
+      } else if ((*config_vars)->module_atr_elem->type == XML_COMMENT_NODE || (*config_vars)->module_atr_elem->type == XML_TEXT_NODE) {
+         // Nothing to do here
+      } else {
+         /* All other nodes are unexpected and are not allowed */
+         VERBOSE(N_STDOUT, "[ERROR] Unexpected node (type: %d, name: %s) in \"module\" element!\n", (*config_vars)->module_atr_elem->type, (char *)(*config_vars)->module_atr_elem->name);
          goto error_label;
       }
       if (key != NULL) {
@@ -3829,7 +4065,7 @@ int reload_check_modules_element(reload_config_vars_t **config_vars, str_lst_t *
    memset(basic_elements, 0, 2*sizeof(int));
 
    while ((*config_vars)->module_elem != NULL) {
-      if (xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "name") == 0) {
+      if ((*config_vars)->module_elem->type == XML_ELEMENT_NODE && (xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "name") == 0)) {
          basic_elements[name_elem_idx]++;
          /* Check the number of found elements name (at most 1 is allowed) */
          if (basic_elements[name_elem_idx] > 1) {
@@ -3867,7 +4103,7 @@ int reload_check_modules_element(reload_config_vars_t **config_vars, str_lst_t *
             VERBOSE(N_STDOUT, "[ERROR] Empty value in \"name\" element!\n");
             goto error_label;
          }
-      } else if (xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "enabled") == 0) {
+      } else if ((*config_vars)->module_elem->type == XML_ELEMENT_NODE && (xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "enabled") == 0)) {
          basic_elements[enabled_elem_idx]++;
          /* Check the number of found elements enabled (at most 1 is allowed) */
          if (basic_elements[enabled_elem_idx] > 1) {
@@ -3886,12 +4122,15 @@ int reload_check_modules_element(reload_config_vars_t **config_vars, str_lst_t *
             VERBOSE(N_STDOUT, "[ERROR] Empty value in \"enabled\" element!\n");
             goto error_label;
          }
-      } else if (xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "module") != 0 && xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "text") != 0) {
-         /* All other elements except "module" element are unexpected and are not allowed */
-         VERBOSE(N_STDOUT, "[ERROR] Unexpected element \"%s\" in \"modules\" element!\n", (char *)(*config_vars)->module_elem->name);
+      } else if ((*config_vars)->module_elem->type == XML_ELEMENT_NODE && (xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "module") == 0)) {
+         // Nothing to do here
+      } else if ((*config_vars)->module_elem->type == XML_COMMENT_NODE || (*config_vars)->module_elem->type == XML_TEXT_NODE) {
+         // Nothing to do here
+      } else {
+         /* All other nodes are unexpected and are not allowed */
+         VERBOSE(N_STDOUT, "[ERROR] Unexpected node (type: %d, name: %s) in \"modules\" element!\n", (*config_vars)->module_elem->type, (char *)(*config_vars)->module_elem->name);
          goto error_label;
       }
-
       if (key != NULL) {
          xmlFree(key);
          key = NULL;
@@ -4029,6 +4268,8 @@ void reload_count_module_interfaces(reload_config_vars_t **config_vars)
             running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_type = FILE_MODULE_IFC_TYPE;
          } else if (strncmp(running_modules[(*config_vars)->current_module_idx].module_ifces[x].ifc_type, "SERVICE", 7) == 0) {
             running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_type = SERVICE_MODULE_IFC_TYPE;
+         } else if (strncmp(running_modules[(*config_vars)->current_module_idx].module_ifces[x].ifc_type, "BLACKHOLE", 9) == 0) {
+            running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_type = BLACKHOLE_MODULE_IFC_TYPE;
          } else {
             running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_type = INVALID_MODULE_IFC_ATTR;
          }
@@ -4166,7 +4407,7 @@ int validate_configuration(reload_config_vars_t **config_vars)
    (*config_vars)->current_node = (*config_vars)->root_node->xmlChildrenNode;
 
    while ((*config_vars)->current_node != NULL) {
-      if (!xmlStrcmp((*config_vars)->current_node->name, BAD_CAST "supervisor")) {
+      if ((*config_vars)->current_node->type == XML_ELEMENT_NODE && (xmlStrcmp((*config_vars)->current_node->name, BAD_CAST "supervisor") == 0)) {
          supervisor_elem_cnt++;
          /* Check the number of found elements supervisor (at most 1 is allowed) */
          if (supervisor_elem_cnt > 1) {
@@ -4185,7 +4426,7 @@ int validate_configuration(reload_config_vars_t **config_vars)
             ret_val = -1;
             goto end_label;
          }
-      } else if (!xmlStrcmp((*config_vars)->current_node->name, BAD_CAST "modules")) {
+      } else if ((*config_vars)->current_node->type == XML_ELEMENT_NODE && (xmlStrcmp((*config_vars)->current_node->name, BAD_CAST "modules") == 0)) {
          (*config_vars)->module_elem = (*config_vars)->current_node->xmlChildrenNode;
          if ((*config_vars)->module_elem == NULL) {
             /* Empty element modules is not allowed */
@@ -4201,7 +4442,7 @@ int validate_configuration(reload_config_vars_t **config_vars)
          (*config_vars)->module_elem = (*config_vars)->current_node->xmlChildrenNode;
 
          while ((*config_vars)->module_elem != NULL) {
-            if (!xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "module")) {
+            if ((*config_vars)->module_elem->type == XML_ELEMENT_NODE && (xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "module") == 0)) {
                (*config_vars)->module_atr_elem = (*config_vars)->module_elem->xmlChildrenNode;
                if ((*config_vars)->module_atr_elem == NULL) {
                   /* Empty element module is not allowed */
@@ -4217,11 +4458,11 @@ int validate_configuration(reload_config_vars_t **config_vars)
                (*config_vars)->module_atr_elem = (*config_vars)->module_elem->xmlChildrenNode;
 
                while ((*config_vars)->module_atr_elem != NULL) {
-                  if ((!xmlStrcmp((*config_vars)->module_atr_elem->name,BAD_CAST "trapinterfaces"))) {
+                  if ((*config_vars)->module_atr_elem->type == XML_ELEMENT_NODE && (xmlStrcmp((*config_vars)->module_atr_elem->name,BAD_CAST "trapinterfaces") == 0)) {
                      (*config_vars)->ifc_elem = (*config_vars)->module_atr_elem->xmlChildrenNode;
 
                      while ((*config_vars)->ifc_elem != NULL) {
-                        if (!xmlStrcmp((*config_vars)->ifc_elem->name,BAD_CAST "interface")) {
+                        if ((*config_vars)->ifc_elem->type == XML_ELEMENT_NODE && (xmlStrcmp((*config_vars)->ifc_elem->name,BAD_CAST "interface") == 0)) {
                            (*config_vars)->ifc_atr_elem = (*config_vars)->ifc_elem->xmlChildrenNode;
 
                            if ((*config_vars)->ifc_atr_elem == NULL) {
@@ -4234,9 +4475,11 @@ int validate_configuration(reload_config_vars_t **config_vars)
                               ret_val = -1;
                               goto end_label;
                            }
-                        } else if (xmlStrcmp((*config_vars)->ifc_elem->name, BAD_CAST "text") != 0) {
-                           /* All other elements are unexpected and are not allowed */
-                           VERBOSE(N_STDOUT, "[ERROR] Unexpected element \"%s\" in \"trapinterfaces\" element!\n", (char *)(*config_vars)->ifc_elem->name);
+                        } else if ((*config_vars)->ifc_elem->type == XML_COMMENT_NODE || (*config_vars)->ifc_elem->type == XML_TEXT_NODE) {
+                           // Nothing to do here
+                        } else {
+                           /* All other nodes are unexpected and are not allowed */
+                           VERBOSE(N_STDOUT, "[ERROR] Unexpected node (type: %d, name: %s) in \"trapinterfaces\" element!\n", (*config_vars)->ifc_elem->type, (char *)(*config_vars)->ifc_elem->name);
                            ret_val = -1;
                            goto end_label;
                         }
@@ -4249,6 +4492,13 @@ int validate_configuration(reload_config_vars_t **config_vars)
             }
             (*config_vars)->module_elem = (*config_vars)->module_elem->next;
          }
+      } else if ((*config_vars)->current_node->type == XML_COMMENT_NODE || (*config_vars)->current_node->type == XML_TEXT_NODE) {
+         // Nothing to do here
+      } else {
+         /* All other nodes are unexpected and are not allowed */
+         VERBOSE(N_STDOUT, "[ERROR] Unexpected node (type: %d, name: %s) in \"nemea-supervisor\" element!\n", (*config_vars)->current_node->type, (char *)(*config_vars)->current_node->name);
+         ret_val = -1;
+         goto end_label;
       }
       (*config_vars)->current_node = (*config_vars)->current_node->next;
    }

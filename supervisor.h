@@ -51,19 +51,14 @@
 #include <netdb.h>
 #include <inttypes.h>
 #include <time.h>
-#include <unistd.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <string.h>
-#include <error.h>
 #include <errno.h>
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 #include <sys/types.h>
-#include <sys/wait.h>
 #include <sys/stat.h>
 #include <limits.h>
 
@@ -90,6 +85,7 @@
 #define UNIXSOCKET_MODULE_IFC_TYPE   2  ///< Constant for unixsocket module interface type
 #define SERVICE_MODULE_IFC_TYPE   3  ///< Constant for service module interface type
 #define FILE_MODULE_IFC_TYPE   4 ///< Constant for file module interface type
+#define BLACKHOLE_MODULE_IFC_TYPE   5 ///<  Constant for blackhole module interface type
 
 #define INVALID_MODULE_IFC_ATTR   -1  ///< Constant for invalid module interface attribute
 

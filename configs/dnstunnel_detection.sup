@@ -1,8 +1,7 @@
 <module>
-<name>dns_amplification</name>
+<name>dnstunnel_detection</name>
 <enabled>true</enabled>
-<path>/usr/bin/nemea/amplification_detection</path>
-<params>-d /data/dns_amplification_detection/</params>
+<path>/usr/bin/nemea/dnstunnel_detection</path>
 <trapinterfaces>
 <interface>
   <type>UNIXSOCKET</type>
@@ -12,36 +11,42 @@
 <interface>
   <type>TCP</type>
   <direction>OUT</direction>
-  <params>12001</params>
+  <params>12004</params>
+</interface>
+<interface>
+  <type>UNIXSOCKET</type>
+  <direction>OUT</direction>
+  <params>dnstunnel_sdmoutput:timeout=NO_WAIT</params>
 </interface>
 </trapinterfaces>
 </module>
 
 <module>
-<name>dns_amplification_logger</name>
+<name>dnstunnel_logger</name>
 <enabled>true</enabled>
 <path>/usr/bin/nemea/logger</path>
-<params>-t -T -a /data/dns_amplification_detection/detected.log</params>
+<params>-t -T -a /data/dnstunnel_detection/alerts.log</params>
 <trapinterfaces>
 <interface>
   <type>TCP</type>
   <direction>IN</direction>
-  <params>12001</params>
+  <params>12004</params>
 </interface>
 </trapinterfaces>
 </module>
 
 <module>
-<name>amplification2idea</name>
+<name>dnstunnel2idea</name>
 <enabled>false</enabled>
-<path>/usr/bin/nemea/amplification2idea.py</path>
-<params>--name=cz.cesnet.nemea.amplification_detection --mongodb=nemeadb --mongodb-coll=alerts_new</params>
+<path>/usr/bin/nemea/dnstunnel2idea.py</path>
+<params>--name=cz.cesnet.nemea.dnstunnel --mongodb=nemeadb --mongodb-coll=alerts_new</params>
 <trapinterfaces>
 <interface>
   <type>TCP</type>
   <direction>IN</direction>
-  <params>12001</params>
+  <params>12004</params>
 </interface>
 </trapinterfaces>
 </module>
+
 

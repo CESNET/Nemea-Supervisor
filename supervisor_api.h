@@ -65,6 +65,7 @@ void interactive_set_module_enabled();
 void interactive_stop_module();
 void interactive_show_running_modules_status();
 void interactive_show_available_modules();
+void interactive_show_logs();
 int reload_configuration(const int, xmlNodePtr *);
 void interactive_print_supervisor_info();
 

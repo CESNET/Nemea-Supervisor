@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.63])
-AC_INIT([nemea-supervisor], [1.3.0], [svepemar@fit.cvut.cz])
+AC_INIT([nemea-supervisor], [1.3.3], [svepemar@fit.cvut.cz])
 AC_CONFIG_SRCDIR([supervisor.c])
 AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE([foreign silent-rules])
@@ -19,7 +19,8 @@ AM_CONDITIONAL(MAKE_RPMS, test x$RPMBUILD != x)
 
 pkgdatadir=${datadir}/nemea-supervisor
 AC_SUBST(pkgdatadir)
-defaultsocketdir=${localstatedir}/run/nemea-supervisor
+rundir=${localstatedir}/run
+defaultsocketdir=${rundir}/nemea-supervisor
 AC_SUBST(defaultsocketdir)
 
 AC_CONFIG_MACRO_DIR([m4])
@@ -37,9 +38,11 @@ AM_CONDITIONAL(DEBUG, test x"$debug" = x"true")
 AC_DEFINE_DIR(initdir, [sysconfdir]/../init.d, [Path to init.d (init script)])
 AC_DEFINE_DIR(bindir, [bindir], [Path to binaries])
 AC_DEFINE_DIR(defaultsocketdir, [defaultsocketdir], [Default path to socket directory])
+AC_DEFINE_DIR(rundir, [rundir], [Default path to socket directory])
 
 DEFAULT_PATH_TO_SOCKET=${defaultsocketdir}/nemea-supervisor.sock
 AC_DEFINE_UNQUOTED([DEFAULT_PATH_TO_SOCKET], "${DEFAULT_PATH_TO_SOCKET}", [Default path to daemon socket])
+AC_SUBST(DEFAULT_PATH_TO_SOCKET)
 
 # Checks for programs.
 AC_PROG_CC
@@ -120,7 +123,7 @@ else
 	AM_CONDITIONAL([HAVE_SYSTEMD], [false])
 fi
 
-AC_CONFIG_FILES([Makefile nemea-supervisor.spec nemea-supervisor nemea-supervisor.service munin/Makefile configs/Makefile configs/prepare_default_config.sh])
+AC_CONFIG_FILES([Makefile nemea-supervisor.spec nemea-supervisor nemea-supervisor.service munin/Makefile munin/nemea_supervisor configs/Makefile configs/prepare_default_config.sh configs/warning.sup configs/ipfixcol.sup])
 AC_OUTPUT
 echo
 echo

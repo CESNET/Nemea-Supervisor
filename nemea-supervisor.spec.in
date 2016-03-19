@@ -39,11 +39,27 @@ systemctl daemon-reload
 systemctl enable nemea-supervisor.service 2> /dev/null || true
 cd %{_sysconfdir}/nemea && bash %{_bindir}/nemea/prepare_default_config.sh install > /dev/null
 %{_bindir}/nemea/set_default_nic.sh %{_sysconfdir}/nemea/supervisor_config.xml
+# pkgdatadir
+chown -R nemead:nemead %{_datarootdir}/nemea-supervisor
+chmod 775 %{_datarootdir}/nemea-supervisor
+chmod 664 %{_datarootdir}/nemea-supervisor/*
+# default config file
 chown nemead:nemead %{_sysconfdir}/nemea/supervisor_config.xml
-chmod 644 %{_sysconfdir}/nemea/supervisor_config.xml
+chmod 664 %{_sysconfdir}/nemea/supervisor_config.xml
+# sysconfdir
+chown nemead:nemead %{_sysconfdir}/nemea
+chmod 775 %{_sysconfdir}/nemea
+# simlink to supervisor_cli
+ln -fs %{_bindir}/nemea/supervisor_cli %{_prefix}/bin/supcli
+
 
 %postun
-/usr/sbin/userdel nemead
+if [ "$1" = "0" ]; then
+  # call within uninstallation
+	/usr/sbin/userdel nemead
+	rm -f %{_prefix}/bin/supcli
+fi
+
 
 %files
 %{_bindir}/nemea/*
@@ -58,4 +74,6 @@ chmod 644 %{_sysconfdir}/nemea/supervisor_config.xml
 %defattr(755, nemead, nemead)
 %{_localstatedir}/log/nemea-supervisor
 %config(noreplace) %{_sysconfdir}/nemea/supervisor_config.xml
+%config(noreplace) %{_sysconfdir}/nemea/ipfixcol-startup.xml
+%config(noreplace) %{_datarootdir}/nemea-supervisor/supervisor_config_template.xml
 

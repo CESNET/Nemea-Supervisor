@@ -49,6 +49,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 #define TRUE   1 ///< Bool true
 #define FALSE   0 ///< Bool false
@@ -72,12 +74,20 @@
 #define ANSI_RED_BOLD   "\x1b[31;1m"
 #define ANSI_CYAN   "\x1b[36m"
 #define ANSI_CYAN_BOLD   "\x1b[36;1m"
+#define ANSI_GREEN   "\x1b[32m"
+#define ANSI_GREEN_BOLD   "\x1b[32;1m"
 #define ANSI_YELLOW   "\x1b[33m"
 #define ANSI_YELLOW_BOLD   "\x1b[33;1m"
 #define ANSI_ATTR_RESET   "\x1b[0m"
 #define ANSI_BOLD   "\x1b[1m"
 
 #define DEFAULT_SIZE_OF_BUFFER   100
+
+/* Log files are being shown with the following pager */
+#define PAGER "less"
+#define SUP_TMP_DIR "/tmp/sup_tmp_dir"
+/* Tmp file used for additional communication between daemon and client (e.g. to keep log file name which is client gonna show) */
+#define SUP_CLI_TMP_FILE "/tmp/sup_tmp_dir/sup_cli_tmp_file"
 
 /**
  * Macro for NULL pointer testing, freeing and setting pointer to NULL
@@ -106,6 +116,7 @@ extern char verbose_msg[4096];
 
 void print_msg(int level, char *string);
 char *get_input_from_stream(FILE *stream);
+void show_file_with_pager(char **file_path);
 
 #define VERBOSE(level, format, args...) if (1) { \
    snprintf(verbose_msg, 4095, format, ##args); \
