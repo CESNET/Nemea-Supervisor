@@ -70,7 +70,7 @@ void interactive_mode()
          interactive_show_available_modules();
          break;
       case 7:
-         reload_configuration(RELOAD_INTERACTIVE, NULL);
+         reload_configuration(RELOAD_DEFAULT_CONFIG_FILE, NULL);
          break;
       case 8:
          interactive_print_supervisor_info();

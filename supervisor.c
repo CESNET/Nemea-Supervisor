@@ -1567,7 +1567,7 @@ void *daemon_serve_client_routine (void *cli)
                interactive_show_available_modules();
                break;
             case 7:
-               reload_configuration(RELOAD_INTERACTIVE, NULL);
+               reload_configuration(RELOAD_DEFAULT_CONFIG_FILE, NULL);
                break;
             case 8:
                interactive_print_supervisor_info();
@@ -4540,7 +4540,6 @@ int reload_configuration(const int choice, xmlNodePtr *node)
    unsigned int x = 0;
    int number = 0;
    unsigned int original_loaded_modules_cnt = loaded_modules_cnt;
-   char *buffer = NULL;
    int ifc_cnt = 0;
    reload_config_vars_t * config_vars = (reload_config_vars_t *) calloc(1, sizeof(reload_config_vars_t));
    xmlChar *key = NULL;
@@ -4615,44 +4614,6 @@ parse_default_config_file:
       case RELOAD_CALLBACK_ROOT_ELEM:
          config_vars->root_node = *node;
          break;
-
-      case RELOAD_INTERACTIVE: {
-         /*Get the name of a new config file */
-         VERBOSE(N_STDOUT, FORMAT_INTERACTIVE "[INTERACTIVE] Type in a name of the xml file to be loaded including \".xml\"; ("  "to reload same config file"  " with path \"%s\" type \"default\" or " "to cancel reloading" " type \"cancel\"): " FORMAT_RESET, config_file);
-         buffer = get_input_from_stream(input_fd);
-         if (buffer == NULL) {
-            VERBOSE(N_STDOUT,"[ERROR] Input error.\n");
-            pthread_mutex_unlock(&running_modules_lock);
-            free(config_vars);
-            return FALSE;
-         } else if (strlen(buffer) == 0) {
-            VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] Wrong input - empty string.\n" FORMAT_RESET);
-            free(buffer);
-            pthread_mutex_unlock(&running_modules_lock);
-            free(config_vars);
-            return FALSE;
-         } else if (strcmp(buffer, "cancel") == 0) {
-            VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] Reload configuration canceled.\n" FORMAT_RESET);
-            free(buffer);
-            pthread_mutex_unlock(&running_modules_lock);
-            free(config_vars);
-            return FALSE;
-         } else if (strcmp(buffer, "default") == 0) {
-            config_vars->doc_tree_ptr = xmlParseFile(config_file);
-         } else {
-            config_vars->doc_tree_ptr = xmlParseFile(buffer);
-         }
-         free(buffer);
-         if (config_vars->doc_tree_ptr == NULL) {
-            fprintf(stderr,"Document not parsed successfully. \n");
-            xmlCleanupParser();
-            pthread_mutex_unlock(&running_modules_lock);
-            free(config_vars);
-            return FALSE;
-         }
-         config_vars->root_node = xmlDocGetRootElement(config_vars->doc_tree_ptr);
-         break;
-      }
 
       default:
          xmlCleanupParser();
