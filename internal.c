@@ -104,15 +104,15 @@ char *get_input_from_stream (FILE *stream)
    buffer = (char *) calloc(DEFAULT_SIZE_OF_BUFFER, sizeof(char));
    ret_val = fgets(buffer, DEFAULT_SIZE_OF_BUFFER, stream);
    if (ret_val == NULL) {
-      VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] There is no input!\n" ANSI_ATTR_RESET);
+      VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] There is no input!\n" FORMAT_RESET);
       free(buffer);
       buffer = NULL;
       return NULL;
    }
 
    buffer_len = strlen(buffer);
-   if (buffer_len >= 99) {
-      VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Too long and wrong input!\n" ANSI_ATTR_RESET);
+   if (buffer_len >= (DEFAULT_SIZE_OF_BUFFER - 1)) {
+      VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] Too long and wrong input!\n" FORMAT_RESET);
       free(buffer);
       buffer = NULL;
       __fpurge(stream);

@@ -70,16 +70,13 @@
 #define CLIENT_STATS_MODE_CODE   456987
 #define CLIENT_RELOAD_MODE_CODE   115599
 
-#define ANSI_RED   "\x1b[31m"
-#define ANSI_RED_BOLD   "\x1b[31;1m"
-#define ANSI_CYAN   "\x1b[36m"
-#define ANSI_CYAN_BOLD   "\x1b[36;1m"
-#define ANSI_GREEN   "\x1b[32m"
-#define ANSI_GREEN_BOLD   "\x1b[32;1m"
-#define ANSI_YELLOW   "\x1b[33m"
-#define ANSI_YELLOW_BOLD   "\x1b[33;1m"
-#define ANSI_ATTR_RESET   "\x1b[0m"
-#define ANSI_BOLD   "\x1b[1m"
+#define FORMAT_MENU   "\x1b[36m"
+#define FORMAT_RESET   "\x1b[0m"
+#define FORMAT_BOLD   "\x1b[1m"
+#define FORMAT_WARNING   "\x1b[38;5;196m"
+#define FORMAT_INTERACTIVE   "\x1b[38;5;214;1m"
+#define FORMAT_RUNNING   "\x1b[38;5;40;1m"
+#define FORMAT_STOPPED   "\x1b[38;5;196;1m"
 
 #define DEFAULT_SIZE_OF_BUFFER   100
 

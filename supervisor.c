@@ -553,7 +553,7 @@ int get_numbers_from_input_dis_enable_module(int **array)
    if (input_p == NULL) {
       error_input = TRUE;
    } else if (strlen(input_p) == 0) {
-      VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Wrong input - empty string.\n" ANSI_ATTR_RESET);
+      VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] Wrong input - empty string.\n" FORMAT_RESET);
       error_input = TRUE;
    } else {
       for (x=0; x<strlen(input_p); x++) {
@@ -566,17 +566,17 @@ int get_numbers_from_input_dis_enable_module(int **array)
                is_num = FALSE;
                module_nums_cnt++;
             } else {
-               VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Wrong input - comma without a number before it.\n" ANSI_ATTR_RESET);
+               VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] Wrong input - comma without a number before it.\n" FORMAT_RESET);
                error_input = TRUE;
                break;
             }
             if (x == (strlen(input_p) -1)) {
-               VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Wrong input - comma at the end.\n" ANSI_ATTR_RESET);
+               VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] Wrong input - comma at the end.\n" FORMAT_RESET);
                error_input = TRUE;
                break;
             }
          } else {
-            VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Wrong input - acceptable characters are digits and comma.\n" ANSI_ATTR_RESET);
+            VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] Wrong input - acceptable characters are digits and comma.\n" FORMAT_RESET);
             error_input = TRUE;
             break;
          }
@@ -1366,8 +1366,8 @@ int daemon_get_code_from_client(sup_client_t **cli)
 void daemon_send_options_to_client()
 {
    usleep(50000); // Solved bugged output - without this sleep, escape codes in output were not sometimes reseted on time and they were applied also on this menu
-   VERBOSE(N_STDOUT, ANSI_CYAN_BOLD "--------OPTIONS--------\n" ANSI_ATTR_RESET);
-   VERBOSE(N_STDOUT, ANSI_CYAN "1. START ALL MODULES\n");
+   VERBOSE(N_STDOUT, FORMAT_MENU FORMAT_BOLD "--------OPTIONS--------\n" FORMAT_RESET);
+   VERBOSE(N_STDOUT, FORMAT_MENU "1. START ALL MODULES\n");
    VERBOSE(N_STDOUT, "2. STOP ALL MODULES\n");
    VERBOSE(N_STDOUT, "3. START MODULE\n");
    VERBOSE(N_STDOUT, "4. STOP MODULE\n");
@@ -1377,8 +1377,8 @@ void daemon_send_options_to_client()
    VERBOSE(N_STDOUT, "8. PRINT SUPERVISOR INFO\n");
    VERBOSE(N_STDOUT, "9. SHOW LOGS\n");
    VERBOSE(N_STDOUT, "-- Type \"Cquit\" to exit client --\n");
-   VERBOSE(N_STDOUT, "-- Type \"Dstop\" to stop daemon --\n" ANSI_ATTR_RESET);
-   VERBOSE(N_STDOUT, ANSI_YELLOW_BOLD "[INTERACTIVE] Your choice: " ANSI_ATTR_RESET);
+   VERBOSE(N_STDOUT, "-- Type \"Dstop\" to stop daemon --\n" FORMAT_RESET);
+   VERBOSE(N_STDOUT, FORMAT_INTERACTIVE "[INTERACTIVE] Your choice: " FORMAT_RESET);
 }
 
 int daemon_open_client_streams(sup_client_t **cli)
@@ -1470,7 +1470,7 @@ void *daemon_serve_client_routine (void *cli)
       pthread_mutex_lock(&server_internals->lock);
       if (server_internals->config_mode_active == TRUE) {
          VERBOSE(SUP_LOG, "%s [INFO] Got configuration mode code, but another client is already connected in this mode. (client's ID: %d)\n", get_formatted_time(), client->client_id);
-         fprintf(client->client_output_stream, ANSI_RED_BOLD "[WARNING] Another client is connected to supervisor in configuration mode, you have to wait.\n" ANSI_ATTR_RESET);
+         fprintf(client->client_output_stream, FORMAT_WARNING "[WARNING] Another client is connected to supervisor in configuration mode, you have to wait.\n" FORMAT_RESET);
          fflush(client->client_output_stream);
          pthread_mutex_unlock(&server_internals->lock);
          daemon_disconnect_client(client);
@@ -1584,7 +1584,7 @@ void *daemon_serve_client_routine (void *cli)
                }
                break;
             default:
-               VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Wrong input!\n" ANSI_ATTR_RESET);
+               VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] Wrong input!\n" FORMAT_RESET);
                break;
             }
             if (nine_cnt == 0 && !(server_internals->daemon_terminated) && client->client_connected) {
@@ -1593,7 +1593,7 @@ void *daemon_serve_client_routine (void *cli)
          }
       } else {
          if (nine_cnt > 0) {
-            VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Wrong input!\n" ANSI_ATTR_RESET);
+            VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] Wrong input!\n" FORMAT_RESET);
             nine_cnt = 0;
             daemon_send_options_to_client();
          }
@@ -2300,26 +2300,26 @@ void interactive_show_available_modules()
    modules_profile_t * ptr = first_profile_ptr;
 
    if (loaded_modules_cnt == 0) {
-      VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] No module is loaded.\n" ANSI_ATTR_RESET);
+      VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] No module is loaded.\n" FORMAT_RESET);
       return;
    }
 
    VERBOSE(N_STDOUT,"[PRINTING CONFIGURATION]\n");
 
    while (ptr != NULL) {
-      VERBOSE(N_STDOUT, ANSI_BOLD "Profile: %s\n" ANSI_ATTR_RESET, ptr->profile_name);
+      VERBOSE(N_STDOUT, FORMAT_BOLD "Profile: %s\n" FORMAT_RESET, ptr->profile_name);
       for (x=0; x<loaded_modules_cnt; x++) {
          if (running_modules[x].modules_profile != NULL) {
             if (running_modules[x].modules_profile == ptr->profile_name) {
                if (running_modules[x].module_enabled == TRUE) {
-                  VERBOSE(N_STDOUT, "   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s (" ANSI_RED_BOLD "enabled" ANSI_ATTR_RESET "):\n", x, running_modules[x].module_name);
+                  VERBOSE(N_STDOUT, "   " FORMAT_BOLD "%d" FORMAT_RESET " | %s (" FORMAT_RUNNING "running" FORMAT_RESET "):\n", x, running_modules[x].module_name);
                } else {
-                  VERBOSE(N_STDOUT, "   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s (" ANSI_RED "disabled" ANSI_ATTR_RESET "):\n", x, running_modules[x].module_name);
+                  VERBOSE(N_STDOUT, "   " FORMAT_BOLD "%d" FORMAT_RESET " | %s (" FORMAT_STOPPED "stopped" FORMAT_RESET "):\n", x, running_modules[x].module_name);
                }
-               VERBOSE(N_STDOUT, "      " ANSI_BOLD "PATH:" ANSI_ATTR_RESET " %s\n", (running_modules[x].module_path == NULL ? "none" : running_modules[x].module_path));
-               VERBOSE(N_STDOUT, "      " ANSI_BOLD "PARAMS:" ANSI_ATTR_RESET " %s\n", (running_modules[x].module_params == NULL ? "none" : running_modules[x].module_params));
+               VERBOSE(N_STDOUT, "      " FORMAT_BOLD "PATH:" FORMAT_RESET " %s\n", (running_modules[x].module_path == NULL ? "none" : running_modules[x].module_path));
+               VERBOSE(N_STDOUT, "      " FORMAT_BOLD "PARAMS:" FORMAT_RESET " %s\n", (running_modules[x].module_params == NULL ? "none" : running_modules[x].module_params));
                for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
-                  VERBOSE(N_STDOUT,"      " ANSI_BOLD "IFC%d:" ANSI_ATTR_RESET "  %s; %s; %s; %s\n", y, (running_modules[x].module_ifces[y].ifc_direction == NULL ? "none" : running_modules[x].module_ifces[y].ifc_direction),
+                  VERBOSE(N_STDOUT,"      " FORMAT_BOLD "IFC%d:" FORMAT_RESET "  %s; %s; %s; %s\n", y, (running_modules[x].module_ifces[y].ifc_direction == NULL ? "none" : running_modules[x].module_ifces[y].ifc_direction),
                                                                                                    (running_modules[x].module_ifces[y].ifc_type == NULL ? "none" : running_modules[x].module_ifces[y].ifc_type),
                                                                                                    (running_modules[x].module_ifces[y].ifc_params == NULL ? "none" : running_modules[x].module_ifces[y].ifc_params),
                                                                                                    (running_modules[x].module_ifces[y].ifc_note == NULL ? "none" : running_modules[x].module_ifces[y].ifc_note));
@@ -2332,18 +2332,18 @@ void interactive_show_available_modules()
    }
 
    if (already_printed_modules < loaded_modules_cnt) {
-      VERBOSE(N_STDOUT, ANSI_BOLD "Modules without profile:\n" ANSI_ATTR_RESET);
+      VERBOSE(N_STDOUT, FORMAT_BOLD "Modules without profile:\n" FORMAT_RESET);
       for (x=0; x<loaded_modules_cnt; x++) {
          if (running_modules[x].modules_profile == NULL) {
             if (running_modules[x].module_enabled == TRUE) {
-               VERBOSE(N_STDOUT, "   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s (" ANSI_RED_BOLD "enabled" ANSI_ATTR_RESET "):\n", x, running_modules[x].module_name);
+               VERBOSE(N_STDOUT, "   " FORMAT_BOLD "%d" FORMAT_RESET " | %s (" FORMAT_RUNNING "running" FORMAT_RESET "):\n", x, running_modules[x].module_name);
             } else {
-               VERBOSE(N_STDOUT, "   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s (" ANSI_RED "disabled" ANSI_ATTR_RESET "):\n", x, running_modules[x].module_name);
+               VERBOSE(N_STDOUT, "   " FORMAT_BOLD "%d" FORMAT_RESET " | %s (" FORMAT_STOPPED "stopped" FORMAT_RESET "):\n", x, running_modules[x].module_name);
             }
-            VERBOSE(N_STDOUT, "      " ANSI_BOLD "PATH:" ANSI_ATTR_RESET " %s\n", (running_modules[x].module_path == NULL ? "none" : running_modules[x].module_path));
-            VERBOSE(N_STDOUT, "      " ANSI_BOLD "PARAMS:" ANSI_ATTR_RESET " %s\n", (running_modules[x].module_params == NULL ? "none" : running_modules[x].module_params));
+            VERBOSE(N_STDOUT, "      " FORMAT_BOLD "PATH:" FORMAT_RESET " %s\n", (running_modules[x].module_path == NULL ? "none" : running_modules[x].module_path));
+            VERBOSE(N_STDOUT, "      " FORMAT_BOLD "PARAMS:" FORMAT_RESET " %s\n", (running_modules[x].module_params == NULL ? "none" : running_modules[x].module_params));
             for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
-               VERBOSE(N_STDOUT,"      " ANSI_BOLD "IFC%d:" ANSI_ATTR_RESET "  %s; %s; %s; %s\n", y, (running_modules[x].module_ifces[y].ifc_direction == NULL ? "none" : running_modules[x].module_ifces[y].ifc_direction),
+               VERBOSE(N_STDOUT,"      " FORMAT_BOLD "IFC%d:" FORMAT_RESET "  %s; %s; %s; %s\n", y, (running_modules[x].module_ifces[y].ifc_direction == NULL ? "none" : running_modules[x].module_ifces[y].ifc_direction),
                                                                                                 (running_modules[x].module_ifces[y].ifc_type == NULL ? "none" : running_modules[x].module_ifces[y].ifc_type),
                                                                                                 (running_modules[x].module_ifces[y].ifc_params == NULL ? "none" : running_modules[x].module_ifces[y].ifc_params),
                                                                                                 (running_modules[x].module_ifces[y].ifc_note == NULL ? "none" : running_modules[x].module_ifces[y].ifc_note));
@@ -2356,8 +2356,8 @@ void interactive_show_available_modules()
 int interactive_get_option()
 {
    usleep(50000); // Solved bugged output - without this sleep, escape codes in output were not sometimes reseted on time and they were applied also on this menu
-   VERBOSE(N_STDOUT, ANSI_CYAN_BOLD "--------OPTIONS--------\n" ANSI_ATTR_RESET);
-   VERBOSE(N_STDOUT, ANSI_CYAN "1. START ALL MODULES\n");
+   VERBOSE(N_STDOUT, FORMAT_MENU FORMAT_BOLD "--------OPTIONS--------\n" FORMAT_RESET);
+   VERBOSE(N_STDOUT, FORMAT_MENU "1. START ALL MODULES\n");
    VERBOSE(N_STDOUT, "2. STOP ALL MODULES\n");
    VERBOSE(N_STDOUT, "3. START MODULE\n");
    VERBOSE(N_STDOUT, "4. STOP MODULE\n");
@@ -2366,8 +2366,8 @@ int interactive_get_option()
    VERBOSE(N_STDOUT, "7. RELOAD CONFIGURATION\n");
    VERBOSE(N_STDOUT, "8. PRINT SUPERVISOR INFO\n");
    VERBOSE(N_STDOUT, "9. SHOW LOGS\n");
-   VERBOSE(N_STDOUT, "0. STOP SUPERVISOR\n" ANSI_ATTR_RESET);
-   VERBOSE(N_STDOUT, ANSI_YELLOW_BOLD "[INTERACTIVE] Your choice: " ANSI_ATTR_RESET);
+   VERBOSE(N_STDOUT, "0. STOP SUPERVISOR\n" FORMAT_RESET);
+   VERBOSE(N_STDOUT, FORMAT_INTERACTIVE "[INTERACTIVE] Your choice: " FORMAT_RESET);
 
    return get_number_from_input_choosing_option();
 }
@@ -2408,7 +2408,7 @@ void interactive_set_module_enabled()
    modules_profile_t * ptr = first_profile_ptr;
 
    if (loaded_modules_cnt == 0) {
-      VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] No module is loaded.\n" ANSI_ATTR_RESET);
+      VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] No module is loaded.\n" FORMAT_RESET);
       return;
    }
 
@@ -2421,10 +2421,10 @@ void interactive_set_module_enabled()
             if (running_modules[x].modules_profile == ptr->profile_name) {
                if (running_modules[x].module_status == FALSE) {
                   if (profile_printed == FALSE) {
-                     VERBOSE(N_STDOUT, ANSI_BOLD "Profile: %s\n" ANSI_ATTR_RESET, ptr->profile_name);
+                     VERBOSE(N_STDOUT, FORMAT_BOLD "Profile: %s\n" FORMAT_RESET, ptr->profile_name);
                      profile_printed = TRUE;
                   }
-                  VERBOSE(N_STDOUT, "   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s " ANSI_RED_BOLD "stopped" ANSI_ATTR_RESET "\n",x, running_modules[x].module_name);
+                  VERBOSE(N_STDOUT, "   " FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_STOPPED "stopped" FORMAT_RESET "\n",x, running_modules[x].module_name);
                   stopped_modules_counter++;
                }
                matched_modules++;
@@ -2440,10 +2440,10 @@ void interactive_set_module_enabled()
          if (running_modules[x].modules_profile == NULL) {
             if (running_modules[x].module_status == FALSE) {
                if (profile_printed == FALSE) {
-                  VERBOSE(N_STDOUT, ANSI_BOLD "Modules without profile:\n" ANSI_ATTR_RESET);
+                  VERBOSE(N_STDOUT, FORMAT_BOLD "Modules without profile:\n" FORMAT_RESET);
                   profile_printed = TRUE;
                }
-               VERBOSE(N_STDOUT, "   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s " ANSI_RED_BOLD "stopped" ANSI_ATTR_RESET "\n",x, running_modules[x].module_name);
+               VERBOSE(N_STDOUT, "   " FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_STOPPED "stopped" FORMAT_RESET "\n",x, running_modules[x].module_name);
                stopped_modules_counter++;
             }
          }
@@ -2451,22 +2451,22 @@ void interactive_set_module_enabled()
    }
 
    if (stopped_modules_counter == 0) {
-      VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] All modules are running.\n" ANSI_ATTR_RESET);
+      VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] All modules are running.\n" FORMAT_RESET);
       pthread_mutex_unlock(&running_modules_lock);
       return;
    }
 
-   VERBOSE(N_STDOUT, ANSI_YELLOW_BOLD "[INTERACTIVE] Type in module numbers (one number or more separated by comma): " ANSI_ATTR_RESET);
+   VERBOSE(N_STDOUT, FORMAT_INTERACTIVE "[INTERACTIVE] Type in module numbers (one number or more separated by comma): " FORMAT_RESET);
    modules_to_enable_cnt = get_numbers_from_input_dis_enable_module(&modules_to_enable);
 
    if (modules_to_enable_cnt != RET_ERROR) {
       for (y=0; y<modules_to_enable_cnt; y++) {
          x = modules_to_enable[y];
          if (x>=loaded_modules_cnt || x<0) {
-            VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Number %d is not valid module number!\n" ANSI_ATTR_RESET, x);
+            VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] Number %d is not valid module number!\n" FORMAT_RESET, x);
             continue;
          } else if (running_modules[x].module_enabled == TRUE) {
-            VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Module %s is already enabled.\n" ANSI_ATTR_RESET, running_modules[x].module_name);
+            VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] Module %s is already enabled.\n" FORMAT_RESET, running_modules[x].module_name);
          } else {
             running_modules[x].module_enabled = TRUE;
             running_modules[x].module_restart_cnt = -1;
@@ -2487,7 +2487,7 @@ void interactive_stop_module()
    modules_profile_t * ptr = first_profile_ptr;
 
    if (loaded_modules_cnt == 0) {
-      VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] No module is loaded.\n" ANSI_ATTR_RESET);
+      VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] No module is loaded.\n" FORMAT_RESET);
       return;
    }
 
@@ -2500,10 +2500,10 @@ void interactive_stop_module()
             if (running_modules[x].modules_profile == ptr->profile_name) {
                if (running_modules[x].module_status == TRUE) {
                   if (profile_printed == FALSE) {
-                     VERBOSE(N_STDOUT, ANSI_BOLD "Profile: %s\n" ANSI_ATTR_RESET, ptr->profile_name);
+                     VERBOSE(N_STDOUT, FORMAT_BOLD "Profile: %s\n" FORMAT_RESET, ptr->profile_name);
                      profile_printed = TRUE;
                   }
-                  VERBOSE(N_STDOUT, "   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s " ANSI_RED_BOLD "running" ANSI_ATTR_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
+                  VERBOSE(N_STDOUT, "   " FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_RUNNING "running" FORMAT_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
                   running_modules_counter++;
                }
                matched_modules++;
@@ -2519,10 +2519,10 @@ void interactive_stop_module()
          if (running_modules[x].modules_profile == NULL) {
             if (running_modules[x].module_status == TRUE) {
                if (profile_printed == FALSE) {
-                  VERBOSE(N_STDOUT, ANSI_BOLD "Modules without profile:\n" ANSI_ATTR_RESET);
+                  VERBOSE(N_STDOUT, FORMAT_BOLD "Modules without profile:\n" FORMAT_RESET);
                   profile_printed = TRUE;
                }
-               VERBOSE(N_STDOUT, "   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s " ANSI_RED_BOLD "running" ANSI_ATTR_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
+               VERBOSE(N_STDOUT, "   " FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_RUNNING "running" FORMAT_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
                running_modules_counter++;
             }
          }
@@ -2530,22 +2530,22 @@ void interactive_stop_module()
    }
 
    if (running_modules_counter == 0) {
-      VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] All modules are stopped.\n" ANSI_ATTR_RESET);
+      VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] All modules are stopped.\n" FORMAT_RESET);
       pthread_mutex_unlock(&running_modules_lock);
       return;
    }
 
-   VERBOSE(N_STDOUT, ANSI_YELLOW_BOLD "[INTERACTIVE] Type in module numbers (one number or more separated by comma): " ANSI_ATTR_RESET);
+   VERBOSE(N_STDOUT, FORMAT_INTERACTIVE "[INTERACTIVE] Type in module numbers (one number or more separated by comma): " FORMAT_RESET);
    modules_to_stop_cnt = get_numbers_from_input_dis_enable_module(&modules_to_stop);
 
    if (modules_to_stop_cnt != RET_ERROR) {
       for (y=0; y<modules_to_stop_cnt; y++) {
          x = modules_to_stop[y];
          if (x>=loaded_modules_cnt || x<0) {
-            VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Number %d is not valid module number!\n" ANSI_ATTR_RESET, x);
+            VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] Number %d is not valid module number!\n" FORMAT_RESET, x);
             continue;
          } else if (running_modules[x].module_enabled == FALSE) {
-            VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Module %s is already disabled.\n" ANSI_ATTR_RESET, running_modules[x].module_name);
+            VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] Module %s is already disabled.\n" FORMAT_RESET, running_modules[x].module_name);
          } else {
             running_modules[x].module_enabled = FALSE;
             VERBOSE(MODULE_EVENT, "%s [DISABLED] Module %s set to disabled.\n", get_formatted_time(), running_modules[x].module_name);
@@ -2577,8 +2577,8 @@ void interactive_show_logs()
       goto exit_label;
    }
 
-   VERBOSE(N_STDOUT, ANSI_BOLD "Available modules logs:" ANSI_ATTR_RESET "\n");
-   VERBOSE(N_STDOUT, "   " ANSI_BOLD "stdout" ANSI_ATTR_RESET " | " ANSI_BOLD "stderr" ANSI_ATTR_RESET " | " ANSI_BOLD "module name" ANSI_ATTR_RESET "\n");
+   VERBOSE(N_STDOUT, FORMAT_BOLD "Available modules logs:" FORMAT_RESET "\n");
+   VERBOSE(N_STDOUT, "   " FORMAT_BOLD "stdout" FORMAT_RESET " | " FORMAT_BOLD "stderr" FORMAT_RESET " | " FORMAT_BOLD "module name" FORMAT_RESET "\n");
 
    for (x = 0; x < loaded_modules_cnt; x++) {
       log_idx++;
@@ -2595,10 +2595,10 @@ void interactive_show_logs()
       }
       file_path_ptr += strlen("modules_logs/_std") + strlen(running_modules[x].module_name);
       if (access(file_path, R_OK) != 0) {
-         VERBOSE(N_STDOUT, "   " ANSI_RED_BOLD "%d" ANSI_ATTR_RESET, log_idx);
+         VERBOSE(N_STDOUT, "   " FORMAT_STOPPED "%d" FORMAT_RESET, log_idx);
          avail_logs[log_idx] = FALSE;
       } else {
-         VERBOSE(N_STDOUT, "   " ANSI_GREEN_BOLD "%d" ANSI_ATTR_RESET, log_idx);
+         VERBOSE(N_STDOUT, "   " FORMAT_RUNNING "%d" FORMAT_RESET, log_idx);
          avail_logs[log_idx] = TRUE;
       }
 
@@ -2615,10 +2615,10 @@ void interactive_show_logs()
       }
       file_path_ptr = file_path + strlen(logs_path);
       if (access(file_path, R_OK) != 0) {
-         VERBOSE(N_STDOUT, ANSI_RED_BOLD "%d" ANSI_ATTR_RESET, log_idx);
+         VERBOSE(N_STDOUT, FORMAT_STOPPED "%d" FORMAT_RESET, log_idx);
          avail_logs[log_idx] = FALSE;
       } else {
-         VERBOSE(N_STDOUT, ANSI_GREEN_BOLD "%d" ANSI_ATTR_RESET, log_idx);
+         VERBOSE(N_STDOUT, FORMAT_RUNNING "%d" FORMAT_RESET, log_idx);
          avail_logs[log_idx] = TRUE;
       }
 
@@ -2630,7 +2630,7 @@ void interactive_show_logs()
       memset(file_path + strlen(logs_path), 0, (PATH_MAX - strlen(logs_path)) * sizeof(char));
    }
 
-   VERBOSE(N_STDOUT, ANSI_BOLD "Available supervisor logs:" ANSI_ATTR_RESET "\n");
+   VERBOSE(N_STDOUT, FORMAT_BOLD "Available supervisor logs:" FORMAT_RESET "\n");
 
    log_idx++;
    // Test the supervisor_log file
@@ -2639,10 +2639,10 @@ void interactive_show_logs()
       goto exit_label;
    }
    if (access(file_path, R_OK) != 0) {
-      VERBOSE(N_STDOUT,"   " ANSI_RED_BOLD "%d" ANSI_ATTR_RESET " | supervisor_log\n", log_idx);
+      VERBOSE(N_STDOUT,"   " FORMAT_STOPPED "%d" FORMAT_RESET " | supervisor_log\n", log_idx);
       avail_logs[log_idx] = FALSE;
    } else {
-      VERBOSE(N_STDOUT,"   " ANSI_GREEN_BOLD "%d" ANSI_ATTR_RESET " | supervisor_log\n", log_idx);
+      VERBOSE(N_STDOUT,"   " FORMAT_RUNNING "%d" FORMAT_RESET " | supervisor_log\n", log_idx);
       avail_logs[log_idx] = TRUE;
    }
 
@@ -2653,10 +2653,10 @@ void interactive_show_logs()
       goto exit_label;
    }
    if (access(file_path, R_OK) != 0) {
-      VERBOSE(N_STDOUT,"   " ANSI_RED_BOLD "%d" ANSI_ATTR_RESET " | supervisor_log_statistics\n", log_idx);
+      VERBOSE(N_STDOUT,"   " FORMAT_STOPPED "%d" FORMAT_RESET " | supervisor_log_statistics\n", log_idx);
       avail_logs[log_idx] = FALSE;
    } else {
-      VERBOSE(N_STDOUT,"   " ANSI_GREEN_BOLD "%d" ANSI_ATTR_RESET " | supervisor_log_statistics\n", log_idx);
+      VERBOSE(N_STDOUT,"   " FORMAT_RUNNING "%d" FORMAT_RESET " | supervisor_log_statistics\n", log_idx);
       avail_logs[log_idx] = TRUE;
    }
 
@@ -2667,22 +2667,22 @@ void interactive_show_logs()
       goto exit_label;
    }
    if (access(file_path, R_OK) != 0) {
-      VERBOSE(N_STDOUT,"   " ANSI_RED_BOLD "%d" ANSI_ATTR_RESET " | supervisor_log_module_event\n", log_idx);
+      VERBOSE(N_STDOUT,"   " FORMAT_STOPPED "%d" FORMAT_RESET " | supervisor_log_module_event\n", log_idx);
       avail_logs[log_idx] = FALSE;
    } else {
-      VERBOSE(N_STDOUT,"   " ANSI_GREEN_BOLD "%d" ANSI_ATTR_RESET " | supervisor_log_module_event\n", log_idx);
+      VERBOSE(N_STDOUT,"   " FORMAT_RUNNING "%d" FORMAT_RESET " | supervisor_log_module_event\n", log_idx);
       avail_logs[log_idx] = TRUE;
    }
 
-   VERBOSE(N_STDOUT, ANSI_YELLOW_BOLD "[INTERACTIVE] Choose the log number: " ANSI_ATTR_RESET);
+   VERBOSE(N_STDOUT, FORMAT_INTERACTIVE "[INTERACTIVE] Choose the log number: " FORMAT_RESET);
    chosen_log_idx = get_number_from_input_choosing_option();
    if (chosen_log_idx == -1 || chosen_log_idx > max_num_of_logs) {
-      VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Wrong input.\n" ANSI_ATTR_RESET);
+      VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] Wrong input.\n" FORMAT_RESET);
       goto exit_label;
    }
 
    if (avail_logs[chosen_log_idx] == FALSE) {
-      VERBOSE(N_STDOUT, ANSI_RED_BOLD "[ERROR] Chosen log is not available\n" ANSI_ATTR_RESET);
+      VERBOSE(N_STDOUT, FORMAT_WARNING "[ERROR] Chosen log is not available\n" FORMAT_RESET);
       goto exit_label;
    }
 
@@ -2745,19 +2745,19 @@ void interactive_show_running_modules_status()
    modules_profile_t * ptr = first_profile_ptr;
 
    if (loaded_modules_cnt == 0) {
-      VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] No module is loaded.\n" ANSI_ATTR_RESET);
+      VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] No module is loaded.\n" FORMAT_RESET);
       return;
    }
 
    while (ptr != NULL) {
-      VERBOSE(N_STDOUT, ANSI_BOLD "Profile: %s\n" ANSI_ATTR_RESET, ptr->profile_name);
+      VERBOSE(N_STDOUT, FORMAT_BOLD "Profile: %s\n" FORMAT_RESET, ptr->profile_name);
       for (x=0; x<loaded_modules_cnt; x++) {
          if (running_modules[x].modules_profile != NULL) {
             if (running_modules[x].modules_profile == ptr->profile_name && running_modules[x].module_status == TRUE) {
-               VERBOSE(N_STDOUT,"   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s " ANSI_RED_BOLD "running" ANSI_ATTR_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
+               VERBOSE(N_STDOUT,"   " FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_RUNNING "running" FORMAT_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
                already_printed_modules++;
             } else if (running_modules[x].modules_profile == ptr->profile_name) {
-               VERBOSE(N_STDOUT,"   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s " ANSI_RED "stopped" ANSI_ATTR_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
+               VERBOSE(N_STDOUT,"   " FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_STOPPED "stopped" FORMAT_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
                already_printed_modules++;
             }
          }
@@ -2766,13 +2766,13 @@ void interactive_show_running_modules_status()
    }
 
    if (already_printed_modules < loaded_modules_cnt) {
-      VERBOSE(N_STDOUT, ANSI_BOLD "Modules without profile:\n" ANSI_ATTR_RESET);
+      VERBOSE(N_STDOUT, FORMAT_BOLD "Modules without profile:\n" FORMAT_RESET);
       for (x=0; x<loaded_modules_cnt; x++) {
          if (running_modules[x].modules_profile == NULL) {
             if (running_modules[x].module_status == TRUE) {
-               VERBOSE(N_STDOUT,"   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s " ANSI_RED_BOLD "running" ANSI_ATTR_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
+               VERBOSE(N_STDOUT,"   " FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_RUNNING "running" FORMAT_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
             } else {
-               VERBOSE(N_STDOUT,"   " ANSI_BOLD "%d" ANSI_ATTR_RESET " | %s " ANSI_RED "stopped" ANSI_ATTR_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
+               VERBOSE(N_STDOUT,"   " FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_STOPPED "stopped" FORMAT_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
             }
          }
       }
@@ -2781,14 +2781,14 @@ void interactive_show_running_modules_status()
 
 void interactive_print_supervisor_info()
 {
-   VERBOSE(N_STDOUT, ANSI_BOLD "--------------- INFO ---------------\n");
-   VERBOSE(N_STDOUT, "Supervisor package version:" ANSI_ATTR_RESET " %s\n", sup_package_version);
-   VERBOSE(N_STDOUT, ANSI_BOLD "Supervisor git version:" ANSI_ATTR_RESET " %s\n", sup_git_version);
-   VERBOSE(N_STDOUT, ANSI_BOLD "Started:" ANSI_ATTR_RESET " %s", ctime(&sup_init_time));
-   VERBOSE(N_STDOUT, ANSI_BOLD "Actual logs directory:" ANSI_ATTR_RESET " %s\n", get_absolute_file_path(logs_path));
-   VERBOSE(N_STDOUT, ANSI_BOLD "Start-up configuration file:" ANSI_ATTR_RESET " %s\n", get_absolute_file_path(config_file));
-   VERBOSE(N_STDOUT, ANSI_BOLD "Number of loaded modules:" ANSI_ATTR_RESET " %d\n", loaded_modules_cnt);
-   VERBOSE(N_STDOUT, ANSI_BOLD "Number of running modules:" ANSI_ATTR_RESET " %d\n", service_check_modules_status());
+   VERBOSE(N_STDOUT, FORMAT_BOLD "--------------- INFO ---------------\n");
+   VERBOSE(N_STDOUT, "Supervisor package version:" FORMAT_RESET " %s\n", sup_package_version);
+   VERBOSE(N_STDOUT, FORMAT_BOLD "Supervisor git version:" FORMAT_RESET " %s\n", sup_git_version);
+   VERBOSE(N_STDOUT, FORMAT_BOLD "Started:" FORMAT_RESET " %s", ctime(&sup_init_time));
+   VERBOSE(N_STDOUT, FORMAT_BOLD "Actual logs directory:" FORMAT_RESET " %s\n", get_absolute_file_path(logs_path));
+   VERBOSE(N_STDOUT, FORMAT_BOLD "Start-up configuration file:" FORMAT_RESET " %s\n", get_absolute_file_path(config_file));
+   VERBOSE(N_STDOUT, FORMAT_BOLD "Number of loaded modules:" FORMAT_RESET " %d\n", loaded_modules_cnt);
+   VERBOSE(N_STDOUT, FORMAT_BOLD "Number of running modules:" FORMAT_RESET " %d\n", service_check_modules_status());
 }
 
 
@@ -4618,7 +4618,7 @@ parse_default_config_file:
 
       case RELOAD_INTERACTIVE: {
          /*Get the name of a new config file */
-         VERBOSE(N_STDOUT, ANSI_YELLOW_BOLD "[INTERACTIVE] Type in a name of the xml file to be loaded including \".xml\"; ("  "to reload same config file"  " with path \"%s\" type \"default\" or " "to cancel reloading" " type \"cancel\"): " ANSI_ATTR_RESET, config_file);
+         VERBOSE(N_STDOUT, FORMAT_INTERACTIVE "[INTERACTIVE] Type in a name of the xml file to be loaded including \".xml\"; ("  "to reload same config file"  " with path \"%s\" type \"default\" or " "to cancel reloading" " type \"cancel\"): " FORMAT_RESET, config_file);
          buffer = get_input_from_stream(input_fd);
          if (buffer == NULL) {
             VERBOSE(N_STDOUT,"[ERROR] Input error.\n");
@@ -4626,13 +4626,13 @@ parse_default_config_file:
             free(config_vars);
             return FALSE;
          } else if (strlen(buffer) == 0) {
-            VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Wrong input - empty string.\n" ANSI_ATTR_RESET);
+            VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] Wrong input - empty string.\n" FORMAT_RESET);
             free(buffer);
             pthread_mutex_unlock(&running_modules_lock);
             free(config_vars);
             return FALSE;
          } else if (strcmp(buffer, "cancel") == 0) {
-            VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Reload configuration canceled.\n" ANSI_ATTR_RESET);
+            VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] Reload configuration canceled.\n" FORMAT_RESET);
             free(buffer);
             pthread_mutex_unlock(&running_modules_lock);
             free(config_vars);

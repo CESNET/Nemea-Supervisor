@@ -79,7 +79,7 @@ void interactive_mode()
          interactive_show_logs();
          break;
       default:
-         VERBOSE(N_STDOUT, ANSI_RED_BOLD "[WARNING] Wrong input.\n" ANSI_ATTR_RESET);
+         VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] Wrong input.\n" FORMAT_RESET);
          break;
       }
    }
