@@ -284,12 +284,13 @@ int main(int argc, char **argv)
                if (fscanf(tmp_file, "%d\n", &file_path_len) > 0 && file_path_len > 0) {
                   file_path = (char *) calloc(file_path_len + 1, sizeof(char));
                   if (fscanf(tmp_file, "%s", file_path) > 0) {
+                     unlink(SUP_CLI_TMP_FILE);
                      show_file_with_pager(&file_path);
                   }
                }
+               fclose(tmp_file);
+               NULLP_TEST_AND_FREE(file_path)
             }
-            unlink(SUP_CLI_TMP_FILE);
-            NULLP_TEST_AND_FREE(file_path)
          }
       }
 
