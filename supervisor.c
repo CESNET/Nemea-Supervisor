@@ -1422,11 +1422,11 @@ void daemon_send_options_to_client()
 {
    usleep(50000); // Solved bugged output - without this sleep, escape codes in output were not sometimes reseted on time and they were applied also on this menu
    VERBOSE(N_STDOUT, FORMAT_MENU FORMAT_BOLD "--------OPTIONS--------\n" FORMAT_RESET);
-   VERBOSE(N_STDOUT, FORMAT_MENU "1. START ALL MODULES\n");
-   VERBOSE(N_STDOUT, "2. STOP ALL MODULES\n");
-   VERBOSE(N_STDOUT, "3. START MODULE\n");
-   VERBOSE(N_STDOUT, "4. STOP MODULE\n");
-   VERBOSE(N_STDOUT, "5. STARTED MODULES STATUS\n");
+   VERBOSE(N_STDOUT, FORMAT_MENU "1. ENABLE ALL MODULES\n");
+   VERBOSE(N_STDOUT, "2. DISABLE ALL MODULES\n");
+   VERBOSE(N_STDOUT, "3. ENABLE MODULE OR PROFILE\n");
+   VERBOSE(N_STDOUT, "4. DISABLE MODULE OR PROFILE\n");
+   VERBOSE(N_STDOUT, "5. CONFIGURATION STATUS\n");
    VERBOSE(N_STDOUT, "6. AVAILABLE MODULES\n");
    VERBOSE(N_STDOUT, "7. RELOAD CONFIGURATION\n");
    VERBOSE(N_STDOUT, "8. PRINT SUPERVISOR INFO\n");
@@ -2359,17 +2359,25 @@ void interactive_show_available_modules()
       return;
    }
 
-   VERBOSE(N_STDOUT,"[PRINTING CONFIGURATION]\n");
+   VERBOSE(N_STDOUT,"--- [PRINTING CONFIGURATION] ---\n");
 
    while (ptr != NULL) {
-      VERBOSE(N_STDOUT, FORMAT_BOLD "Profile: %s\n" FORMAT_RESET, ptr->profile_name);
-      for (x=0; x<loaded_modules_cnt; x++) {
+      if (ptr->profile_enabled == TRUE) {
+         VERBOSE(N_STDOUT, FORMAT_BOLD "Profile: %s (" FORMAT_RUNNING "enabled" FORMAT_RESET ")\n", ptr->profile_name);
+      } else {
+         VERBOSE(N_STDOUT, FORMAT_BOLD "Profile: %s (" FORMAT_STOPPED "disabled" FORMAT_RESET ")\n" FORMAT_RESET, ptr->profile_name);
+      }
+      for (x = 0; x < loaded_modules_cnt; x++) {
          if (running_modules[x].modules_profile != NULL) {
-            if (running_modules[x].modules_profile == ptr->profile_name) {
-               if (running_modules[x].module_enabled == TRUE) {
-                  VERBOSE(N_STDOUT, "   " FORMAT_BOLD "%d" FORMAT_RESET " | %s (" FORMAT_RUNNING "running" FORMAT_RESET "):\n", x, running_modules[x].module_name);
+            if (running_modules[x].modules_profile == ptr) {
+               if (running_modules[x].module_status == TRUE && running_modules[x].module_enabled == TRUE) {
+                  VERBOSE(N_STDOUT, FORMAT_RUNNING"   ⚫ " FORMAT_RESET FORMAT_BOLD "%d" FORMAT_RESET " | %s (" FORMAT_RUNNING "enabled" FORMAT_RESET "):\n",x, running_modules[x].module_name);
+               } else if (running_modules[x].module_status == TRUE && running_modules[x].module_enabled == FALSE) {
+                  VERBOSE(N_STDOUT, FORMAT_RUNNING"   ⚫ " FORMAT_RESET FORMAT_BOLD "%d" FORMAT_RESET " | %s (" FORMAT_STOPPED "disabled" FORMAT_RESET "):\n",x, running_modules[x].module_name);
+               } else if (running_modules[x].module_status == FALSE && running_modules[x].module_enabled == TRUE) {
+                  VERBOSE(N_STDOUT, FORMAT_STOPPED "   ⚫ " FORMAT_RESET FORMAT_BOLD "%d" FORMAT_RESET " | %s (" FORMAT_RUNNING "enabled" FORMAT_RESET "):\n",x, running_modules[x].module_name);
                } else {
-                  VERBOSE(N_STDOUT, "   " FORMAT_BOLD "%d" FORMAT_RESET " | %s (" FORMAT_STOPPED "stopped" FORMAT_RESET "):\n", x, running_modules[x].module_name);
+                  VERBOSE(N_STDOUT, FORMAT_STOPPED "   ⚫ " FORMAT_RESET FORMAT_BOLD "%d" FORMAT_RESET " | %s (" FORMAT_STOPPED "disabled" FORMAT_RESET "):\n",x, running_modules[x].module_name);
                }
                VERBOSE(N_STDOUT, "      " FORMAT_BOLD "PATH:" FORMAT_RESET " %s\n", (running_modules[x].module_path == NULL ? "none" : running_modules[x].module_path));
                VERBOSE(N_STDOUT, "      " FORMAT_BOLD "PARAMS:" FORMAT_RESET " %s\n", (running_modules[x].module_params == NULL ? "none" : running_modules[x].module_params));
@@ -2390,10 +2398,14 @@ void interactive_show_available_modules()
       VERBOSE(N_STDOUT, FORMAT_BOLD "Modules without profile:\n" FORMAT_RESET);
       for (x=0; x<loaded_modules_cnt; x++) {
          if (running_modules[x].modules_profile == NULL) {
-            if (running_modules[x].module_enabled == TRUE) {
-               VERBOSE(N_STDOUT, "   " FORMAT_BOLD "%d" FORMAT_RESET " | %s (" FORMAT_RUNNING "running" FORMAT_RESET "):\n", x, running_modules[x].module_name);
+            if (running_modules[x].module_status == TRUE && running_modules[x].module_enabled == TRUE) {
+               VERBOSE(N_STDOUT, FORMAT_RUNNING"   ⚫ " FORMAT_RESET FORMAT_BOLD "%d" FORMAT_RESET " | %s (" FORMAT_RUNNING "enabled" FORMAT_RESET "):\n",x, running_modules[x].module_name);
+            } else if (running_modules[x].module_status == TRUE && running_modules[x].module_enabled == FALSE) {
+               VERBOSE(N_STDOUT, FORMAT_RUNNING"   ⚫ " FORMAT_RESET FORMAT_BOLD "%d" FORMAT_RESET " | %s (" FORMAT_STOPPED "disabled" FORMAT_RESET "):\n",x, running_modules[x].module_name);
+            } else if (running_modules[x].module_status == FALSE && running_modules[x].module_enabled == TRUE) {
+               VERBOSE(N_STDOUT, FORMAT_STOPPED "   ⚫ " FORMAT_RESET FORMAT_BOLD "%d" FORMAT_RESET " | %s (" FORMAT_RUNNING "enabled" FORMAT_RESET "):\n",x, running_modules[x].module_name);
             } else {
-               VERBOSE(N_STDOUT, "   " FORMAT_BOLD "%d" FORMAT_RESET " | %s (" FORMAT_STOPPED "stopped" FORMAT_RESET "):\n", x, running_modules[x].module_name);
+               VERBOSE(N_STDOUT, FORMAT_STOPPED "   ⚫ " FORMAT_RESET FORMAT_BOLD "%d" FORMAT_RESET " | %s (" FORMAT_STOPPED "disabled" FORMAT_RESET "):\n",x, running_modules[x].module_name);
             }
             VERBOSE(N_STDOUT, "      " FORMAT_BOLD "PATH:" FORMAT_RESET " %s\n", (running_modules[x].module_path == NULL ? "none" : running_modules[x].module_path));
             VERBOSE(N_STDOUT, "      " FORMAT_BOLD "PARAMS:" FORMAT_RESET " %s\n", (running_modules[x].module_params == NULL ? "none" : running_modules[x].module_params));
@@ -2412,11 +2424,11 @@ int interactive_get_option()
 {
    usleep(50000); // Solved bugged output - without this sleep, escape codes in output were not sometimes reseted on time and they were applied also on this menu
    VERBOSE(N_STDOUT, FORMAT_MENU FORMAT_BOLD "--------OPTIONS--------\n" FORMAT_RESET);
-   VERBOSE(N_STDOUT, FORMAT_MENU "1. START ALL MODULES\n");
-   VERBOSE(N_STDOUT, "2. STOP ALL MODULES\n");
-   VERBOSE(N_STDOUT, "3. START MODULE\n");
-   VERBOSE(N_STDOUT, "4. STOP MODULE\n");
-   VERBOSE(N_STDOUT, "5. STARTED MODULES STATUS\n");
+   VERBOSE(N_STDOUT, FORMAT_MENU "1. ENABLE ALL MODULES\n");
+   VERBOSE(N_STDOUT, "2. DISABLE ALL MODULES\n");
+   VERBOSE(N_STDOUT, "3. ENABLE MODULE OR PROFILE\n");
+   VERBOSE(N_STDOUT, "4. DISABLE MODULE OR PROFILE\n");
+   VERBOSE(N_STDOUT, "5. CONFIGURATION STATUS\n");
    VERBOSE(N_STDOUT, "6. AVAILABLE MODULES\n");
    VERBOSE(N_STDOUT, "7. RELOAD CONFIGURATION\n");
    VERBOSE(N_STDOUT, "8. PRINT SUPERVISOR INFO\n");
@@ -2804,16 +2816,30 @@ void interactive_show_running_modules_status()
       return;
    }
 
+   VERBOSE(N_STDOUT, "--- [CONFIGURATION STATUS] ---\n");
+
    while (ptr != NULL) {
-      VERBOSE(N_STDOUT, FORMAT_BOLD "Profile: %s\n" FORMAT_RESET, ptr->profile_name);
+      if (ptr->profile_enabled == TRUE) {
+         VERBOSE(N_STDOUT, FORMAT_BOLD "Profile: %s (" FORMAT_RUNNING "enabled" FORMAT_RESET ")\n", ptr->profile_name);
+      } else {
+         VERBOSE(N_STDOUT, FORMAT_BOLD "Profile: %s (" FORMAT_STOPPED "disabled" FORMAT_RESET ")\n" FORMAT_RESET, ptr->profile_name);
+      }
       for (x=0; x<loaded_modules_cnt; x++) {
          if (running_modules[x].modules_profile != NULL) {
-            if (running_modules[x].modules_profile == ptr->profile_name && running_modules[x].module_status == TRUE) {
-               VERBOSE(N_STDOUT,"   " FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_RUNNING "running" FORMAT_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
-               already_printed_modules++;
-            } else if (running_modules[x].modules_profile == ptr->profile_name) {
-               VERBOSE(N_STDOUT,"   " FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_STOPPED "stopped" FORMAT_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
-               already_printed_modules++;
+            if (running_modules[x].modules_profile == ptr) {
+               if (running_modules[x].module_status == TRUE && running_modules[x].module_enabled == TRUE) {
+                  VERBOSE(N_STDOUT, FORMAT_RUNNING"   ⚫ " FORMAT_RESET FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_RUNNING "enabled" FORMAT_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
+                  already_printed_modules++;
+               } else if (running_modules[x].module_status == TRUE && running_modules[x].module_enabled == FALSE) {
+                  VERBOSE(N_STDOUT, FORMAT_RUNNING"   ⚫ " FORMAT_RESET FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_STOPPED "disabled" FORMAT_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
+                  already_printed_modules++;
+               } else if (running_modules[x].module_status == FALSE && running_modules[x].module_enabled == TRUE) {
+                  VERBOSE(N_STDOUT, FORMAT_STOPPED "   ⚫ " FORMAT_RESET FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_RUNNING "enabled" FORMAT_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
+                  already_printed_modules++;
+               } else {
+                  VERBOSE(N_STDOUT, FORMAT_STOPPED "   ⚫ " FORMAT_RESET FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_STOPPED "disabled" FORMAT_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
+                  already_printed_modules++;
+               }
             }
          }
       }
@@ -2824,11 +2850,15 @@ void interactive_show_running_modules_status()
       VERBOSE(N_STDOUT, FORMAT_BOLD "Modules without profile:\n" FORMAT_RESET);
       for (x=0; x<loaded_modules_cnt; x++) {
          if (running_modules[x].modules_profile == NULL) {
-            if (running_modules[x].module_status == TRUE) {
-               VERBOSE(N_STDOUT,"   " FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_RUNNING "running" FORMAT_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
-            } else {
-               VERBOSE(N_STDOUT,"   " FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_STOPPED "stopped" FORMAT_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
-            }
+            if (running_modules[x].module_status == TRUE && running_modules[x].module_enabled == TRUE) {
+                  VERBOSE(N_STDOUT, FORMAT_RUNNING"   ⚫ " FORMAT_RESET FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_RUNNING "enabled" FORMAT_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
+               } else if (running_modules[x].module_status == TRUE && running_modules[x].module_enabled == FALSE) {
+                  VERBOSE(N_STDOUT, FORMAT_RUNNING"   ⚫ " FORMAT_RESET FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_STOPPED "disabled" FORMAT_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
+               } else if (running_modules[x].module_status == FALSE && running_modules[x].module_enabled == TRUE) {
+                  VERBOSE(N_STDOUT, FORMAT_STOPPED "   ⚫ " FORMAT_RESET FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_RUNNING "enabled" FORMAT_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
+               } else {
+                  VERBOSE(N_STDOUT, FORMAT_STOPPED "   ⚫ " FORMAT_RESET FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_STOPPED "disabled" FORMAT_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
+               }
          }
       }
    }
