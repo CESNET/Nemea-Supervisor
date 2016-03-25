@@ -896,7 +896,7 @@ void generate_backup_config_file()
          }
          for (x=0; x<loaded_modules_cnt; x++) {
             if (running_modules[x].modules_profile != NULL) {
-               if (strcmp(running_modules[x].modules_profile, ptr->profile_name) == 0) {
+               if (strcmp(running_modules[x].modules_profile->profile_name, ptr->profile_name) == 0) {
                   module = xmlNewChild(modules, NULL, BAD_CAST "module", NULL);
 
                   memset(buffer,0,20);
@@ -1835,7 +1835,7 @@ void service_stop_modules_sigint()
 {
    unsigned int x;
    for (x=0; x<loaded_modules_cnt; x++) {
-      if (running_modules[x].module_status && running_modules[x].module_enabled == FALSE && running_modules[x].sent_sigint == FALSE) {
+      if (running_modules[x].module_status == TRUE && (running_modules[x].modules_profile->profile_enabled == FALSE || running_modules[x].module_enabled == FALSE) && running_modules[x].sent_sigint == FALSE) {
          #ifdef nemea_plugin
             netconf_notify(MODULE_EVENT_STOPPED,running_modules[x].module_name);
          #endif
@@ -1855,7 +1855,7 @@ void service_stop_modules_sigkill()
    unsigned int x, y;
 
    for (x = 0; x < loaded_modules_cnt; x++) {
-      if (running_modules[x].module_status == TRUE && running_modules[x].module_enabled == FALSE && running_modules[x].sent_sigint == TRUE) {
+      if (running_modules[x].module_status == TRUE && (running_modules[x].module_enabled == FALSE || running_modules[x].modules_profile->profile_enabled == FALSE) && running_modules[x].sent_sigint == TRUE) {
          VERBOSE(MODULE_EVENT, "%s [STOP] Stopping module %s... sending SIGKILL\n", get_formatted_time(), running_modules[x].module_name);
          kill(running_modules[x].module_pid,9);
 
@@ -1907,13 +1907,13 @@ void service_update_modules_status()
          max_restarts = max_restarts_per_minute_config;
       }
 
-      if (running_modules[x].module_enabled == TRUE && running_modules[x].module_status == FALSE && (running_modules[x].module_restart_cnt == max_restarts)) {
+      if (running_modules[x].modules_profile->profile_enabled == TRUE && running_modules[x].module_enabled == TRUE && running_modules[x].module_status == FALSE && (running_modules[x].module_restart_cnt == max_restarts)) {
          VERBOSE(MODULE_EVENT,"%s [RESTART] Module: %s was restarted %d times per minute and it is down again. I set it disabled.\n", get_formatted_time(), running_modules[x].module_name, max_restarts);
          running_modules[x].module_enabled = FALSE;
          #ifdef nemea_plugin
             netconf_notify(MODULE_EVENT_DISABLED,running_modules[x].module_name);
          #endif
-      } else if (running_modules[x].module_status == FALSE && running_modules[x].module_enabled == TRUE) {
+      } else if (running_modules[x].modules_profile->profile_enabled == TRUE && running_modules[x].module_status == FALSE && running_modules[x].module_enabled == TRUE) {
          service_start_module(x);
       }
    }
@@ -4912,7 +4912,7 @@ parse_default_config_file:
 
                // If actual modules element has a valid profile, save it's name in parsed module structure
                if (modules_got_profile == TRUE) {
-                  running_modules[config_vars->current_module_idx].modules_profile = actual_profile_ptr->profile_name;
+                  running_modules[config_vars->current_module_idx].modules_profile = actual_profile_ptr;
                }
             }
             config_vars->module_elem = config_vars->module_elem->next;
@@ -5097,7 +5097,7 @@ xmlDocPtr netconf_get_state_data()
                if (running_modules[x].modules_profile == NULL) {
                   continue;
                }
-               if (strcmp(running_modules[x].modules_profile, ptr->profile_name) != 0) {
+               if (strcmp(running_modules[x].modules_profile->profile_name, ptr->profile_name) != 0) {
                   continue;
                }
                memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
