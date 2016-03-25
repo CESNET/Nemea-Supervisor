@@ -299,7 +299,7 @@ char **parse_module_params(const uint32_t module_idx, uint32_t *params_num);
 char **prep_module_args(const uint32_t module_idx);
 
 int get_number_from_input_choosing_option();
-int get_numbers_from_input_dis_enable_module(int **array);
+int parse_numbers_user_selection(int **array);
 void init_module_variables(int module_number);
 char *get_param_by_delimiter(const char *source, char **dest, const char delimiter);
 void print_statistics();

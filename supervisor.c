@@ -540,60 +540,115 @@ error_label:
 }
 
 /* Returns count of numbers in input (separated by commas) or -1 */
-int get_numbers_from_input_dis_enable_module(int **array)
+int parse_numbers_user_selection(int **array)
 {
-   int x = 0, module_nums_cnt = 0, is_num = FALSE;
-   int *module_nums = NULL;
-   char *input_p = NULL;
-   int error_input = FALSE;
+   uint8_t is_num = FALSE;
+   uint8_t is_interval = FALSE;
+   uint8_t duplicated = FALSE;
 
-   module_nums = (int *) calloc(50, sizeof(int));
+   int cur_num = 0;
+   int interval_beg = 0;
+   int x = 0, y = 0, z = 0;
+
+   int module_nums_cnt = 0;
+   int *module_nums = NULL;
+
+   char *input_p = NULL;
+   int input_len = 0;
+
+   uint32_t module_nums_size = 10;
+   module_nums = (int *) calloc(module_nums_size, sizeof(int));
    input_p = get_input_from_stream(input_fd);
 
+
    if (input_p == NULL) {
-      error_input = TRUE;
+      goto error_label;
    } else if (strlen(input_p) == 0) {
       VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] Wrong input - empty string.\n" FORMAT_RESET);
-      error_input = TRUE;
+      goto error_label;
    } else {
-      for (x=0; x<strlen(input_p); x++) {
+      input_len = strlen(input_p);
+      for (x = 0; x < input_len; x++) {
          if (input_p[x] <= '9' && input_p[x] >= '0') {
             is_num = TRUE;
-            module_nums[module_nums_cnt] *= 10;
-            module_nums[module_nums_cnt] += (input_p[x] - '0');
-         } else if (input_p[x] == ',') {
-            if (is_num == TRUE) {
-               is_num = FALSE;
-               module_nums_cnt++;
-            } else {
-               VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] Wrong input - comma without a number before it.\n" FORMAT_RESET);
-               error_input = TRUE;
-               break;
+            cur_num *= 10;
+            cur_num += (input_p[x] - '0');
+            if ((input_len - 1) > x) {
+               continue;
             }
+         } else if (input_p[x] == ',') {
             if (x == (strlen(input_p) -1)) {
                VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] Wrong input - comma at the end.\n" FORMAT_RESET);
-               error_input = TRUE;
+               goto error_label;
+               break;
+            }
+            if (is_num == FALSE) {
+               VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] Wrong input - comma without a number before it.\n" FORMAT_RESET);
+               goto error_label;
+               break;
+            }
+         } else if (input_p[x] == '-') {
+            if (is_num == TRUE && is_interval == FALSE) {
+               is_num = FALSE;
+               is_interval = TRUE;
+               interval_beg = cur_num;
+               cur_num = 0;
+               continue;
+            } else {
+               VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] Wrong input - dash with no number before it.\n" FORMAT_RESET);
+               goto error_label;
                break;
             }
          } else {
-            VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] Wrong input - acceptable characters are digits and comma.\n" FORMAT_RESET);
-            error_input = TRUE;
+            VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] Wrong input - acceptable characters are digits, comma and dash.\n" FORMAT_RESET);
+            goto error_label;
             break;
          }
+
+         // Add current number(s)
+         if (is_interval == FALSE) {
+            interval_beg = cur_num;
+         } else if (interval_beg > cur_num) {
+            y = interval_beg;
+            interval_beg = cur_num;
+            cur_num = y;
+         }
+         for (y = interval_beg; y <= cur_num; y++) {
+            duplicated = FALSE;
+            // Check whether the current number is already in the array
+            for (z = 0; z < module_nums_cnt; z++) {
+               if (y == module_nums[z]) {
+                  duplicated = TRUE;
+                  break;
+               }
+            }
+            if (duplicated == TRUE) {
+               continue;
+            } else {
+               if (module_nums_size == module_nums_cnt) {
+                  // reallocate the array with numbers
+                  module_nums_size += 20;
+                  module_nums = (int *) realloc(module_nums, module_nums_size * sizeof(int));
+               }
+               module_nums[module_nums_cnt] = y;
+               module_nums_cnt++;
+            }
+         }
+         cur_num = 0;
+         is_num = FALSE;
+         is_interval = FALSE;
       }
    }
 
-   if (error_input == TRUE) {
-      NULLP_TEST_AND_FREE(module_nums)
-      NULLP_TEST_AND_FREE(input_p)
-      array = NULL;
-      return RET_ERROR;
-   }
-
-   free(input_p);
-   input_p = NULL;
+   NULLP_TEST_AND_FREE(input_p)
    *array = module_nums;
-   return ++module_nums_cnt;
+   return module_nums_cnt;
+
+error_label:
+   NULLP_TEST_AND_FREE(module_nums)
+   NULLP_TEST_AND_FREE(input_p)
+   *array = NULL;
+   return RET_ERROR;
 }
 
 void init_module_variables(int module_number)
@@ -2456,8 +2511,8 @@ void interactive_set_module_enabled()
       return;
    }
 
-   VERBOSE(N_STDOUT, FORMAT_INTERACTIVE "[INTERACTIVE] Type in module numbers (one number or more separated by comma): " FORMAT_RESET);
-   modules_to_enable_cnt = get_numbers_from_input_dis_enable_module(&modules_to_enable);
+   VERBOSE(N_STDOUT, FORMAT_INTERACTIVE "[INTERACTIVE] Type in number or interval separated by comma (e.g. \"2,4-6,13\"): " FORMAT_RESET);
+   modules_to_enable_cnt = parse_numbers_user_selection(&modules_to_enable);
 
    if (modules_to_enable_cnt != RET_ERROR) {
       for (y=0; y<modules_to_enable_cnt; y++) {
