@@ -58,10 +58,10 @@ void interactive_mode()
          interactive_stop_configuration();
          break;
       case 3:
-         interactive_set_module_enabled();
+         interactive_set_enabled();
          break;
       case 4:
-         interactive_stop_module();
+         interactive_set_disabled();
          break;
       case 5:
          interactive_show_running_modules_status();

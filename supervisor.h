@@ -495,13 +495,13 @@ void interactive_stop_configuration();
  * Prints out stopped modules grouped by their profile. After that, user can type in numbers of modules to enable.
  * (enabled modules are automatically started by service thread)
  */
-void interactive_set_module_enabled();
+void interactive_set_enabled();
 
 /**
  * Prints out running modules grouped by their profile. After that, user can type in numbers of modules to disable.
  * (disabled modules are automatically stopped by service thread)
  */
-void interactive_stop_module();
+void interactive_set_disabled();
 
 /**
  * Prints out loaded modules grouped by their profile (if they have any)

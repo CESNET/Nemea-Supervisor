@@ -116,6 +116,7 @@ int max_restarts_per_minute_config = DEFAULT_MAX_RESTARTS_PER_MINUTE;
 
 modules_profile_t *first_profile_ptr = NULL;
 modules_profile_t *actual_profile_ptr = NULL;
+unsigned int loaded_profile_cnt = 0;
 
 pthread_t service_thread_id; ///< Service thread identificator.
 pthread_t netconf_server_thread_id;
@@ -1610,10 +1611,10 @@ void *daemon_serve_client_routine (void *cli)
                interactive_stop_configuration();
                break;
             case 3:
-               interactive_set_module_enabled();
+               interactive_set_enabled();
                break;
             case 4:
-               interactive_stop_module();
+               interactive_set_disabled();
                break;
             case 5:
                interactive_show_running_modules_status();
@@ -2467,32 +2468,70 @@ void interactive_stop_configuration()
    pthread_mutex_unlock(&running_modules_lock);
 }
 
-
-void interactive_set_module_enabled()
+int get_num_disabled_modules()
 {
-   int *modules_to_enable = NULL;
-   int x = 0, y = 0, modules_to_enable_cnt = 0, stopped_modules_counter = 0, matched_modules = 0, profile_printed = FALSE;
-   modules_profile_t * ptr = first_profile_ptr;
-
-   if (loaded_modules_cnt == 0) {
-      VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] No module is loaded.\n" FORMAT_RESET);
-      return;
+   int cnt = 0, x = 0;
+   for (x = 0; x < loaded_modules_cnt; x++) {
+      if (running_modules[x].module_enabled == FALSE) {
+         cnt++;
+      }
    }
 
-   pthread_mutex_lock(&running_modules_lock);
-   VERBOSE(N_STDOUT, "[LIST OF STOPPED MODULES]\n");
+   return cnt;
+}
+
+int get_num_disabled_profiles()
+{
+   int cnt = 0;
+   modules_profile_t *ptr = first_profile_ptr;
+
    while (ptr != NULL) {
-      profile_printed = FALSE;
-      for (x=0; x<loaded_modules_cnt; x++) {
+      if (ptr->profile_enabled == FALSE) {
+         cnt++;
+      }
+      ptr = ptr->next;
+   }
+
+   return cnt;
+}
+
+void interactive_set_enabled()
+{
+   int mod_to_en = 0;
+
+   uint32_t dis_prof_cnt = get_num_disabled_profiles();
+   uint32_t dis_mod_cnt = get_num_disabled_modules();
+
+   int *modules_to_enable = NULL;
+   int x = 0, modules_to_enable_cnt = 0, matched_modules = 0, label_printed = FALSE;
+   modules_profile_t * ptr = first_profile_ptr;
+   int max_idx = 0;
+
+   pthread_mutex_lock(&running_modules_lock);
+
+   VERBOSE(N_STDOUT, "--- [LIST OF DISABLED MODULES] ---\n");
+   if (loaded_modules_cnt == 0) {
+      VERBOSE(N_STDOUT, "   No module is loaded.\n");
+      goto prof_check;
+   }
+   // Check whether any module is disabled
+   if (dis_mod_cnt == 0) {
+      VERBOSE(N_STDOUT, "   All modules are enabled.\n");
+      goto prof_check;
+   }
+
+   // Find modules with profile
+   while (ptr != NULL) {
+      label_printed = FALSE;
+      for (x = 0; x < loaded_modules_cnt; x++) {
          if (running_modules[x].modules_profile != NULL) {
-            if (running_modules[x].modules_profile == ptr->profile_name) {
-               if (running_modules[x].module_status == FALSE) {
-                  if (profile_printed == FALSE) {
+            if (running_modules[x].modules_profile == ptr) {
+               if (running_modules[x].module_enabled == FALSE) {
+                  if (label_printed == FALSE) {
                      VERBOSE(N_STDOUT, FORMAT_BOLD "Profile: %s\n" FORMAT_RESET, ptr->profile_name);
-                     profile_printed = TRUE;
+                     label_printed = TRUE;
                   }
-                  VERBOSE(N_STDOUT, "   " FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_STOPPED "stopped" FORMAT_RESET "\n",x, running_modules[x].module_name);
-                  stopped_modules_counter++;
+                  VERBOSE(N_STDOUT, "   " FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_STOPPED "disabled" FORMAT_RESET "\n", x, running_modules[x].module_name);
                }
                matched_modules++;
             }
@@ -2501,24 +2540,49 @@ void interactive_set_module_enabled()
       ptr = ptr->next;
    }
 
+   // Find modules without profile 
    if (matched_modules < loaded_modules_cnt) {
-      profile_printed = FALSE;
-      for (x=0; x<loaded_modules_cnt; x++) {
+      label_printed = FALSE;
+      for (x = 0; x < loaded_modules_cnt; x++) {
          if (running_modules[x].modules_profile == NULL) {
-            if (running_modules[x].module_status == FALSE) {
-               if (profile_printed == FALSE) {
+            if (running_modules[x].module_enabled == FALSE) {
+               if (label_printed == FALSE) {
                   VERBOSE(N_STDOUT, FORMAT_BOLD "Modules without profile:\n" FORMAT_RESET);
-                  profile_printed = TRUE;
+                  label_printed = TRUE;
                }
-               VERBOSE(N_STDOUT, "   " FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_STOPPED "stopped" FORMAT_RESET "\n",x, running_modules[x].module_name);
-               stopped_modules_counter++;
+               VERBOSE(N_STDOUT, "   " FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_STOPPED "disabled" FORMAT_RESET "\n", x, running_modules[x].module_name);
             }
          }
       }
    }
 
-   if (stopped_modules_counter == 0) {
-      VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] All modules are running.\n" FORMAT_RESET);
+
+prof_check:
+   VERBOSE(N_STDOUT, "--- [LIST OF DISABLED PROFILES] ---\n");
+   if (loaded_profile_cnt == 0) {
+      VERBOSE(N_STDOUT, "   No profile is loaded.\n");
+      goto user_input;
+   }
+   // Check whether any profile is disabled
+   if (dis_prof_cnt == 0) {
+      VERBOSE(N_STDOUT, "   All profiles are enabled.\n");
+      goto user_input;
+   }
+
+   max_idx = loaded_modules_cnt;
+   ptr = first_profile_ptr;
+   while (ptr != NULL) {
+      if (ptr->profile_enabled == FALSE) {
+         VERBOSE(N_STDOUT, "   " FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_STOPPED "disabled" FORMAT_RESET "\n", max_idx, ptr->profile_name);
+      }
+      max_idx++;
+      ptr = ptr->next;
+   }
+
+
+user_input:
+   if (dis_prof_cnt == 0 && dis_mod_cnt == 0) {
+      // There is no module nor profile that can be enabled
       pthread_mutex_unlock(&running_modules_lock);
       return;
    }
@@ -2527,17 +2591,32 @@ void interactive_set_module_enabled()
    modules_to_enable_cnt = parse_numbers_user_selection(&modules_to_enable);
 
    if (modules_to_enable_cnt != RET_ERROR) {
-      for (y=0; y<modules_to_enable_cnt; y++) {
-         x = modules_to_enable[y];
-         if (x>=loaded_modules_cnt || x<0) {
-            VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] Number %d is not valid module number!\n" FORMAT_RESET, x);
+      for (x = 0; x < modules_to_enable_cnt; x++) {
+         mod_to_en = modules_to_enable[x];
+
+         if ((mod_to_en >= (loaded_modules_cnt + loaded_profile_cnt)) || mod_to_en < 0) {
+            VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] Number %d is not in range <0,%d>!\n" FORMAT_RESET, mod_to_en, (loaded_modules_cnt + loaded_profile_cnt - 1));
             continue;
-         } else if (running_modules[x].module_enabled == TRUE) {
-            VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] Module %s is already enabled.\n" FORMAT_RESET, running_modules[x].module_name);
+         } else if (mod_to_en >= loaded_modules_cnt) {
+            mod_to_en -= loaded_modules_cnt;
+            ptr = first_profile_ptr;
+            while (ptr != NULL) {
+               if (mod_to_en == 0) {
+                  if (ptr->profile_enabled == FALSE) {
+                     VERBOSE(MODULE_EVENT, "%s [ENABLED] Profile %s set to enabled.\n", get_formatted_time(), ptr->profile_name);
+                     ptr->profile_enabled = TRUE;
+                  }
+                  break;
+               }
+               mod_to_en--;
+               ptr = ptr->next;
+            }
+         } else if (running_modules[mod_to_en].module_enabled == TRUE) {
+            VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] Module %s is already enabled.\n" FORMAT_RESET, running_modules[mod_to_en].module_name);
          } else {
-            running_modules[x].module_enabled = TRUE;
-            running_modules[x].module_restart_cnt = -1;
-            VERBOSE(MODULE_EVENT, "%s [ENABLED] Module %s set to enabled.\n", get_formatted_time(), running_modules[x].module_name);
+            running_modules[mod_to_en].module_enabled = TRUE;
+            running_modules[mod_to_en].module_restart_cnt = -1;
+            VERBOSE(MODULE_EVENT, "%s [ENABLED] Module %s set to enabled.\n", get_formatted_time(), running_modules[mod_to_en].module_name);
          }
       }
       free(modules_to_enable);
@@ -2547,31 +2626,43 @@ void interactive_set_module_enabled()
    pthread_mutex_unlock(&running_modules_lock);
 }
 
-void interactive_stop_module()
+void interactive_set_disabled()
 {
-   int *modules_to_stop = NULL;
-   int x = 0, y = 0, running_modules_counter = 0, modules_to_stop_cnt = 0, matched_modules = 0, profile_printed = FALSE;
-   modules_profile_t * ptr = first_profile_ptr;
+   int mod_to_dis = 0;
 
-   if (loaded_modules_cnt == 0) {
-      VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] No module is loaded.\n" FORMAT_RESET);
-      return;
-   }
+   uint32_t en_prof_cnt = loaded_profile_cnt - get_num_disabled_profiles();
+   uint32_t en_mod_cnt = loaded_modules_cnt - get_num_disabled_modules();
+
+   int *modules_to_disable = NULL;
+   int x = 0, modules_to_disable_cnt = 0, matched_modules = 0, label_printed = FALSE;
+   modules_profile_t * ptr = first_profile_ptr;
+   int max_idx = 0;
 
    pthread_mutex_lock(&running_modules_lock);
-   VERBOSE(N_STDOUT, "[LIST OF RUNNING MODULES]\n");
+
+   VERBOSE(N_STDOUT, "--- [LIST OF ENABLED MODULES] ---\n");
+   if (loaded_modules_cnt == 0) {
+      VERBOSE(N_STDOUT, "   No module is loaded.\n");
+      goto prof_check;
+   }
+   // Check whether any module is disabled
+   if (en_mod_cnt == 0) {
+      VERBOSE(N_STDOUT, "   All modules are disabled.\n");
+      goto prof_check;
+   }
+
+   // Find modules with profile
    while (ptr != NULL) {
-      profile_printed = FALSE;
-      for (x=0; x<loaded_modules_cnt; x++) {
+      label_printed = FALSE;
+      for (x = 0; x < loaded_modules_cnt; x++) {
          if (running_modules[x].modules_profile != NULL) {
-            if (running_modules[x].modules_profile == ptr->profile_name) {
-               if (running_modules[x].module_status == TRUE) {
-                  if (profile_printed == FALSE) {
+            if (running_modules[x].modules_profile == ptr) {
+               if (running_modules[x].module_enabled == TRUE) {
+                  if (label_printed == FALSE) {
                      VERBOSE(N_STDOUT, FORMAT_BOLD "Profile: %s\n" FORMAT_RESET, ptr->profile_name);
-                     profile_printed = TRUE;
+                     label_printed = TRUE;
                   }
-                  VERBOSE(N_STDOUT, "   " FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_RUNNING "running" FORMAT_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
-                  running_modules_counter++;
+                  VERBOSE(N_STDOUT, "   " FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_RUNNING "enabled" FORMAT_RESET "\n", x, running_modules[x].module_name);
                }
                matched_modules++;
             }
@@ -2580,47 +2671,88 @@ void interactive_stop_module()
       ptr = ptr->next;
    }
 
+   // Find modules without profile 
    if (matched_modules < loaded_modules_cnt) {
-      profile_printed = FALSE;
-      for (x=0; x<loaded_modules_cnt; x++) {
+      label_printed = FALSE;
+      for (x = 0; x < loaded_modules_cnt; x++) {
          if (running_modules[x].modules_profile == NULL) {
-            if (running_modules[x].module_status == TRUE) {
-               if (profile_printed == FALSE) {
+            if (running_modules[x].module_enabled == TRUE) {
+               if (label_printed == FALSE) {
                   VERBOSE(N_STDOUT, FORMAT_BOLD "Modules without profile:\n" FORMAT_RESET);
-                  profile_printed = TRUE;
+                  label_printed = TRUE;
                }
-               VERBOSE(N_STDOUT, "   " FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_RUNNING "running" FORMAT_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
-               running_modules_counter++;
+               VERBOSE(N_STDOUT, "   " FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_RUNNING "enabled" FORMAT_RESET "\n", x, running_modules[x].module_name);
             }
          }
       }
    }
 
-   if (running_modules_counter == 0) {
-      VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] All modules are stopped.\n" FORMAT_RESET);
+
+prof_check:
+   VERBOSE(N_STDOUT, "--- [LIST OF ENABLED PROFILES] ---\n");
+   if (loaded_profile_cnt == 0) {
+      VERBOSE(N_STDOUT, "   No profile is loaded.\n");
+      goto user_input;
+   }
+   // Check whether any profile is enabled
+   if (en_prof_cnt == 0) {
+      VERBOSE(N_STDOUT, "   All profiles are disabled.\n");
+      goto user_input;
+   }
+
+   max_idx = loaded_modules_cnt;
+   ptr = first_profile_ptr;
+   while (ptr != NULL) {
+      if (ptr->profile_enabled == TRUE) {
+         VERBOSE(N_STDOUT, "   " FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_RUNNING "enabled" FORMAT_RESET "\n", max_idx, ptr->profile_name);
+      }
+      max_idx++;
+      ptr = ptr->next;
+   }
+
+
+user_input:
+   if (en_prof_cnt == 0 && en_mod_cnt == 0) {
+      // There is no module nor profile that can be disabled
       pthread_mutex_unlock(&running_modules_lock);
       return;
    }
 
-   VERBOSE(N_STDOUT, FORMAT_INTERACTIVE "[INTERACTIVE] Type in module numbers (one number or more separated by comma): " FORMAT_RESET);
-   modules_to_stop_cnt = get_numbers_from_input_dis_enable_module(&modules_to_stop);
+   VERBOSE(N_STDOUT, FORMAT_INTERACTIVE "[INTERACTIVE] Type in number or interval separated by comma (e.g. \"2,4-6,13\"): " FORMAT_RESET);
+   modules_to_disable_cnt = parse_numbers_user_selection(&modules_to_disable);
 
-   if (modules_to_stop_cnt != RET_ERROR) {
-      for (y=0; y<modules_to_stop_cnt; y++) {
-         x = modules_to_stop[y];
-         if (x>=loaded_modules_cnt || x<0) {
-            VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] Number %d is not valid module number!\n" FORMAT_RESET, x);
+   if (modules_to_disable_cnt != RET_ERROR) {
+      for (x = 0; x < modules_to_disable_cnt; x++) {
+         mod_to_dis = modules_to_disable[x];
+
+         if ((mod_to_dis >= (loaded_modules_cnt + loaded_profile_cnt)) || mod_to_dis < 0) {
+            VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] Number %d is not in range <0,%d>!\n" FORMAT_RESET, mod_to_dis, (loaded_modules_cnt + loaded_profile_cnt - 1));
             continue;
-         } else if (running_modules[x].module_enabled == FALSE) {
-            VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] Module %s is already disabled.\n" FORMAT_RESET, running_modules[x].module_name);
+         } else if (mod_to_dis >= loaded_modules_cnt) {
+            mod_to_dis -= loaded_modules_cnt;
+            ptr = first_profile_ptr;
+            while (ptr != NULL) {
+               if (mod_to_dis == 0) {
+                  if (ptr->profile_enabled == TRUE) {
+                     VERBOSE(MODULE_EVENT, "%s [ENABLED] Profile %s set to disabled.\n", get_formatted_time(), ptr->profile_name);
+                     ptr->profile_enabled = FALSE;
+                  }
+                  break;
+               }
+               mod_to_dis--;
+               ptr = ptr->next;
+            }
+         } else if (running_modules[mod_to_dis].module_enabled == FALSE) {
+            VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] Module %s is already disabled.\n" FORMAT_RESET, running_modules[mod_to_dis].module_name);
          } else {
-            running_modules[x].module_enabled = FALSE;
-            VERBOSE(MODULE_EVENT, "%s [DISABLED] Module %s set to disabled.\n", get_formatted_time(), running_modules[x].module_name);
+            running_modules[mod_to_dis].module_enabled = FALSE;
+            VERBOSE(MODULE_EVENT, "%s [ENABLED] Module %s set to disabled.\n", get_formatted_time(), running_modules[mod_to_dis].module_name);
          }
       }
-      free(modules_to_stop);
-      modules_to_stop = NULL;
+      free(modules_to_disable);
+      modules_to_disable = NULL;
    }
+
    pthread_mutex_unlock(&running_modules_lock);
 }
 
@@ -4740,6 +4872,7 @@ parse_default_config_file:
       running_modules[x].remove_module = FALSE;
    }
 
+   loaded_profile_cnt = 0;
    ptr1 = first_profile_ptr;
    ptr2 = NULL;
    while (ptr1 != NULL) {
@@ -4772,6 +4905,7 @@ parse_default_config_file:
          if (reload_find_and_check_modules_profile_basic_elements(&config_vars) == 0 && actual_profile_ptr != NULL) {
             VERBOSE(N_STDOUT, "[INFO] Found valid modules profile with name \"%s\" set to %s.\n", actual_profile_ptr->profile_name, (actual_profile_ptr->profile_enabled == TRUE ? "enabled" : "disabled"));
             modules_got_profile = TRUE;
+            loaded_profile_cnt++;
          } else {
             modules_got_profile = FALSE;
          }
