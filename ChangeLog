@@ -1,3 +1,24 @@
+2016-04-03 supervisor-1.3.5
+        * improved visual effect for better user experience
+	* interval selection of modules added
+	* possibility to enable/disable profile during runtime
+	* divided .sup files to directories
+	* bugfixes
+
+2016-04-03 (Marek Svepes): bugfix: config validation: added missing check of amandatory elements in modules element
+2016-04-03 (Marek Svepes): RPM: setting permissions of pkgdata subdirs and new config template
+2016-04-03 (Marek Svepes): new feature: part of the reload configuration is now also config file generation
+2016-04-03 (Marek Svepes): configs: prepare_default_config script now only creates needed directories from .mkdir files
+2016-04-03 (Marek Svepes): configs: split example XML file into template.sup and the commented xml configuration
+2016-04-03 (Marek Svepes): configs: divided .sup files into directories according to their content (detectors, data-sources, others)
+2016-03-25 (Marek Svepes): enable/disable operation: it is now possible to enable or disable profile with client during runtime (not only in XML config file)
+2016-03-25 (Marek Svepes): enable flag: status of the module now depends on the profile enable flag during runtime (not just during reload)
+2016-03-25 (Marek Svepes): improvement of the menu appearance and clarity:
+2016-03-25 (Marek Svepes): user input: new feature: it is possible to use interval selection of modules (during enable/disable operations)
+2016-03-21 (Marek Svepes): reload: removed option to load any .xml file
+2016-03-21 (Marek Svepes): bugfix: tmp file with the name of log_file is deleted before showing the log_file (show-logs feature)
+2016-03-21 (Marek Svepes): output format: added RGB colors
+
 2016-03-20 supervisor-1.3.4
         * ipfixcol now sends to voip_data_source only flows with filled
 	  sip_from and sip_to
