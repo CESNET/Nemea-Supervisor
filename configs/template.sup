@@ -1,0 +1,25 @@
+<!--
+   Template for one modules profile with one module
+   that can be copy-pased and filled with values
+-->
+
+<modules>
+   <name></name>
+   <enabled></enabled>
+
+   <module>
+      <enabled></enabled>
+      <params></params>
+      <name></name>
+      <path></path>
+      <module-restarts></module-restarts> 
+      <trapinterfaces>
+         <interface>
+            <note/>
+            <type></type>
+            <direction></direction>
+            <params></params>
+         </interface>
+      </trapinterfaces>
+   </module>
+</modules>

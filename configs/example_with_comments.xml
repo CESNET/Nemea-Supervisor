@@ -1,34 +1,11 @@
 <?xml version="1.0"?>
 <nemea-supervisor>
 
-<!-- Template for one modules profile with one module that can be copy-pased and filled with values
-   <modules>
-      <name></name>
-      <enabled></enabled>
-
-      <module>
-         <enabled></enabled>
-         <params></params>
-         <name></name>
-         <path></path>
-         <module-restarts></module-restarts> 
-         <trapinterfaces>
-            <interface>
-               <note/>
-               <type></type>
-               <direction></direction>
-               <params></params>
-            </interface>
-         </trapinterfaces>
-      </module>
-   </modules>
--->
-
   <!-- Defines one group of modules (modules profile) -->
   <modules>
     <!-- Unique name of the modules profile -->
     <name>Example profile</name>
-    <!-- Profile switch for all modules in this profile determining whether the modules should run or not-->
+    <!-- Profile switch for all modules in this profile determining whether the modules should run or not -->
     <enabled>true</enabled>
     <!-- Switches explanation:
     Profile switch  | Module switch   | Module will run
@@ -37,6 +14,7 @@
        false        |    true         |    false
        false        |    false        |    false
     -->
+
     <!-- Defines one module -->
     <module>
       <!-- Unique name of the module (future name of the running process) -->
