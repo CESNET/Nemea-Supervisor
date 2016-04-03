@@ -4444,6 +4444,15 @@ int reload_check_modules_element(reload_config_vars_t **config_vars, str_lst_t *
       (*config_vars)->module_elem = (*config_vars)->module_elem->next;
    }
 
+   /* Check whether the mandatory elements were found */
+   if (basic_elements[name_elem_idx] == 0) {
+      VERBOSE(N_STDOUT, "[ERROR] Missing \"name\" element in \"modules\" element!\n");
+      goto error_label;
+   } else if (basic_elements[enabled_elem_idx] == 0) {
+      VERBOSE(N_STDOUT, "[ERROR] Missing \"enabled\" element in \"modules\" element!\n");
+      goto error_label;
+   }
+
    return 0;
 
 error_label:
