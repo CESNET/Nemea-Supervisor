@@ -138,7 +138,6 @@ int netconf_flag = FALSE;
 
 char *templ_config_file = NULL;
 char *gener_config_file = NULL;
-char *running_config_file = NULL;
 char *config_files_path = NULL;
 char *socket_path = NULL;
 char *logs_path = NULL;
@@ -3198,6 +3197,8 @@ void supervisor_termination(const uint8_t stop_all_modules, const uint8_t genera
       free_output_file_strings_and_streams();
    }
 
+   NULLP_TEST_AND_FREE(config_files_path)
+   NULLP_TEST_AND_FREE(gener_config_file)
    NULLP_TEST_AND_FREE(templ_config_file)
    NULLP_TEST_AND_FREE(logs_path)
 }
@@ -3396,7 +3397,6 @@ void init_sup_flags()
    logs_path = NULL;
    templ_config_file = NULL;
    gener_config_file = NULL;
-   running_config_file = NULL;
    socket_path = NULL;
 
    daemon_flag = FALSE;
@@ -3504,13 +3504,10 @@ int init_files()
             return -1;
          }
          gener_config_file = (char *) calloc(strlen(config_files_path) + strlen("gener_config_file.xml") + 2, sizeof(char)); // 2 -> one for possible '/' and one terminating
-         running_config_file = (char *) calloc(strlen(config_files_path) + strlen("running_config_file.xml") + 2, sizeof(char));
       if (config_files_path[strlen(config_files_path) - 1] == '/') {
          sprintf(gener_config_file, "%sgener_config_file.xml", config_files_path);
-         sprintf(running_config_file, "%srunning_config_file.xml", config_files_path);
       } else {
          sprintf(gener_config_file, "%s/gener_config_file.xml", config_files_path);
-         sprintf(running_config_file, "%s/running_config_file.xml", config_files_path);
       }
    } else {
          if (check_file_type_perm(DEFAULT_PATH_TO_CONFIGSS, CHECK_DIR, R_OK | W_OK) == -1) {
@@ -3518,13 +3515,10 @@ int init_files()
             return -1;
          }
          gener_config_file = (char *) calloc(strlen(DEFAULT_PATH_TO_CONFIGSS) + strlen("gener_config_file.xml") + 2, sizeof(char)); // 2 -> one for possible '/' and one terminating
-         running_config_file = (char *) calloc(strlen(DEFAULT_PATH_TO_CONFIGSS) + strlen("running_config_file.xml") + 2, sizeof(char));
       if (DEFAULT_PATH_TO_CONFIGSS[strlen(DEFAULT_PATH_TO_CONFIGSS) - 1] == '/') {
          sprintf(gener_config_file, "%sgener_config_file.xml", DEFAULT_PATH_TO_CONFIGSS);
-         sprintf(running_config_file, "%srunning_config_file.xml", DEFAULT_PATH_TO_CONFIGSS);
       } else {
          sprintf(gener_config_file, "%s/gener_config_file.xml", DEFAULT_PATH_TO_CONFIGSS);
-         sprintf(running_config_file, "%s/running_config_file.xml", DEFAULT_PATH_TO_CONFIGSS);
       }
    }
    return 0;
@@ -4999,6 +4993,8 @@ int generate_config_file()
 
    fclose(gener_fd);
    fclose(templ_fd);
+   NULLP_TEST_AND_FREE(line);
+   NULLP_TEST_AND_FREE(gener_cont->mem);
    NULLP_TEST_AND_FREE(gener_cont);
    NULLP_TEST_AND_FREE(incl_path);
    return 0;
