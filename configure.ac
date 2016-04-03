@@ -21,6 +21,7 @@ pkgdatadir=${datadir}/nemea-supervisor
 AC_SUBST(pkgdatadir)
 rundir=${localstatedir}/run
 defaultsocketdir=${rundir}/nemea-supervisor
+defaultconfdir=${sysconfdir}
 AC_SUBST(defaultsocketdir)
 
 AC_CONFIG_MACRO_DIR([m4])
@@ -38,11 +39,15 @@ AM_CONDITIONAL(DEBUG, test x"$debug" = x"true")
 AC_DEFINE_DIR(initdir, [sysconfdir]/../init.d, [Path to init.d (init script)])
 AC_DEFINE_DIR(bindir, [bindir], [Path to binaries])
 AC_DEFINE_DIR(defaultsocketdir, [defaultsocketdir], [Default path to socket directory])
+AC_DEFINE_DIR(defaultconfdir, [defaultconfdir], [Default path to configuration files directory])
 AC_DEFINE_DIR(rundir, [rundir], [Default path to socket directory])
 
 DEFAULT_PATH_TO_SOCKET=${defaultsocketdir}/nemea-supervisor.sock
 AC_DEFINE_UNQUOTED([DEFAULT_PATH_TO_SOCKET], "${DEFAULT_PATH_TO_SOCKET}", [Default path to daemon socket])
 AC_SUBST(DEFAULT_PATH_TO_SOCKET)
+DEFAULT_PATH_TO_CONFIGS=${defaultconfdir}
+AC_DEFINE_UNQUOTED([DEFAULT_PATH_TO_CONFIGS], "${DEFAULT_PATH_TO_CONFIGS}", [Default path to configuration files])
+AC_SUBST(DEFAULT_PATH_TO_CONFIGS)
 
 # Checks for programs.
 AC_PROG_CC

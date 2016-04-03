@@ -72,6 +72,9 @@
 #define DEFAULT_DAEMON_SERVER_SOCKET   DEFAULT_PATH_TO_SOCKET  ///<  Daemon server socket
 #define DEFAULT_NETCONF_SERVER_SOCKET   "/tmp/netconf_supervisor.sock"  ///<  Netconf server socket
 
+#define DEFAULT_PATH_TO_CONFIGSS   DEFAULT_PATH_TO_CONFIGS
+
+
 #define INIT_TMP_LOG_PATH   "/tmp/sup_tmp_log_file"
 #define INIT_TMP_DEBUG_LOG_PATH   "/tmp/sup_tmp_debug_log_file"
 #define NETCONF_DEFAULT_LOGSDIR_PATH   "/tmp/netconf_supervisor_logs/"
@@ -132,7 +135,11 @@ int logs_paths_initialized = FALSE;
 int modules_logs_path_initialized = FALSE;
 int daemon_flag = FALSE;      // --daemon
 int netconf_flag = FALSE;
-char *config_file = NULL;
+
+char *templ_config_file = NULL;
+char *gener_config_file = NULL;
+char *running_config_file = NULL;
+char *config_files_path = NULL;
 char *socket_path = NULL;
 char *logs_path = NULL;
 
@@ -170,7 +177,7 @@ char *create_backup_file_path()
    char *buffer = NULL;
 
    // Get absolute path of the configuration file
-   absolute_config_file_path = get_absolute_file_path(config_file);
+   absolute_config_file_path = get_absolute_file_path(templ_config_file);
    if (absolute_config_file_path == NULL) {
       return NULL;
    }
@@ -211,7 +218,7 @@ void create_shutdown_info(char **backup_file_path)
    fprintf(info_file_fd, "Number of modules in configuration: %d\n", loaded_modules_cnt);
    fprintf(info_file_fd, "Number of running modules: %d\n", service_check_modules_status());
    fprintf(info_file_fd, "Logs directory: %s\n", get_absolute_file_path(logs_path));
-   fprintf(info_file_fd, "Configuration file: %s\n\n", get_absolute_file_path(config_file));
+   fprintf(info_file_fd, "Configuration file: %s\n\n", get_absolute_file_path(templ_config_file));
    fprintf(info_file_fd, "Run supervisor with this configuration file to load generated backup file. It will connect to running modules.\n");
 
    NULLP_TEST_AND_FREE(info_file_name)
@@ -1166,7 +1173,7 @@ int daemon_init_process()
       VERBOSE(N_STDOUT,"%s [ERROR] Fork: could not initialize daemon process!\n", get_formatted_time());
       return -1;
    } else if (process_id > 0) {
-      NULLP_TEST_AND_FREE(config_file)
+      NULLP_TEST_AND_FREE(templ_config_file)
       NULLP_TEST_AND_FREE(logs_path)
       free_output_file_strings_and_streams();
       fprintf(stdout, "%s [INFO] PID of daemon process: %d.\n", get_formatted_time(), process_id);
@@ -3003,7 +3010,7 @@ void interactive_print_supervisor_info()
    VERBOSE(N_STDOUT, FORMAT_BOLD "Supervisor git version:" FORMAT_RESET " %s\n", sup_git_version);
    VERBOSE(N_STDOUT, FORMAT_BOLD "Started:" FORMAT_RESET " %s", ctime(&sup_init_time));
    VERBOSE(N_STDOUT, FORMAT_BOLD "Actual logs directory:" FORMAT_RESET " %s\n", get_absolute_file_path(logs_path));
-   VERBOSE(N_STDOUT, FORMAT_BOLD "Start-up configuration file:" FORMAT_RESET " %s\n", get_absolute_file_path(config_file));
+   VERBOSE(N_STDOUT, FORMAT_BOLD "Start-up configuration file:" FORMAT_RESET " %s\n", get_absolute_file_path(templ_config_file));
    VERBOSE(N_STDOUT, FORMAT_BOLD "Number of loaded modules:" FORMAT_RESET " %d\n", loaded_modules_cnt);
    VERBOSE(N_STDOUT, FORMAT_BOLD "Number of running modules:" FORMAT_RESET " %d\n", service_check_modules_status());
 }
@@ -3191,7 +3198,7 @@ void supervisor_termination(const uint8_t stop_all_modules, const uint8_t genera
       free_output_file_strings_and_streams();
    }
 
-   NULLP_TEST_AND_FREE(config_file)
+   NULLP_TEST_AND_FREE(templ_config_file)
    NULLP_TEST_AND_FREE(logs_path)
 }
 
@@ -3387,7 +3394,9 @@ void init_sup_flags()
    modules_logs_path_initialized = FALSE;
 
    logs_path = NULL;
-   config_file = NULL;
+   templ_config_file = NULL;
+   gener_config_file = NULL;
+   running_config_file = NULL;
    socket_path = NULL;
 
    daemon_flag = FALSE;
@@ -3453,9 +3462,84 @@ void append_tmp_logs()
    }
 }
 
+#define CHECK_DIR 1
+#define CHECK_FILE 2
+
+int check_file_type_perm(char *item_path, uint8_t file_type, int file_perm)
+{
+   struct stat st;
+
+   if (stat(item_path, &st) == -1) {
+      return -1;
+   }
+
+   if (S_ISREG(st.st_mode) == TRUE && file_type == CHECK_FILE) {
+      // nothing to do here
+   } else if (S_ISDIR(st.st_mode) == TRUE && file_type == CHECK_DIR) {
+      // nothing to do here
+   } else if (S_ISREG(st.st_mode) == FALSE && file_type == CHECK_FILE) {
+      // print warning?
+      return -1;
+   } else if (S_ISDIR(st.st_mode) == FALSE && file_type == CHECK_DIR) {
+      // print warning?
+      return -1;
+   } else {
+      // print warning?
+      return -1;
+   }
+
+   if (access(item_path, file_perm) == -1) {
+      // print warning?
+      return -1;
+   }
+
+   return 0;
+}
+
+int init_files()
+{
+   if (config_files_path != NULL) {
+         if (check_file_type_perm(config_files_path, CHECK_DIR, R_OK | W_OK) == -1) {
+            VERBOSE(N_STDOUT, "[ERROR] Path for configuration files \"%s\" is not a directory or it has wrong permissions (read and write needed).\n", config_files_path);
+            return -1;
+         }
+         gener_config_file = (char *) calloc(strlen(config_files_path) + strlen("gener_config_file.xml") + 2, sizeof(char)); // 2 -> one for possible '/' and one terminating
+         running_config_file = (char *) calloc(strlen(config_files_path) + strlen("running_config_file.xml") + 2, sizeof(char));
+      if (config_files_path[strlen(config_files_path) - 1] == '/') {
+         sprintf(gener_config_file, "%sgener_config_file.xml", config_files_path);
+         sprintf(running_config_file, "%srunning_config_file.xml", config_files_path);
+      } else {
+         sprintf(gener_config_file, "%s/gener_config_file.xml", config_files_path);
+         sprintf(running_config_file, "%s/running_config_file.xml", config_files_path);
+      }
+   } else {
+         if (check_file_type_perm(DEFAULT_PATH_TO_CONFIGSS, CHECK_DIR, R_OK | W_OK) == -1) {
+            VERBOSE(N_STDOUT, "[ERROR] Path for configuration files \"%s\" is not a directory or it has wrong permissions (read and write needed).\n", DEFAULT_PATH_TO_CONFIGSS);
+            return -1;
+         }
+         gener_config_file = (char *) calloc(strlen(DEFAULT_PATH_TO_CONFIGSS) + strlen("gener_config_file.xml") + 2, sizeof(char)); // 2 -> one for possible '/' and one terminating
+         running_config_file = (char *) calloc(strlen(DEFAULT_PATH_TO_CONFIGSS) + strlen("running_config_file.xml") + 2, sizeof(char));
+      if (DEFAULT_PATH_TO_CONFIGSS[strlen(DEFAULT_PATH_TO_CONFIGSS) - 1] == '/') {
+         sprintf(gener_config_file, "%sgener_config_file.xml", DEFAULT_PATH_TO_CONFIGSS);
+         sprintf(running_config_file, "%srunning_config_file.xml", DEFAULT_PATH_TO_CONFIGSS);
+      } else {
+         sprintf(gener_config_file, "%s/gener_config_file.xml", DEFAULT_PATH_TO_CONFIGSS);
+         sprintf(running_config_file, "%s/running_config_file.xml", DEFAULT_PATH_TO_CONFIGSS);
+      }
+   }
+   return 0;
+}
+
 int supervisor_initialization()
 {
    time(&sup_init_time);
+
+   if (init_files() == -1) {
+      fprintf(stderr, "[ERROR] Could not create needed files and directories\n");
+      return -1;
+   }
+
+   // check_permissions_of_all_needed_files!!!
 
    // Allocate running_modules memory
    running_modules_array_size = 0;
@@ -3544,7 +3628,8 @@ int parse_prog_args(int *argc, char **argv)
    /******/
    static struct option long_options[] = {
       {"daemon", no_argument, 0, 'd'},
-      {"config-file",  required_argument,    0, 'f'},
+      {"config-template", required_argument, 0, 'T'},
+      {"configs-path",  required_argument,    0, 'C'},
       {"help", no_argument,           0,  'h' },
       {"verbose",  no_argument,       0,  'v' },
       {"daemon-socket",  required_argument,  0, 's'},
@@ -3556,7 +3641,7 @@ int parse_prog_args(int *argc, char **argv)
    char c = 0;
 
    while (1) {
-      c = SUP_GETOPT(*argc, argv, "df:hvs:L:", long_options);
+      c = SUP_GETOPT(*argc, argv, "dC:T:hvs:L:", long_options);
       if (c == -1) {
          break;
       }
@@ -3569,14 +3654,18 @@ int parse_prog_args(int *argc, char **argv)
          fprintf(stderr, "Unknown option, use \"supervisor -h\" for help.\n");
          return -1;
       case 'h':
-         printf("Usage: supervisor [-d|--daemon] -f|--config-file=path [-h|--help] [-L|--logs-path] [-s|--daemon-socket=path]\n");
+         printf("Usage: supervisor [-d|--daemon] -T|--config-template=path [-h|--help] [-L|--logs-path] [-s|--daemon-socket=path]\n");
          return -1;
       case 's':
          socket_path = optarg;
          break;
-      case 'f':
-         NULLP_TEST_AND_FREE(config_file)
-         config_file = strdup(optarg);
+      case 'T':
+         NULLP_TEST_AND_FREE(templ_config_file)
+         templ_config_file = strdup(optarg);
+         break;
+      case 'C':
+         NULLP_TEST_AND_FREE(config_files_path);
+         config_files_path = strdup(optarg);
          break;
       case 'd':
          daemon_flag = TRUE;
@@ -3592,12 +3681,12 @@ int parse_prog_args(int *argc, char **argv)
       /* socket_path was not set by user, use default value. */
       socket_path = DEFAULT_DAEMON_SERVER_SOCKET;
    }
-   if (config_file == NULL) {
-      fprintf(stderr, "Missing required config file (-f|--config-file).\n");
+   if (templ_config_file == NULL) {
+      fprintf(stderr, "Missing required config template (-T|--config-template).\n");
       return -1;
    }
-   if (strstr(config_file, ".xml") == NULL) {
-      NULLP_TEST_AND_FREE(config_file)
+   if (strstr(templ_config_file, ".xml") == NULL) {
+      NULLP_TEST_AND_FREE(templ_config_file)
       fprintf(stderr, "File does not have expected .xml extension.\n");
       return -1;
    }
@@ -4746,6 +4835,167 @@ end_label:
 }
 
 
+#include <sys/stat.h>
+#include <dirent.h>
+#include <limits.h>
+
+
+#define INIT_BUFFER_SIZE 512
+#define INC_BUFFER_SIZE 1024
+
+typedef struct buffer_s {
+   char *mem;
+   unsigned int mem_size;
+   unsigned int mem_used;
+} buffer_t;
+
+void check_buffer_space(buffer_t *buffer, unsigned int needed_size)
+{
+   int orig_size = 0;
+
+   if (buffer->mem == NULL) {
+      buffer->mem = (char *) calloc(INIT_BUFFER_SIZE + needed_size, sizeof(char));
+      buffer->mem_size = INIT_BUFFER_SIZE + needed_size;
+      buffer->mem_used = 0;
+   } else if ((buffer->mem_size - buffer->mem_used) <= needed_size) {
+      orig_size = buffer->mem_size;
+      buffer->mem_size += INC_BUFFER_SIZE + needed_size;
+      buffer->mem = (char *) realloc(buffer->mem, buffer->mem_size * sizeof(char));
+      memset(buffer->mem + orig_size, 0, (buffer->mem_size - orig_size) * sizeof(char));
+   }
+}
+
+void append_file_content(buffer_t *buffer, char *incl_path)
+{
+   FILE *fd = fopen(incl_path, "rb");
+   if (fd == NULL) {
+      return;
+   }
+
+   fseek(fd, 0, SEEK_END);
+   long fsize = ftell(fd);
+   fseek(fd, 0, SEEK_SET);
+
+   check_buffer_space(buffer, fsize);
+   if (fread(buffer->mem + buffer->mem_used, fsize, 1, fd) != -1) {
+      buffer->mem_used += fsize;
+   }
+   fclose(fd);
+}
+
+void include_item(buffer_t *buffer, char **item_path)
+{
+   char dir_entry_path[PATH_MAX];
+   DIR *dirp;
+   struct dirent *dir_entry;
+
+   if (check_file_type_perm(*item_path, CHECK_FILE, R_OK) == 0) {
+      append_file_content(buffer, *item_path);
+      return;
+   } else if (check_file_type_perm(*item_path, CHECK_DIR, R_OK) != 0) {
+      // error, item is not a file, nor a dir
+      return;
+   }
+
+   if ((dirp = opendir(*item_path)) == NULL) {
+      return;
+   }
+
+   while(1) {
+      dir_entry = readdir(dirp);
+      if (dir_entry == NULL) {
+         break;
+      }
+
+      if (strcmp(dir_entry->d_name, ".") == 0 || strcmp(dir_entry->d_name, "..") == 0){
+         continue;
+      }
+
+      if ((*item_path)[strlen((*item_path)) - 1] == '/') {
+         if (snprintf(dir_entry_path, sizeof(dir_entry_path), "%s%s", (*item_path), dir_entry->d_name) < 1) {
+            continue;
+         }
+      } else {
+         if (snprintf(dir_entry_path, sizeof(dir_entry_path), "%s/%s", (*item_path), dir_entry->d_name) < 1) {
+            continue;
+         }
+      }
+
+      if (check_file_type_perm(dir_entry_path, CHECK_FILE, R_OK) == 0) {
+         if (strstr(dir_entry->d_name, ".sup") == NULL) {
+            continue;
+         } else {
+            append_file_content(buffer, dir_entry_path);
+         }
+      }
+   }
+
+   closedir(dirp);
+   return;
+}
+
+
+int generate_config_file()
+{
+   int ret_val = 0;
+   char *incl_path = NULL;
+   char *line = NULL;
+   size_t line_size = 0;
+   buffer_t *gener_cont = NULL;
+   int pos;
+
+   FILE *templ_fd = fopen(templ_config_file, "r");
+   if (templ_fd == NULL) {
+      VERBOSE(N_STDOUT, "[ERROR] Could not open \"%s\"\n", templ_config_file);
+      return -1;
+   }
+   FILE *gener_fd = fopen(gener_config_file, "w");
+   if (gener_fd == NULL) {
+      VERBOSE(N_STDOUT, "[ERROR] Could not open \"%s\"\n", gener_config_file);
+      fclose(templ_fd);
+      return -1;
+   }
+
+   gener_cont = (buffer_t *) calloc(1, sizeof(buffer_t));
+   incl_path = (char *) calloc(PATH_MAX, sizeof(char));
+
+
+   VERBOSE(N_STDOUT, "- - -\n[RELOAD] Generating the configuration file from the template...\n");
+
+   while (1) {
+      ret_val = getline(&line, &line_size, templ_fd);
+      if (ret_val == -1) {
+         break;
+      }
+
+      pos = 0;
+      while (line[pos] == ' ') {
+         pos++;
+      }
+
+      if (sscanf(line + pos, "<!-- include %s -->", incl_path) == 1) {
+         // append content of every file from dir
+         include_item(gener_cont, &incl_path);
+      } else {
+         // append line
+         check_buffer_space(gener_cont, ret_val);
+         sprintf(gener_cont->mem + gener_cont->mem_used, "%s", line);
+         gener_cont->mem_used += ret_val;
+      }
+   }
+
+   fprintf(gener_fd, "%s", gener_cont->mem);
+   fflush(gener_fd);
+   VERBOSE(N_STDOUT, "[RELOAD] The configuration file was successfully generated.\n");
+
+   fclose(gener_fd);
+   fclose(templ_fd);
+   NULLP_TEST_AND_FREE(gener_cont);
+   NULLP_TEST_AND_FREE(incl_path);
+   return 0;
+}
+
+
 int reload_configuration(const int choice, xmlNodePtr *node)
 {
    pthread_mutex_lock(&running_modules_lock);
@@ -4766,20 +5016,20 @@ int reload_configuration(const int choice, xmlNodePtr *node)
             backup_file_name = create_backup_file_path();
             if (backup_file_name == NULL) {
 parse_default_config_file:
+               if (generate_config_file() == -1) {
+                  VERBOSE(N_STDOUT, "%s [ERROR] Could not generate configuration file with path \"%s\"!\n", get_formatted_time(), gener_config_file);
+                  NULLP_TEST_AND_FREE(backup_file_name)
+                  pthread_mutex_unlock(&running_modules_lock);
+                  xmlCleanupParser();
+                  free(config_vars);
+                  return FALSE;
+               }
                tmp_err = stderr;
                stderr = supervisor_debug_log_fd;
-               config_vars->doc_tree_ptr = xmlParseFile(config_file);
+               config_vars->doc_tree_ptr = xmlParseFile(gener_config_file);
                stderr = tmp_err;
                if (config_vars->doc_tree_ptr == NULL) {
-                  if (access(config_file, R_OK) == -1) {
-                     if (errno == EACCES) {
-                        VERBOSE(N_STDOUT, "%s [WARNING] I don't have permissions to read config file with path \"%s\"!\n", get_formatted_time(), config_file);
-                     } else if (errno == ENOENT) {
-                        VERBOSE(N_STDOUT, "%s [WARNING] Config file with path \"%s\" does not exist!\n", get_formatted_time(), config_file);
-                     }
-                  } else {
-                     VERBOSE(N_STDOUT,"%s [WARNING] Config file with path \"%s\" was not parsed successfully!\n", get_formatted_time(), config_file);
-                  }
+                  VERBOSE(N_STDOUT, "%s [ERROR] Could not parse generated configuration file with path \"%s\"!\n", get_formatted_time(), gener_config_file);
                   NULLP_TEST_AND_FREE(backup_file_name)
                   pthread_mutex_unlock(&running_modules_lock);
                   xmlCleanupParser();
@@ -4794,16 +5044,14 @@ parse_default_config_file:
                if (config_vars->doc_tree_ptr == NULL) {
                   if (access(backup_file_name, R_OK) == -1) {
                      if (errno == EACCES) {
-                        VERBOSE(N_STDOUT, "%s [WARNING] I don't have permissions to read backup file with path \"%s\", I'm gonna load default config file!\n", get_formatted_time(), backup_file_name);
-                     } else if (errno == ENOENT) {
-                        VERBOSE(N_STDOUT, "%s [WARNING] Backup file does not exist, I'm gonna load default config file!\n", get_formatted_time());
+                        VERBOSE(N_STDOUT, "%s [WARNING] I don't have permissions to read backup file with path \"%s\", I'm gonna generate a new configuration!\n", get_formatted_time(), backup_file_name);
                      }
                   } else {
-                     VERBOSE(N_STDOUT,"%s [WARNING] Backup file with path \"%s\" was not parsed successfully, I'm gonna load default config file!\n", get_formatted_time(), backup_file_name);
+                     VERBOSE(N_STDOUT,"%s [WARNING] Backup file with path \"%s\" was not parsed successfully, I'm gonna generate a new configuration!\n", get_formatted_time(), backup_file_name);
                   }
                   goto parse_default_config_file;
                } else {
-                  VERBOSE(N_STDOUT, "%s [WARNING] I found backup file for this configuration file on path \"%s\" and I'm gonna load it!\n", get_formatted_time(), backup_file_name);
+                  VERBOSE(N_STDOUT, "%s [INFO] Loading backup file for this configuration template...\n", get_formatted_time());
                   // delete backup file after parsing, it wont be needed anymore
                   if (unlink(backup_file_name) == -1) {
                      if (errno == EACCES) {
@@ -4818,10 +5066,22 @@ parse_default_config_file:
          break;
 
       case RELOAD_DEFAULT_CONFIG_FILE:
-         config_vars->doc_tree_ptr = xmlParseFile(config_file);
-         if (config_vars->doc_tree_ptr == NULL) {
-            VERBOSE(N_STDOUT,"Document not parsed successfully. \n");
+         if (generate_config_file() == -1) {
+            VERBOSE(N_STDOUT, "%s [ERROR] Could not generate configuration file with path \"%s\"!\n", get_formatted_time(), gener_config_file);
+            NULLP_TEST_AND_FREE(backup_file_name)
             pthread_mutex_unlock(&running_modules_lock);
+            xmlCleanupParser();
+            free(config_vars);
+            return FALSE;
+         }
+         tmp_err = stderr;
+         stderr = supervisor_debug_log_fd;
+         config_vars->doc_tree_ptr = xmlParseFile(gener_config_file);
+         stderr = tmp_err;
+         if (config_vars->doc_tree_ptr == NULL) {
+            VERBOSE(N_STDOUT, "%s [ERROR] Could not parse generated configuration file with path \"%s\"!\n", get_formatted_time(), gener_config_file);
+            pthread_mutex_unlock(&running_modules_lock);
+            xmlCleanupParser();
             free(config_vars);
             return FALSE;
          }
