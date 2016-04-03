@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<nemea-supervisor>
+<!-- include @datarootdir@/nemea-supervisor/warning.sup -->
+
+  <modules>
+    <name>Data sources</name>
+    <enabled>true</enabled>
+    <!-- include @datarootdir@/nemea-supervisor/data-sources -->
+  </modules>
+
+  <modules>
+    <name>Detection</name>
+    <enabled>true</enabled>
+    <!-- include @datarootdir@/nemea-supervisor/detectors -->
+  </modules>
+</nemea-supervisor>
