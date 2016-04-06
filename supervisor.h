@@ -492,6 +492,12 @@ void interactive_start_configuration();
 void interactive_stop_configuration();
 
 /**
+ * Prints out running modules grouped by their profile. After that, user can type in numbers of modules to restart.
+ * (selected modules will be disabled and automatically stopped -> enabled -> started by service thread)
+ */
+void interactive_restart_module();
+
+/**
  * Prints out stopped modules grouped by their profile. After that, user can type in numbers of modules to enable.
  * (enabled modules are automatically started by service thread)
  */

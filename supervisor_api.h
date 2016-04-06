@@ -63,6 +63,7 @@ void interactive_start_configuration();
 void interactive_stop_configuration();
 void interactive_set_enabled();
 void interactive_set_disabled();
+void interactive_restart_module();
 void interactive_show_running_modules_status();
 void interactive_show_available_modules();
 void interactive_show_logs();

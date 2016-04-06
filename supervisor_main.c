@@ -52,30 +52,27 @@ void interactive_mode()
    while ((ret_val = interactive_get_option()) != 0) {
       switch (ret_val) {
       case 1:
-         interactive_start_configuration();
-         break;
-      case 2:
-         interactive_stop_configuration();
-         break;
-      case 3:
          interactive_set_enabled();
          break;
-      case 4:
+      case 2:
          interactive_set_disabled();
          break;
-      case 5:
+      case 3:
+         interactive_restart_module();
+         break;
+      case 4:
          interactive_show_running_modules_status();
          break;
-      case 6:
+      case 5:
          interactive_show_available_modules();
          break;
-      case 7:
+      case 6:
          reload_configuration(RELOAD_DEFAULT_CONFIG_FILE, NULL);
          break;
-      case 8:
+      case 7:
          interactive_print_supervisor_info();
          break;
-      case 9:
+      case 8:
          interactive_show_logs();
          break;
       default:

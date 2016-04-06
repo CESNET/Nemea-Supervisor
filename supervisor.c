@@ -1429,15 +1429,14 @@ void daemon_send_options_to_client()
 {
    usleep(50000); // Solved bugged output - without this sleep, escape codes in output were not sometimes reseted on time and they were applied also on this menu
    VERBOSE(N_STDOUT, FORMAT_MENU FORMAT_BOLD "--------OPTIONS--------\n" FORMAT_RESET);
-   VERBOSE(N_STDOUT, FORMAT_MENU "1. ENABLE ALL MODULES\n");
-   VERBOSE(N_STDOUT, "2. DISABLE ALL MODULES\n");
-   VERBOSE(N_STDOUT, "3. ENABLE MODULE OR PROFILE\n");
-   VERBOSE(N_STDOUT, "4. DISABLE MODULE OR PROFILE\n");
-   VERBOSE(N_STDOUT, "5. CONFIGURATION STATUS\n");
-   VERBOSE(N_STDOUT, "6. AVAILABLE MODULES\n");
-   VERBOSE(N_STDOUT, "7. RELOAD CONFIGURATION\n");
-   VERBOSE(N_STDOUT, "8. PRINT SUPERVISOR INFO\n");
-   VERBOSE(N_STDOUT, "9. SHOW LOGS\n");
+   VERBOSE(N_STDOUT, FORMAT_MENU "1. ENABLE MODULE OR PROFILE\n");
+   VERBOSE(N_STDOUT, "2. DISABLE MODULE OR PROFILE\n");
+   VERBOSE(N_STDOUT, "3. RESTART RUNNING MODULE\n");
+   VERBOSE(N_STDOUT, "4. CONFIGURATION STATUS\n");
+   VERBOSE(N_STDOUT, "5. AVAILABLE MODULES\n");
+   VERBOSE(N_STDOUT, "6. RELOAD CONFIGURATION\n");
+   VERBOSE(N_STDOUT, "7. PRINT SUPERVISOR INFO\n");
+   VERBOSE(N_STDOUT, "8. SHOW LOGS\n");
    VERBOSE(N_STDOUT, "-- Type \"Cquit\" to exit client --\n");
    VERBOSE(N_STDOUT, "-- Type \"Dstop\" to stop daemon --\n" FORMAT_RESET);
    VERBOSE(N_STDOUT, FORMAT_INTERACTIVE "[INTERACTIVE] Your choice: " FORMAT_RESET);
@@ -1611,30 +1610,27 @@ void *daemon_serve_client_routine (void *cli)
 
             switch (request) {
             case 1:
-               interactive_start_configuration();
-               break;
-            case 2:
-               interactive_stop_configuration();
-               break;
-            case 3:
                interactive_set_enabled();
                break;
-            case 4:
+            case 2:
                interactive_set_disabled();
                break;
-            case 5:
+            case 3:
+               interactive_restart_module();
+               break;
+            case 4:
                interactive_show_running_modules_status();
                break;
-            case 6:
+            case 5:
                interactive_show_available_modules();
                break;
-            case 7:
+            case 6:
                reload_configuration(RELOAD_DEFAULT_CONFIG_FILE, NULL);
                break;
-            case 8:
+            case 7:
                interactive_print_supervisor_info();
                break;
-            case 9:
+            case 8:
                interactive_show_logs();
                break;
             case 0:
@@ -2431,15 +2427,14 @@ int interactive_get_option()
 {
    usleep(50000); // Solved bugged output - without this sleep, escape codes in output were not sometimes reseted on time and they were applied also on this menu
    VERBOSE(N_STDOUT, FORMAT_MENU FORMAT_BOLD "--------OPTIONS--------\n" FORMAT_RESET);
-   VERBOSE(N_STDOUT, FORMAT_MENU "1. ENABLE ALL MODULES\n");
-   VERBOSE(N_STDOUT, "2. DISABLE ALL MODULES\n");
-   VERBOSE(N_STDOUT, "3. ENABLE MODULE OR PROFILE\n");
-   VERBOSE(N_STDOUT, "4. DISABLE MODULE OR PROFILE\n");
-   VERBOSE(N_STDOUT, "5. CONFIGURATION STATUS\n");
-   VERBOSE(N_STDOUT, "6. AVAILABLE MODULES\n");
-   VERBOSE(N_STDOUT, "7. RELOAD CONFIGURATION\n");
-   VERBOSE(N_STDOUT, "8. PRINT SUPERVISOR INFO\n");
-   VERBOSE(N_STDOUT, "9. SHOW LOGS\n");
+   VERBOSE(N_STDOUT, FORMAT_MENU "1. ENABLE MODULE OR PROFILE\n");
+   VERBOSE(N_STDOUT, "2. DISABLE MODULE OR PROFILE\n");
+   VERBOSE(N_STDOUT, "3. RESTART RUNNING MODULE\n");
+   VERBOSE(N_STDOUT, "4. CONFIGURATION STATUS\n");
+   VERBOSE(N_STDOUT, "5. AVAILABLE MODULES\n");
+   VERBOSE(N_STDOUT, "6. RELOAD CONFIGURATION\n");
+   VERBOSE(N_STDOUT, "7. PRINT SUPERVISOR INFO\n");
+   VERBOSE(N_STDOUT, "8. SHOW LOGS\n");
    VERBOSE(N_STDOUT, "0. STOP SUPERVISOR\n" FORMAT_RESET);
    VERBOSE(N_STDOUT, FORMAT_INTERACTIVE "[INTERACTIVE] Your choice: " FORMAT_RESET);
 
@@ -2631,6 +2626,105 @@ user_input:
 
    pthread_mutex_unlock(&running_modules_lock);
 }
+
+
+int get_num_enabled_running_modules()
+{
+   int cnt = 0, x = 0;
+   for (x = 0; x < loaded_modules_cnt; x++) {
+      if (running_modules[x].module_enabled == TRUE && running_modules[x].module_status == TRUE) {
+         cnt++;
+      }
+   }
+
+   return cnt;
+}
+
+void interactive_restart_module()
+{
+   int mod_to_dis = 0;
+   int *modules_to_disable = NULL;
+   int x = 0, modules_to_disable_cnt = 0, matched_modules = 0, label_printed = FALSE;
+   modules_profile_t * ptr = first_profile_ptr;
+
+   pthread_mutex_lock(&running_modules_lock);
+   uint32_t running_mod_cnt = get_num_enabled_running_modules();
+
+
+   VERBOSE(N_STDOUT, "--- [LIST OF RUNNING MODULES] ---\n");
+   if (loaded_modules_cnt == 0) {
+      VERBOSE(N_STDOUT, "   No module is loaded.\n");
+      pthread_mutex_unlock(&running_modules_lock);
+      return;
+   }
+   // Check whether any module is enabled
+   if (running_mod_cnt == 0) {
+      VERBOSE(N_STDOUT, "   All modules are stopped.\n");
+      pthread_mutex_unlock(&running_modules_lock);
+      return;
+   }
+
+   // Find modules with profile
+   while (ptr != NULL) {
+      label_printed = FALSE;
+      for (x = 0; x < loaded_modules_cnt; x++) {
+         if (running_modules[x].modules_profile != NULL) {
+            if (running_modules[x].modules_profile == ptr) {
+               if (running_modules[x].module_enabled == TRUE && running_modules[x].module_status == TRUE) {
+                  if (label_printed == FALSE) {
+                     VERBOSE(N_STDOUT, FORMAT_BOLD "Profile: %s\n" FORMAT_RESET, ptr->profile_name);
+                     label_printed = TRUE;
+                  }
+                  VERBOSE(N_STDOUT, "   " FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_RUNNING "running" FORMAT_RESET "\n", x, running_modules[x].module_name);
+               }
+               matched_modules++;
+            }
+         }
+      }
+      ptr = ptr->next;
+   }
+
+   // Find modules without profile
+   if (matched_modules < loaded_modules_cnt) {
+      label_printed = FALSE;
+      for (x = 0; x < loaded_modules_cnt; x++) {
+         if (running_modules[x].modules_profile == NULL) {
+            if (running_modules[x].module_enabled == TRUE && running_modules[x].module_status == TRUE) {
+               if (label_printed == FALSE) {
+                  VERBOSE(N_STDOUT, FORMAT_BOLD "Modules without profile:\n" FORMAT_RESET);
+                  label_printed = TRUE;
+               }
+               VERBOSE(N_STDOUT, "   " FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_RUNNING "running" FORMAT_RESET "\n", x, running_modules[x].module_name);
+            }
+         }
+      }
+   }
+
+   VERBOSE(N_STDOUT, FORMAT_INTERACTIVE "[INTERACTIVE] Type in number or interval separated by comma (e.g. \"2,4-6,13\"): " FORMAT_RESET);
+   modules_to_disable_cnt = parse_numbers_user_selection(&modules_to_disable);
+
+   if (modules_to_disable_cnt != RET_ERROR) {
+      for (x = 0; x < modules_to_disable_cnt; x++) {
+         mod_to_dis = modules_to_disable[x];
+
+         if (mod_to_dis >= loaded_modules_cnt || mod_to_dis < 0) {
+            VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] Number %d is not in range <0,%d>!\n" FORMAT_RESET, mod_to_dis, (loaded_modules_cnt - 1));
+            continue;
+         } else if (running_modules[mod_to_dis].module_enabled == FALSE || running_modules[mod_to_dis].module_status == FALSE) {
+            // Selected module is disabled or is not running-> skip it
+         } else {
+            running_modules[mod_to_dis].module_served_by_service_thread = FALSE;
+            running_modules[mod_to_dis].module_enabled = FALSE;
+            running_modules[mod_to_dis].init_module = TRUE;
+         }
+      }
+      free(modules_to_disable);
+      modules_to_disable = NULL;
+   }
+
+   pthread_mutex_unlock(&running_modules_lock);
+}
+
 
 void interactive_set_disabled()
 {
