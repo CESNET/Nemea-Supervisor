@@ -85,6 +85,11 @@
 /* Tmp file used for additional communication between daemon and client (e.g. to keep log file name which is client gonna show) */
 #define SUP_CLI_TMP_FILE "/tmp/sup_tmp_dir/sup_cli_tmp_file"
 
+#define MODULES_EVENTS_FILE_NAME   "modules_events"
+#define MODULES_STATS_FILE_NAME   "modules_statistics"
+#define SUPERVISOR_LOG_FILE_NAME   "supervisor_log"
+#define SUPERVISOR_DEBUG_LOG_FILE_NAME   "supervisor_debug_log"
+
 /**
  * Macro for NULL pointer testing, freeing and setting pointer to NULL
  */

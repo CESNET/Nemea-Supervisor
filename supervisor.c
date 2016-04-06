@@ -2932,44 +2932,44 @@ void interactive_show_logs()
    VERBOSE(N_STDOUT, FORMAT_BOLD "Available supervisor logs:" FORMAT_RESET "\n");
 
    log_idx++;
-   // Test the supervisor_log file
-   if (sprintf(file_path_ptr, "supervisor_log") < 1) {
+   // Test the supervisor log file
+   if (sprintf(file_path_ptr, "%s", SUPERVISOR_LOG_FILE_NAME) < 1) {
       VERBOSE(N_STDOUT, "[ERROR] I/O, could not create log file path.\n");
       goto exit_label;
    }
    if (access(file_path, R_OK) != 0) {
-      VERBOSE(N_STDOUT,"   " FORMAT_STOPPED "%d" FORMAT_RESET " | supervisor_log\n", log_idx);
+      VERBOSE(N_STDOUT,"   " FORMAT_STOPPED "%d" FORMAT_RESET " | %s\n", log_idx, SUPERVISOR_LOG_FILE_NAME);
       avail_logs[log_idx] = FALSE;
    } else {
-      VERBOSE(N_STDOUT,"   " FORMAT_RUNNING "%d" FORMAT_RESET " | supervisor_log\n", log_idx);
+      VERBOSE(N_STDOUT,"   " FORMAT_RUNNING "%d" FORMAT_RESET " | %s\n", log_idx, SUPERVISOR_LOG_FILE_NAME);
       avail_logs[log_idx] = TRUE;
    }
 
    log_idx++;
-   // Test the supervisor_log_statistics file (no need to erase file_path string memory - it is overwritten)
-   if (sprintf(file_path_ptr, "supervisor_log_statistics") < 1) {
+   // Test the modules statistics file (no need to erase file_path string memory - it is overwritten)
+   if (sprintf(file_path_ptr, "%s", MODULES_STATS_FILE_NAME) < 1) {
       VERBOSE(N_STDOUT, "[ERROR] I/O, could not create log file path.\n");
       goto exit_label;
    }
    if (access(file_path, R_OK) != 0) {
-      VERBOSE(N_STDOUT,"   " FORMAT_STOPPED "%d" FORMAT_RESET " | supervisor_log_statistics\n", log_idx);
+      VERBOSE(N_STDOUT,"   " FORMAT_STOPPED "%d" FORMAT_RESET " | %s\n", log_idx, MODULES_STATS_FILE_NAME);
       avail_logs[log_idx] = FALSE;
    } else {
-      VERBOSE(N_STDOUT,"   " FORMAT_RUNNING "%d" FORMAT_RESET " | supervisor_log_statistics\n", log_idx);
+      VERBOSE(N_STDOUT,"   " FORMAT_RUNNING "%d" FORMAT_RESET " | %s\n", log_idx, MODULES_STATS_FILE_NAME);
       avail_logs[log_idx] = TRUE;
    }
 
    log_idx++;
-   // Test the supervisor_log_module_event file (no need to erase file_path string memory - it is overwritten)
-   if (sprintf(file_path_ptr, "supervisor_log_module_event") < 1) {
+   // Test the modules events file (no need to erase file_path string memory - it is overwritten)
+   if (sprintf(file_path_ptr, "%s", MODULES_EVENTS_FILE_NAME) < 1) {
       VERBOSE(N_STDOUT, "[ERROR] I/O, could not create log file path.\n");
       goto exit_label;
    }
    if (access(file_path, R_OK) != 0) {
-      VERBOSE(N_STDOUT,"   " FORMAT_STOPPED "%d" FORMAT_RESET " | supervisor_log_module_event\n", log_idx);
+      VERBOSE(N_STDOUT,"   " FORMAT_STOPPED "%d" FORMAT_RESET " | %s\n", log_idx, MODULES_EVENTS_FILE_NAME);
       avail_logs[log_idx] = FALSE;
    } else {
-      VERBOSE(N_STDOUT,"   " FORMAT_RUNNING "%d" FORMAT_RESET " | supervisor_log_module_event\n", log_idx);
+      VERBOSE(N_STDOUT,"   " FORMAT_RUNNING "%d" FORMAT_RESET " | %s\n", log_idx, MODULES_EVENTS_FILE_NAME);
       avail_logs[log_idx] = TRUE;
    }
 
@@ -3001,17 +3001,17 @@ void interactive_show_logs()
          }
       }
    } else if (chosen_log_idx == (max_num_of_logs - 3)) {
-      if (sprintf(file_path, "%ssupervisor_log", logs_path) < 1) {
+      if (sprintf(file_path, "%s%s", logs_path, SUPERVISOR_LOG_FILE_NAME) < 1) {
          VERBOSE(N_STDOUT, "[ERROR] I/O, could not create log file path.\n");
          goto exit_label;
       }
    } else if (chosen_log_idx == (max_num_of_logs - 2)) {
-      if (sprintf(file_path, "%ssupervisor_log_statistics", logs_path) < 1) {
+      if (sprintf(file_path, "%s%s", logs_path, MODULES_STATS_FILE_NAME) < 1) {
          VERBOSE(N_STDOUT, "[ERROR] I/O, could not create log file path.\n");
          goto exit_label;
       }
    } else {
-      if (sprintf(file_path, "%ssupervisor_log_module_event", logs_path) < 1) {
+      if (sprintf(file_path, "%s%s", logs_path, MODULES_EVENTS_FILE_NAME) < 1) {
          VERBOSE(N_STDOUT, "[ERROR] I/O, could not create log file path.\n");
          goto exit_label;
       }
@@ -3402,40 +3402,40 @@ void init_sup_logs_files()
    free_output_file_strings_and_streams();
 
    if (logs_path != NULL) {
-      supervisor_debug_log_file_path = (char *) calloc(strlen(logs_path)+strlen("supervisor_debug_log")+1, sizeof(char));
-      sprintf(supervisor_debug_log_file_path, "%ssupervisor_debug_log", logs_path);
-      statistics_file_path = (char *) calloc(strlen(logs_path)+strlen("supervisor_log_statistics")+1, sizeof(char));
-      sprintf(statistics_file_path, "%ssupervisor_log_statistics", logs_path);
-      module_event_file_path = (char *) calloc(strlen(logs_path)+strlen("supervisor_log_module_event")+1, sizeof(char));
-      sprintf(module_event_file_path, "%ssupervisor_log_module_event", logs_path);
+      supervisor_debug_log_file_path = (char *) calloc(strlen(logs_path) + strlen(SUPERVISOR_DEBUG_LOG_FILE_NAME) + 1, sizeof(char));
+      sprintf(supervisor_debug_log_file_path, "%s%s", logs_path, SUPERVISOR_DEBUG_LOG_FILE_NAME);
+      statistics_file_path = (char *) calloc(strlen(logs_path) + strlen(MODULES_STATS_FILE_NAME) + 1, sizeof(char));
+      sprintf(statistics_file_path, "%s%s", logs_path, MODULES_STATS_FILE_NAME);
+      module_event_file_path = (char *) calloc(strlen(logs_path) + strlen(MODULES_EVENTS_FILE_NAME) + 1, sizeof(char));
+      sprintf(module_event_file_path, "%s%s", logs_path, MODULES_EVENTS_FILE_NAME);
 
       supervisor_debug_log_fd = fopen(supervisor_debug_log_file_path, "a");
       if (supervisor_debug_log_fd == NULL) {
-         fprintf(stderr, "%s [ERROR] Could not open supervisor_debug_log file stream!\n",get_formatted_time());
+         fprintf(stderr, "%s [ERROR] Could not open %s file stream!\n", get_formatted_time(), SUPERVISOR_DEBUG_LOG_FILE_NAME);
       } else {
          fprintf(supervisor_debug_log_fd,"-------------------- %s --------------------\n", get_formatted_time());
       }
       statistics_fd = fopen(statistics_file_path, "a");
       if (statistics_fd == NULL) {
-         fprintf(stderr, "%s [ERROR] Could not open supervisor_log_statistics file stream!\n",get_formatted_time());
+         fprintf(stderr, "%s [ERROR] Could not open %s file stream!\n",get_formatted_time(), MODULES_STATS_FILE_NAME);
       } else {
          VERBOSE(STATISTICS,"-------------------- %s --------------------\n", get_formatted_time());
          print_statistics_legend();
       }
       module_event_fd = fopen(module_event_file_path, "a");
       if (module_event_fd == NULL) {
-         fprintf(stderr, "%s [ERROR] Could not open supervisor_log_module_event file stream!\n",get_formatted_time());
+         fprintf(stderr, "%s [ERROR] Could not open %s file stream!\n",get_formatted_time(), MODULES_EVENTS_FILE_NAME);
       } else {
          VERBOSE(MODULE_EVENT,"-------------------- %s --------------------\n", get_formatted_time());
       }
 
       if (netconf_flag || daemon_flag) {
-         supervisor_log_file_path = (char *) calloc(strlen(logs_path)+strlen("supervisor_log")+1, sizeof(char));
-         sprintf(supervisor_log_file_path, "%ssupervisor_log", logs_path);
+         supervisor_log_file_path = (char *) calloc(strlen(logs_path)+strlen(SUPERVISOR_LOG_FILE_NAME)+1, sizeof(char));
+         sprintf(supervisor_log_file_path, "%s%s", logs_path, SUPERVISOR_LOG_FILE_NAME);
 
          supervisor_log_fd = fopen (supervisor_log_file_path, "a");
          if (supervisor_log_fd == NULL) {
-            fprintf(stderr, "%s [ERROR] Could not open supervisor_log file stream!\n",get_formatted_time());
+            fprintf(stderr, "%s [ERROR] Could not open %s file stream!\n", get_formatted_time(), SUPERVISOR_LOG_FILE_NAME);
          } else {
             fprintf(supervisor_log_fd,"-------------------- %s --------------------\n", get_formatted_time());
          }
