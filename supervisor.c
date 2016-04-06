@@ -1823,12 +1823,10 @@ void service_clean_after_children()
          } else if (result == -1) {
            // Error
             if (errno == ECHILD) {
-               VERBOSE(MODULE_EVENT, "%s [CLEAN] waitpid: module %s (PID: %d) is not my child!\n", get_formatted_time(), running_modules[x].module_name, running_modules[x].module_pid);
                running_modules[x].module_is_my_child = FALSE;
             }
          } else {
            // Child exited
-            VERBOSE(MODULE_EVENT, "%s [CLEAN] waitpid: module %s (PID: %d) is my child and is not alive anymore!\n", get_formatted_time(), running_modules[x].module_name, running_modules[x].module_pid);
          }
       }
    }
@@ -2613,7 +2611,7 @@ user_input:
                ptr = ptr->next;
             }
          } else if (running_modules[mod_to_en].module_enabled == TRUE) {
-            VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] Module %s is already enabled.\n" FORMAT_RESET, running_modules[mod_to_en].module_name);
+            // Selected module is already enabled -> skip it
          } else {
             running_modules[mod_to_en].module_enabled = TRUE;
             running_modules[mod_to_en].module_restart_cnt = -1;
@@ -2745,7 +2743,7 @@ void interactive_set_disabled()
       VERBOSE(N_STDOUT, "   No module is loaded.\n");
       goto prof_check;
    }
-   // Check whether any module is disabled
+   // Check whether any module is enabled
    if (en_mod_cnt == 0) {
       VERBOSE(N_STDOUT, "   All modules are disabled.\n");
       goto prof_check;
@@ -2843,7 +2841,7 @@ user_input:
                ptr = ptr->next;
             }
          } else if (running_modules[mod_to_dis].module_enabled == FALSE) {
-            VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] Module %s is already disabled.\n" FORMAT_RESET, running_modules[mod_to_dis].module_name);
+            // Selected module is already disabled -> skip it
          } else {
             running_modules[mod_to_dis].module_enabled = FALSE;
             VERBOSE(MODULE_EVENT, "%s [ENABLED] Module %s set to disabled.\n", get_formatted_time(), running_modules[mod_to_dis].module_name);
@@ -4714,7 +4712,6 @@ void check_running_modules_allocated_memory()
          running_modules[x].module_ifces_cnt = 0;
       }
    } else if (loaded_modules_cnt == running_modules_array_size) {
-      VERBOSE(N_STDOUT, "[WARNING] Reload - reallocating running_modules memory.\n");
       origin_size = running_modules_array_size;
       running_modules_array_size += running_modules_array_size/2;
       running_modules = (running_module_t * ) realloc (running_modules, (running_modules_array_size)*sizeof(running_module_t));
@@ -5041,6 +5038,8 @@ int generate_config_file()
    buffer_t *gener_cont = NULL;
    int pos;
 
+   VERBOSE(N_STDOUT, "- - -\n[RELOAD] Generating the configuration file from the template...\n");
+
    FILE *templ_fd = fopen(templ_config_file, "r");
    if (templ_fd == NULL) {
       VERBOSE(N_STDOUT, "[ERROR] Could not open \"%s\"\n", templ_config_file);
@@ -5055,9 +5054,6 @@ int generate_config_file()
 
    gener_cont = (buffer_t *) calloc(1, sizeof(buffer_t));
    incl_path = (char *) calloc(PATH_MAX, sizeof(char));
-
-
-   VERBOSE(N_STDOUT, "- - -\n[RELOAD] Generating the configuration file from the template...\n");
 
    while (1) {
       ret_val = getline(&line, &line_size, templ_fd);
@@ -5116,7 +5112,7 @@ int reload_configuration(const int choice, xmlNodePtr *node)
             if (backup_file_name == NULL) {
 parse_default_config_file:
                if (generate_config_file() == -1) {
-                  VERBOSE(N_STDOUT, "%s [ERROR] Could not generate configuration file with path \"%s\"!\n", get_formatted_time(), gener_config_file);
+                  VERBOSE(N_STDOUT, "%s [ERROR] Could not generate configuration file with path \"%s\"!\n- - -\n", get_formatted_time(), gener_config_file);
                   NULLP_TEST_AND_FREE(backup_file_name)
                   pthread_mutex_unlock(&running_modules_lock);
                   xmlCleanupParser();
@@ -5128,7 +5124,9 @@ parse_default_config_file:
                config_vars->doc_tree_ptr = xmlParseFile(gener_config_file);
                stderr = tmp_err;
                if (config_vars->doc_tree_ptr == NULL) {
-                  VERBOSE(N_STDOUT, "%s [ERROR] Could not parse generated configuration file with path \"%s\"!\n", get_formatted_time(), gener_config_file);
+                  VERBOSE(N_STDOUT, "- - -\n[ERROR] Could not parse generated configuration file with path \"%s\"!\n", gener_config_file);
+                  xmlErrorPtr error = xmlGetLastError();
+                  VERBOSE(N_STDOUT, "INFO:\n\tFile: %s\n\tError message: %s\tLine: %d\n- - -\n", error->file, error->message, error->line);
                   NULLP_TEST_AND_FREE(backup_file_name)
                   pthread_mutex_unlock(&running_modules_lock);
                   xmlCleanupParser();
@@ -5166,7 +5164,7 @@ parse_default_config_file:
 
       case RELOAD_DEFAULT_CONFIG_FILE:
          if (generate_config_file() == -1) {
-            VERBOSE(N_STDOUT, "%s [ERROR] Could not generate configuration file with path \"%s\"!\n", get_formatted_time(), gener_config_file);
+            VERBOSE(N_STDOUT, "[ERROR] Could not generate configuration file with path \"%s\"!\n- - -\n", gener_config_file);
             NULLP_TEST_AND_FREE(backup_file_name)
             pthread_mutex_unlock(&running_modules_lock);
             xmlCleanupParser();
@@ -5178,7 +5176,9 @@ parse_default_config_file:
          config_vars->doc_tree_ptr = xmlParseFile(gener_config_file);
          stderr = tmp_err;
          if (config_vars->doc_tree_ptr == NULL) {
-            VERBOSE(N_STDOUT, "%s [ERROR] Could not parse generated configuration file with path \"%s\"!\n", get_formatted_time(), gener_config_file);
+            VERBOSE(N_STDOUT, "- - -\n[ERROR] Could not parse generated configuration file with path \"%s\"!\n", gener_config_file);
+            xmlErrorPtr error = xmlGetLastError();
+            VERBOSE(N_STDOUT, "INFO:\n\tFile: %s\n\tError message: %s\tLine: %d\n- - -\n", error->file, error->message, error->line);
             pthread_mutex_unlock(&running_modules_lock);
             xmlCleanupParser();
             free(config_vars);
@@ -5262,7 +5262,7 @@ parse_default_config_file:
          *  return value 0 means success -> modules children will have a profile
          */
          if (reload_find_and_check_modules_profile_basic_elements(&config_vars) == 0 && actual_profile_ptr != NULL) {
-            VERBOSE(N_STDOUT, "[INFO] Found valid modules profile with name \"%s\" set to %s.\n", actual_profile_ptr->profile_name, (actual_profile_ptr->profile_enabled == TRUE ? "enabled" : "disabled"));
+            VERBOSE(N_STDOUT, "[INFO] Valid modules profile (name: \"%s\", %s).\n", actual_profile_ptr->profile_name, (actual_profile_ptr->profile_enabled == TRUE ? "enabled" : "disabled"));
             modules_got_profile = TRUE;
             loaded_profile_cnt++;
          } else {
