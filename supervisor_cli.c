@@ -147,8 +147,12 @@ int main(int argc, char **argv)
    while ((opt = getopt(argc, argv, "rhs:x")) != -1) {
       switch (opt) {
       case 'h':
-         printf("Usage: supervisor_cli [-h] [-s <path>]\n"
-               "\t-h\tshows this help\n\t-s <path>\tpath to UNIX socket file\n");
+         printf("Usage:  supervisor_cli  [OPTIONAL]...\n"
+                  "   OPTIONAL parameters:\n"
+                  "      [-h]   Prints this help.\n"
+                  "      [-s <path>]   Path of the unix socket which is used for supervisor daemon and client communication.\n"
+                  "      [-x]   Receives and prints statistics about modules and terminates.\n"
+                  "      [-r]   Sends a command to supervisor to reload the configuration.\n");
          exit(EXIT_SUCCESS);
 
       case 's':

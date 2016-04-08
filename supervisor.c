@@ -3717,7 +3717,6 @@ int parse_prog_args(int *argc, char **argv)
       {"config-template", required_argument, 0, 'T'},
       {"configs-path",  required_argument,    0, 'C'},
       {"help", no_argument,           0,  'h' },
-      {"verbose",  no_argument,       0,  'v' },
       {"daemon-socket",  required_argument,  0, 's'},
       {"logs-path",  required_argument,  0, 'L'},
       {0, 0, 0, 0}
@@ -3727,7 +3726,7 @@ int parse_prog_args(int *argc, char **argv)
    char c = 0;
 
    while (1) {
-      c = SUP_GETOPT(*argc, argv, "dC:T:hvs:L:", long_options);
+      c = SUP_GETOPT(*argc, argv, "dC:T:hs:L:", long_options);
       if (c == -1) {
          break;
       }
@@ -3740,41 +3739,50 @@ int parse_prog_args(int *argc, char **argv)
          fprintf(stderr, "Unknown option, use \"supervisor -h\" for help.\n");
          return -1;
       case 'h':
-         printf("Usage: supervisor [-d|--daemon] -T|--config-template=path [-h|--help] [-L|--logs-path] [-s|--daemon-socket=path]\n");
+         printf("Usage:  supervisor  MANDATORY...  [OPTIONAL]...\n"
+                  "   MANDATORY parameters:\n"
+                  "      -T, --config-template=path   Path of the XML file with the configuration template.\n"
+                  "      -L, --logs-path=path   Path of the directory where the logs (both supervisor's and modules') will be saved.\n"
+                  "   OPTIONAL parameters:\n"
+                  "      [-d, --daemon]   Runs supervisor as a system daemon.\n"
+                  "      [-h, --help]   Prints this help.\n"
+                  "      [-s, --daemon-socket=path]   Path of the unix socket which is used for supervisor daemon and client communication.\n"
+                  "      [-C, --configs-path=path]   Path of the directory where the generated configuration files will be saved.\n");
          return -1;
       case 's':
          socket_path = optarg;
          break;
       case 'T':
-         NULLP_TEST_AND_FREE(templ_config_file)
          templ_config_file = strdup(optarg);
          break;
       case 'C':
-         NULLP_TEST_AND_FREE(config_files_path);
          config_files_path = strdup(optarg);
          break;
       case 'd':
          daemon_flag = TRUE;
          break;
       case 'L':
-         NULLP_TEST_AND_FREE(logs_path)
          logs_path = strdup(optarg);
          break;
       }
    }
 
+   if (templ_config_file == NULL) {
+      fprintf(stderr, "[ERROR] Missing required configuration template.\n\nUsage: supervisor -T|--config-template=path  -L|--logs-path=path  [-d|--daemon]  [-h|--help]  [-s|--daemon-socket=path]  [-C|--configs-path=path]\n");
+      return -1;
+   } else if (strstr(templ_config_file, ".xml") == NULL) {
+      fprintf(stderr, "[ERROR] Configuration template file does not have expected .xml extension.\n\nUsage: supervisor -T|--config-template=path  -L|--logs-path=path  [-d|--daemon]  [-h|--help]  [-s|--daemon-socket=path]  [-C|--configs-path=path]\n");
+      return -1;
+   }
+
+   if (logs_path == NULL) {
+      fprintf(stderr, "[ERROR] Missing required logs directory path.\n\nUsage: supervisor -T|--config-template=path  -L|--logs-path=path  [-d|--daemon]  [-h|--help]  [-s|--daemon-socket=path]  [-C|--configs-path=path]\n");
+      return -1;
+   }
+
    if (socket_path == NULL) {
       /* socket_path was not set by user, use default value. */
       socket_path = DEFAULT_DAEMON_SERVER_SOCKET;
-   }
-   if (templ_config_file == NULL) {
-      fprintf(stderr, "Missing required config template (-T|--config-template).\n");
-      return -1;
-   }
-   if (strstr(templ_config_file, ".xml") == NULL) {
-      NULLP_TEST_AND_FREE(templ_config_file)
-      fprintf(stderr, "File does not have expected .xml extension.\n");
-      return -1;
    }
 
    if (daemon_flag == TRUE) {
