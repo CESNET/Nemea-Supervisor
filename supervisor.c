@@ -75,11 +75,6 @@
 #define DEFAULT_PATH_TO_CONFIGSS   DEFAULT_PATH_TO_CONFIGS
 
 
-#define INIT_TMP_LOG_PATH   "/tmp/sup_tmp_log_file"
-#define INIT_TMP_DEBUG_LOG_PATH   "/tmp/sup_tmp_debug_log_file"
-#define NETCONF_DEFAULT_LOGSDIR_PATH   "/tmp/netconf_supervisor_logs/"
-#define DAEMON_DEFAULT_LOGSDIR_PATH   "/tmp/daemon_supervisor_logs/"
-#define INTERACTIVE_DEFAULT_LOGSDIR_PATH   "/tmp/interactive_supervisor_logs/"
 #define BACKUP_FILE_PREFIX   SUP_TMP_DIR
 #define BACKUP_FILE_SUFIX   "_sup_backup_file.xml"
 
@@ -120,11 +115,6 @@ unsigned int loaded_modules_cnt = 0; ///< Current number of loaded modules.
 modules_profile_t *first_profile_ptr = NULL;
 modules_profile_t *actual_profile_ptr = NULL;
 unsigned int loaded_profile_cnt = 0;
-
-char *supervisor_debug_log_file_path = NULL;
-char *statistics_file_path = NULL;
-char *module_event_file_path = NULL;
-char *supervisor_log_file_path = NULL;
 
 /* paths variables */
 char *templ_config_file = NULL;
@@ -3130,11 +3120,6 @@ void free_module_interfaces_on_index(const int module_idx)
 
 void free_output_file_strings_and_streams()
 {
-   NULLP_TEST_AND_FREE(statistics_file_path)
-   NULLP_TEST_AND_FREE(module_event_file_path)
-   NULLP_TEST_AND_FREE(supervisor_debug_log_file_path)
-   NULLP_TEST_AND_FREE(supervisor_log_file_path)
-
    if (supervisor_debug_log_fd != NULL) {
       fclose(supervisor_debug_log_fd);
       supervisor_debug_log_fd = NULL;
@@ -3294,148 +3279,6 @@ void supervisor_termination(const uint8_t stop_all_modules, const uint8_t genera
  * Supervisor initialization functions *
  *****************************************************************/
 
-#define CREATED_DEFAULT_LOGS   1
-#define CREATED_USER_DEFINED_LOGS   2
-
-int init_sup_logs_dir()
-{
-   char *buffer = NULL;
-   struct stat st = {0};
-   uint8_t default_path_used = FALSE;
-   char modules_logs_path[PATH_MAX];
-   memset(modules_logs_path, 0, PATH_MAX);
-
-logs_path_null:
-   if (logs_path == NULL) {
-      default_path_used = TRUE;
-      if (netconf_flag == TRUE) {
-         logs_path = strdup(NETCONF_DEFAULT_LOGSDIR_PATH);
-      } else if (daemon_flag == TRUE) {
-         logs_path = strdup(DAEMON_DEFAULT_LOGSDIR_PATH);
-      } else {
-         if ((buffer = getenv("HOME")) != NULL) {
-            logs_path = (char *) calloc(strlen(buffer)+strlen("/supervisor_logs/")+1, sizeof(char));
-            sprintf(logs_path,"%s/supervisor_logs/", buffer);
-         } else {
-            logs_path = strdup(INTERACTIVE_DEFAULT_LOGSDIR_PATH);
-         }
-      }
-   }
-
-   if (strlen(logs_path) > 0 && logs_path[strlen(logs_path)-1] != '/') {
-      buffer = (char *) calloc(strlen(logs_path)+2, sizeof(char));
-      sprintf(buffer, "%s/", logs_path);
-      free(logs_path);
-      logs_path = buffer;
-   }
-
-   // Create modules logs path
-   if (sprintf(modules_logs_path, "%s%s/", logs_path, MODULES_LOGS_DIR_NAME) <= 0) {
-      goto fail_label;
-   }
-
-   if (mkdir(logs_path, PERM_LOGSDIR) == -1) {
-      if (errno == EACCES) { // Don't have permissions to some folder in logs_path, use default directory according to executed mode of supervisor
-         VERBOSE(N_STDOUT, "%s [ERROR] Don't have permissions to create a directory with path \"%s\".", get_formatted_time(), logs_path);
-      } else if (errno == EEXIST) { // logs_path already exists -> check whether it is a directory and create modules logs directory
-         goto modules_dir;
-      } else if (errno == ENOENT || errno == ENOTDIR) { // Some prefix of the logs_path is not a directory, use default directory according to executed mode of supervisor
-         VERBOSE(N_STDOUT, "%s [ERROR] Some prefix of the path \"%s\" is not a directory.", get_formatted_time(), logs_path);
-      }
-      if (default_path_used == TRUE) { // Prevent cycling (don't need more attempts to create directory with default path)
-         goto fail_label;
-      } else { // Gonna create logs directory with default path
-         NULLP_TEST_AND_FREE(logs_path)
-         goto logs_path_null;
-      }
-   }
-
-modules_dir:
-   if (mkdir(modules_logs_path, PERM_LOGSDIR) == -1) {
-      if (errno == EACCES) {
-         VERBOSE(N_STDOUT, "%s [ERROR] Don't have permissions to create a directory with path \"%s\".", get_formatted_time(), modules_logs_path);
-      } else if (errno == EEXIST) { // modules_logs_path already exists
-         goto success_label;
-      } else if (errno == ENOTDIR) {
-         VERBOSE(N_STDOUT, "%s [ERROR] The path \"%s\" is not a directory.", get_formatted_time(), logs_path);
-      }
-      if (default_path_used == TRUE) { // Prevent cycling (don't need more attempts to create directory with default path)
-         goto fail_label;
-      } else { // Gonna create logs directory with default path
-         NULLP_TEST_AND_FREE(logs_path)
-         goto logs_path_null;
-      }
-   }
-
-success_label:
-   if (stat(modules_logs_path, &st) != -1) { // Get info about modules logs path
-      if (S_ISDIR(st.st_mode) == FALSE) { // Check whether the file is a directory
-      } else {
-      }
-   }
-   logs_paths_initialized = TRUE;
-   if (default_path_used == TRUE) {
-      return CREATED_DEFAULT_LOGS;
-   }
-   return CREATED_USER_DEFINED_LOGS;
-
-fail_label:
-   logs_paths_initialized = FALSE;
-   NULLP_TEST_AND_FREE(logs_path)
-   return -1;
-}
-
-void init_sup_logs_files()
-{
-   free_output_file_strings_and_streams();
-
-   if (logs_path != NULL) {
-      supervisor_debug_log_file_path = (char *) calloc(strlen(logs_path) + strlen(SUPERVISOR_DEBUG_LOG_FILE_NAME) + 1, sizeof(char));
-      sprintf(supervisor_debug_log_file_path, "%s%s", logs_path, SUPERVISOR_DEBUG_LOG_FILE_NAME);
-      statistics_file_path = (char *) calloc(strlen(logs_path) + strlen(MODULES_STATS_FILE_NAME) + 1, sizeof(char));
-      sprintf(statistics_file_path, "%s%s", logs_path, MODULES_STATS_FILE_NAME);
-      module_event_file_path = (char *) calloc(strlen(logs_path) + strlen(MODULES_EVENTS_FILE_NAME) + 1, sizeof(char));
-      sprintf(module_event_file_path, "%s%s", logs_path, MODULES_EVENTS_FILE_NAME);
-
-      supervisor_debug_log_fd = fopen(supervisor_debug_log_file_path, "a");
-      if (supervisor_debug_log_fd == NULL) {
-         fprintf(stderr, "%s [ERROR] Could not open %s file stream!\n", get_formatted_time(), SUPERVISOR_DEBUG_LOG_FILE_NAME);
-      } else {
-         fprintf(supervisor_debug_log_fd,"-------------------- %s --------------------\n", get_formatted_time());
-      }
-      statistics_fd = fopen(statistics_file_path, "a");
-      if (statistics_fd == NULL) {
-         fprintf(stderr, "%s [ERROR] Could not open %s file stream!\n",get_formatted_time(), MODULES_STATS_FILE_NAME);
-      } else {
-         VERBOSE(STATISTICS,"-------------------- %s --------------------\n", get_formatted_time());
-         print_statistics_legend();
-      }
-      module_event_fd = fopen(module_event_file_path, "a");
-      if (module_event_fd == NULL) {
-         fprintf(stderr, "%s [ERROR] Could not open %s file stream!\n",get_formatted_time(), MODULES_EVENTS_FILE_NAME);
-      } else {
-         VERBOSE(MODULE_EVENT,"-------------------- %s --------------------\n", get_formatted_time());
-      }
-
-      if (netconf_flag || daemon_flag) {
-         supervisor_log_file_path = (char *) calloc(strlen(logs_path)+strlen(SUPERVISOR_LOG_FILE_NAME)+1, sizeof(char));
-         sprintf(supervisor_log_file_path, "%s%s", logs_path, SUPERVISOR_LOG_FILE_NAME);
-
-         supervisor_log_fd = fopen (supervisor_log_file_path, "a");
-         if (supervisor_log_fd == NULL) {
-            fprintf(stderr, "%s [ERROR] Could not open %s file stream!\n", get_formatted_time(), SUPERVISOR_LOG_FILE_NAME);
-         } else {
-            fprintf(supervisor_log_fd,"-------------------- %s --------------------\n", get_formatted_time());
-         }
-         if (server_internals->clients_cnt == 0) {
-            output_fd = supervisor_log_fd;
-         }
-      } else {
-         output_fd = stdout;
-      }
-   }
-}
-
 void sup_sig_handler(int catched_signal)
 {
    switch (catched_signal) {
@@ -3465,81 +3308,6 @@ void sup_sig_handler(int catched_signal)
       supervisor_termination(FALSE, TRUE);
       exit(EXIT_FAILURE);
       break;
-   }
-}
-
-void init_sup_flags()
-{
-   supervisor_initialized = FALSE;
-   service_thread_initialized = FALSE;
-   daemon_mode_initialized = FALSE;
-   logs_paths_initialized = FALSE;
-
-   logs_path = NULL;
-   templ_config_file = NULL;
-   gener_config_file = NULL;
-   socket_path = NULL;
-
-   daemon_flag = FALSE;
-   netconf_flag = FALSE;
-
-   // Create temporary logs for writing - if an error occurs, it doesn't matter
-   supervisor_log_fd = fopen(INIT_TMP_LOG_PATH, "w");
-   supervisor_debug_log_fd = fopen(INIT_TMP_DEBUG_LOG_PATH, "w");
-
-   // Temporarily redirect standard output to tmp file for every supervisors mode to prevent losing possible warning and error messages
-   if (supervisor_log_fd != NULL) {
-      output_fd = supervisor_log_fd;
-   }
-   input_fd = stdin;
-}
-
-void append_tmp_logs()
-{
-   char buffer[DEFAULT_SIZE_OF_BUFFER];
-   int ret_val = 0;
-
-   // Open temporary logs for reading and write their whole content to already created logs
-   FILE * tmp_log_fd = fopen(INIT_TMP_LOG_PATH, "r");
-   if (tmp_log_fd != NULL) {
-      while (feof(tmp_log_fd) == FALSE) {
-         ret_val = fread((void *) buffer, sizeof(char), DEFAULT_SIZE_OF_BUFFER, tmp_log_fd);
-         if (ret_val > 0) {
-            buffer[ret_val] = 0;
-            VERBOSE(N_STDOUT, "%s", buffer);
-         } else {
-            break;
-         }
-      }
-      fclose(tmp_log_fd);
-      tmp_log_fd = NULL;
-   }
-
-   FILE * tmp_debug_log_fd = fopen(INIT_TMP_DEBUG_LOG_PATH, "r");
-   if (tmp_debug_log_fd != NULL) {
-      while (feof(tmp_debug_log_fd) == FALSE) {
-         ret_val = fread((void *) buffer, sizeof(char), DEFAULT_SIZE_OF_BUFFER, tmp_debug_log_fd);
-         if (ret_val > 0) {
-            buffer[ret_val] = 0;
-            VERBOSE(DEBUG, "%s", buffer);
-         } else {
-            break;
-         }
-      }
-      fclose(tmp_debug_log_fd);
-      tmp_debug_log_fd = NULL;
-   }
-
-   // Delete temporary log files
-   if (unlink(INIT_TMP_LOG_PATH) == -1) {
-      if (errno != ENOENT) {
-         VERBOSE(N_STDOUT, "%s [WARNING] Could not delete tmp log file with path \"%s\".", get_formatted_time(), INIT_TMP_LOG_PATH);
-      }
-   }
-   if (unlink(INIT_TMP_DEBUG_LOG_PATH) == -1) {
-      if (errno != ENOENT) {
-         VERBOSE(N_STDOUT, "%s [WARNING] Could not delete tmp debug log file with path \"%s\".", get_formatted_time(), INIT_TMP_DEBUG_LOG_PATH);
-      }
    }
 }
 

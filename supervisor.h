@@ -367,13 +367,11 @@ int reload_configuration(const int choice, xmlNodePtr *node);
  *
  * @return CREATED_DEFAULT_LOGS or CREATED_USER_DEFINED_LOGS in case of success, otherwise -1.
  */
-int init_sup_logs_dir();
-
 /**
  * Function opens all needed file streams for supervisor log files
  * (separated files for supervisor log, debug log, module events and module statistics).
  */
-void init_sup_logs_files();
+int init_paths();
 
 /**
  * Supervisor signal handler catches following signals:
@@ -382,11 +380,6 @@ void init_sup_logs_files();
  * SIGSEGV - in case of segmentation fault, it let modules run and generates backup file
  */
 void sup_sig_handler(int catched_signal);
-
-/**
- * Function sets all important global variables and opens temporary log files.
- */
-void init_sup_flags();
 
 /**
  * Whole program initialization - it creates logs directory, log files, allocates needed structures,
