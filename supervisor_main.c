@@ -87,28 +87,30 @@ int main (int argc, char *argv [])
 {
    int ret_val = 0;
 
-   // Initialize main control flags, which will be set in parse_prog_args and supervisor_initialization functions
-   init_sup_flags();
    // Parse program arguments
    ret_val = parse_prog_args(&argc, argv);
 
-   if (ret_val == DAEMON_MODE_CODE) {
-      // Initialize a new daemon process and it's socket
-      if (daemon_mode_initialization() == 0) {
+   if (ret_val != -1) {
+      if (init_paths() == -1) {
+         /* Problem with file paths, gonna terminate */
+      } else if (ret_val == DAEMON_MODE_CODE) {
+         // Initialize a new daemon process and it's socket
+         if (daemon_mode_initialization() == 0) {
+            // Initialize supervisor's structures, service thread, output, signal handler and load startup configuration
+            if (supervisor_initialization() == 0) {
+               // Start server routine
+               daemon_mode_server_routine();
+            }
+         }
+      } else if (ret_val == INTERACTIVE_MODE_CODE) {
          // Initialize supervisor's structures, service thread, output, signal handler and load startup configuration
          if (supervisor_initialization() == 0) {
-            // Start server routine
-            daemon_mode_server_routine();
+            // Start interactive mode
+            interactive_mode();
          }
+      } else {
+         /* Wrong input arguments - just terminate. */
       }
-   } else if (ret_val == INTERACTIVE_MODE_CODE) {
-      // Initialize supervisor's structures, service thread, output, signal handler and load startup configuration
-      if (supervisor_initialization() == 0) {
-         // Start interactive mode
-         interactive_mode();
-      }
-   } else {
-      /* Wrong input arguments - just terminate. */
    }
 
    // Cleanup all structures and join service thread

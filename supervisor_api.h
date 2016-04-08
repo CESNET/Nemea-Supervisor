@@ -51,7 +51,7 @@
 #include <libxml/tree.h>
 #include <inttypes.h>
 
-void init_sup_flags();
+int init_paths();
 int parse_prog_args(int *argc, char **argv);
 int supervisor_initialization();
 void supervisor_termination(const uint8_t stop_all_modules, const uint8_t generate_backup);

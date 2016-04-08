@@ -83,6 +83,9 @@
 #define BACKUP_FILE_PREFIX   SUP_TMP_DIR
 #define BACKUP_FILE_SUFIX   "_sup_backup_file.xml"
 
+#define GENER_CONFIG_FILE_NAME   "supervisor_config_gener.xml"
+#define MODULES_LOGS_DIR_NAME   "modules_logs"
+
 #define RET_ERROR   -1
 #define MAX_NUMBER_SUP_CLIENTS   5
 #define NUM_SERVICE_IFC_PERIODS   30
@@ -107,45 +110,49 @@
 #define SERVICE_WAIT_FOR_MODULES_TO_FINISH 500000
 
 /*******GLOBAL VARIABLES*******/
-running_module_t *running_modules = NULL;  ///< Information about running modules
 
+/* Loaded modules variables */
+running_module_t *running_modules = NULL;  ///< Information about running modules
 unsigned int running_modules_array_size = 0;  ///< Current size of running_modules array.
 unsigned int loaded_modules_cnt = 0; ///< Current number of loaded modules.
-long int last_total_cpu_usage = 0; // Variable with total cpu usage of whole operating system
 
-pthread_mutex_t running_modules_lock; ///< mutex for locking counters
-int service_thread_continue = FALSE; ///< condition variable of main loop of the service_thread
-int max_restarts_per_minute_config = DEFAULT_MAX_RESTARTS_PER_MINUTE;
-
+/* Profiles variables */
 modules_profile_t *first_profile_ptr = NULL;
 modules_profile_t *actual_profile_ptr = NULL;
 unsigned int loaded_profile_cnt = 0;
 
-pthread_t service_thread_id; ///< Service thread identificator.
-pthread_t netconf_server_thread_id;
+char *supervisor_debug_log_file_path = NULL;
+char *statistics_file_path = NULL;
+char *module_event_file_path = NULL;
+char *supervisor_log_file_path = NULL;
 
-time_t sup_init_time = 0;
-int service_stop_all_modules = FALSE;
-
-// supervisor flags
-int supervisor_initialized = FALSE;
-int service_thread_initialized = FALSE;
-int daemon_mode_initialized = FALSE;
-int logs_paths_initialized = FALSE;
-int modules_logs_path_initialized = FALSE;
-int daemon_flag = FALSE;      // --daemon
-int netconf_flag = FALSE;
-
+/* paths variables */
 char *templ_config_file = NULL;
 char *gener_config_file = NULL;
 char *config_files_path = NULL;
 char *socket_path = NULL;
 char *logs_path = NULL;
 
-char *statistics_file_path = NULL;
-char *module_event_file_path = NULL;
-char *supervisor_debug_log_file_path = NULL;
-char *supervisor_log_file_path = NULL;
+/* Sup flags */
+int supervisor_initialized = FALSE;
+int service_thread_initialized = FALSE;
+int daemon_mode_initialized = FALSE;
+int logs_paths_initialized = FALSE;
+int daemon_flag = FALSE;      // --daemon
+int netconf_flag = FALSE;
+int service_thread_continue = FALSE; ///< condition variable of main loop of the service_thread
+int service_stop_all_modules = FALSE;
+
+
+long int last_total_cpu_usage = 0; // Variable with total cpu usage of whole operating system
+pthread_mutex_t running_modules_lock; ///< mutex for locking counters
+int max_restarts_per_minute_config = DEFAULT_MAX_RESTARTS_PER_MINUTE;
+
+
+pthread_t service_thread_id; ///< Service thread identificator.
+pthread_t netconf_server_thread_id;
+
+time_t sup_init_time = 0;
 
 server_internals_t *server_internals = NULL;
 
@@ -159,7 +166,7 @@ char *get_absolute_file_path(char *file_name)
    }
 
    static char absolute_file_path[PATH_MAX];
-   memset(absolute_file_path, 0, PATH_MAX);
+   memset(absolute_file_path, 0, PATH_MAX * sizeof(char));
 
    if (realpath(file_name, absolute_file_path) == NULL) {
       return NULL;
@@ -216,8 +223,8 @@ void create_shutdown_info(char **backup_file_path)
    fprintf(info_file_fd, "Actual date and time: %s\n", get_formatted_time());
    fprintf(info_file_fd, "Number of modules in configuration: %d\n", loaded_modules_cnt);
    fprintf(info_file_fd, "Number of running modules: %d\n", service_check_modules_status());
-   fprintf(info_file_fd, "Logs directory: %s\n", get_absolute_file_path(logs_path));
-   fprintf(info_file_fd, "Configuration file: %s\n\n", get_absolute_file_path(templ_config_file));
+   fprintf(info_file_fd, "Logs directory: %s\n", logs_path);
+   fprintf(info_file_fd, "Configuration file: %s\n\n", templ_config_file);
    fprintf(info_file_fd, "Run supervisor with this configuration file to load generated backup file. It will connect to running modules.\n");
 
    NULLP_TEST_AND_FREE(info_file_name)
@@ -1243,12 +1250,12 @@ int daemon_init_socket()
          VERBOSE(N_STDOUT, "%s [WARNING] Failed to set permissions to socket (%s)\n", get_formatted_time(), socket_path);
       }
    } else {
-      VERBOSE(N_STDOUT,"%s [ERROR] Bind: could not bind the daemon socket!\n", get_formatted_time());
+      VERBOSE(N_STDOUT,"%s [ERROR] Bind: could not bind the daemon socket \"%s\"!\n", get_formatted_time(), socket_path);
       return -1;
    }
 
    if (listen(server_internals->server_sd, MAX_NUMBER_SUP_CLIENTS) == -1) {
-      VERBOSE(N_STDOUT,"%s [ERROR] Listen: could not listen on the daemon socket!\n", get_formatted_time());
+      VERBOSE(N_STDOUT,"%s [ERROR] Listen: could not listen on the daemon socket \"%s\"!\n", get_formatted_time(), socket_path);
       return -1;
    }
 
@@ -1699,10 +1706,8 @@ void service_start_module(const int module_idx)
    memset(log_path_stderr, 0, PATH_MAX);
    memset(log_path_stdout, 0, PATH_MAX);
 
-   if (modules_logs_path_initialized == TRUE) {
-      sprintf(log_path_stdout,"%smodules_logs/%s_stdout",logs_path, running_modules[module_idx].module_name);
-      sprintf(log_path_stderr,"%smodules_logs/%s_stderr",logs_path, running_modules[module_idx].module_name);
-   }
+   sprintf(log_path_stdout,"%s%s/%s_stdout",logs_path, MODULES_LOGS_DIR_NAME, running_modules[module_idx].module_name);
+   sprintf(log_path_stderr,"%s%s/%s_stderr",logs_path, MODULES_LOGS_DIR_NAME, running_modules[module_idx].module_name);
 
    init_module_variables(module_idx);
 
@@ -2886,11 +2891,11 @@ void interactive_show_logs()
       }
 
       // Test module's stdout log
-      if (sprintf(file_path_ptr, "modules_logs/%s_stdout", running_modules[x].module_name) < 1) {
+      if (sprintf(file_path_ptr, "%s/%s_stdout", MODULES_LOGS_DIR_NAME, running_modules[x].module_name) < 1) {
          VERBOSE(N_STDOUT, "[ERROR] I/O, could not create log file path.\n");
          goto exit_label;
       }
-      file_path_ptr += strlen("modules_logs/_std") + strlen(running_modules[x].module_name);
+      file_path_ptr += strlen(MODULES_LOGS_DIR_NAME) + strlen("/_std") + strlen(running_modules[x].module_name);
       if (access(file_path, R_OK) != 0) {
          VERBOSE(N_STDOUT, "   " FORMAT_STOPPED "%d" FORMAT_RESET, log_idx);
          avail_logs[log_idx] = FALSE;
@@ -2987,13 +2992,13 @@ void interactive_show_logs()
    if (chosen_log_idx < (max_num_of_logs - 3)) {
       if (chosen_log_idx % 2 == 0) {
          // stdout
-         if (sprintf(file_path, "%smodules_logs/%s_stdout", logs_path, running_modules[chosen_log_idx/2].module_name) < 1) {
+         if (sprintf(file_path, "%s%s/%s_stdout", logs_path, MODULES_LOGS_DIR_NAME, running_modules[chosen_log_idx/2].module_name) < 1) {
             VERBOSE(N_STDOUT, "[ERROR] I/O, could not create log file path.\n");
             goto exit_label;
          }
       } else {
          // stderr
-         if (sprintf(file_path, "%smodules_logs/%s_stderr", logs_path, running_modules[chosen_log_idx/2].module_name) < 1) {
+         if (sprintf(file_path, "%s%s/%s_stderr", logs_path, MODULES_LOGS_DIR_NAME, running_modules[chosen_log_idx/2].module_name) < 1) {
             VERBOSE(N_STDOUT, "[ERROR] I/O, could not create log file path.\n");
             goto exit_label;
          }
@@ -3019,7 +3024,7 @@ void interactive_show_logs()
       // Send the log file path to client via tmp file and it afterwards executes the pager
       FILE *tmp_file = fopen(SUP_CLI_TMP_FILE, "w");
       if (tmp_file == NULL) {
-         VERBOSE(N_STDOUT, "[ERROR] Could not deliver log file path to the supervisor client via /tmp/tmp_sup_cli_file.\n");
+         VERBOSE(N_STDOUT, "[ERROR] Could not deliver log file path to the supervisor client via \"%s\".\n", SUP_CLI_TMP_FILE);
          goto exit_label;
       } else {
          fprintf(tmp_file, "%d\n%s", (int) strlen(file_path), file_path);
@@ -3100,8 +3105,8 @@ void interactive_print_supervisor_info()
    VERBOSE(N_STDOUT, "Supervisor package version:" FORMAT_RESET " %s\n", sup_package_version);
    VERBOSE(N_STDOUT, FORMAT_BOLD "Supervisor git version:" FORMAT_RESET " %s\n", sup_git_version);
    VERBOSE(N_STDOUT, FORMAT_BOLD "Started:" FORMAT_RESET " %s", ctime(&sup_init_time));
-   VERBOSE(N_STDOUT, FORMAT_BOLD "Actual logs directory:" FORMAT_RESET " %s\n", get_absolute_file_path(logs_path));
-   VERBOSE(N_STDOUT, FORMAT_BOLD "Start-up configuration file:" FORMAT_RESET " %s\n", get_absolute_file_path(templ_config_file));
+   VERBOSE(N_STDOUT, FORMAT_BOLD "Actual logs directory:" FORMAT_RESET " %s\n", logs_path);
+   VERBOSE(N_STDOUT, FORMAT_BOLD "Start-up configuration file:" FORMAT_RESET " %s\n", templ_config_file);
    VERBOSE(N_STDOUT, FORMAT_BOLD "Number of loaded modules:" FORMAT_RESET " %d\n", loaded_modules_cnt);
    VERBOSE(N_STDOUT, FORMAT_BOLD "Number of running modules:" FORMAT_RESET " %d\n", service_check_modules_status());
 }
@@ -3285,9 +3290,7 @@ void supervisor_termination(const uint8_t stop_all_modules, const uint8_t genera
       }
    }
 
-   if (supervisor_initialized == TRUE) {
-      free_output_file_strings_and_streams();
-   }
+   free_output_file_strings_and_streams();
 
    NULLP_TEST_AND_FREE(config_files_path)
    NULLP_TEST_AND_FREE(gener_config_file)
@@ -3337,7 +3340,7 @@ logs_path_null:
    }
 
    // Create modules logs path
-   if (sprintf(modules_logs_path, "%smodules_logs/", logs_path) <= 0) {
+   if (sprintf(modules_logs_path, "%s%s/", logs_path, MODULES_LOGS_DIR_NAME) <= 0) {
       goto fail_label;
    }
 
@@ -3377,9 +3380,7 @@ modules_dir:
 success_label:
    if (stat(modules_logs_path, &st) != -1) { // Get info about modules logs path
       if (S_ISDIR(st.st_mode) == FALSE) { // Check whether the file is a directory
-         modules_logs_path_initialized = FALSE;
       } else {
-         modules_logs_path_initialized = TRUE;
       }
    }
    logs_paths_initialized = TRUE;
@@ -3390,7 +3391,6 @@ success_label:
 
 fail_label:
    logs_paths_initialized = FALSE;
-   modules_logs_path_initialized = FALSE;
    NULLP_TEST_AND_FREE(logs_path)
    return -1;
 }
@@ -3484,7 +3484,6 @@ void init_sup_flags()
    service_thread_initialized = FALSE;
    daemon_mode_initialized = FALSE;
    logs_paths_initialized = FALSE;
-   modules_logs_path_initialized = FALSE;
 
    logs_path = NULL;
    templ_config_file = NULL;
@@ -3588,44 +3587,166 @@ int check_file_type_perm(char *item_path, uint8_t file_type, int file_perm)
    return 0;
 }
 
-int init_files()
+
+int init_paths()
 {
-   if (config_files_path != NULL) {
-         if (check_file_type_perm(config_files_path, CHECK_DIR, R_OK | W_OK) == -1) {
-            VERBOSE(N_STDOUT, "[ERROR] Path for configuration files \"%s\" is not a directory or it has wrong permissions (read and write needed).\n", config_files_path);
-            return -1;
-         }
-         gener_config_file = (char *) calloc(strlen(config_files_path) + strlen("gener_config_file.xml") + 2, sizeof(char)); // 2 -> one for possible '/' and one terminating
-      if (config_files_path[strlen(config_files_path) - 1] == '/') {
-         sprintf(gener_config_file, "%sgener_config_file.xml", config_files_path);
+   char *ptr = NULL;
+   char *buffer = NULL;
+   char modules_logs_path[PATH_MAX];
+   char path[PATH_MAX];
+
+   /* Check file with the configuration template */
+   if (check_file_type_perm(templ_config_file, CHECK_FILE, R_OK) == -1) {
+      fprintf(stderr, "[ERROR] Check the path and permissions (only read needed) of the XML file with configuration template \"%s\".\n", templ_config_file);
+      return -1;
+   }
+   /* Check logs directory */
+   if (check_file_type_perm(logs_path, CHECK_DIR, R_OK | W_OK) == -1) {
+      fprintf(stderr, "[ERROR] Check the path and permissions (read and write needed) of the logs directory \"%s\".\n", logs_path);
+      return -1;
+   }
+
+   if (config_files_path == NULL) {
+      config_files_path = strdup(DEFAULT_PATH_TO_CONFIGSS);
+   }
+   /* Check configs directory */
+   if (check_file_type_perm(config_files_path, CHECK_DIR, R_OK | W_OK) == -1) {
+      fprintf(stderr, "[ERROR] Check the path and permissions (read and write needed) of the configuration files directory \"%s\".\nThe path to this directory can be set with optional parameter [-C|--configs-path=path].\n", config_files_path);
+      return -1;
+   }
+
+   // TODO check socket path
+
+   /* create absolute paths */
+   ptr = get_absolute_file_path(templ_config_file);
+   if (ptr != NULL) {
+      NULLP_TEST_AND_FREE(templ_config_file);
+      templ_config_file = strdup(ptr);
+   }
+
+   ptr = get_absolute_file_path(logs_path);
+   if (ptr != NULL) {
+      NULLP_TEST_AND_FREE(logs_path);
+      if (ptr[strlen(ptr) - 1] != '/') {
+         logs_path = (char *) calloc(strlen(ptr) + 2, sizeof(char));
+         sprintf(logs_path, "%s/", ptr);
       } else {
-         sprintf(gener_config_file, "%s/gener_config_file.xml", config_files_path);
+         logs_path = strdup(ptr);
       }
-   } else {
-         if (check_file_type_perm(DEFAULT_PATH_TO_CONFIGSS, CHECK_DIR, R_OK | W_OK) == -1) {
-            VERBOSE(N_STDOUT, "[ERROR] Path for configuration files \"%s\" is not a directory or it has wrong permissions (read and write needed).\n", DEFAULT_PATH_TO_CONFIGSS);
+   } else if (logs_path[strlen(logs_path) - 1] != '/') {
+      buffer = (char *) calloc(strlen(logs_path) + 2, sizeof(char));
+      sprintf(buffer, "%s/", logs_path);
+      free(logs_path);
+      logs_path = buffer;
+   }
+
+   ptr = get_absolute_file_path(config_files_path);
+   if (ptr != NULL) {
+      NULLP_TEST_AND_FREE(config_files_path);
+      if (ptr[strlen(ptr) - 1] != '/') {
+         config_files_path = (char *) calloc(strlen(ptr) + 2, sizeof(char));
+         sprintf(config_files_path, "%s/", ptr);
+      } else {
+         config_files_path = strdup(ptr);
+      }
+   } else if (config_files_path[strlen(config_files_path) - 1] != '/') {
+      buffer = (char *) calloc(strlen(config_files_path) + 2, sizeof(char));
+      sprintf(buffer, "%s/", config_files_path);
+      free(config_files_path);
+      config_files_path = buffer;
+   }
+
+   /* Create path of the generated configuration file */
+   gener_config_file = (char *) calloc(strlen(config_files_path) + strlen(GENER_CONFIG_FILE_NAME) + 2, sizeof(char)); // 2 -> one for possible '/' and one terminating
+   sprintf(gener_config_file, "%s%s", config_files_path, GENER_CONFIG_FILE_NAME);
+
+   // Create modules logs path
+   memset(modules_logs_path, 0, PATH_MAX * sizeof(char));
+   snprintf(modules_logs_path, PATH_MAX, "%s%s/", logs_path, MODULES_LOGS_DIR_NAME);
+
+   /* Try to create modules logs directory */
+   if (mkdir(modules_logs_path, PERM_LOGSDIR) == -1) {
+      if (errno == EEXIST) { // modules_logs_path already exists
+         if (check_file_type_perm(modules_logs_path, CHECK_DIR, R_OK | W_OK) == -1) {
+            fprintf(stderr, "[ERROR] Check the permissions (read and write needed) of the modules logs directory \"%s\".\n", modules_logs_path);
             return -1;
          }
-         gener_config_file = (char *) calloc(strlen(DEFAULT_PATH_TO_CONFIGSS) + strlen("gener_config_file.xml") + 2, sizeof(char)); // 2 -> one for possible '/' and one terminating
-      if (DEFAULT_PATH_TO_CONFIGSS[strlen(DEFAULT_PATH_TO_CONFIGSS) - 1] == '/') {
-         sprintf(gener_config_file, "%sgener_config_file.xml", DEFAULT_PATH_TO_CONFIGSS);
       } else {
-         sprintf(gener_config_file, "%s/gener_config_file.xml", DEFAULT_PATH_TO_CONFIGSS);
+         fprintf(stderr, "[ERROR] Could not create \"%s\" modules logs directory.\n", modules_logs_path);
+         return -1;
       }
    }
+
+   memset(path, 0, PATH_MAX * sizeof(char));
+   snprintf(path, PATH_MAX, "%s%s", logs_path, SUPERVISOR_DEBUG_LOG_FILE_NAME);
+   supervisor_debug_log_fd = fopen(path, "a");
+   if (supervisor_debug_log_fd == NULL) {
+      fprintf(stderr, "[ERROR] Could not open \"%s\" supervisor debug log file.\n", path);
+      return -1;
+   } else {
+      fprintf(supervisor_debug_log_fd ,"-------------------- %s --------------------\n", get_formatted_time());
+   }
+
+
+   memset(path, 0, PATH_MAX * sizeof(char));
+   snprintf(path, PATH_MAX, "%s%s", logs_path, MODULES_STATS_FILE_NAME);
+   statistics_fd = fopen(path, "a");
+   if (statistics_fd == NULL) {
+      fprintf(stderr, "[ERROR] Could not open \"%s\" modules statistics file.\n", path);
+      return -1;
+   } else {
+      VERBOSE(STATISTICS,"-------------------- %s --------------------\n", get_formatted_time());
+      print_statistics_legend();
+   }
+
+
+   memset(path, 0, PATH_MAX * sizeof(char));
+   snprintf(path, PATH_MAX, "%s%s", logs_path, MODULES_EVENTS_FILE_NAME);
+   module_event_fd = fopen(path, "a");
+   if (module_event_fd == NULL) {
+      fprintf(stderr, "[ERROR] Could not open \"%s\" modules events log file.\n", path);
+      return -1;
+   } else {
+      VERBOSE(MODULE_EVENT ,"-------------------- %s --------------------\n", get_formatted_time());
+   }
+
+
+
+   if (netconf_flag || daemon_flag) {
+      memset(path, 0, PATH_MAX * sizeof(char));
+      snprintf(path, PATH_MAX, "%s%s", logs_path, SUPERVISOR_LOG_FILE_NAME);
+      supervisor_log_fd = fopen (path, "a");
+      if (supervisor_log_fd == NULL) {
+         fprintf(stderr, "[ERROR] Could not open \"%s\" supervisor log file.\n", path);
+         return -1;
+      } else {
+         fprintf(supervisor_log_fd,"-------------------- %s --------------------\n", get_formatted_time());
+      }
+      output_fd = supervisor_log_fd;
+   } else {
+      output_fd = stdout;
+   }
+
+   input_fd = stdin;
+
+   // Make sup tmp dir in /tmp
+   if (check_file_type_perm(SUP_TMP_DIR, CHECK_DIR, R_OK | W_OK) == -1) {
+      if (mkdir(SUP_TMP_DIR, PERM_LOGSDIR) == -1) {
+         fprintf(stderr, "[ERROR] Could not create or use (read and write permissions needed) tmp sup directory \"%s\".\n", SUP_TMP_DIR);
+         return -1;
+      }
+      if (chmod(SUP_TMP_DIR, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH) == -1) {
+         fprintf(stderr, "[ERROR] Could not set permissions (777 needed) of the tmp sup directory \"%s\".\n", SUP_TMP_DIR);
+         return -1;
+      }
+   }
+
    return 0;
 }
 
 int supervisor_initialization()
 {
    time(&sup_init_time);
-
-   if (init_files() == -1) {
-      fprintf(stderr, "[ERROR] Could not create needed files and directories\n");
-      return -1;
-   }
-
-   // check_permissions_of_all_needed_files!!!
 
    // Allocate running_modules memory
    running_modules_array_size = 0;
@@ -3638,23 +3759,6 @@ int supervisor_initialization()
    if (netconf_flag == FALSE) {
       VERBOSE(N_STDOUT,"[INIT LOADING CONFIGURATION]\n");
       reload_configuration(RELOAD_INIT_LOAD_CONFIG, NULL);
-   }
-
-   // Check and create (if it doesn't exist) directory for all output (started modules and also supervisor's) according to the logs_path
-   if (init_sup_logs_dir() != -1) {
-      // Create strings with supervisor's output files names and get their file descriptors
-      init_sup_logs_files();
-      // Append content of tmp log files to already created logs
-      append_tmp_logs();
-   }
-
-   // Make sup tmp dir in /tmp
-   if (mkdir(SUP_TMP_DIR, PERM_LOGSDIR) == -1) {
-      if (errno == EACCES) {
-         VERBOSE(N_STDOUT, "[ERROR] I/O, could not create tmp dir \"%s\" because of permissions.\n", SUP_TMP_DIR);
-      } else if (errno == ENOENT || errno == ENOTDIR) {
-         VERBOSE(N_STDOUT, "[ERROR] I/O, could not create tmp dir \"%s\".\n", SUP_TMP_DIR);
-      }
    }
 
    // Create a new thread doing service routine
