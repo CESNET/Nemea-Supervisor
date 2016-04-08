@@ -888,16 +888,6 @@ void generate_backup_config_file()
       xmlNewProp (root_elem, BAD_CAST "socket_path", BAD_CAST NULL);
    }
 
-   modules = xmlNewChild(root_elem, NULL, BAD_CAST "supervisor", BAD_CAST NULL);
-   memset(buffer,0,20);
-   sprintf(buffer, "%d", max_restarts_per_minute_config);
-   xmlNewChild(modules, NULL, BAD_CAST "module-restarts", BAD_CAST buffer);
-   xmlNewChild(modules, NULL, BAD_CAST "logs-directory", BAD_CAST logs_path);
-
-   if (xmlAddChild(root_elem, modules) == NULL) {
-      xmlFree(modules);
-   }
-
    // backup modules with profile name
    while (ptr != NULL) {
       if (ptr->profile_name != NULL) {
@@ -3908,7 +3898,7 @@ int reload_check_supervisor_element(reload_config_vars_t **config_vars)
    int number = 0;
    int basic_elements[2];
    memset(basic_elements, 0, 2 * sizeof(int));
-   uint8_t restarts_elem_idx = 0, logsdir_elem_idx = 1;
+   uint8_t restarts_elem_idx = 0;
 
    while ((*config_vars)->module_elem != NULL) {
       if ((*config_vars)->module_elem->type == XML_ELEMENT_NODE && (xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "module-restarts") == 0)) {
@@ -3928,21 +3918,6 @@ int reload_check_supervisor_element(reload_config_vars_t **config_vars)
          } else {
             /* Empty module-restarts element is not allowed */
             VERBOSE(N_STDOUT, "[ERROR] Empty value in \"module-restarts\" element!\n");
-            goto error_label;
-         }
-      } else if ((*config_vars)->module_elem->type == XML_ELEMENT_NODE && (xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "logs-directory") == 0)) {
-         basic_elements[logsdir_elem_idx]++;
-         /* Check the number of found elements logs-directory (at most 1 is allowed) */
-         if (basic_elements[logsdir_elem_idx] > 1) {
-            VERBOSE(N_STDOUT, "[ERROR] Too much \"logs-directory\" elements in \"supervisor\" element!\n");
-            goto error_label;
-         }
-         key = xmlNodeListGetString((*config_vars)->doc_tree_ptr, (*config_vars)->module_elem->xmlChildrenNode, 1);
-         if (key != NULL) {
-            // TODO check whether the directory can be created or not
-         } else {
-            /* Empty logs-directory element is not allowed */
-            VERBOSE(N_STDOUT, "[ERROR] Empty value in \"logs-directory\" element!\n");
             goto error_label;
          }
       } else if ((*config_vars)->module_elem->type == XML_COMMENT_NODE || (*config_vars)->module_elem->type == XML_TEXT_NODE) {
@@ -3973,8 +3948,6 @@ void reload_process_supervisor_element(reload_config_vars_t **config_vars)
 {
    xmlChar *key = NULL;
    int x = 0, number = 0;
-   char *path_old = NULL;
-   char *path_new = NULL;
 
    while ((*config_vars)->module_elem != NULL) {
       if (!xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "module-restarts")) {
@@ -3985,34 +3958,6 @@ void reload_process_supervisor_element(reload_config_vars_t **config_vars)
             if ((sscanf((const char *) key,"%d",&number) == 1) && (number >= 0)) {
                x = (unsigned int) number;
                max_restarts_per_minute_config = x;
-            }
-         }
-      } else if (!xmlStrcmp((*config_vars)->module_elem->name, BAD_CAST "logs-directory")) {
-         // Process supervisor's element "logs-directory"
-         key = xmlNodeListGetString((*config_vars)->doc_tree_ptr, (*config_vars)->module_elem->xmlChildrenNode, 1);
-         if (key != NULL) {
-            if (logs_paths_initialized == FALSE) { // Initial reloading (paths haven't been checked yet) - the logs path in the configuration file has bigger priority than the path from -L parameter
-               NULLP_TEST_AND_FREE(logs_path) // Free allocated string from -L parameter (if there was any)
-               logs_path = (char *) xmlStrdup(key);
-            } else { // Reloading during runtime (supervisor has been initialized, logs paths are already created)
-               path_new = get_absolute_file_path((char *) key);
-               if (path_new == NULL) { // In case the new path does not exists, use it (if it won't be a valid path for logs - permissions etc., default logs path will be used)
-                  NULLP_TEST_AND_FREE(logs_path)
-                  logs_path = (char *) xmlStrdup(key);
-                  init_sup_logs_dir();
-                  init_sup_logs_files();
-               } else {
-                  path_new = strdup(path_new);
-                  path_old = strdup(get_absolute_file_path(logs_path));
-                  if (strcmp(path_old, path_new) != 0) { // If it exists and it is not same as the current logs path, use it
-                     NULLP_TEST_AND_FREE(logs_path)
-                     logs_path = (char *) xmlStrdup(key);
-                     init_sup_logs_dir();
-                     init_sup_logs_files();
-                  }
-                  NULLP_TEST_AND_FREE(path_new)
-                  NULLP_TEST_AND_FREE(path_old)
-               }
             }
          }
       }

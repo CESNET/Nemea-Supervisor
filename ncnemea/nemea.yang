@@ -60,11 +60,6 @@ module "nemea" {
         default "3";
         description "Global number of automatic restarts of a module that ends.";
       }
-      leaf "logs-directory" {
-        type "string";
-        default "/tmp/supervisor_logs/";
-        description "Path to supervisor logs directory (also with outputs of started modules)";
-      }
     }
 
 
