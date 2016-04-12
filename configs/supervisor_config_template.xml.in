@@ -5,12 +5,24 @@
   <modules>
     <name>Data sources</name>
     <enabled>true</enabled>
-    <!-- include @datarootdir@/nemea-supervisor/data-sources -->
+    <!-- include @sysconfdir@/data-sources -->
   </modules>
 
   <modules>
-    <name>Detection</name>
+    <name>Detectors</name>
     <enabled>true</enabled>
-    <!-- include @datarootdir@/nemea-supervisor/detectors -->
+    <!-- include @sysconfdir@/detectors -->
+  </modules>
+
+  <modules>
+    <name>Reporters</name>
+    <enabled>true</enabled>
+    <!-- include @sysconfdir@/reporters -->
+  </modules>
+
+  <modules>
+    <name>Loggers</name>
+    <enabled>true</enabled>
+    <!-- include @sysconfdir@/loggers -->
   </modules>
 </nemea-supervisor>

@@ -28,6 +28,11 @@ make -j5
 make -j5 DESTDIR=$RPM_BUILD_ROOT install
 mkdir -p $RPM_BUILD_ROOT/%{_localstatedir}/run/nemea-supervisor
 mkdir -p $RPM_BUILD_ROOT/%{_localstatedir}/log/nemea-supervisor
+mkdir -p -m 775 $RPM_BUILD_ROOT/%{_sysconfdir}/nemea/detectors
+mkdir -p -m 775 $RPM_BUILD_ROOT/%{_sysconfdir}/nemea/data-sources
+mkdir -p -m 775 $RPM_BUILD_ROOT/%{_sysconfdir}/nemea/reporters
+mkdir -p -m 775 $RPM_BUILD_ROOT/%{_sysconfdir}/nemea/loggers
+mkdir -p -m 775 $RPM_BUILD_ROOT/%{_sysconfdir}/nemea/others
 
 %pre
 /usr/bin/getent group nemead >/dev/null || /usr/sbin/groupadd -r nemead
@@ -43,6 +48,8 @@ cd %{_sysconfdir}/nemea && bash %{_bindir}/nemea/prepare_default_config.sh insta
 chown -R nemead:nemead %{_datarootdir}/nemea-supervisor
 chmod 664 %{_datarootdir}/nemea-supervisor/*
 chmod 775 %{_datarootdir}/nemea-supervisor/detectors
+chmod 775 %{_datarootdir}/nemea-supervisor/loggers
+chmod 775 %{_datarootdir}/nemea-supervisor/reporters
 chmod 775 %{_datarootdir}/nemea-supervisor/data-sources
 chmod 775 %{_datarootdir}/nemea-supervisor/others
 # default config file
@@ -77,3 +84,9 @@ fi
 %config(noreplace) %{_sysconfdir}/nemea/ipfixcol-startup.xml
 %defattr(664, nemead, nemead)
 %config(noreplace) %{_sysconfdir}/nemea/supervisor_config_template.xml
+%defattr(775, nemead, nemead)
+%{_sysconfdir}/nemea/detectors
+%{_sysconfdir}/nemea/data-sources
+%{_sysconfdir}/nemea/reporters
+%{_sysconfdir}/nemea/loggers
+%{_sysconfdir}/nemea/others
