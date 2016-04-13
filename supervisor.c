@@ -127,7 +127,6 @@ char *logs_path = NULL;
 int supervisor_initialized = FALSE;
 int service_thread_initialized = FALSE;
 int daemon_mode_initialized = FALSE;
-int logs_paths_initialized = FALSE;
 int daemon_flag = FALSE;      // --daemon
 int netconf_flag = FALSE;
 int service_thread_continue = FALSE; ///< condition variable of main loop of the service_thread
@@ -3094,8 +3093,10 @@ void interactive_print_supervisor_info()
    VERBOSE(N_STDOUT, "Supervisor package version:" FORMAT_RESET " %s\n", sup_package_version);
    VERBOSE(N_STDOUT, FORMAT_BOLD "Supervisor git version:" FORMAT_RESET " %s\n", sup_git_version);
    VERBOSE(N_STDOUT, FORMAT_BOLD "Started:" FORMAT_RESET " %s", ctime(&sup_init_time));
-   VERBOSE(N_STDOUT, FORMAT_BOLD "Actual logs directory:" FORMAT_RESET " %s\n", logs_path);
-   VERBOSE(N_STDOUT, FORMAT_BOLD "Start-up configuration file:" FORMAT_RESET " %s\n", templ_config_file);
+   VERBOSE(N_STDOUT, FORMAT_BOLD "Logs directory path:" FORMAT_RESET " %s\n", logs_path);
+   VERBOSE(N_STDOUT, FORMAT_BOLD "Start-up configuration template:" FORMAT_RESET " %s\n", templ_config_file);
+   VERBOSE(N_STDOUT, FORMAT_BOLD "Loaded configuration file (generated):" FORMAT_RESET " %s\n", gener_config_file);
+   VERBOSE(N_STDOUT, FORMAT_BOLD "Communication socket path:" FORMAT_RESET " %s\n", socket_path);
    VERBOSE(N_STDOUT, FORMAT_BOLD "Number of loaded modules:" FORMAT_RESET " %d\n", loaded_modules_cnt);
    VERBOSE(N_STDOUT, FORMAT_BOLD "Number of running modules:" FORMAT_RESET " %d\n", service_check_modules_status());
 }
@@ -3335,12 +3336,6 @@ int check_file_type_perm(char *item_path, uint8_t file_type, int file_perm)
       // nothing to do here
    } else if (S_ISDIR(st.st_mode) == TRUE && file_type == CHECK_DIR) {
       // nothing to do here
-   } else if (S_ISREG(st.st_mode) == FALSE && file_type == CHECK_FILE) {
-      // print warning?
-      return -1;
-   } else if (S_ISDIR(st.st_mode) == FALSE && file_type == CHECK_DIR) {
-      // print warning?
-      return -1;
    } else {
       // print warning?
       return -1;
@@ -4802,7 +4797,9 @@ void include_item(buffer_t *buffer, char **item_path)
    struct dirent *dir_entry;
 
    if (check_file_type_perm(*item_path, CHECK_FILE, R_OK) == 0) {
-      append_file_content(buffer, *item_path);
+      if (strstr(*item_path, ".sup") != NULL) {
+         append_file_content(buffer, *item_path);
+      }
       return;
    } else if (check_file_type_perm(*item_path, CHECK_DIR, R_OK) != 0) {
       // error, item is not a file, nor a dir
