@@ -4551,11 +4551,10 @@ void check_running_modules_allocated_memory()
    }
 }
 
-void reload_resolve_module_enabled(reload_config_vars_t **config_vars, const int modules_got_profile)
+void reload_resolve_module_enabled(reload_config_vars_t **config_vars)
 {
    xmlChar *key = NULL;
    int config_module_enabled = FALSE;
-   int profile_and_module_enabled_anded = FALSE;
 
    key = xmlNodeListGetString((*config_vars)->doc_tree_ptr, (*config_vars)->module_atr_elem->xmlChildrenNode, 1);
    if (key == NULL) {
@@ -4564,43 +4563,28 @@ void reload_resolve_module_enabled(reload_config_vars_t **config_vars, const int
    } else {
       if (xmlStrncmp(key, BAD_CAST "true", xmlStrlen(key)) == 0) {
          config_module_enabled = TRUE;
-      } else if (xmlStrncmp(key, BAD_CAST "false", xmlStrlen(key)) == 0) {
+      } else {
          config_module_enabled = FALSE;
       }
       xmlFree(key);
       key = NULL;
    }
 
-   if (modules_got_profile == TRUE) {
-      profile_and_module_enabled_anded = actual_profile_ptr->profile_enabled & config_module_enabled;
-      if (profile_and_module_enabled_anded == TRUE && running_modules[(*config_vars)->current_module_idx].module_enabled == FALSE) {
+   // If current module is new in configuration, set restart counter, enabled flag and return
+   if ((*config_vars)->new_module == TRUE) {
+      if (config_module_enabled == TRUE) {
          running_modules[(*config_vars)->current_module_idx].module_restart_cnt = -1;
-      }
-      // If current module is new in configuration, just save the anded enabled flag and return
-      if ((*config_vars)->new_module == TRUE) {
-         running_modules[(*config_vars)->current_module_idx].module_enabled = profile_and_module_enabled_anded;
-      } else if (profile_and_module_enabled_anded != running_modules[(*config_vars)->current_module_idx].module_enabled) {
-         VERBOSE(N_STDOUT, "[WARNING] %s enabled flag has been modified: %s -> %s.\n",
-            running_modules[(*config_vars)->current_module_idx].module_name,
-            (running_modules[(*config_vars)->current_module_idx].module_enabled == TRUE ? "enabled" : "disabled"),
-            (profile_and_module_enabled_anded == TRUE ? "enabled" : "disabled"));
-         running_modules[(*config_vars)->current_module_idx].module_enabled = profile_and_module_enabled_anded;
       }
    } else {
-      if (config_module_enabled == TRUE && running_modules[(*config_vars)->current_module_idx].module_enabled == FALSE) {
-         running_modules[(*config_vars)->current_module_idx].module_restart_cnt = -1;
-      }
-      // If current module is new in configuration, just save the enabled flag and return
-      if ((*config_vars)->new_module == TRUE) {
-         running_modules[(*config_vars)->current_module_idx].module_enabled = config_module_enabled;
-      } else if (config_module_enabled != running_modules[(*config_vars)->current_module_idx].module_enabled) {
-         VERBOSE(N_STDOUT, "[WARNING] %s enabled flag has been modified: %s -> %s.\n",
-            running_modules[(*config_vars)->current_module_idx].module_name,
-            (running_modules[(*config_vars)->current_module_idx].module_enabled == TRUE ? "enabled" : "disabled"),
-            (config_module_enabled == TRUE ? "enabled" : "disabled"));
-         running_modules[(*config_vars)->current_module_idx].module_enabled = config_module_enabled;
+      if (config_module_enabled != running_modules[(*config_vars)->current_module_idx].module_enabled) {
+         VERBOSE(N_STDOUT, "[WARNING] %s enabled flag has been modified: %s -> %s.\n", running_modules[(*config_vars)->current_module_idx].module_name, (running_modules[(*config_vars)->current_module_idx].module_enabled == TRUE ? "enabled" : "disabled"), (config_module_enabled == TRUE ? "enabled" : "disabled"));
+         if (config_module_enabled == TRUE) {
+            running_modules[(*config_vars)->current_module_idx].module_restart_cnt = -1;
+         }
       }
    }
+   running_modules[(*config_vars)->current_module_idx].module_enabled = config_module_enabled;
+
    return;
 }
 
@@ -5130,7 +5114,7 @@ parse_default_config_file:
                while (config_vars->module_atr_elem != NULL) {
                   if ((!xmlStrcmp(config_vars->module_atr_elem->name,BAD_CAST "enabled"))) {
                      // Process module's "enabled" attribute
-                     reload_resolve_module_enabled(&config_vars, modules_got_profile);
+                     reload_resolve_module_enabled(&config_vars);
                   } else if (!xmlStrcmp(config_vars->module_atr_elem->name, BAD_CAST "module-restarts")) {
                      // Process module's "module-restarts" attribute
                      key = xmlNodeListGetString(config_vars->doc_tree_ptr, config_vars->module_atr_elem->xmlChildrenNode, 1);

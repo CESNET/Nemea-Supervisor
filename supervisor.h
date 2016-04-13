@@ -347,7 +347,7 @@ int reload_find_and_check_modules_profile_basic_elements(reload_config_vars_t **
 void reload_count_module_interfaces(reload_config_vars_t **config_vars);
 void reload_check_module_allocated_interfaces(const int running_module_idx, const int ifc_cnt);
 void check_running_modules_allocated_memory();
-void reload_resolve_module_enabled(reload_config_vars_t **config_vars, const int modules_got_profile);
+void reload_resolve_module_enabled(reload_config_vars_t **config_vars);
 int reload_configuration(const int choice, xmlNodePtr *node);
 /**@}*/
 
