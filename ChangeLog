@@ -1,3 +1,25 @@
+2016-04-014 supervisor-1.4.0
+	* supervisor in now more verbose
+	* replaced start/stop option with "restart running module"
+	* changes in default configuration
+	* shortened log file names
+	* logs directory is no mandatory parametr, removed possibility to
+	  define logs directory via configuration file
+	* bugfixes
+
+
+2016-04-13 (Marek Svepes): additional information in "print supervisor info" function and added check of the included file name during config file generation
+2016-04-13 (Marek Svepes): bugfix: check of null module's profile pointer
+2016-04-13 (Marek Svepes): reload configuration: enabled flag of a module which is being loaded does not depend on the enabled flag of his profile (during reload configuration)
+2016-04-12 (Marek Svepes): configs: changes in default installed configuration
+2016-04-08 (Marek Svepes): removed unused functions
+2016-04-08 (Marek Svepes): config: removed possibility to define logs directory via configuration file
+2016-04-08 (Marek Svepes): supervisor initialization: added initial check of all needed paths (files and dirs) and their permissions
+2016-04-08 (Marek Svepes): program arguments: parameter specifying logs dir path is now mandatory together with the one specifying configuration template path
+2016-04-06 (Marek Svepes): xml parsing: added message with the information about error during xml parsing
+2016-04-06 (Marek Svepes): log files names: shortened names of the log files
+2016-04-06 (Marek Svepes): client options: removed options 1 and 2 (start/stop configuration) and added option 3 "restart running module"
+
 2016-04-03 supervisor-1.3.5
         * improved visual effect for better user experience
 	* interval selection of modules added
