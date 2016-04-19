@@ -266,13 +266,18 @@ char **parse_module_params(const uint32_t module_idx, uint32_t *params_num)
 {
    uint32_t params_arr_size = 5, params_cnt = 0;
    char **params = (char **) calloc(params_arr_size, sizeof(char *));
-   char buffer[DEFAULT_SIZE_OF_BUFFER];
-   memset(buffer, 0, DEFAULT_SIZE_OF_BUFFER * sizeof(char));
+   char *buffer = NULL;
    uint32_t x = 0, y = 0, act_param_len = 0;
    int params_len = strlen(running_modules[module_idx].module_params);
 
    if (params_len < 1) {
       VERBOSE(MODULE_EVENT, "%s [WARNING] Empty string in \"%s\" params element.", get_formatted_time(), running_modules[module_idx].module_name);
+      goto err_cleanup;
+   }
+
+   buffer = (char *) calloc(params_len + 1, sizeof(char));
+   if (buffer == NULL) {
+      VERBOSE(N_STDOUT, "%s [ERROR] Could not allocate memory for \"%s\" params before module execution.\n", get_formatted_time(), running_modules[module_idx].module_name);
       goto err_cleanup;
    }
 
@@ -295,10 +300,6 @@ char **parse_module_params(const uint32_t module_idx, uint32_t *params_num)
                x = y;
                goto add_param;
             } else { // add character to parameter in apostrophes
-               if (act_param_len >= DEFAULT_SIZE_OF_BUFFER) { // check for reaching maximum length of the parameter
-                  VERBOSE(MODULE_EVENT, "%s [ERROR] Too long parameter in \"%s\" params element in apostrophes (> %d).\n", get_formatted_time(), running_modules[module_idx].module_name, DEFAULT_SIZE_OF_BUFFER);
-                  goto err_cleanup;
-               }
                buffer[act_param_len] = running_modules[module_idx].module_params[y];
                act_param_len++;
             }
@@ -326,10 +327,6 @@ char **parse_module_params(const uint32_t module_idx, uint32_t *params_num)
                x = y;
                goto add_param;
             } else if (running_modules[module_idx].module_params[y] != '\'') { // add character to parameter in quotes
-               if (act_param_len >= DEFAULT_SIZE_OF_BUFFER) { // check for reaching maximum length of the parameter
-                  VERBOSE(MODULE_EVENT, "%s [ERROR] Too long parameter in \"%s\" params element in quotes (> %d).\n", get_formatted_time(), running_modules[module_idx].module_name, DEFAULT_SIZE_OF_BUFFER);
-                  goto err_cleanup;
-               }
                buffer[act_param_len] = running_modules[module_idx].module_params[y];
                act_param_len++;
             } else {
@@ -359,7 +356,7 @@ add_param:
 
          params[params_cnt] = strdup(buffer);
          params_cnt++;
-         memset(buffer, 0, DEFAULT_SIZE_OF_BUFFER);
+         memset(buffer, 0, (params_len + 1) * sizeof(char));
          act_param_len = 0;
          break;
       }
@@ -367,10 +364,6 @@ add_param:
       /* adding one character to parameter out of quotes and apostrophes */
       default:
       {
-         if (act_param_len >= DEFAULT_SIZE_OF_BUFFER) { // check for reaching maximum length of the parameter
-            VERBOSE(MODULE_EVENT, "%s [WARNING] Too long parameter in \"%s\" params element (> %d)\n", get_formatted_time(), running_modules[module_idx].module_name, DEFAULT_SIZE_OF_BUFFER);
-            goto err_cleanup;
-         }
          buffer[act_param_len] = running_modules[module_idx].module_params[x];
          act_param_len++;
 
@@ -388,6 +381,7 @@ add_param:
    }
 
    *params_num = params_cnt;
+   NULLP_TEST_AND_FREE(buffer);
    return params;
 
 err_cleanup:
@@ -395,6 +389,7 @@ err_cleanup:
       NULLP_TEST_AND_FREE(params[x]);
    }
    NULLP_TEST_AND_FREE(params)
+   NULLP_TEST_AND_FREE(buffer);
    *params_num = 0;
    return NULL;
 }
