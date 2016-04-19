@@ -1,13 +1,6 @@
 <?xml version="1.0"?>
 <nemea-supervisor>
 
-   <!--
-   <supervisor>
-      <module-restarts>4</module-restarts>
-      <logs-directory>./supervisor_logsX/</logs-directory>
-   </supervisor>
-   -->
-
 	<modules>
 		<name>test_profile</name>
 		<enabled>true</enabled>
