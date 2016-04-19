@@ -1841,6 +1841,7 @@ void service_stop_modules_sigint()
          VERBOSE(MODULE_EVENT, "%s [STOP] Stopping module %s... sending SIGINT\n", get_formatted_time(), running_modules[x].module_name);
          kill(running_modules[x].module_pid,2);
          running_modules[x].sent_sigint = TRUE;
+         running_modules[x].module_restart_cnt = -1;
       }
    }
 }
@@ -1859,6 +1860,7 @@ void service_stop_modules_sigkill()
           && running_modules[x].sent_sigint == TRUE) {
          VERBOSE(MODULE_EVENT, "%s [STOP] Stopping module %s... sending SIGKILL\n", get_formatted_time(), running_modules[x].module_name);
          kill(running_modules[x].module_pid,9);
+         running_modules[x].module_restart_cnt = -1;
 
          // Delete all unix-socket files after killing the module
          for (y = 0; y < running_modules[x].module_ifces_cnt; y++) {
@@ -1898,7 +1900,9 @@ void service_update_modules_status()
    for (x=0; x<loaded_modules_cnt; x++) {
       if (++running_modules[x].module_restart_timer >= NUM_SERVICE_IFC_PERIODS) {
          running_modules[x].module_restart_timer = 0;
-         running_modules[x].module_restart_cnt = 0;
+         if (running_modules[x].module_restart_cnt > 0) {
+            running_modules[x].module_restart_cnt = 0;
+         }
       }
 
       // TODO why assigning this value in every service thread cycle???
