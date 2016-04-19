@@ -147,6 +147,18 @@ server_internals_t *server_internals = NULL;
 
 /**************************************/
 
+int get_digits_num(const int number)
+{
+   int cnt = 1, num = number / 10;
+
+   while (num != 0) {
+      cnt++;
+      num = num / 10;
+   }
+
+   return cnt;
+}
+
 // Returns absolute path of the file / directory passed in file_name parameter
 char *get_absolute_file_path(char *file_name)
 {
@@ -2347,6 +2359,7 @@ void interactive_show_available_modules()
 {
    unsigned int x = 0, y = 0, already_printed_modules = 0;
    modules_profile_t * ptr = first_profile_ptr;
+   int longest_mod_num = get_digits_num(loaded_modules_cnt - 1);
 
    if (loaded_modules_cnt == 0) {
       VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] No module is loaded.\n" FORMAT_RESET);
@@ -2364,15 +2377,21 @@ void interactive_show_available_modules()
       for (x = 0; x < loaded_modules_cnt; x++) {
          if (running_modules[x].modules_profile != NULL) {
             if (running_modules[x].modules_profile == ptr) {
-               if (running_modules[x].module_status == TRUE && running_modules[x].module_enabled == TRUE) {
-                  VERBOSE(N_STDOUT, FORMAT_RUNNING"   ⚫ " FORMAT_RESET FORMAT_BOLD "%d" FORMAT_RESET " | %s (" FORMAT_RUNNING "enabled" FORMAT_RESET "):\n",x, running_modules[x].module_name);
-               } else if (running_modules[x].module_status == TRUE && running_modules[x].module_enabled == FALSE) {
-                  VERBOSE(N_STDOUT, FORMAT_RUNNING"   ⚫ " FORMAT_RESET FORMAT_BOLD "%d" FORMAT_RESET " | %s (" FORMAT_STOPPED "disabled" FORMAT_RESET "):\n",x, running_modules[x].module_name);
-               } else if (running_modules[x].module_status == FALSE && running_modules[x].module_enabled == TRUE) {
-                  VERBOSE(N_STDOUT, FORMAT_STOPPED "   ⚫ " FORMAT_RESET FORMAT_BOLD "%d" FORMAT_RESET " | %s (" FORMAT_RUNNING "enabled" FORMAT_RESET "):\n",x, running_modules[x].module_name);
+               VERBOSE(N_STDOUT, "   %d%*c| %s", x, (longest_mod_num + 1 - get_digits_num(x)), ' ', running_modules[x].module_name);
+               // module's enabled
+               if (running_modules[x].module_enabled == TRUE) {
+                  VERBOSE(N_STDOUT, " | " FORMAT_RUNNING "enabled" FORMAT_RESET " | ");
                } else {
-                  VERBOSE(N_STDOUT, FORMAT_STOPPED "   ⚫ " FORMAT_RESET FORMAT_BOLD "%d" FORMAT_RESET " | %s (" FORMAT_STOPPED "disabled" FORMAT_RESET "):\n",x, running_modules[x].module_name);
+                  VERBOSE(N_STDOUT, " | " FORMAT_STOPPED "disabled" FORMAT_RESET " | ");
                }
+               // module's status
+               if (running_modules[x].module_status == TRUE) {
+                  VERBOSE(N_STDOUT, FORMAT_RUNNING "running" FORMAT_RESET " | ");
+               } else {
+                  VERBOSE(N_STDOUT, FORMAT_STOPPED "stopped" FORMAT_RESET " | ");
+               }
+               VERBOSE(N_STDOUT, "PID: %d\n", running_modules[x].module_pid);
+
                VERBOSE(N_STDOUT, "      " FORMAT_BOLD "PATH:" FORMAT_RESET " %s\n", (running_modules[x].module_path == NULL ? "none" : running_modules[x].module_path));
                VERBOSE(N_STDOUT, "      " FORMAT_BOLD "PARAMS:" FORMAT_RESET " %s\n", (running_modules[x].module_params == NULL ? "none" : running_modules[x].module_params));
                for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
@@ -2385,6 +2404,7 @@ void interactive_show_available_modules()
             }
          }
       }
+      VERBOSE(N_STDOUT, "\n");
       ptr = ptr->next;
    }
 
@@ -2498,10 +2518,11 @@ void interactive_set_enabled()
    int x = 0, modules_to_enable_cnt = 0, matched_modules = 0, label_printed = FALSE;
    modules_profile_t * ptr = first_profile_ptr;
    int max_idx = 0;
+   int longest_mod_num = get_digits_num(loaded_modules_cnt + loaded_profile_cnt - 1);
 
    pthread_mutex_lock(&running_modules_lock);
 
-   VERBOSE(N_STDOUT, "--- [LIST OF DISABLED MODULES] ---\n");
+   VERBOSE(N_STDOUT, FORMAT_BOLD "--- [LIST OF DISABLED MODULES] ---" FORMAT_RESET "\n");
    if (loaded_modules_cnt == 0) {
       VERBOSE(N_STDOUT, "   No module is loaded.\n");
       goto prof_check;
@@ -2523,11 +2544,14 @@ void interactive_set_enabled()
                      VERBOSE(N_STDOUT, FORMAT_BOLD "Profile: %s\n" FORMAT_RESET, ptr->profile_name);
                      label_printed = TRUE;
                   }
-                  VERBOSE(N_STDOUT, "   " FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_STOPPED "disabled" FORMAT_RESET "\n", x, running_modules[x].module_name);
+                  VERBOSE(N_STDOUT, "   %d%*c| %s\n", x, (longest_mod_num + 1 - get_digits_num(x)), ' ', running_modules[x].module_name);
                }
                matched_modules++;
             }
          }
+      }
+      if (label_printed == TRUE) {
+         VERBOSE(N_STDOUT, "\n");
       }
       ptr = ptr->next;
    }
@@ -2542,7 +2566,7 @@ void interactive_set_enabled()
                   VERBOSE(N_STDOUT, FORMAT_BOLD "Modules without profile:\n" FORMAT_RESET);
                   label_printed = TRUE;
                }
-               VERBOSE(N_STDOUT, "   " FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_STOPPED "disabled" FORMAT_RESET "\n", x, running_modules[x].module_name);
+               VERBOSE(N_STDOUT, "   " FORMAT_BOLD "%d" FORMAT_RESET " | %s\n", x, running_modules[x].module_name);
             }
          }
       }
@@ -2550,7 +2574,7 @@ void interactive_set_enabled()
 
 
 prof_check:
-   VERBOSE(N_STDOUT, "--- [LIST OF DISABLED PROFILES] ---\n");
+   VERBOSE(N_STDOUT, FORMAT_BOLD "--- [LIST OF DISABLED PROFILES] ---" FORMAT_RESET "\n");
    if (loaded_profile_cnt == 0) {
       VERBOSE(N_STDOUT, "   No profile is loaded.\n");
       goto user_input;
@@ -2565,7 +2589,7 @@ prof_check:
    ptr = first_profile_ptr;
    while (ptr != NULL) {
       if (ptr->profile_enabled == FALSE) {
-         VERBOSE(N_STDOUT, "   " FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_STOPPED "disabled" FORMAT_RESET "\n", max_idx, ptr->profile_name);
+         VERBOSE(N_STDOUT, "   %d%*c| %s\n", max_idx, (longest_mod_num + 1 - get_digits_num(x)), ' ', ptr->profile_name);
       }
       max_idx++;
       ptr = ptr->next;
@@ -2640,9 +2664,10 @@ void interactive_restart_module()
 
    pthread_mutex_lock(&running_modules_lock);
    uint32_t running_mod_cnt = get_num_enabled_running_modules();
+   int longest_mod_num = get_digits_num(loaded_modules_cnt - 1);
 
 
-   VERBOSE(N_STDOUT, "--- [LIST OF RUNNING MODULES] ---\n");
+   VERBOSE(N_STDOUT, FORMAT_BOLD "--- [LIST OF RUNNING MODULES] ---" FORMAT_RESET "\n");
    if (loaded_modules_cnt == 0) {
       VERBOSE(N_STDOUT, "   No module is loaded.\n");
       pthread_mutex_unlock(&running_modules_lock);
@@ -2666,11 +2691,14 @@ void interactive_restart_module()
                      VERBOSE(N_STDOUT, FORMAT_BOLD "Profile: %s\n" FORMAT_RESET, ptr->profile_name);
                      label_printed = TRUE;
                   }
-                  VERBOSE(N_STDOUT, "   " FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_RUNNING "running" FORMAT_RESET "\n", x, running_modules[x].module_name);
+                  VERBOSE(N_STDOUT, "   %d%*c| %s\n", x, (longest_mod_num + 1 - get_digits_num(x)), ' ', running_modules[x].module_name);
                }
                matched_modules++;
             }
          }
+      }
+      if (label_printed == TRUE) {
+         VERBOSE(N_STDOUT, "\n");
       }
       ptr = ptr->next;
    }
@@ -2685,7 +2713,7 @@ void interactive_restart_module()
                   VERBOSE(N_STDOUT, FORMAT_BOLD "Modules without profile:\n" FORMAT_RESET);
                   label_printed = TRUE;
                }
-               VERBOSE(N_STDOUT, "   " FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_RUNNING "running" FORMAT_RESET "\n", x, running_modules[x].module_name);
+               VERBOSE(N_STDOUT, "   " FORMAT_BOLD "%d" FORMAT_RESET " | %s\n", x, running_modules[x].module_name);
             }
          }
       }
@@ -2728,10 +2756,11 @@ void interactive_set_disabled()
    int x = 0, modules_to_disable_cnt = 0, matched_modules = 0, label_printed = FALSE;
    modules_profile_t * ptr = first_profile_ptr;
    int max_idx = 0;
+   int longest_mod_num = get_digits_num(loaded_modules_cnt + loaded_profile_cnt - 1);
 
    pthread_mutex_lock(&running_modules_lock);
 
-   VERBOSE(N_STDOUT, "--- [LIST OF ENABLED MODULES] ---\n");
+   VERBOSE(N_STDOUT, FORMAT_BOLD "--- [LIST OF ENABLED MODULES] ---" FORMAT_RESET "\n");
    if (loaded_modules_cnt == 0) {
       VERBOSE(N_STDOUT, "   No module is loaded.\n");
       goto prof_check;
@@ -2753,11 +2782,14 @@ void interactive_set_disabled()
                      VERBOSE(N_STDOUT, FORMAT_BOLD "Profile: %s\n" FORMAT_RESET, ptr->profile_name);
                      label_printed = TRUE;
                   }
-                  VERBOSE(N_STDOUT, "   " FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_RUNNING "enabled" FORMAT_RESET "\n", x, running_modules[x].module_name);
+                  VERBOSE(N_STDOUT, "   %d%*c| %s\n", x, (longest_mod_num + 1 - get_digits_num(x)), ' ', running_modules[x].module_name);
                }
                matched_modules++;
             }
          }
+      }
+      if (label_printed == TRUE) {
+         VERBOSE(N_STDOUT, "\n");
       }
       ptr = ptr->next;
    }
@@ -2772,7 +2804,7 @@ void interactive_set_disabled()
                   VERBOSE(N_STDOUT, FORMAT_BOLD "Modules without profile:\n" FORMAT_RESET);
                   label_printed = TRUE;
                }
-               VERBOSE(N_STDOUT, "   " FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_RUNNING "enabled" FORMAT_RESET "\n", x, running_modules[x].module_name);
+               VERBOSE(N_STDOUT, "   " FORMAT_BOLD "%d" FORMAT_RESET " | %s\n", x, running_modules[x].module_name);
             }
          }
       }
@@ -2780,7 +2812,7 @@ void interactive_set_disabled()
 
 
 prof_check:
-   VERBOSE(N_STDOUT, "--- [LIST OF ENABLED PROFILES] ---\n");
+   VERBOSE(N_STDOUT, FORMAT_BOLD "--- [LIST OF ENABLED PROFILES] ---" FORMAT_RESET "\n");
    if (loaded_profile_cnt == 0) {
       VERBOSE(N_STDOUT, "   No profile is loaded.\n");
       goto user_input;
@@ -2795,7 +2827,7 @@ prof_check:
    ptr = first_profile_ptr;
    while (ptr != NULL) {
       if (ptr->profile_enabled == TRUE) {
-         VERBOSE(N_STDOUT, "   " FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_RUNNING "enabled" FORMAT_RESET "\n", max_idx, ptr->profile_name);
+         VERBOSE(N_STDOUT, "   %d%*c| %s\n", max_idx, (longest_mod_num + 1 - get_digits_num(x)), ' ', ptr->profile_name);
       }
       max_idx++;
       ptr = ptr->next;
@@ -3031,59 +3063,94 @@ exit_label:
 
 void interactive_show_running_modules_status()
 {
-   unsigned int x = 0, already_printed_modules = 0;
+   unsigned int x = 0;
    modules_profile_t * ptr = first_profile_ptr;
+   int longest_mod_num = get_digits_num(loaded_modules_cnt - 1), longest_mod_pid = 0, longest_mod_name = 0, len = 0;
+   int longest_prof_row = 0, longest_mod_row = 0, min_name_end = 0, longest_prof_name = 0, longest_name_end = 0;
 
    if (loaded_modules_cnt == 0) {
       VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] No module is loaded.\n" FORMAT_RESET);
       return;
    }
 
-   VERBOSE(N_STDOUT, "--- [CONFIGURATION STATUS] ---\n");
-
+   // Get the longest profile name
    while (ptr != NULL) {
-      if (ptr->profile_enabled == TRUE) {
-         VERBOSE(N_STDOUT, FORMAT_BOLD "Profile: %s (" FORMAT_RUNNING "enabled" FORMAT_RESET ")\n", ptr->profile_name);
-      } else {
-         VERBOSE(N_STDOUT, FORMAT_BOLD "Profile: %s (" FORMAT_STOPPED "disabled" FORMAT_RESET ")\n" FORMAT_RESET, ptr->profile_name);
-      }
-      for (x=0; x<loaded_modules_cnt; x++) {
-         if (running_modules[x].modules_profile != NULL) {
-            if (running_modules[x].modules_profile == ptr) {
-               if (running_modules[x].module_status == TRUE && running_modules[x].module_enabled == TRUE) {
-                  VERBOSE(N_STDOUT, FORMAT_RUNNING"   ⚫ " FORMAT_RESET FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_RUNNING "enabled" FORMAT_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
-                  already_printed_modules++;
-               } else if (running_modules[x].module_status == TRUE && running_modules[x].module_enabled == FALSE) {
-                  VERBOSE(N_STDOUT, FORMAT_RUNNING"   ⚫ " FORMAT_RESET FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_STOPPED "disabled" FORMAT_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
-                  already_printed_modules++;
-               } else if (running_modules[x].module_status == FALSE && running_modules[x].module_enabled == TRUE) {
-                  VERBOSE(N_STDOUT, FORMAT_STOPPED "   ⚫ " FORMAT_RESET FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_RUNNING "enabled" FORMAT_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
-                  already_printed_modules++;
-               } else {
-                  VERBOSE(N_STDOUT, FORMAT_STOPPED "   ⚫ " FORMAT_RESET FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_STOPPED "disabled" FORMAT_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
-                  already_printed_modules++;
-               }
-            }
-         }
+      len = strlen(ptr->profile_name);
+      if (len > longest_prof_name) {
+         longest_prof_name = len;
       }
       ptr = ptr->next;
    }
 
-   if (already_printed_modules < loaded_modules_cnt) {
-      VERBOSE(N_STDOUT, FORMAT_BOLD "Modules without profile:\n" FORMAT_RESET);
-      for (x=0; x<loaded_modules_cnt; x++) {
-         if (running_modules[x].modules_profile == NULL) {
-            if (running_modules[x].module_status == TRUE && running_modules[x].module_enabled == TRUE) {
-                  VERBOSE(N_STDOUT, FORMAT_RUNNING"   ⚫ " FORMAT_RESET FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_RUNNING "enabled" FORMAT_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
-               } else if (running_modules[x].module_status == TRUE && running_modules[x].module_enabled == FALSE) {
-                  VERBOSE(N_STDOUT, FORMAT_RUNNING"   ⚫ " FORMAT_RESET FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_STOPPED "disabled" FORMAT_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
-               } else if (running_modules[x].module_status == FALSE && running_modules[x].module_enabled == TRUE) {
-                  VERBOSE(N_STDOUT, FORMAT_STOPPED "   ⚫ " FORMAT_RESET FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_RUNNING "enabled" FORMAT_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
+   // Get the longest module name and PID
+   for (x = 0; x < loaded_modules_cnt; x++) {
+      len = strlen(running_modules[x].module_name);
+      if (len > longest_mod_name) {
+         longest_mod_name = len;
+      }
+      len = get_digits_num(running_modules[x].module_pid);
+      if (len > longest_mod_pid) {
+         longest_mod_pid = len;
+      }
+   }
+
+   // In case all PIDs are only 2 digits or less long ("PID" name of the column has 3 chars)
+   if (3 > longest_mod_pid) {
+      longest_mod_pid = 3;
+   }
+
+   min_name_end = 11 + longest_mod_num; // minimal module_num | module_name format is: "   module_num | name "
+
+   longest_prof_row = strlen("Profile: ") + longest_prof_name; // every profile row is printed in this format: "Profile: profile_name"
+   longest_mod_row = 3 + longest_mod_num + 3 + longest_mod_name; // every module row is printed in this format: "   module_num | module_name"
+   if (longest_prof_row > longest_mod_row) {
+      longest_name_end = longest_prof_row + 1;
+   } else {
+      longest_name_end = longest_mod_row + 1;
+   }
+
+   if (min_name_end > longest_name_end) {
+      longest_name_end = min_name_end;
+   }
+
+   VERBOSE(N_STDOUT, "--- [CONFIGURATION STATUS] ---\n");
+   VERBOSE(N_STDOUT, FORMAT_BOLD "%*c| name%*c| enabled | status  | PID" FORMAT_RESET "%*c|\n", (4 + longest_mod_num), ' ', (longest_name_end - longest_mod_num - 10), ' ', (longest_mod_pid + 1 - 3), ' ');
+
+   ptr = first_profile_ptr;
+   while (ptr != NULL) {
+      len = strlen("Profile: ") + strlen(ptr->profile_name);
+      if (ptr->profile_enabled == TRUE) {
+         VERBOSE(N_STDOUT, FORMAT_BOLD "Profile: %s%*c" FORMAT_RESET "|  " FORMAT_RUNNING "true" FORMAT_RESET "   |\n", ptr->profile_name, (longest_name_end - len), ' ');
+      } else {
+         VERBOSE(N_STDOUT, FORMAT_BOLD "Profile: %s%*c" FORMAT_RESET "|  " FORMAT_STOPPED "false" FORMAT_RESET "  |\n", ptr->profile_name, (longest_name_end - len), ' ');
+      }
+      for (x = 0; x < loaded_modules_cnt; x++) {
+         if (running_modules[x].modules_profile != NULL) {
+            if (running_modules[x].modules_profile == ptr) {
+               // Print module's number and name
+               VERBOSE(N_STDOUT, "   %d%*c| %s", x, ((longest_mod_num + 1) - get_digits_num(x)), ' ', running_modules[x].module_name);
+               // Print spaces between module_name and "enabled" column
+               len = 3 + longest_mod_num + 3 + strlen(running_modules[x].module_name);
+               VERBOSE(N_STDOUT, "%*c", (longest_name_end - len), ' ');
+               // module's enabled
+               if (running_modules[x].module_enabled == TRUE) {
+                  VERBOSE(N_STDOUT, "|  " FORMAT_RUNNING "true" FORMAT_RESET "   | ");
                } else {
-                  VERBOSE(N_STDOUT, FORMAT_STOPPED "   ⚫ " FORMAT_RESET FORMAT_BOLD "%d" FORMAT_RESET " | %s " FORMAT_STOPPED "disabled" FORMAT_RESET " (PID: %d)\n",x, running_modules[x].module_name,running_modules[x].module_pid);
+                  VERBOSE(N_STDOUT, "|  " FORMAT_STOPPED "false" FORMAT_RESET "  | ");
                }
+               // module's status
+               if (running_modules[x].module_status == TRUE) {
+                  VERBOSE(N_STDOUT, FORMAT_RUNNING "running" FORMAT_RESET " | ");
+               } else {
+                  VERBOSE(N_STDOUT, FORMAT_STOPPED "stopped" FORMAT_RESET " | ");
+               }
+               // module's PID
+               VERBOSE(N_STDOUT, "%d%*c|\n", running_modules[x].module_pid, (longest_mod_pid + 1 - get_digits_num(running_modules[x].module_pid)), ' ');
+            }
          }
       }
+      VERBOSE(N_STDOUT, "\n");
+      ptr = ptr->next;
    }
 }
 
