@@ -18,7 +18,7 @@ pkgdata__DATA = amplification_detection.mkdir \
 	   vportscandetector.mkdir \
 	   warning.sup \
 	   template.sup \
-	   example_with_comments.xml \
+	   config_example.xml \
 	   README.md
 
 others__DATA = others/multopt.sup \
