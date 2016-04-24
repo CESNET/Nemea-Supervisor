@@ -2,18 +2,13 @@
 
 - [Project status](#project-status)
 - [Breaf description](#supervisor)
+- [How to build](#how-to-build)
+- [Dependencies](#dependencies)
 - [Program arguments](#program-arguments)
 - [Program modes](#program-modes)
-  - Interactive
-  - Daemon
-  - System service
-  - Netopeer server plugin
 - [Configuration file](#configuration-file)
 - [Configuring modules](#configuring-modules)
 - [Monitoring modules](#monitoring-modules)
-  - Module status
-  - Modules CPU and memory usage
-  - Communication between modules
 - [Log files](#log-files)
 - [Program termination](#program-termination)
   - [Backup file](#backup-file)
@@ -39,16 +34,43 @@ This module allows user to configure and monitor Nemea modules (see [basic modul
 User specifies modules in xml configuration file, which is input for the Supervisor and it is shown and described in the section "Configuration file".
 
 
+## How to build
+
+Simply with:
+
+```sh
+./bootstrap.sh
+./configure
+make
+```
+Useful parameters for configure are `--prefix`, `--libdir` and `--bindir`.
+
+And possible installation:
+
+```sh
+sudo make install
+```
+
+
+## Dependencies
+
+Supervisor needs the following to be installed:
+
+- libxml2 devel package
+- [Nemea-framework](https://github.com/CESNET/Nemea-Framework).
+
 
 ## Program arguments
 
-Here is the list of arguments the program accepts:
-- `-f FILE` or `--config-file=FILE` - xml file with initial configuration (the only mandatory parameter)
-- `-L PATH` or `--logs-path=PATH` - optional path to Supervisor logs directory (see more information about logs in the section "Log files")
-- `-s SOCKET` or `--daemon-socket=SOCKET` - optional path to unix socket used for communication with supervisor client (default /tmp/daemon_supervisor.sock)
-- `-v` or `--verbose` - optional verbose flag used for enabling printing stats about messages and CPU usage to "supervisor_log_statistics" file in logs directory (more about these stats down below) // TODO context
-- `-d` or `--daemon` - flag used for running Supervisor as a process in background
-- `-h` or `--help` - program prints help and terminates
+List of **mandatory** arguments the program accepts:
+- `-T FILE` or `--config-template=path`   Path of the XML file with the configuration template.
+- `-L PATH` or `--logs-path=path`   Path of the directory where the logs (both supervisor's and modules') will be saved.
+
+List of **optional** arguments the program accepts:
+- `-d` or `--daemon`   Runs supervisor as a system daemon.
+- `-h` or `--help`   Prints this help.
+- `-s SOCKET` or `--daemon-socket=path`   Path of the unix socket which is used for supervisor daemon and client communication.
+- `-C PATH` or `--configs-path=path`   Path of the directory where the generated configuration files will be saved.
 
 
 
@@ -56,92 +78,71 @@ Here is the list of arguments the program accepts:
 
 Supervisor can run in one of the following modes:
 
-1) Interactive Mode:
+####1) Interactive Mode
 
 ```
-./supervisor -f config_file.xml
+supervisor -T supervisor_config_template.xml -L logs_path
 ```
 
-2) Daemon Mode:
-  Program is executed with `-d (or --daemon)` argument and runs as a process in backround
-  of the operating system.
+####2) System daemon
+
+Program is executed with `-d` (or `--daemon`) argument and runs as a process in backround.
 
 ```
-./supervisor -f config_file.xml --daemon
+supervisor -T supervisor_config_template.xml -L logs_path --daemon
 ```
 
   The activity of the running daemon can be controlled by a special thin client:
 
 ```
-./supervisor_cli
+supervisor_cli (after installation from RPM, there is symlink "supcli" for the client)
 ```
 
-  Both daemon and client supports `-s` to specify path to the UNIX socket
+  Both daemon and client supports optional `-s` to specify path to the UNIX socket
   that is used for communication between daemon and client (more information about the client can be found in the section "Supervisor client").
 
-  Note: paths must match to communicate with right Supervisor daemon
+####3) System service
 
-3) System service // TODO
+Supervisor is installed as a systemd service with the following commands:
 
-4) Netopeer server plugin (using NETCONF protocol) // TODO
+- service nemea-supervisor start - starts the deamon
+- service nemea-supervisor stop - stops the deamon and all running Nemea modules from its configuration
+- service nemea-supervisor restart - performs service start and service stop
+- service nemea-supervisor status - returns running or stopped
+- service nemea-supervisor reload - updates the configuration according to the configuration file
 
 
 ## Configuration file
 
-Example configuration of one nemea module called flowcounter:
+###Example
+
+Example configuration file with comments: [config_example.xml](https://github.com/CESNET/Nemea-Supervisor/blob/master/configs/config_example.xml)
+
+
+###Real usage of the configuration file
+
+It is split into smaller parts called **sup files** (file.sup) for easier maintaining by multiple users. Example of a such file is [this sup file](https://github.com/CESNET/Nemea-Supervisor/blob/master/configs/detectors/dnstunnel_detection.sup) containing a configuration of one Nemea detection module called dns tunnel detector.
+
+Sup files can be placed into directories according to their category (e.g. detectors, data-sources etc.). It is shown [here](https://github.com/CESNET/Nemea-Supervisor/tree/master/configs).
+
+[XML template](https://github.com/CESNET/Nemea-Supervisor/blob/master/configs/supervisor_config_template.xml.in) helps to gather all the sup files and to construct the final configuration file using following directives:
 
 ```xml
-<nemea-supervisor>
-  <supervisor>
-    <verbose>true</verbose>
-    <module-restarts>4</module-restarts>
-    <logs-directory>/data/supervisor_logs</logs-directory>
-  </supervisor>
-  <modules>
-    <name>test_profile</name>
-    <enabled>true</enabled>
-    <module>
-      <name>flowcounter</name>
-      <enabled>false</enabled>
-      <params></params>
-      <path>/usr/bin/nemea/flowcounter</path>
-      <module-restarts>0</module-restarts>
-      <trapinterfaces>
-        <interface>
-          <note></note>
-          <type>TCP</type>
-          <direction>IN</direction>
-          <params>localhost:8004</params>
-        </interface>
-      </trapinterfaces>
-    </module>
-  </modules>
-</nemea-supervisor>
+<!-- include path_to_sup_file -->
+<!-- include path_to_sup_files_dir -->
 ```
 
-Every module contains unique name (future name of the running process), path to binary file,
-program parameters, enabled flag, module-restarts and trap interfaces. Enabled flag tells Supervisor to run
-or not to run module after startup and module-restarts is maximum module restarts per minute. The trap interface
-is specified by type (tcp, unixsocket or service), direction (in or out), parameters and optional note.
+Path to the XML template is one of mandatory parameters for the supervisor (`-T FILE` or `--config-template=path`).
 
-Trap interface parameters depends on the interface direction. Output interface has optional address (default is localhost) and port. Input interface has port and optional number of clients (default number of clients is 10). There are also few optional setters that can affect behaviour of the interface (check // TODO ref for more information about libtrap interfaces and their params).
 
-Modules can be divided into profiles (groups of modules - element "modules"). Every profile has unique name and enabled flag.
-This allows user to create several groups of modules (e.g. "detectors", "filters" or "loggers") and turn
-all of them on/off by one simple change in the configuration file.
+###Reload configuration
 
-Optional element "supervisor" in the root element "nemea-supervisor" containts several optional items:
+The most important functionality of the supervisor. It updates the configuration according to the configuration file. It has the following phases:
 
-- verbose - sets verbose flag to TRUE or FALSE
-- module-restarts - sets maximum number of restarts per minute for all modules (default number is 3). If this element is set also for concrete module, it has bigger priority.
-- logs-directory - sets supervisor logs directory path (bigger priority than the path from -L program parameter). This allows user to change logs directory during runtime (see reload configuration in the section "Options").
+- **Generate** config - generates the final configuration file by replacing include directives in XML template with the content of the .sup files
+- **Validate** config - checks the generated config file according to defined syntax and semantic rules (structure and values)
+- **Apply** config - if the validation successfully finishes, all changes are applied to the running configuration
 
-// TODO ref to data model
-
-The [./configs](configs/) directory contains samples of configuration for some modules that are
-shipped in the Nemea packages.  The samples are used for creation of default configuration file
-that is used e.g. in RPM package.  To extend the default configuration, see
-[./configs/README.md](configs/README.md) and create files according to existing examples.
 
 ## Configuring modules
 
