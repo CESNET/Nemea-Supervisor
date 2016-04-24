@@ -17,7 +17,7 @@
   - [Backup file](#backup-file)
   - [Signals](#signals)
 - [Supervisor client](#supervisor-client)
-  - [Program parameters](#program-parameters)
+  - [Clients parameters](#clients-parameters)
   - [Collecting statistics about modules](#collecting-statistics-about-modules)
 
 
@@ -279,7 +279,7 @@ Signal handler catches following signals:
 
 ## Supervisor client
 
-#### Program parameters
+#### Clients parameters
 
 List of **optional** parameters the program accepts:
 - `-h`   Prints program help.
