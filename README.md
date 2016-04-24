@@ -10,8 +10,8 @@
   - [Configuration file](#example)
   - [Reload configuration](#reload-configuration)
   - [Installed configuration](#installed-configuration)
-- [Supervisor functions](#configuring-modules)
-- [Monitoring Nemea modules](#monitoring-modules)
+- [Supervisor functions](#supervisor-functions)
+- [Monitoring Nemea modules](#monitoring-nemea-modules)
 - [Log files](#log-files)
 - [Program termination](#program-termination)
   - [Backup file](#backup-file)
@@ -114,7 +114,7 @@ supervisor_cli (after installation from RPM, there is symlink "supcli" for the c
 
 Supervisor is installed as a systemd service with the following commands:
 
-- service nemea-supervisor start - starts the deamon
+- service nemea-supervisor start - starts the supervisor as a system deamon
 - service nemea-supervisor stop - stops the deamon and all running Nemea modules from its configuration
 - service nemea-supervisor restart - performs service start and service stop
 - service nemea-supervisor status - returns running or stopped
@@ -159,6 +159,12 @@ The most important functionality of the supervisor. It updates the configuration
 
 ![Reload configuration](doc/reload-config.png)
 
+There are three basic cases that can occur during "Apply config" phase:
+
+- A module with same name was not found in loaded configuration -> a new module is **inserted**.
+- A module with same name was found in loaded configuration -> every value is compared and if there is a difference, the module is **reloaded**.
+- A module in loaded configuration was not found in the new configuration -> it is **removed**.
+
 
 ###Installed configuration
 
@@ -173,79 +179,63 @@ during build (see [How to build](#how-to-build)), there are 2 important paths wi
 - `/usr/share/nemea-supervisor` - contains default installed configuration from [configs](https://github.com/CESNET/Nemea-Supervisor/tree/master/configs) (all .sup files divided into directories the same way as on the picture [here](#reload-configuration))
 - `/etc/nemea` - contains [XML template](https://github.com/CESNET/Nemea-Supervisor/blob/master/configs/supervisor_config_template.xml.in) with includes of directories also from /etc/nemea.
 
-It is possible to copy directories with .sup files from /usr/share/nemea-supervisor to /etc/nemea and use default configuration or it is possible to prepare own configuration and add the path of the directory or .sup file to the XML template.
+It is possible to copy directories with .sup files from `/usr/share/nemea-supervisor` to `/etc/nemea` and use default configuration or it is possible to prepare own configuration and add the path of the directory or .sup file to the XML template.
 
 
 
-## Configuring modules
+##Supervisor functions
 
-User can do various operations with modules via Supervisor. After launch appears
-menu with available operations:
+User can do various operations with modules via Supervisor. After launch appears menu with available operations:
 
-1. START ALL MODULES - starts all modules from loaded configuration
-2. STOP ALL MODULES - stops all modules from loaded configuration
-3. START MODULE - starts one specific module from loaded configuration
-4. STOP MODULE - stops one specific module from loaded configuration
-5. STARTED MODULES STATUS - displays status of loaded modules (stopped or running)
-                            and PIDs of modules processes
-6. AVAILABLE MODULES - prints out actual loaded configuration
-7. RELOAD CONFIGURATION - operation allows user to reload actual configuration
-                          from initial xml file or from another xml file
-8. STOP SUPERVISOR - this operation terminates whole Supervisor
+- `1. ENABLE MODULE OR PROFILE` - prints a list of disabled modules and profiles and selected ones are enabled
+- `2. DISABLE MODULE OR PROFILE` - prints a list of enabled modules and profiles and selected ones are disabled
+- `3. RESTART RUNNING MODULE` - prints a list of running modules and selected ones are restarted
+- `4. CONFIGURATION STATUS` - prints a table of the loaded configuration and shows enabled, status and PID of all modules
+- `5. AVAILABLE MODULES` - prints the current loaded configuration in detail (same as option 4 plus all information from the configuration file about every module)
+- `6. RELOAD CONFIGURATION` - performs reload configuration (see [Reload configuration](#reload-configuration))
+- `7. PRINT SUPERVISOR INFO` - basic information about running supervisor - package and git version, used paths etc.
+- `8. SHOW LOGS` - prints a list of all log files and selected log file is opened with pager (see [Log files](#log-files))
+- `0. STOP SUPERVISOR` - stops the supervisor **but not the running modules**
 
+If the supervisor is running as a system daemon, last option "STOP SUPERVISOR" is replaced with
 
-Note: for reload operation is important unique module name. There are three cases,
-      that can occur during reloading:
-
-a) Supervisor didnt find a module with same name in loaded configuration -> inserting a new
-   module.
-b) Supervisor found a module with same name in loaded configuration -> compares every value
-   and if there is a difference, the module will be reloaded.
-c) Module in loaded configuration was not found in reloaded configuration -> it is
-   removed.
+- `-- Type "Cquit" to exit client --` - stops and disconnects the client
+- `-- Type "Dstop" to stop daemon --` - stops the supervisor **but not the running modules**
 
 
 
-## Monitoring modules
+##Monitoring Nemea modules
 
-Supervisor monitors the status of all modules which depends on "enabled flag" of the module. If the status is stopped and the flag is set to true, modules is restared. There is limit of restarts per minute which can be modified in configuration file (optional element module-restarts). On the other hand if the module is running and flag is set to false, SIGINT is used to stop the module. If it keeps running, SIGKILL is used to stop it.
+####Modules status
 
-Every Nemea module can be run with special "service" interface (see [configuration file](supervisor_config.xml)), which allows Supervisor to get statistics about module interfaces. These stats include following counters:
+Supervisor monitors the status of every module. The status can be **running** or **stopped** and it depends on the **enabled flag** of the module. Once the module is set to enabled, supervisor will automatically start it. If the module stops but is still enabled (user did not disable it), supervisor will restart it. Maximum number of restarts per minute can be specified with **module-restarts** in the configuration file. When the limit is reached, module is automatically set to disabled.
+If the module is running and it is disabled by user, SIGINT is used to stop the module. If it keeps running, SIGKILL must be used.
 
-- input interface: received messages, recevied buffers
-- output interface: sent messages, sent buffers, dropped messages, autoflushes
+####Statistics of modules´ interfaces
 
-Data sent via service interface are encoded in JSON format. More information about stats utilization [here](#statistics-about-nemea-modules)
+Every Nemea module has an implicit **service interface**, which allows Supervisor to get statistics about modules interfaces. These statistics include the following counters:
 
-Last monitored event is CPU usage (kernel and user modes) and system memory usage of every module.
+- for every input interface: received messages, recevied buffers
+- for every output interface: sent messages, sent buffers, dropped messages, autoflushes
+
+Data sent via service interface are encoded in JSON format. More information about service interface [here](https://github.com/CESNET/Nemea-Framework/blob/master/libtrap/service-ifc.md)
+
+####CPU and memory usage
+
+Last monitored event is CPU usage (kernel and user mode) and system memory usage of every module.
 
 
 
 ## Log files
 
 Supervisor uses log files for its own output and also for an output of the started modules.
+Path of the logs can be specified with **mandatory** program parameter `-L PATH` or `--logs-path=path`.
 
-Path of the logs can be specified in two ways:
-- in configuration file (optional element logs-directory in example configuration file)
-- program parameter (-L path, --logs-path=path) can be used only in the begining
-
-If the path is specified with the parameter and also in the configuration file, bigger priority has the config file.
-The path can be changed during runtime by adding or changing the element in the config file and performing reload configuration.
-
-In case the user-defined path is not correct (process has no permissions to create the directories etc.), default path is used.
-The path depends on the current supervisors mode:
-- interactive mode: `/tmp/interactive_supervisor_logs/`
-- daemon mode: `/tmp/daemon_supervisor_logs/`
-- netconf mode: `/tmp/netconf_supervisor_logs/`
-
-These paths are used because /tmp directory is accesable by every process so the output won´t be lost.
-
-Content of the log directory is as follows:
-- logs-path/supervisor_log
-- logs-path/supervisor_debug_log
-- logs-path/supervisor_log_module_events - log with modules events (starting module [module_name], connecting to module [module_name], error while receiving from module [module_name] etc.)
-- logs-path/supervisor_log_statistics
-- logs-path/modules_logs/ - contains files with started modules stdout and stderr in form of [module_name]_stdout and [module_name]_stderr
+Logs directory has the following content:
+- supervisor_log - contains warning or error messages of the supervisor
+- modules_events - contains messages about modules´ status changes
+- modules_statistics - contains statistics about modules´ interfaces (they are printed periodically every minute)
+- directory modules_logs - contains files with modules´ stdout and stderr in form of [module_name]_stdout and [module_name]_stderr
 
 
 
