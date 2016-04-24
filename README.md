@@ -6,9 +6,12 @@
 - [Dependencies](#dependencies)
 - [Program arguments](#program-arguments)
 - [Program modes](#program-modes)
-- [Configuration file](#configuration-file)
-- [Configuring modules](#configuring-modules)
-- [Monitoring modules](#monitoring-modules)
+- [Configuration](#configuration)
+  - [Configuration file](#example)
+  - [Reload configuration](#reload-configuration)
+  - [Installed configuration](#installed-configuration)
+- [Supervisor functions](#configuring-modules)
+- [Monitoring Nemea modules](#monitoring-modules)
 - [Log files](#log-files)
 - [Program termination](#program-termination)
   - [Backup file](#backup-file)
@@ -43,7 +46,11 @@ Simply with:
 ./configure
 make
 ```
-Useful parameters for configure are `--prefix`, `--libdir` and `--bindir`.
+Useful parameters for configure are `--prefix`, `--libdir`, `--sysconfdir` and `--bindir`. For example:
+
+```sh
+./configure --sysconfdir=/etc/nemea/ --prefix=/usr/ --bindir=/usr/bin/nemea/ --libdir=/usr/lib64/
+```
 
 And possible installation:
 
@@ -84,6 +91,7 @@ Supervisor can run in one of the following modes:
 supervisor -T supervisor_config_template.xml -L logs_path
 ```
 
+
 ####2) System daemon
 
 Program is executed with `-d` (or `--daemon`) argument and runs as a process in backround.
@@ -101,6 +109,7 @@ supervisor_cli (after installation from RPM, there is symlink "supcli" for the c
   Both daemon and client supports optional `-s` to specify path to the UNIX socket
   that is used for communication between daemon and client (more information about the client can be found in the section "Supervisor client").
 
+
 ####3) System service
 
 Supervisor is installed as a systemd service with the following commands:
@@ -112,11 +121,16 @@ Supervisor is installed as a systemd service with the following commands:
 - service nemea-supervisor reload - updates the configuration according to the configuration file
 
 
-## Configuration file
+
+## Configuration
 
 ###Example
 
 Example configuration file with comments: [config_example.xml](https://github.com/CESNET/Nemea-Supervisor/blob/master/configs/config_example.xml)
+
+The picture below should help to understand the configuration file. It consists of several module groups (profiles) which can be controlled separately.
+
+![Configuration file principle](doc/config-file-expl.png)
 
 
 ###Real usage of the configuration file
@@ -142,6 +156,25 @@ The most important functionality of the supervisor. It updates the configuration
 - **Generate** config - generates the final configuration file by replacing include directives in XML template with the content of the .sup files
 - **Validate** config - checks the generated config file according to defined syntax and semantic rules (structure and values)
 - **Apply** config - if the validation successfully finishes, all changes are applied to the running configuration
+
+![Reload configuration](doc/reload-config.png)
+
+
+###Installed configuration
+
+After installation from RPM or by using
+
+```sh
+./configure --sysconfdir=/etc/nemea/ --prefix=/usr/ --bindir=/usr/bin/nemea/ --libdir=/usr/lib64/
+```
+
+during build (see [How to build](#how-to-build)), there are 2 important paths with installed configuration.
+
+- `/usr/share/nemea-supervisor` - contains default installed configuration from [configs](https://github.com/CESNET/Nemea-Supervisor/tree/master/configs) (all .sup files divided into directories the same way as on the picture [here](#reload-configuration))
+- `/etc/nemea` - contains [XML template](https://github.com/CESNET/Nemea-Supervisor/blob/master/configs/supervisor_config_template.xml.in) with includes of directories also from /etc/nemea.
+
+It is possible to copy directories with .sup files from /usr/share/nemea-supervisor to /etc/nemea and use default configuration or it is possible to prepare own configuration and add the path of the directory or .sup file to the XML template.
+
 
 
 ## Configuring modules
