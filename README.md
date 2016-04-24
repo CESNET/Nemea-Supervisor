@@ -4,7 +4,7 @@
 - [Breaf description](#supervisor)
 - [How to build](#how-to-build)
 - [Dependencies](#dependencies)
-- [Program arguments](#program-arguments)
+- [Program parameters](#program-parameters)
 - [Program modes](#program-modes)
 - [Configuration](#configuration)
   - [Configuration file](#example)
@@ -17,9 +17,8 @@
   - [Backup file](#backup-file)
   - [Signals](#signals)
 - [Supervisor client](#supervisor-client)
-  - Usage of the client
-  - [Collecting statistics about Nemea modules](#statistics-about-nemea-modules)
-- [Output format](#output-format)
+  - [Program parameters](#program-parameters)
+  - [Collecting statistics about modules](#collecting-statistics-about-modules)
 
 
 
@@ -67,15 +66,15 @@ Supervisor needs the following to be installed:
 - [Nemea-framework](https://github.com/CESNET/Nemea-Framework).
 
 
-## Program arguments
+## Program parameters
 
-List of **mandatory** arguments the program accepts:
+List of **mandatory** parameters the program accepts:
 - `-T FILE` or `--config-template=path`   Path of the XML file with the configuration template.
 - `-L PATH` or `--logs-path=path`   Path of the directory where the logs (both supervisor's and modules') will be saved.
 
-List of **optional** arguments the program accepts:
+List of **optional** parameters the program accepts:
 - `-d` or `--daemon`   Runs supervisor as a system daemon.
-- `-h` or `--help`   Prints this help.
+- `-h` or `--help`   Prints program help.
 - `-s SOCKET` or `--daemon-socket=path`   Path of the unix socket which is used for supervisor daemon and client communication.
 - `-C PATH` or `--configs-path=path`   Path of the directory where the generated configuration files will be saved.
 
@@ -114,11 +113,11 @@ supervisor_cli (after installation from RPM, there is symlink "supcli" for the c
 
 Supervisor is installed as a systemd service with the following commands:
 
-- service nemea-supervisor start - starts the supervisor as a system deamon
-- service nemea-supervisor stop - stops the deamon and all running Nemea modules from its configuration
-- service nemea-supervisor restart - performs service start and service stop
-- service nemea-supervisor status - returns running or stopped
-- service nemea-supervisor reload - updates the configuration according to the configuration file
+- `service nemea-supervisor start` - starts the supervisor as a system deamon
+- `service nemea-supervisor stop` - stops the deamon and **all running Nemea modules** from its configuration
+- `service nemea-supervisor restart` - performs service start and service stop
+- `service nemea-supervisor status` - returns running or stopped
+- `service nemea-supervisor reload` - updates the configuration according to the configuration file
 
 
 
@@ -211,7 +210,7 @@ If the supervisor is running as a system daemon, last option "STOP SUPERVISOR" i
 Supervisor monitors the status of every module. The status can be **running** or **stopped** and it depends on the **enabled flag** of the module. Once the module is set to enabled, supervisor will automatically start it. If the module stops but is still enabled (user did not disable it), supervisor will restart it. Maximum number of restarts per minute can be specified with **module-restarts** in the configuration file. When the limit is reached, module is automatically set to disabled.
 If the module is running and it is disabled by user, SIGINT is used to stop the module. If it keeps running, SIGKILL must be used.
 
-####Statistics of modules´ interfaces
+####Statistics about modules´ interfaces
 
 Every Nemea module has an implicit **service interface**, which allows Supervisor to get statistics about modules interfaces. These statistics include the following counters:
 
@@ -241,29 +240,29 @@ Logs directory has the following content:
 
 ## Program termination
 
-Supervisor can be terminated via one of the menu options (interactive mode "STOP SUPERVISOR" or daemon mode "Dstop") or via sending a signal.
+Supervisor can be terminated via one of the menu options:
 
+- interactive mode - option `0. STOP SUPERVISOR`
+- daemon mode - option `Dstop`
+
+These two options **don´t stop running modules** and generate backup file (see next subsection).
+
+It is also possible to terminate the supervisor via sending a signal. `service nemea-supervisor stop` sends a SIGTERM. See all signals and their effect [here](#signals)
 
 
 ### Backup file
 
 Supervisor is able to terminate without stopping running modules and "find" them again after restart. This is achived via backup file which is generated during termination if needed.
-Every backup file is bound to unique configuration file so the path is chosen according to it. The path is `/tmp/PREFIX_sup_backup_file.xml` where "PREFIX" is a number computed from absolute path of the configuration file.
+Every backup file is bound to unique configuration template it was started with (`-T` parameter) and the path of the backup file is chosen according to it. The path is `/tmp/sup_tmp_dir/PREFIX_sup_backup_file.xml` where "PREFIX" is a number computed from absolute path of the configuration template.
 The backup file contains current configuration with PIDs of running modules.
 Together with backup file is also generated info file with basic information about current configuration.
 
-Example:
+For example supervisor started with `-T /etc/nemea/supervisor_config_template.xml` generates the following files:
 
-```
-./supervisor -f /data/configs/supervisor_config.xml
-```
+- `/tmp/sup_tmp_dir/89264_sup_backup_file.xml` - backup file
+- `/tmp/sup_tmp_dir/89264_sup_backup_file.xml_info` - file with basic information about current configuration
 
-Start some modules and terminate supervisor. Because of running modules it generates following files:
-
-- `/tmp/65018_sup_backup_file.xml` - backup file
-- `/tmp/65018_sup_backup_file.xml_info` - file with basic information about current configuration
-
-If the user executes supervisor with the same configuration file (which is also saved in the .xml_info file), supervisor will automatically find the backup file, loads the configuration and connects to running modules.
+If the user executes supervisor with the same configuration template, supervisor will automatically find the backup file, loads the configuration and connects to running modules.
 
 
 
@@ -280,31 +279,27 @@ Signal handler catches following signals:
 
 ## Supervisor client
 
-The client communicates with supervisor daemon (process in the background - supervisor started with `-d` argument) via UNIX socket which can be specified with `-s SOCKET` just like supervisor. According to the optional given argument it performs one of the following commands:
+#### Program parameters
 
-- reload supervisor - `./supervisor_cli -r`
-- get modules statistics - `./supervisor_cli -x`
-- enter configuration mode - `./supervisor_cli`
+List of **optional** parameters the program accepts:
+- `-h`   Prints program help.
+- `-s SOCKET`   Path of the unix socket which is used for supervisor daemon and client communication.
+- `-x`   Receives and prints statistics about modules and terminates.
+- `-r`   Sends a command to supervisor to reload the configuration.
 
-Note: All these parameters are optional so if the client is started without them (`./supervisor_cli`), it uses default socket path (/tmp/daemon_supervisor.sock) and enters configuration mode.
+Note: All these parameters are optional so if the client is started without `-x` or `-r` (`supervisor_cli` or `supcli` from RPM installation) it enters configuration mode with [these functions](#supervisor-functions).
 
 
-
-### Statistics about Nemea modules
+#### Collecting statistics about modules
 
   Supervisor client has a special mode that is enabled by `-x`. It allows user
-  to get statistics about message numbers and cpu usage of modules.
+  to get statistics about modules mentioned [here](#statistics-about-modules-interfaces).
   In `-x` mode, client connects to the supervisor, receives and prints statistics,
   disconnects and terminates.
-```
-./supervisor_cli -x
-```
 
-  Note: Supervisor daemon must be running.
-  
-  // TODO munin
+  Note: this mode is used by plugin [nemea-supervisor](https://github.com/CESNET/Nemea-Supervisor/tree/master/munin) for munin.
 
-### Output format
+#### Output format
 
 ```
 <module unique name>,<information type>,<statistics/identification>
@@ -333,7 +328,7 @@ The example means: usage of CPU (cpu) in percent in kernel mode (2) and user mod
 of the module (flowcounter1).
 
 
-### Overall Example of the output with statistics:
+#### Overall Example of the output with statistics:
 
 ```
 flowcounter1,in,0,1020229
