@@ -1,7 +1,7 @@
 ## README outline
 
 - [Project status](#project-status)
-- [Breaf description](#supervisor)
+- [Brief description](#supervisor)
 - [How to build](#how-to-build)
 - [Dependencies](#dependencies)
 - [Program parameters](#program-parameters)
@@ -134,7 +134,7 @@ The picture below should help to understand the configuration file. It consists 
 
 ###Real usage of the configuration file
 
-It is split into smaller parts called **sup files** (file.sup) for easier maintaining by multiple users. Example of a such file is [this sup file](https://github.com/CESNET/Nemea-Supervisor/blob/master/configs/detectors/dnstunnel_detection.sup) containing a configuration of one Nemea detection module called dns tunnel detector.
+It is split into smaller parts called **sup files** (file.sup) for easier maintaining by multiple users. Example of such a file is [this sup file](https://github.com/CESNET/Nemea-Supervisor/blob/master/configs/detectors/dnstunnel_detection.sup) containing a configuration of one Nemea detection module called dns tunnel detector.
 
 Sup files can be placed into directories according to their category (e.g. detectors, data-sources etc.). It is shown [here](https://github.com/CESNET/Nemea-Supervisor/tree/master/configs).
 
@@ -184,16 +184,16 @@ It is possible to copy directories with .sup files from `/usr/share/nemea-superv
 
 ##Supervisor functions
 
-User can do various operations with modules via Supervisor. After launch appears menu with available operations:
+User can do various operations with modules via Supervisor. After launch (either supervisor in non-daemon mode or supervisor_cli) a menu with the following operations appears:
 
-- `1. ENABLE MODULE OR PROFILE` - prints a list of disabled modules and profiles and selected ones are enabled
-- `2. DISABLE MODULE OR PROFILE` - prints a list of enabled modules and profiles and selected ones are disabled
-- `3. RESTART RUNNING MODULE` - prints a list of running modules and selected ones are restarted
+- `1. ENABLE MODULE OR PROFILE` - prints a list of disabled modules and profiles, the selected ones are enabled
+- `2. DISABLE MODULE OR PROFILE` - prints a list of enabled modules and profiles, the selected ones are disabled
+- `3. RESTART RUNNING MODULE` - prints a list of running modules, the selected ones are restarted
 - `4. CONFIGURATION STATUS` - prints a table of the loaded configuration and shows enabled, status and PID of all modules
 - `5. AVAILABLE MODULES` - prints the current loaded configuration in detail (same as option 4 plus all information from the configuration file about every module)
-- `6. RELOAD CONFIGURATION` - performs reload configuration (see [Reload configuration](#reload-configuration))
+- `6. RELOAD CONFIGURATION` - performs reload of the configuration (see [Reload configuration](#reload-configuration))
 - `7. PRINT SUPERVISOR INFO` - basic information about running supervisor - package and git version, used paths etc.
-- `8. SHOW LOGS` - prints a list of all log files and selected log file is opened with pager (see [Log files](#log-files))
+- `8. SHOW LOGS` - prints a list of all log files, selected log file is opened with pager (see [Log files](#log-files))
 - `0. STOP SUPERVISOR` - stops the supervisor **but not the running modules**
 
 If the supervisor is running as a system daemon, last option "STOP SUPERVISOR" is replaced with
@@ -221,7 +221,7 @@ Data sent via service interface are encoded in JSON format. More information abo
 
 ####CPU and memory usage
 
-Last monitored event is CPU usage (kernel and user mode) and system memory usage of every module.
+The last monitored statistic is CPU usage (kernel and user mode) and system memory usage of every module.
 
 
 
@@ -247,12 +247,14 @@ Supervisor can be terminated via one of the menu options:
 
 These two options **don´t stop running modules** and generate backup file (see next subsection).
 
+To stop **both the supervisor and all running modules**, use `service nemea-supervisor stop`.
+
 It is also possible to terminate the supervisor via sending a signal. `service nemea-supervisor stop` sends a SIGTERM. See all signals and their effect [here](#signals)
 
 
 ### Backup file
 
-Supervisor is able to terminate without stopping running modules and "find" them again after restart. This is achived via backup file which is generated during termination if needed.
+Supervisor is able to terminate without stopping running modules and it will "find" them again after restart. This is achived via a backup file which is generated during termination if needed.
 Every backup file is bound to unique configuration template it was started with (`-T` parameter) and the path of the backup file is chosen according to it. The path is `/tmp/sup_tmp_dir/PREFIX_sup_backup_file.xml` where "PREFIX" is a number computed from absolute path of the configuration template.
 The backup file contains current configuration with PIDs of running modules.
 Together with backup file is also generated info file with basic information about current configuration.
@@ -268,9 +270,9 @@ If the user executes supervisor with the same configuration template, supervisor
 
 ### Signals
 
-Signal handler catches following signals:
+Signal handler catches the following signals:
 
-- SIGTERM - stops all running modules and does not generate backup file (the only case modules are stopped)
+- SIGTERM - stops all running modules, does not generate backup file (the only case modules are stopped)
 - SIGINT - it let the modules continue running and generates backup file
 - SIGQUIT - same as SIGINT
 - SIGSEGV - this is for case something goes wrong during runtime. SIGSEGV is catched, modules continue running and backup file is saved.
