@@ -134,7 +134,6 @@ typedef struct interface_s {
    char *ifc_direction; ///< Interface direction (IN / OUT / SERVICE)
    int int_ifc_direction; ///< Integer value of interface direction - for faster comparison
    int int_ifc_type; ///< Integer value of interface type - for faster comparison
-   void *ifc_data;
 } interface_t;
 
 typedef struct modules_profile_s modules_profile_t;
@@ -147,16 +146,21 @@ struct modules_profile_s {
 
 /** Structure with information about one running module */
 typedef struct running_module_s {
+   uint32_t total_in_ifces_cnt;  ///< Number of all trap input interfaces the module is running with - received via service interface
+   uint32_t total_out_ifces_cnt;  ///< Number of all trap output interfaces the module is running with - received via service interface
+
+   interface_t *module_ifces;  ///< Array of interfaces loaded from the configuration file (these ifces are passed via "-i" parameter to the executed module).
+   uint32_t module_ifces_cnt;  ///< Number of interfaces loaded from the configuration file.
+   uint32_t module_ifces_array_size;  ///< Size of allocated array for interfaces loaded from the configuration file (array "config_ifces").
+
+   in_ifc_stats_t *in_ifces_data;  ///< Contains statistics about all input interfaces the module is running with (size of total_in_ifces_cnt)
+   out_ifc_stats_t *out_ifces_data;  ///< Contains statistics about all output interfaces the module is running with (size of total_out_ifces_cnt)
+
    int module_enabled; ///< TRUE if module is enabled, else FALSE.   /*** RELOAD ***/
    char *module_name; ///< Module name (loaded from config file).   /*** RELOAD ***/
    char *module_params; ///< Module parameter (loaded from config file).   /*** RELOAD ***/
    char *module_path; ///< Path to module from current directory   /*** RELOAD ***/
 
-   interface_t   *module_ifces; ///< Array of interface_t structures with information about every loaded interface of module   /*** RELOAD ***/
-   unsigned int module_ifces_cnt; ///< Number of modules loaded interfaces.   /*** RELOAD ***/
-   unsigned int module_num_out_ifc; ///< Number of modules output interfaces.   /*** RELOAD ***/
-   unsigned int module_num_in_ifc; ///< Number of modules input interfaces.   /*** RELOAD ***/
-   int module_ifces_array_size; ///< Number of allocated interface_t structures by module.   /*** RELOAD ***/
 
    int module_served_by_service_thread; ///< TRUE if module was added to graph struct by sevice thread, FALSE on start.   /*** RELOAD ***/
    uint8_t module_modified_by_reload; ///< Variable used during reload_configuration, TRUE if already loaded module is changed by reload, else FALSE

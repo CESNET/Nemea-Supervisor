@@ -663,31 +663,7 @@ error_label:
 
 void init_module_variables(int module_number)
 {
-   uint x = 0;
-   // Allocate needed structures for every modules interface according to its direction or memset if they are already allocated
-   for (x = 0; x < running_modules[module_number].module_ifces_cnt; x++) {
-      if (running_modules[module_number].module_ifces[x].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
-         if (running_modules[module_number].module_ifces[x].ifc_data == NULL) {
-            running_modules[module_number].module_ifces[x].ifc_data = (void *) calloc(1, sizeof(out_ifc_stats_t));
-            running_modules[module_number].module_running = TRUE;
-         } else {
-            memset(running_modules[module_number].module_ifces[x].ifc_data, 0, sizeof(out_ifc_stats_t));
-         }
-      } else {
-         NULLP_TEST_AND_FREE(running_modules[module_number].module_ifces[x].ifc_data)
-      }
-   }
-
-   for (x = 0; x < running_modules[module_number].module_ifces_cnt; x++) {
-      if (running_modules[module_number].module_ifces[x].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
-         if (running_modules[module_number].module_ifces[x].ifc_data == NULL) {
-            running_modules[module_number].module_ifces[x].ifc_data = (void *) calloc(1, sizeof(in_ifc_stats_t));
-            running_modules[module_number].module_running = TRUE;
-         } else {
-            memset(running_modules[module_number].module_ifces[x].ifc_data, 0, sizeof(in_ifc_stats_t));
-         }
-      }
-   }
+   running_modules[module_number].module_running = TRUE;
 
    // Initialize modules variables
    running_modules[module_number].sent_sigint = FALSE;
@@ -768,9 +744,9 @@ void print_statistics_legend()
 char *make_formated_statistics(uint8_t stats_mask)
 {
    uint8_t print_ifc_stats = FALSE, print_cpu_stats = FALSE, print_memory_stats = FALSE;
-   unsigned int size_of_buffer = 5*DEFAULT_SIZE_OF_BUFFER;
+   unsigned int size_of_buffer = 5 * DEFAULT_SIZE_OF_BUFFER;
    char *buffer = (char *) calloc(size_of_buffer, sizeof(char));
-   unsigned int x, y, counter = 0;
+   unsigned int x, y;
    int ptr = 0;
 
    // Decide which stats should be printed according to the stats mask
@@ -785,31 +761,29 @@ char *make_formated_statistics(uint8_t stats_mask)
    }
 
    if (print_ifc_stats == TRUE) {
-      for (x=0; x<loaded_modules_cnt; x++) {
+      for (x = 0; x < loaded_modules_cnt; x++) {
          if (running_modules[x].module_status == TRUE && running_modules[x].module_service_ifc_isconnected == TRUE) {
-            counter = 0;
-            for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
-               if (running_modules[x].module_ifces[y].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
-                  ptr += sprintf(buffer + ptr, "%s,in,%d,%"PRIu64",%"PRIu64"\n", running_modules[x].module_name, counter, ((in_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->recv_msg_cnt,
-                                                                                                                                                                                                         ((in_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->recv_buffer_cnt);
-                  counter++;
-                  if (strlen(buffer) >= (3*size_of_buffer)/5) {
-                     size_of_buffer += size_of_buffer/2;
+            if (running_modules[x].in_ifces_data != NULL) {
+               for (y = 0; y < running_modules[x].total_in_ifces_cnt; y++) {
+                  ptr += sprintf(buffer + ptr, "%s,in,%d,%"PRIu64",%"PRIu64"\n", running_modules[x].module_name, y,
+                                 running_modules[x].in_ifces_data[y].recv_msg_cnt,
+                                 running_modules[x].in_ifces_data[y].recv_buffer_cnt);
+                  if (strlen(buffer) >= (3 * size_of_buffer) / 5) {
+                     size_of_buffer += size_of_buffer / 2;
                      buffer = (char *) realloc (buffer, size_of_buffer * sizeof(char));
                      memset(buffer + ptr, 0, size_of_buffer - ptr);
                   }
                }
             }
-            counter = 0;
-            for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
-               if (running_modules[x].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
-                  ptr += sprintf(buffer + ptr, "%s,out,%d,%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64"\n", running_modules[x].module_name, counter, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_msg_cnt,
-                                                                                                                                                                                                                              ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->dropped_msg_cnt,
-                                                                                                                                                                                                                              ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_buffer_cnt,
-                                                                                                                                                                                                                              ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->autoflush_cnt);
-                  counter++;
-                  if (strlen(buffer) >= (3*size_of_buffer)/5) {
-                     size_of_buffer += size_of_buffer/2;
+            if (running_modules[x].out_ifces_data != NULL) {
+               for (y = 0; y < running_modules[x].total_out_ifces_cnt; y++) {
+                  ptr += sprintf(buffer + ptr, "%s,out,%d,%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64"\n", running_modules[x].module_name, y,
+                                 running_modules[x].out_ifces_data[y].sent_msg_cnt,
+                                 running_modules[x].out_ifces_data[y].dropped_msg_cnt,
+                                 running_modules[x].out_ifces_data[y].sent_buffer_cnt,
+                                 running_modules[x].out_ifces_data[y].autoflush_cnt);
+                  if (strlen(buffer) >= (3 * size_of_buffer) / 5) {
+                     size_of_buffer += size_of_buffer / 2;
                      buffer = (char *) realloc (buffer, size_of_buffer * sizeof(char));
                      memset(buffer + ptr, 0, size_of_buffer - ptr);
                   }
@@ -1607,17 +1581,11 @@ void *daemon_serve_client_routine (void *cli)
 
 void service_start_module(const int module_idx)
 {
-   uint x = 0;
-
    if (running_modules[module_idx].module_running == FALSE) {
       VERBOSE(MODULE_EVENT,"%s [START] Starting module %s.\n", get_formatted_time(), running_modules[module_idx].module_name);
       #ifdef nemea_plugin
          netconf_notify(MODULE_EVENT_STARTED,running_modules[module_idx].module_name);
       #endif
-      // In case that reloading configuration changes module (its interfaces), module_running is set to FALSE and interfaces data are freed
-      for (x = 0; x < running_modules[module_idx].module_ifces_cnt; x++) {
-         NULLP_TEST_AND_FREE(running_modules[module_idx].module_ifces[x].ifc_data)
-      }
       running_modules[module_idx].module_running = TRUE;
    } else {
       #ifdef nemea_plugin
@@ -2138,7 +2106,6 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
 
 int service_decode_module_stats(char **data, int module_idx)
 {
-   uint x = 0;
    int actual_ifc_index = 0;
    size_t arr_idx = 0;
 
@@ -2151,24 +2118,67 @@ int service_decode_module_stats(char **data, int module_idx)
    json_t *out_ifc_cnts = NULL;
    json_t *cnt = NULL;
 
+   uint32_t ifc_cnt = 0;
+
    /***********************************/
 
    // Parse received modules counters in json format
    json_struct = json_loads(*data , 0, &error);
-    if (json_struct == NULL) {
-        VERBOSE(MODULE_EVENT, "%s [ERROR] Could not convert modules (%s) stats to json structure on line %d: %s\n", get_formatted_time(), running_modules[module_idx].module_name, error.line, error.text);
-        return -1;
-    }
+   if (json_struct == NULL) {
+      VERBOSE(MODULE_EVENT, "%s [ERROR] Could not convert modules (%s) stats to json structure on line %d: %s\n", get_formatted_time(), running_modules[module_idx].module_name, error.line, error.text);
+      return -1;
+   }
 
-    // Check whether the root elem is a json object
-    if (json_is_object(json_struct) == 0) {
+   // Check whether the root elem is a json object
+   if (json_is_object(json_struct) == 0) {
       VERBOSE(MODULE_EVENT, "%s [ERROR] Root elem is not a json object (module %s).\n", get_formatted_time(), running_modules[module_idx].module_name);
       json_decref(json_struct);
       return -1;
-    }
+   }
 
+   // Check number of input interfaces the module is running with
+   cnt = json_object_get(json_struct, "in_cnt");
+   if (cnt == NULL) {
+      VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"in_cnt\" from root json object while parsing modules stats (module %s).\n", get_formatted_time(), running_modules[module_idx].module_name);
+      json_decref(json_struct);
+      return -1;
+   }
+   ifc_cnt = json_integer_value(cnt);
+   // Realloc memory for input ifces data if needed
+   if (ifc_cnt != running_modules[module_idx].total_in_ifces_cnt) { // TODO do we need any limit check?
+      VERBOSE(MODULE_EVENT, "%s [SERVICE] Number of \"%s\" input interfaces has changed (%u -> %u).\n", get_formatted_time(), running_modules[module_idx].module_name, running_modules[module_idx].total_in_ifces_cnt, ifc_cnt);
+      NULLP_TEST_AND_FREE(running_modules[module_idx].in_ifces_data);
+      running_modules[module_idx].in_ifces_data = (in_ifc_stats_t *) calloc(ifc_cnt, sizeof(in_ifc_stats_t));
+      if (running_modules[module_idx].in_ifces_data == NULL) {
+         VERBOSE(MODULE_EVENT, "%s [SERVICE] Error: could not allocate memory for \"%s\" input ifces data (statistics about ifces).\n", get_formatted_time(), running_modules[module_idx].module_name);
+         json_decref(json_struct);
+         return -1;
+      }
+      running_modules[module_idx].total_in_ifces_cnt = ifc_cnt;
+   }
 
-    if (running_modules[module_idx].module_num_in_ifc > 0) {
+   // Check number of output interfaces the module is running with
+   cnt = json_object_get(json_struct, "out_cnt");
+   if (cnt == NULL) {
+      VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"out_cnt\" from root json object while parsing modules stats (module %s).\n", get_formatted_time(), running_modules[module_idx].module_name);
+      json_decref(json_struct);
+      return -1;
+   }
+   ifc_cnt = json_integer_value(cnt);
+   // Realloc memory for output ifces data if needed
+   if (ifc_cnt != running_modules[module_idx].total_out_ifces_cnt) { // TODO do we need any limit check?
+      VERBOSE(MODULE_EVENT, "%s [SERVICE] Number of \"%s\" output interfaces has changed (%u -> %u).\n", get_formatted_time(), running_modules[module_idx].module_name, running_modules[module_idx].total_out_ifces_cnt, ifc_cnt);
+      NULLP_TEST_AND_FREE(running_modules[module_idx].out_ifces_data);
+      running_modules[module_idx].out_ifces_data = (out_ifc_stats_t *) calloc(ifc_cnt, sizeof(out_ifc_stats_t));
+      if (running_modules[module_idx].out_ifces_data == NULL) {
+         VERBOSE(MODULE_EVENT, "%s [SERVICE] Error: could not allocate memory for \"%s\" output ifces data (statistics about ifces).\n", get_formatted_time(), running_modules[module_idx].module_name);
+         json_decref(json_struct);
+         return -1;
+      }
+      running_modules[module_idx].total_out_ifces_cnt = ifc_cnt;
+   }
+
+   if (running_modules[module_idx].total_in_ifces_cnt > 0) {
       // Get value of the key "in" from json root elem (it should be an array of json objects - every object contains counters of one input interface)
       in_ifces_arr = json_object_get(json_struct, "in");
       if (in_ifces_arr == NULL) {
@@ -2183,16 +2193,11 @@ int service_decode_module_stats(char **data, int module_idx)
          return -1;
       }
 
-      actual_ifc_index = -1;
+      actual_ifc_index = 0;
       json_array_foreach(in_ifces_arr, arr_idx, in_ifc_cnts) {
-         // Find index of next input interface in modules structure
-         for (x = actual_ifc_index + 1; x < running_modules[module_idx].module_ifces_cnt; x++) {
-            if (running_modules[module_idx].module_ifces[x].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
-               actual_ifc_index = x;
-               break;
-            }
+         if (actual_ifc_index >= running_modules[module_idx].total_in_ifces_cnt) {
+            break;
          }
-
          if (json_is_object(in_ifc_cnts) == 0) {
             VERBOSE(MODULE_EVENT, "%s [ERROR] Counters of an input interface are not a json object in received json structure (module %s).\n", get_formatted_time(), running_modules[module_idx].module_name);
             json_decref(json_struct);
@@ -2205,7 +2210,7 @@ int service_decode_module_stats(char **data, int module_idx)
             json_decref(json_struct);
             return -1;
          }
-         ((in_ifc_stats_t *) running_modules[module_idx].module_ifces[actual_ifc_index].ifc_data)->recv_msg_cnt = json_integer_value(cnt);
+         running_modules[module_idx].in_ifces_data[actual_ifc_index].recv_msg_cnt = json_integer_value(cnt);
 
          cnt = json_object_get(in_ifc_cnts, "buffers");
          if (cnt == NULL) {
@@ -2213,12 +2218,13 @@ int service_decode_module_stats(char **data, int module_idx)
             json_decref(json_struct);
             return -1;
          }
-         ((in_ifc_stats_t *) running_modules[module_idx].module_ifces[actual_ifc_index].ifc_data)->recv_buffer_cnt = json_integer_value(cnt);
+         running_modules[module_idx].in_ifces_data[actual_ifc_index].recv_buffer_cnt = json_integer_value(cnt);
+         actual_ifc_index++;
       }
    }
 
 
-   if (running_modules[module_idx].module_num_out_ifc > 0) {
+   if (running_modules[module_idx].total_out_ifces_cnt > 0) {
       // Get value of the key "out" from json root elem (it should be an array of json objects - every object contains counters of one output interface)
       out_ifces_arr = json_object_get(json_struct, "out");
       if (out_ifces_arr == NULL) {
@@ -2233,16 +2239,11 @@ int service_decode_module_stats(char **data, int module_idx)
          return -1;
       }
 
-      actual_ifc_index = -1;
+      actual_ifc_index = 0;
       json_array_foreach(out_ifces_arr, arr_idx, out_ifc_cnts) {
-         // Find index of next output interface in modules structure
-         for (x = actual_ifc_index + 1; x < running_modules[module_idx].module_ifces_cnt; x++) {
-            if (running_modules[module_idx].module_ifces[x].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
-               actual_ifc_index = x;
-               break;
-            }
+         if (actual_ifc_index >= running_modules[module_idx].total_out_ifces_cnt) {
+            break;
          }
-
          if (json_is_object(out_ifc_cnts) == 0) {
             VERBOSE(MODULE_EVENT, "%s [ERROR] Counters of an output interface are not a json object in received json structure (module %s).\n", get_formatted_time(), running_modules[module_idx].module_name);
             json_decref(json_struct);
@@ -2255,7 +2256,7 @@ int service_decode_module_stats(char **data, int module_idx)
             json_decref(json_struct);
             return -1;
          }
-         ((out_ifc_stats_t *) running_modules[module_idx].module_ifces[actual_ifc_index].ifc_data)->sent_msg_cnt = json_integer_value(cnt);
+         running_modules[module_idx].out_ifces_data[actual_ifc_index].sent_msg_cnt = json_integer_value(cnt);
 
          cnt = json_object_get(out_ifc_cnts, "dropped-messages");
          if (cnt == NULL) {
@@ -2263,7 +2264,7 @@ int service_decode_module_stats(char **data, int module_idx)
             json_decref(json_struct);
             return -1;
          }
-         ((out_ifc_stats_t *) running_modules[module_idx].module_ifces[actual_ifc_index].ifc_data)->dropped_msg_cnt = json_integer_value(cnt);
+         running_modules[module_idx].out_ifces_data[actual_ifc_index].dropped_msg_cnt = json_integer_value(cnt);
 
          cnt = json_object_get(out_ifc_cnts, "buffers");
          if (cnt == NULL) {
@@ -2271,7 +2272,7 @@ int service_decode_module_stats(char **data, int module_idx)
             json_decref(json_struct);
             return -1;
          }
-         ((out_ifc_stats_t *) running_modules[module_idx].module_ifces[actual_ifc_index].ifc_data)->sent_buffer_cnt = json_integer_value(cnt);
+         running_modules[module_idx].out_ifces_data[actual_ifc_index].sent_buffer_cnt = json_integer_value(cnt);
 
          cnt = json_object_get(out_ifc_cnts, "autoflushes");
          if (cnt == NULL) {
@@ -2279,7 +2280,8 @@ int service_decode_module_stats(char **data, int module_idx)
             json_decref(json_struct);
             return -1;
          }
-         ((out_ifc_stats_t *) running_modules[module_idx].module_ifces[actual_ifc_index].ifc_data)->autoflush_cnt = json_integer_value(cnt);
+         running_modules[module_idx].out_ifces_data[actual_ifc_index].autoflush_cnt = json_integer_value(cnt);
+         actual_ifc_index++;
       }
    }
 
@@ -3040,6 +3042,10 @@ void free_module_on_index(const int module_idx)
    NULLP_TEST_AND_FREE(running_modules[module_idx].module_path)
    NULLP_TEST_AND_FREE(running_modules[module_idx].module_name)
    NULLP_TEST_AND_FREE(running_modules[module_idx].module_params)
+   NULLP_TEST_AND_FREE(running_modules[module_idx].in_ifces_data)
+   NULLP_TEST_AND_FREE(running_modules[module_idx].out_ifces_data)
+   running_modules[module_idx].total_in_ifces_cnt = 0;
+   running_modules[module_idx].total_out_ifces_cnt = 0;
 }
 
 void free_module_interfaces_on_index(const int module_idx)
@@ -3050,7 +3056,6 @@ void free_module_interfaces_on_index(const int module_idx)
       NULLP_TEST_AND_FREE(running_modules[module_idx].module_ifces[y].ifc_type)
       NULLP_TEST_AND_FREE(running_modules[module_idx].module_ifces[y].ifc_direction)
       NULLP_TEST_AND_FREE(running_modules[module_idx].module_ifces[y].ifc_params)
-      NULLP_TEST_AND_FREE(running_modules[module_idx].module_ifces[y].ifc_data)
    }
 }
 
@@ -3080,8 +3085,6 @@ void free_module_and_shift_array(const int module_idx)
 
    free_module_on_index(module_idx);
    running_modules[module_idx].module_ifces_cnt = 0;
-   running_modules[module_idx].module_num_out_ifc = 0;
-   running_modules[module_idx].module_num_in_ifc = 0;
    running_modules[module_idx].module_ifces_array_size = 0;
    for (y=module_idx; y<(loaded_modules_cnt-1); y++) {
       memcpy(&running_modules[y], &running_modules[y+1], sizeof(running_module_t));
@@ -3830,9 +3833,6 @@ int reload_process_module_interface_atribute(reload_config_vars_t **config_vars,
             running_modules[(*config_vars)->current_module_idx].module_modified_by_reload = TRUE;
             free_module_interfaces_on_index((*config_vars)->current_module_idx);
             (*config_vars)->ifc_elem = (*config_vars)->module_atr_elem->xmlChildrenNode;
-            running_modules[(*config_vars)->current_module_idx].module_ifces_cnt = -1;
-            running_modules[(*config_vars)->current_module_idx].module_num_out_ifc = 0;
-            running_modules[(*config_vars)->current_module_idx].module_num_in_ifc = 0;
             (*config_vars)->module_ifc_insert = TRUE;
 
             if (key != NULL) {
@@ -3859,9 +3859,6 @@ int reload_process_module_interface_atribute(reload_config_vars_t **config_vars,
          running_modules[(*config_vars)->current_module_idx].module_modified_by_reload = TRUE;
          free_module_interfaces_on_index((*config_vars)->current_module_idx);
          (*config_vars)->ifc_elem = (*config_vars)->module_atr_elem->xmlChildrenNode;
-         running_modules[(*config_vars)->current_module_idx].module_ifces_cnt = -1;
-         running_modules[(*config_vars)->current_module_idx].module_num_out_ifc = 0;
-         running_modules[(*config_vars)->current_module_idx].module_num_in_ifc = 0;
          (*config_vars)->module_ifc_insert = TRUE;
 
          if (key != NULL) {
@@ -3906,8 +3903,6 @@ void reload_check_modules_interfaces_count(reload_config_vars_t  **config_vars)
       running_modules[(*config_vars)->current_module_idx].module_modified_by_reload = TRUE;
       free_module_interfaces_on_index((*config_vars)->current_module_idx);
       running_modules[(*config_vars)->current_module_idx].module_ifces_cnt = 0;
-      running_modules[(*config_vars)->current_module_idx].module_num_out_ifc = 0;
-      running_modules[(*config_vars)->current_module_idx].module_num_in_ifc = 0;
       (*config_vars)->module_ifc_insert = TRUE;
       VERBOSE(N_STDOUT,"[WARNING] Reloading module \"%s\" - original interface cnt:%d, actual interface cnt:%d -> gonna update module's interfaces.\n",
                                              running_modules[(*config_vars)->current_module_idx].module_name, original_module_ifc_cnt, new_module_ifc_cnt);
@@ -4195,8 +4190,6 @@ int reload_find_and_check_module_basic_elements(reload_config_vars_t **config_va
       running_modules[(*config_vars)->current_module_idx].module_modified_by_reload = TRUE;
       free_module_interfaces_on_index((*config_vars)->current_module_idx);
       running_modules[(*config_vars)->current_module_idx].module_ifces_cnt = 0;
-      running_modules[(*config_vars)->current_module_idx].module_num_out_ifc = 0;
-      running_modules[(*config_vars)->current_module_idx].module_num_in_ifc = 0;
       (*config_vars)->module_ifc_insert = TRUE;
    }
 
@@ -4395,16 +4388,11 @@ void reload_count_module_interfaces(reload_config_vars_t **config_vars)
 {
    int x = 0;
 
-   running_modules[(*config_vars)->current_module_idx].module_num_in_ifc = 0;
-   running_modules[(*config_vars)->current_module_idx].module_num_out_ifc = 0;
-
    for (x=0; x<running_modules[(*config_vars)->current_module_idx].module_ifces_cnt; x++) {
       if (running_modules[(*config_vars)->current_module_idx].module_ifces[x].ifc_direction != NULL) {
          if (strncmp(running_modules[(*config_vars)->current_module_idx].module_ifces[x].ifc_direction, "IN", 2) == 0) {
-            running_modules[(*config_vars)->current_module_idx].module_num_in_ifc++;
             running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_direction = IN_MODULE_IFC_DIRECTION;
          } else if (strncmp(running_modules[(*config_vars)->current_module_idx].module_ifces[x].ifc_direction, "OUT", 3) == 0) {
-            running_modules[(*config_vars)->current_module_idx].module_num_out_ifc++;
             running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_direction = OUT_MODULE_IFC_DIRECTION;
          } else if (strncmp(running_modules[(*config_vars)->current_module_idx].module_ifces[x].ifc_direction, "SERVICE", 7) == 0) {
             running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_direction = SERVICE_MODULE_IFC_DIRECTION;
@@ -5077,7 +5065,7 @@ parse_default_config_file:
                      reload_process_module_atribute(&config_vars, &running_modules[config_vars->current_module_idx].module_path);
                   } else if ((!xmlStrcmp(config_vars->module_atr_elem->name,BAD_CAST "trapinterfaces"))) {
                      // Process module's "trapinterfaces" element
-                     ifc_cnt=0;
+                     ifc_cnt = 0;
                      config_vars->ifc_elem = config_vars->module_atr_elem->xmlChildrenNode;
 
                      // If the parsed module has been already in configuration, check it's interfaces count -> if original count equals actual, it's ok, otherwise interfaces will be updated.
@@ -5120,14 +5108,12 @@ parse_default_config_file:
                               }
                               config_vars->ifc_atr_elem=config_vars->ifc_atr_elem->next;
                            }
-
                            ifc_cnt++;
-                           if (config_vars->module_ifc_insert == TRUE) {
-                              running_modules[config_vars->current_module_idx].module_ifces_cnt++;
-                           }
                         }
                         config_vars->ifc_elem = config_vars->ifc_elem->next;
                      }
+                     // Assign the final number of interfaces loaded from the configuration file
+                     running_modules[config_vars->current_module_idx].module_ifces_cnt = (ifc_cnt > 0) ? ifc_cnt : 0;
                   }
 
                   config_vars->module_atr_elem = config_vars->module_atr_elem->next;
@@ -5362,10 +5348,10 @@ xmlDocPtr netconf_get_state_data()
                         xmlNewChild(interface_elem, NULL, BAD_CAST "params", BAD_CAST running_modules[x].module_ifces[y].ifc_params);
                         if (running_modules[x].module_ifces[y].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
-                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((in_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->recv_buffer_cnt);
+                           // snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((in_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->recv_buffer_cnt);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "recv-buffer-cnt", BAD_CAST buffer);
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
-                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((in_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->recv_msg_cnt);
+                           // snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((in_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->recv_msg_cnt);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "recv-msg-cnt", BAD_CAST buffer);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-msg-cnt", BAD_CAST "0");
                            xmlNewChild(interface_elem, NULL, BAD_CAST "dropped-msg-cnt", BAD_CAST "0");
@@ -5375,16 +5361,16 @@ xmlDocPtr netconf_get_state_data()
                            xmlNewChild(interface_elem, NULL, BAD_CAST "recv-buffer-cnt", BAD_CAST "0");
                            xmlNewChild(interface_elem, NULL, BAD_CAST "recv-msg-cnt", BAD_CAST "0");
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
-                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_msg_cnt);
+                           // snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_msg_cnt);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-msg-cnt", BAD_CAST buffer);
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
-                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->dropped_msg_cnt);
+                           // snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->dropped_msg_cnt);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "dropped-msg-cnt", BAD_CAST buffer);
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
-                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_buffer_cnt);
+                           // snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_buffer_cnt);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-buffer-cnt", BAD_CAST buffer);
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
-                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->autoflush_cnt);
+                           // snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->autoflush_cnt);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "autoflush-cnt", BAD_CAST buffer);
                         }
                      }
