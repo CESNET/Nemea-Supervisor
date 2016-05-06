@@ -149,9 +149,9 @@ typedef struct running_module_s {
    uint32_t total_in_ifces_cnt;  ///< Number of all trap input interfaces the module is running with - received via service interface
    uint32_t total_out_ifces_cnt;  ///< Number of all trap output interfaces the module is running with - received via service interface
 
-   interface_t *module_ifces;  ///< Array of interfaces loaded from the configuration file (these ifces are passed via "-i" parameter to the executed module).
-   uint32_t module_ifces_cnt;  ///< Number of interfaces loaded from the configuration file.
-   uint32_t module_ifces_array_size;  ///< Size of allocated array for interfaces loaded from the configuration file (array "config_ifces").
+   interface_t *config_ifces;  ///< Array of interfaces loaded from the configuration file (these ifces are passed via "-i" parameter to the executed module).
+   uint32_t config_ifces_cnt;  ///< Number of interfaces loaded from the configuration file.
+   uint32_t config_ifces_arr_size;  ///< Size of allocated array for interfaces loaded from the configuration file (array "config_ifces").
 
    in_ifc_stats_t *in_ifces_data;  ///< Contains statistics about all input interfaces the module is running with (size of total_in_ifces_cnt)
    out_ifc_stats_t *out_ifces_data;  ///< Contains statistics about all output interfaces the module is running with (size of total_out_ifces_cnt)

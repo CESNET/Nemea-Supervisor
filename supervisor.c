@@ -409,7 +409,7 @@ char **prep_module_args(const uint32_t module_idx)
    uint32_t bin_args_pos = 0;
 
    /* if the module has trap interfaces, one argument for "-i" and one for interfaces specifier */
-   if (running_modules[module_idx].module_ifces_cnt > 0) {
+   if (running_modules[module_idx].config_ifces_cnt > 0) {
       bin_args_num += 2;
    }
 
@@ -437,7 +437,7 @@ char **prep_module_args(const uint32_t module_idx)
    }
 
    /* prepare trap interfaces specifier (e.g. "t:1234,u:sock,s:service_sock") */
-   if (running_modules[module_idx].module_ifces_cnt > 0) {
+   if (running_modules[module_idx].config_ifces_cnt > 0) {
       for (y = 0; y < 2; y++) {
          // To get first input ifces and than output ifces
          switch (y) {
@@ -449,19 +449,19 @@ char **prep_module_args(const uint32_t module_idx)
             break;
          }
 
-         for (x = 0; x < running_modules[module_idx].module_ifces_cnt; x++) {
-            if (running_modules[module_idx].module_ifces[x].int_ifc_direction == act_dir) {
+         for (x = 0; x < running_modules[module_idx].config_ifces_cnt; x++) {
+            if (running_modules[module_idx].config_ifces[x].int_ifc_direction == act_dir) {
                // Get interface type
-               if (running_modules[module_idx].module_ifces[x].int_ifc_type == TCP_MODULE_IFC_TYPE) {
+               if (running_modules[module_idx].config_ifces[x].int_ifc_type == TCP_MODULE_IFC_TYPE) {
                   strncpy(ifc_spec + ptr, "t:", 2);
                   ptr+=2;
-               } else if (running_modules[module_idx].module_ifces[x].int_ifc_type == UNIXSOCKET_MODULE_IFC_TYPE) {
+               } else if (running_modules[module_idx].config_ifces[x].int_ifc_type == UNIXSOCKET_MODULE_IFC_TYPE) {
                   strncpy(ifc_spec + ptr, "u:", 2);
                   ptr+=2;
-               } else if (running_modules[module_idx].module_ifces[x].int_ifc_type == FILE_MODULE_IFC_TYPE) {
+               } else if (running_modules[module_idx].config_ifces[x].int_ifc_type == FILE_MODULE_IFC_TYPE) {
                   strncpy(ifc_spec + ptr, "f:", 2);
                   ptr+=2;
-               } else if (running_modules[module_idx].module_ifces[x].int_ifc_type == BLACKHOLE_MODULE_IFC_TYPE) {
+               } else if (running_modules[module_idx].config_ifces[x].int_ifc_type == BLACKHOLE_MODULE_IFC_TYPE) {
                   strncpy(ifc_spec + ptr, "b:", 2);
                   ptr+=2;
                } else {
@@ -470,21 +470,21 @@ char **prep_module_args(const uint32_t module_idx)
                   return NULL;
                }
                // Get interface params
-               if (running_modules[module_idx].module_ifces[x].ifc_params != NULL) {
-                  if ((strlen(ifc_spec) + strlen(running_modules[module_idx].module_ifces[x].ifc_params) + 1) >= (3 * ifc_spec_size) / 5) {
-                     ifc_spec_size += strlen(running_modules[module_idx].module_ifces[x].ifc_params) + (ifc_spec_size / 2);
+               if (running_modules[module_idx].config_ifces[x].ifc_params != NULL) {
+                  if ((strlen(ifc_spec) + strlen(running_modules[module_idx].config_ifces[x].ifc_params) + 1) >= (3 * ifc_spec_size) / 5) {
+                     ifc_spec_size += strlen(running_modules[module_idx].config_ifces[x].ifc_params) + (ifc_spec_size / 2);
                      ifc_spec = (char *) realloc(ifc_spec, ifc_spec_size * sizeof(char));
                      memset(ifc_spec + ptr, 0, ifc_spec_size - ptr);
                   }
                   // Compatible with previous format of libtrap -i parameter ("address,port" for one input interface)
                   port = NULL;
-                  port = get_param_by_delimiter(running_modules[module_idx].module_ifces[x].ifc_params, &addr, ',');
+                  port = get_param_by_delimiter(running_modules[module_idx].config_ifces[x].ifc_params, &addr, ',');
                   if (port == NULL) {
-                     sprintf(ifc_spec + ptr,"%s,",running_modules[module_idx].module_ifces[x].ifc_params);
+                     sprintf(ifc_spec + ptr,"%s,",running_modules[module_idx].config_ifces[x].ifc_params);
                   } else {
                      sprintf(ifc_spec + ptr,"%s:%s,", addr, port);
                   }
-                  ptr += strlen(running_modules[module_idx].module_ifces[x].ifc_params) + 1;
+                  ptr += strlen(running_modules[module_idx].config_ifces[x].ifc_params) + 1;
                   NULLP_TEST_AND_FREE(addr)
                }
 
@@ -891,22 +891,22 @@ void generate_backup_config_file()
                   } else {
                      xmlNewChild(module, NULL, BAD_CAST "enabled", BAD_CAST "false");
                   }
-                  if (running_modules[x].module_ifces_cnt > 0) {
+                  if (running_modules[x].config_ifces_cnt > 0) {
                      trapinterfaces = xmlNewChild(module, NULL, BAD_CAST "trapinterfaces", NULL);
                   }
-                  for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
+                  for (y=0; y<running_modules[x].config_ifces_cnt; y++) {
                      interface = xmlNewChild(trapinterfaces, NULL, BAD_CAST "interface", NULL);
-                     if (running_modules[x].module_ifces[y].ifc_note != NULL) {
-                        xmlNewChild(interface, NULL, BAD_CAST "note", BAD_CAST running_modules[x].module_ifces[y].ifc_note);
+                     if (running_modules[x].config_ifces[y].ifc_note != NULL) {
+                        xmlNewChild(interface, NULL, BAD_CAST "note", BAD_CAST running_modules[x].config_ifces[y].ifc_note);
                      }
-                     if (running_modules[x].module_ifces[y].ifc_params != NULL) {
-                        xmlNewChild(interface, NULL, BAD_CAST "params", BAD_CAST running_modules[x].module_ifces[y].ifc_params);
+                     if (running_modules[x].config_ifces[y].ifc_params != NULL) {
+                        xmlNewChild(interface, NULL, BAD_CAST "params", BAD_CAST running_modules[x].config_ifces[y].ifc_params);
                      }
-                     if (running_modules[x].module_ifces[y].ifc_direction != NULL) {
-                        xmlNewChild(interface, NULL, BAD_CAST "direction", BAD_CAST running_modules[x].module_ifces[y].ifc_direction);
+                     if (running_modules[x].config_ifces[y].ifc_direction != NULL) {
+                        xmlNewChild(interface, NULL, BAD_CAST "direction", BAD_CAST running_modules[x].config_ifces[y].ifc_direction);
                      }
-                     if (running_modules[x].module_ifces[y].ifc_type != NULL) {
-                        xmlNewChild(interface, NULL, BAD_CAST "type", BAD_CAST running_modules[x].module_ifces[y].ifc_type);
+                     if (running_modules[x].config_ifces[y].ifc_type != NULL) {
+                        xmlNewChild(interface, NULL, BAD_CAST "type", BAD_CAST running_modules[x].config_ifces[y].ifc_type);
                      }
 
                      if (xmlAddChild(trapinterfaces, interface) == NULL) {
@@ -1765,14 +1765,14 @@ void service_stop_modules_sigkill()
          running_modules[x].module_restart_cnt = -1;
 
          // Delete all unix-socket files after killing the module
-         for (y = 0; y < running_modules[x].module_ifces_cnt; y++) {
+         for (y = 0; y < running_modules[x].config_ifces_cnt; y++) {
             // Delete unix-socket created by modules output interface
-            if ((running_modules[x].module_ifces[y].int_ifc_type == UNIXSOCKET_MODULE_IFC_TYPE) && (running_modules[x].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION)) {
-               if (running_modules[x].module_ifces[y].ifc_params == NULL) {
+            if ((running_modules[x].config_ifces[y].int_ifc_type == UNIXSOCKET_MODULE_IFC_TYPE) && (running_modules[x].config_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION)) {
+               if (running_modules[x].config_ifces[y].ifc_params == NULL) {
                   continue;
                }
                memset(buffer, 0, DEFAULT_SIZE_OF_BUFFER);
-               get_param_by_delimiter(running_modules[x].module_ifces[y].ifc_params, &dest_port, ',');
+               get_param_by_delimiter(running_modules[x].config_ifces[y].ifc_params, &dest_port, ',');
                sprintf(buffer,MODULES_UNIXSOCKET_PATH_FILENAME_FORMAT,dest_port);
                VERBOSE(MODULE_EVENT, "%s [CLEAN] Deleting socket %s - module %s\n", get_formatted_time(), buffer, running_modules[x].module_name);
                unlink(buffer);
@@ -1781,7 +1781,7 @@ void service_stop_modules_sigkill()
          }
 
          // Delete unix-socket created by modules service interface
-         if (running_modules[x].module_ifces_cnt > 0) {
+         if (running_modules[x].config_ifces_cnt > 0) {
             memset(service_sock_spec, 0, 14 * sizeof(char));
             sprintf(service_sock_spec, "service_%d", running_modules[x].module_pid);
             sprintf(buffer, MODULES_UNIXSOCKET_PATH_FILENAME_FORMAT, service_sock_spec);
@@ -2334,11 +2334,11 @@ void interactive_show_available_modules()
 
                VERBOSE(N_STDOUT, "      " FORMAT_BOLD "PATH:" FORMAT_RESET " %s\n", (running_modules[x].module_path == NULL ? "none" : running_modules[x].module_path));
                VERBOSE(N_STDOUT, "      " FORMAT_BOLD "PARAMS:" FORMAT_RESET " %s\n", (running_modules[x].module_params == NULL ? "none" : running_modules[x].module_params));
-               for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
-                  VERBOSE(N_STDOUT,"      " FORMAT_BOLD "IFC%d:" FORMAT_RESET "  %s; %s; %s; %s\n", y, (running_modules[x].module_ifces[y].ifc_direction == NULL ? "none" : running_modules[x].module_ifces[y].ifc_direction),
-                                                                                                   (running_modules[x].module_ifces[y].ifc_type == NULL ? "none" : running_modules[x].module_ifces[y].ifc_type),
-                                                                                                   (running_modules[x].module_ifces[y].ifc_params == NULL ? "none" : running_modules[x].module_ifces[y].ifc_params),
-                                                                                                   (running_modules[x].module_ifces[y].ifc_note == NULL ? "none" : running_modules[x].module_ifces[y].ifc_note));
+               for (y=0; y<running_modules[x].config_ifces_cnt; y++) {
+                  VERBOSE(N_STDOUT,"      " FORMAT_BOLD "IFC%d:" FORMAT_RESET "  %s; %s; %s; %s\n", y, (running_modules[x].config_ifces[y].ifc_direction == NULL ? "none" : running_modules[x].config_ifces[y].ifc_direction),
+                                                                                                   (running_modules[x].config_ifces[y].ifc_type == NULL ? "none" : running_modules[x].config_ifces[y].ifc_type),
+                                                                                                   (running_modules[x].config_ifces[y].ifc_params == NULL ? "none" : running_modules[x].config_ifces[y].ifc_params),
+                                                                                                   (running_modules[x].config_ifces[y].ifc_note == NULL ? "none" : running_modules[x].config_ifces[y].ifc_note));
                }
             }
          }
@@ -3038,7 +3038,7 @@ void free_module_on_index(const int module_idx)
 {
    free_module_interfaces_on_index(module_idx);
 
-   NULLP_TEST_AND_FREE(running_modules[module_idx].module_ifces)
+   NULLP_TEST_AND_FREE(running_modules[module_idx].config_ifces)
    NULLP_TEST_AND_FREE(running_modules[module_idx].module_path)
    NULLP_TEST_AND_FREE(running_modules[module_idx].module_name)
    NULLP_TEST_AND_FREE(running_modules[module_idx].module_params)
@@ -3051,11 +3051,11 @@ void free_module_on_index(const int module_idx)
 void free_module_interfaces_on_index(const int module_idx)
 {
    unsigned int y;
-   for (y=0; y<running_modules[module_idx].module_ifces_cnt; y++) {
-      NULLP_TEST_AND_FREE(running_modules[module_idx].module_ifces[y].ifc_note)
-      NULLP_TEST_AND_FREE(running_modules[module_idx].module_ifces[y].ifc_type)
-      NULLP_TEST_AND_FREE(running_modules[module_idx].module_ifces[y].ifc_direction)
-      NULLP_TEST_AND_FREE(running_modules[module_idx].module_ifces[y].ifc_params)
+   for (y=0; y<running_modules[module_idx].config_ifces_cnt; y++) {
+      NULLP_TEST_AND_FREE(running_modules[module_idx].config_ifces[y].ifc_note)
+      NULLP_TEST_AND_FREE(running_modules[module_idx].config_ifces[y].ifc_type)
+      NULLP_TEST_AND_FREE(running_modules[module_idx].config_ifces[y].ifc_direction)
+      NULLP_TEST_AND_FREE(running_modules[module_idx].config_ifces[y].ifc_params)
    }
 }
 
@@ -3084,8 +3084,8 @@ void free_module_and_shift_array(const int module_idx)
    int y = 0;
 
    free_module_on_index(module_idx);
-   running_modules[module_idx].module_ifces_cnt = 0;
-   running_modules[module_idx].module_ifces_array_size = 0;
+   running_modules[module_idx].config_ifces_cnt = 0;
+   running_modules[module_idx].config_ifces_arr_size = 0;
    for (y=module_idx; y<(loaded_modules_cnt-1); y++) {
       memcpy(&running_modules[y], &running_modules[y+1], sizeof(running_module_t));
    }
@@ -3887,7 +3887,7 @@ int reload_process_module_interface_atribute(reload_config_vars_t **config_vars,
 
 void reload_check_modules_interfaces_count(reload_config_vars_t  **config_vars)
 {
-   int original_module_ifc_cnt = running_modules[(*config_vars)->current_module_idx].module_ifces_cnt;
+   int original_module_ifc_cnt = running_modules[(*config_vars)->current_module_idx].config_ifces_cnt;
    int new_module_ifc_cnt = 0;
 
    while ((*config_vars)->ifc_elem != NULL) {
@@ -3902,7 +3902,7 @@ void reload_check_modules_interfaces_count(reload_config_vars_t  **config_vars)
    if (original_module_ifc_cnt != new_module_ifc_cnt) {
       running_modules[(*config_vars)->current_module_idx].module_modified_by_reload = TRUE;
       free_module_interfaces_on_index((*config_vars)->current_module_idx);
-      running_modules[(*config_vars)->current_module_idx].module_ifces_cnt = 0;
+      running_modules[(*config_vars)->current_module_idx].config_ifces_cnt = 0;
       (*config_vars)->module_ifc_insert = TRUE;
       VERBOSE(N_STDOUT,"[WARNING] Reloading module \"%s\" - original interface cnt:%d, actual interface cnt:%d -> gonna update module's interfaces.\n",
                                              running_modules[(*config_vars)->current_module_idx].module_name, original_module_ifc_cnt, new_module_ifc_cnt);
@@ -4184,12 +4184,12 @@ int reload_find_and_check_module_basic_elements(reload_config_vars_t **config_va
    }
 
    // If the module was already in configuration and had some interfaces, check if trapinterfaces element was found; if not, delete the interfaces.
-   if ((*config_vars)->new_module == FALSE && basic_elements[trapifc_elem_idx] == 0 && running_modules[(*config_vars)->current_module_idx].module_ifces_cnt > 0) {
+   if ((*config_vars)->new_module == FALSE && basic_elements[trapifc_elem_idx] == 0 && running_modules[(*config_vars)->current_module_idx].config_ifces_cnt > 0) {
       VERBOSE(N_STDOUT,"[WARNING] Reloading module \"%s\" - original interface cnt:%d, but trapinterfaces element was not found -> gonna remove module's interfaces.\n",
-                                             running_modules[(*config_vars)->current_module_idx].module_name, running_modules[(*config_vars)->current_module_idx].module_ifces_cnt);
+                                             running_modules[(*config_vars)->current_module_idx].module_name, running_modules[(*config_vars)->current_module_idx].config_ifces_cnt);
       running_modules[(*config_vars)->current_module_idx].module_modified_by_reload = TRUE;
       free_module_interfaces_on_index((*config_vars)->current_module_idx);
-      running_modules[(*config_vars)->current_module_idx].module_ifces_cnt = 0;
+      running_modules[(*config_vars)->current_module_idx].config_ifces_cnt = 0;
       (*config_vars)->module_ifc_insert = TRUE;
    }
 
@@ -4388,37 +4388,37 @@ void reload_count_module_interfaces(reload_config_vars_t **config_vars)
 {
    int x = 0;
 
-   for (x=0; x<running_modules[(*config_vars)->current_module_idx].module_ifces_cnt; x++) {
-      if (running_modules[(*config_vars)->current_module_idx].module_ifces[x].ifc_direction != NULL) {
-         if (strncmp(running_modules[(*config_vars)->current_module_idx].module_ifces[x].ifc_direction, "IN", 2) == 0) {
-            running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_direction = IN_MODULE_IFC_DIRECTION;
-         } else if (strncmp(running_modules[(*config_vars)->current_module_idx].module_ifces[x].ifc_direction, "OUT", 3) == 0) {
-            running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_direction = OUT_MODULE_IFC_DIRECTION;
-         } else if (strncmp(running_modules[(*config_vars)->current_module_idx].module_ifces[x].ifc_direction, "SERVICE", 7) == 0) {
-            running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_direction = SERVICE_MODULE_IFC_DIRECTION;
+   for (x=0; x<running_modules[(*config_vars)->current_module_idx].config_ifces_cnt; x++) {
+      if (running_modules[(*config_vars)->current_module_idx].config_ifces[x].ifc_direction != NULL) {
+         if (strncmp(running_modules[(*config_vars)->current_module_idx].config_ifces[x].ifc_direction, "IN", 2) == 0) {
+            running_modules[(*config_vars)->current_module_idx].config_ifces[x].int_ifc_direction = IN_MODULE_IFC_DIRECTION;
+         } else if (strncmp(running_modules[(*config_vars)->current_module_idx].config_ifces[x].ifc_direction, "OUT", 3) == 0) {
+            running_modules[(*config_vars)->current_module_idx].config_ifces[x].int_ifc_direction = OUT_MODULE_IFC_DIRECTION;
+         } else if (strncmp(running_modules[(*config_vars)->current_module_idx].config_ifces[x].ifc_direction, "SERVICE", 7) == 0) {
+            running_modules[(*config_vars)->current_module_idx].config_ifces[x].int_ifc_direction = SERVICE_MODULE_IFC_DIRECTION;
          } else {
-            running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_direction = INVALID_MODULE_IFC_ATTR;
+            running_modules[(*config_vars)->current_module_idx].config_ifces[x].int_ifc_direction = INVALID_MODULE_IFC_ATTR;
          }
       } else {
-         running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_direction = INVALID_MODULE_IFC_ATTR;
+         running_modules[(*config_vars)->current_module_idx].config_ifces[x].int_ifc_direction = INVALID_MODULE_IFC_ATTR;
       }
 
-      if (running_modules[(*config_vars)->current_module_idx].module_ifces[x].ifc_type != NULL) {
-         if (strncmp(running_modules[(*config_vars)->current_module_idx].module_ifces[x].ifc_type, "TCP", 3) == 0) {
-            running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_type = TCP_MODULE_IFC_TYPE;
-         } else if (strncmp(running_modules[(*config_vars)->current_module_idx].module_ifces[x].ifc_type, "UNIXSOCKET", 10) == 0) {
-            running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_type = UNIXSOCKET_MODULE_IFC_TYPE;
-         } else if (strncmp(running_modules[(*config_vars)->current_module_idx].module_ifces[x].ifc_type, "FILE", 4) == 0) {
-            running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_type = FILE_MODULE_IFC_TYPE;
-         } else if (strncmp(running_modules[(*config_vars)->current_module_idx].module_ifces[x].ifc_type, "SERVICE", 7) == 0) {
-            running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_type = SERVICE_MODULE_IFC_TYPE;
-         } else if (strncmp(running_modules[(*config_vars)->current_module_idx].module_ifces[x].ifc_type, "BLACKHOLE", 9) == 0) {
-            running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_type = BLACKHOLE_MODULE_IFC_TYPE;
+      if (running_modules[(*config_vars)->current_module_idx].config_ifces[x].ifc_type != NULL) {
+         if (strncmp(running_modules[(*config_vars)->current_module_idx].config_ifces[x].ifc_type, "TCP", 3) == 0) {
+            running_modules[(*config_vars)->current_module_idx].config_ifces[x].int_ifc_type = TCP_MODULE_IFC_TYPE;
+         } else if (strncmp(running_modules[(*config_vars)->current_module_idx].config_ifces[x].ifc_type, "UNIXSOCKET", 10) == 0) {
+            running_modules[(*config_vars)->current_module_idx].config_ifces[x].int_ifc_type = UNIXSOCKET_MODULE_IFC_TYPE;
+         } else if (strncmp(running_modules[(*config_vars)->current_module_idx].config_ifces[x].ifc_type, "FILE", 4) == 0) {
+            running_modules[(*config_vars)->current_module_idx].config_ifces[x].int_ifc_type = FILE_MODULE_IFC_TYPE;
+         } else if (strncmp(running_modules[(*config_vars)->current_module_idx].config_ifces[x].ifc_type, "SERVICE", 7) == 0) {
+            running_modules[(*config_vars)->current_module_idx].config_ifces[x].int_ifc_type = SERVICE_MODULE_IFC_TYPE;
+         } else if (strncmp(running_modules[(*config_vars)->current_module_idx].config_ifces[x].ifc_type, "BLACKHOLE", 9) == 0) {
+            running_modules[(*config_vars)->current_module_idx].config_ifces[x].int_ifc_type = BLACKHOLE_MODULE_IFC_TYPE;
          } else {
-            running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_type = INVALID_MODULE_IFC_ATTR;
+            running_modules[(*config_vars)->current_module_idx].config_ifces[x].int_ifc_type = INVALID_MODULE_IFC_ATTR;
          }
       } else {
-         running_modules[(*config_vars)->current_module_idx].module_ifces[x].int_ifc_type = INVALID_MODULE_IFC_ATTR;
+         running_modules[(*config_vars)->current_module_idx].config_ifces[x].int_ifc_type = INVALID_MODULE_IFC_ATTR;
       }
    }
    return;
@@ -4428,15 +4428,15 @@ void reload_check_module_allocated_interfaces(const int running_module_idx, cons
 {
    int origin_size = 0;
 
-   if (running_modules[running_module_idx].module_ifces_array_size == 0) {
-      running_modules[running_module_idx].module_ifces = (interface_t *) calloc(IFCES_ARRAY_START_SIZE, sizeof(interface_t));
-      running_modules[running_module_idx].module_ifces_array_size = IFCES_ARRAY_START_SIZE;
-      running_modules[running_module_idx].module_ifces_cnt = 0;
-   } else if (ifc_cnt == running_modules[running_module_idx].module_ifces_array_size) {
-      origin_size = running_modules[running_module_idx].module_ifces_array_size;
-      running_modules[running_module_idx].module_ifces_array_size += running_modules[running_module_idx].module_ifces_array_size/2;
-      running_modules[running_module_idx].module_ifces = (interface_t *) realloc (running_modules[running_module_idx].module_ifces, (running_modules[running_module_idx].module_ifces_array_size) * sizeof(interface_t));
-      memset(running_modules[running_module_idx].module_ifces + origin_size,0,(origin_size/2)*sizeof(interface_t));
+   if (running_modules[running_module_idx].config_ifces_arr_size == 0) {
+      running_modules[running_module_idx].config_ifces = (interface_t *) calloc(IFCES_ARRAY_START_SIZE, sizeof(interface_t));
+      running_modules[running_module_idx].config_ifces_arr_size = IFCES_ARRAY_START_SIZE;
+      running_modules[running_module_idx].config_ifces_cnt = 0;
+   } else if (ifc_cnt == running_modules[running_module_idx].config_ifces_arr_size) {
+      origin_size = running_modules[running_module_idx].config_ifces_arr_size;
+      running_modules[running_module_idx].config_ifces_arr_size += running_modules[running_module_idx].config_ifces_arr_size/2;
+      running_modules[running_module_idx].config_ifces = (interface_t *) realloc (running_modules[running_module_idx].config_ifces, (running_modules[running_module_idx].config_ifces_arr_size) * sizeof(interface_t));
+      memset(running_modules[running_module_idx].config_ifces + origin_size,0,(origin_size/2)*sizeof(interface_t));
    }
 }
 
@@ -4449,10 +4449,10 @@ void check_running_modules_allocated_memory()
       running_modules_array_size = RUNNING_MODULES_ARRAY_START_SIZE;
       running_modules = (running_module_t *) calloc(running_modules_array_size,sizeof(running_module_t));
       for (x=0; x<running_modules_array_size; x++) {
-         running_modules[x].module_ifces = (interface_t *) calloc(IFCES_ARRAY_START_SIZE, sizeof(interface_t));
+         running_modules[x].config_ifces = (interface_t *) calloc(IFCES_ARRAY_START_SIZE, sizeof(interface_t));
          running_modules[x].module_running = FALSE;
-         running_modules[x].module_ifces_array_size = IFCES_ARRAY_START_SIZE;
-         running_modules[x].module_ifces_cnt = 0;
+         running_modules[x].config_ifces_arr_size = IFCES_ARRAY_START_SIZE;
+         running_modules[x].config_ifces_cnt = 0;
       }
    } else if (loaded_modules_cnt == running_modules_array_size) {
       origin_size = running_modules_array_size;
@@ -4461,10 +4461,10 @@ void check_running_modules_allocated_memory()
       memset(running_modules + origin_size,0,(origin_size/2)*sizeof(running_module_t));
 
       for (x=loaded_modules_cnt; x<running_modules_array_size; x++) {
-         running_modules[x].module_ifces = (interface_t *) calloc(IFCES_ARRAY_START_SIZE, sizeof(interface_t));
+         running_modules[x].config_ifces = (interface_t *) calloc(IFCES_ARRAY_START_SIZE, sizeof(interface_t));
          running_modules[x].module_running = FALSE;
-         running_modules[x].module_ifces_array_size = IFCES_ARRAY_START_SIZE;
-         running_modules[x].module_ifces_cnt = 0;
+         running_modules[x].config_ifces_arr_size = IFCES_ARRAY_START_SIZE;
+         running_modules[x].config_ifces_cnt = 0;
       }
    }
 }
@@ -4724,13 +4724,13 @@ void include_item(buffer_t *buffer, char **item_path)
       return;
    }
 
-   while(1) {
+   while (1) {
       dir_entry = readdir(dirp);
       if (dir_entry == NULL) {
          break;
       }
 
-      if (strcmp(dir_entry->d_name, ".") == 0 || strcmp(dir_entry->d_name, "..") == 0){
+      if (strcmp(dir_entry->d_name, ".") == 0 || strcmp(dir_entry->d_name, "..") == 0) {
          continue;
       }
 
@@ -5083,25 +5083,25 @@ parse_default_config_file:
                            while (config_vars->ifc_atr_elem != NULL) {
                               if ((!xmlStrcmp(config_vars->ifc_atr_elem->name,BAD_CAST "note"))) {
                                  // Process module's interface "note" attribute
-                                 if (reload_process_module_interface_atribute(&config_vars, &running_modules[config_vars->current_module_idx].module_ifces[ifc_cnt].ifc_note) == -1) {
+                                 if (reload_process_module_interface_atribute(&config_vars, &running_modules[config_vars->current_module_idx].config_ifces[ifc_cnt].ifc_note) == -1) {
                                     ifc_cnt = -1;
                                     break;
                                  }
                               } else if ((!xmlStrcmp(config_vars->ifc_atr_elem->name,BAD_CAST "type"))) {
                                  // Process module's interface "type" attribute
-                                 if (reload_process_module_interface_atribute(&config_vars, &running_modules[config_vars->current_module_idx].module_ifces[ifc_cnt].ifc_type) == -1) {
+                                 if (reload_process_module_interface_atribute(&config_vars, &running_modules[config_vars->current_module_idx].config_ifces[ifc_cnt].ifc_type) == -1) {
                                     ifc_cnt = -1;
                                     break;
                                  }
                               } else if ((!xmlStrcmp(config_vars->ifc_atr_elem->name,BAD_CAST "direction"))) {
                                  // Process module's interface "direction" attribute
-                                 if (reload_process_module_interface_atribute(&config_vars, &running_modules[config_vars->current_module_idx].module_ifces[ifc_cnt].ifc_direction) == -1) {
+                                 if (reload_process_module_interface_atribute(&config_vars, &running_modules[config_vars->current_module_idx].config_ifces[ifc_cnt].ifc_direction) == -1) {
                                     ifc_cnt = -1;
                                     break;
                                  }
                               } else if ((!xmlStrcmp(config_vars->ifc_atr_elem->name,BAD_CAST "params"))) {
                                  // Process module's interface "parameters" attribute
-                                 if (reload_process_module_interface_atribute(&config_vars, &running_modules[config_vars->current_module_idx].module_ifces[ifc_cnt].ifc_params) == -1) {
+                                 if (reload_process_module_interface_atribute(&config_vars, &running_modules[config_vars->current_module_idx].config_ifces[ifc_cnt].ifc_params) == -1) {
                                     ifc_cnt = -1;
                                     break;
                                  }
@@ -5113,7 +5113,7 @@ parse_default_config_file:
                         config_vars->ifc_elem = config_vars->ifc_elem->next;
                      }
                      // Assign the final number of interfaces loaded from the configuration file
-                     running_modules[config_vars->current_module_idx].module_ifces_cnt = (ifc_cnt > 0) ? ifc_cnt : 0;
+                     running_modules[config_vars->current_module_idx].config_ifces_cnt = (ifc_cnt > 0) ? ifc_cnt : 0;
                   }
 
                   config_vars->module_atr_elem = config_vars->module_atr_elem->next;
@@ -5340,37 +5340,37 @@ xmlDocPtr netconf_get_state_data()
 
                if (running_modules[x].module_service_ifc_isconnected == TRUE && running_modules[x].module_status) {
                   trapinterfaces_elem = xmlNewChild(module_elem, NULL, BAD_CAST "trapinterfaces", NULL);
-                  for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
-                     if (running_modules[x].module_ifces[y].int_ifc_direction != INVALID_MODULE_IFC_ATTR && running_modules[x].module_ifces[y].ifc_params != NULL && running_modules[x].module_ifces[y].int_ifc_type != INVALID_MODULE_IFC_ATTR) {
+                  for (y=0; y<running_modules[x].config_ifces_cnt; y++) {
+                     if (running_modules[x].config_ifces[y].int_ifc_direction != INVALID_MODULE_IFC_ATTR && running_modules[x].config_ifces[y].ifc_params != NULL && running_modules[x].config_ifces[y].int_ifc_type != INVALID_MODULE_IFC_ATTR) {
                         interface_elem = xmlNewChild(trapinterfaces_elem, NULL, BAD_CAST "interface", NULL);
-                        xmlNewChild(interface_elem, NULL, BAD_CAST "type", BAD_CAST running_modules[x].module_ifces[y].ifc_type);
-                        xmlNewChild(interface_elem, NULL, BAD_CAST "direction", BAD_CAST running_modules[x].module_ifces[y].ifc_direction);
-                        xmlNewChild(interface_elem, NULL, BAD_CAST "params", BAD_CAST running_modules[x].module_ifces[y].ifc_params);
-                        if (running_modules[x].module_ifces[y].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
+                        xmlNewChild(interface_elem, NULL, BAD_CAST "type", BAD_CAST running_modules[x].config_ifces[y].ifc_type);
+                        xmlNewChild(interface_elem, NULL, BAD_CAST "direction", BAD_CAST running_modules[x].config_ifces[y].ifc_direction);
+                        xmlNewChild(interface_elem, NULL, BAD_CAST "params", BAD_CAST running_modules[x].config_ifces[y].ifc_params);
+                        if (running_modules[x].config_ifces[y].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
-                           // snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((in_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->recv_buffer_cnt);
+                           // snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((in_ifc_stats_t *) running_modules[x].config_ifces[y].ifc_data)->recv_buffer_cnt);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "recv-buffer-cnt", BAD_CAST buffer);
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
-                           // snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((in_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->recv_msg_cnt);
+                           // snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((in_ifc_stats_t *) running_modules[x].config_ifces[y].ifc_data)->recv_msg_cnt);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "recv-msg-cnt", BAD_CAST buffer);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-msg-cnt", BAD_CAST "0");
                            xmlNewChild(interface_elem, NULL, BAD_CAST "dropped-msg-cnt", BAD_CAST "0");
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-buffer-cnt", BAD_CAST "0");
                            xmlNewChild(interface_elem, NULL, BAD_CAST "autoflush-cnt", BAD_CAST "0");
-                        } else if (running_modules[x].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
+                        } else if (running_modules[x].config_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
                            xmlNewChild(interface_elem, NULL, BAD_CAST "recv-buffer-cnt", BAD_CAST "0");
                            xmlNewChild(interface_elem, NULL, BAD_CAST "recv-msg-cnt", BAD_CAST "0");
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
-                           // snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_msg_cnt);
+                           // snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((out_ifc_stats_t *) running_modules[x].config_ifces[y].ifc_data)->sent_msg_cnt);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-msg-cnt", BAD_CAST buffer);
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
-                           // snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->dropped_msg_cnt);
+                           // snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((out_ifc_stats_t *) running_modules[x].config_ifces[y].ifc_data)->dropped_msg_cnt);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "dropped-msg-cnt", BAD_CAST buffer);
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
-                           // snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_buffer_cnt);
+                           // snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((out_ifc_stats_t *) running_modules[x].config_ifces[y].ifc_data)->sent_buffer_cnt);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "sent-buffer-cnt", BAD_CAST buffer);
                            memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
-                           // snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->autoflush_cnt);
+                           // snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((out_ifc_stats_t *) running_modules[x].config_ifces[y].ifc_data)->autoflush_cnt);
                            xmlNewChild(interface_elem, NULL, BAD_CAST "autoflush-cnt", BAD_CAST buffer);
                         }
                      }
@@ -5389,83 +5389,6 @@ xmlDocPtr netconf_get_state_data()
             }
          }
          ptr = ptr->next;
-      }
-
-
-      //get state data about modules without profile
-      if (modules_with_profile < loaded_modules_cnt) {
-         modules_elem = xmlNewChild(root_elem, NULL, BAD_CAST "modules", NULL);
-         for (x = 0; x < loaded_modules_cnt; x++) {
-               if (running_modules[x].modules_profile != NULL) {
-                  continue;
-               }
-               memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
-               module_elem = xmlNewChild(modules_elem, NULL, BAD_CAST "module", NULL);
-               xmlNewChild(module_elem, NULL, BAD_CAST "name", BAD_CAST running_modules[x].module_name);
-
-               if (running_modules[x].module_status == TRUE) {
-                  xmlNewChild(module_elem, NULL, BAD_CAST "running", BAD_CAST "true");
-               } else {
-                  xmlNewChild(module_elem, NULL, BAD_CAST "running", BAD_CAST "false");
-               }
-
-               if (running_modules[x].module_restart_cnt < 0) {
-                  snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%d",0);
-                  xmlNewChild(module_elem, NULL, BAD_CAST "restart-counter", BAD_CAST buffer);
-               } else {
-                  snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%d",running_modules[x].module_restart_cnt);
-                  xmlNewChild(module_elem, NULL, BAD_CAST "restart-counter", BAD_CAST buffer);
-               }
-
-               if (running_modules[x].module_service_ifc_isconnected == TRUE && running_modules[x].module_status) {
-                  trapinterfaces_elem = xmlNewChild(module_elem, NULL, BAD_CAST "trapinterfaces", NULL);
-                  for (y=0; y<running_modules[x].module_ifces_cnt; y++) {
-                     if (running_modules[x].module_ifces[y].int_ifc_direction != INVALID_MODULE_IFC_ATTR && running_modules[x].module_ifces[y].ifc_params != NULL && running_modules[x].module_ifces[y].int_ifc_type != INVALID_MODULE_IFC_ATTR) {
-                        interface_elem = xmlNewChild(trapinterfaces_elem, NULL, BAD_CAST "interface", NULL);
-                        xmlNewChild(interface_elem, NULL, BAD_CAST "type", BAD_CAST running_modules[x].module_ifces[y].ifc_type);
-                        xmlNewChild(interface_elem, NULL, BAD_CAST "direction", BAD_CAST running_modules[x].module_ifces[y].ifc_direction);
-                        xmlNewChild(interface_elem, NULL, BAD_CAST "params", BAD_CAST running_modules[x].module_ifces[y].ifc_params);
-                        if (running_modules[x].module_ifces[y].int_ifc_direction == IN_MODULE_IFC_DIRECTION) {
-                           memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
-                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((in_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->recv_buffer_cnt);
-                           xmlNewChild(interface_elem, NULL, BAD_CAST "recv-buffer-cnt", BAD_CAST buffer);
-                           memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
-                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((in_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->recv_msg_cnt);
-                           xmlNewChild(interface_elem, NULL, BAD_CAST "recv-msg-cnt", BAD_CAST buffer);
-                           xmlNewChild(interface_elem, NULL, BAD_CAST "sent-msg-cnt", BAD_CAST "0");
-                           xmlNewChild(interface_elem, NULL, BAD_CAST "dropped-msg-cnt", BAD_CAST "0");
-                           xmlNewChild(interface_elem, NULL, BAD_CAST "sent-buffer-cnt", BAD_CAST "0");
-                           xmlNewChild(interface_elem, NULL, BAD_CAST "autoflush-cnt", BAD_CAST "0");
-                        } else if (running_modules[x].module_ifces[y].int_ifc_direction == OUT_MODULE_IFC_DIRECTION) {
-                           xmlNewChild(interface_elem, NULL, BAD_CAST "recv-buffer-cnt", BAD_CAST "0");
-                           xmlNewChild(interface_elem, NULL, BAD_CAST "recv-msg-cnt", BAD_CAST "0");
-                           memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
-                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_msg_cnt);
-                           xmlNewChild(interface_elem, NULL, BAD_CAST "sent-msg-cnt", BAD_CAST buffer);
-                           memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
-                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->dropped_msg_cnt);
-                           xmlNewChild(interface_elem, NULL, BAD_CAST "dropped-msg-cnt", BAD_CAST buffer);
-                           memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
-                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->sent_buffer_cnt);
-                           xmlNewChild(interface_elem, NULL, BAD_CAST "sent-buffer-cnt", BAD_CAST buffer);
-                           memset(buffer,0,DEFAULT_SIZE_OF_BUFFER);
-                           snprintf(buffer, DEFAULT_SIZE_OF_BUFFER, "%"PRIu64, ((out_ifc_stats_t *) running_modules[x].module_ifces[y].ifc_data)->autoflush_cnt);
-                           xmlNewChild(interface_elem, NULL, BAD_CAST "autoflush-cnt", BAD_CAST buffer);
-                        }
-                     }
-                  }
-               }
-
-               /* TODO check and free */
-               if (xmlAddChild(modules_elem, module_elem) == NULL) {
-                  xmlFree(module_elem);
-               }
-            }
-
-            if (xmlAddChild(root_elem, modules_elem) == NULL) {
-               xmlFree(modules_elem);
-            }
-         }
       }
    }
    xmlCleanupParser();
