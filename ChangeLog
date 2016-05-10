@@ -1,3 +1,18 @@
+2016-04-24 supervisor-1.4.1
+	* clarified output of user operations
+	* all modules must have a profile
+	* updated README
+	* bugfixes
+
+
+2016-04-24 (Marek Svepes): doc: README update
+2016-04-24 (Marek Svepes): configs: renamed example_with_comments.xml to config_example.xml
+2016-04-19 (Marek Svepes): configs: removed unsupported elements from the example XML file
+2016-04-19 (Marek Svepes): bugfix: very long program (executed modules) parameters could not be used because of short buffer
+2016-04-19 (Marek Svepes): removing operations with modules without profile (it's not supported, all modules must have profile)
+2016-04-19 (Marek Svepes): bugfix: modules' restart counter initialization
+2016-04-19 (Marek Svepes): Available user operations (1-5, Enable/disable module/profile, Restart module...) output improvement (clarity)
+
 2016-04-014 supervisor-1.4.0
 	* supervisor in now more verbose
 	* replaced start/stop option with "restart running module"
