@@ -2151,6 +2151,7 @@ int service_decode_module_stats(char **data, int module_idx)
       running_modules[module_idx].in_ifces_data = (in_ifc_stats_t *) calloc(ifc_cnt, sizeof(in_ifc_stats_t));
       if (running_modules[module_idx].in_ifces_data == NULL) {
          VERBOSE(MODULE_EVENT, "%s [SERVICE] Error: could not allocate memory for \"%s\" input ifces data (statistics about ifces).\n", get_formatted_time(), running_modules[module_idx].module_name);
+         running_modules[module_idx].total_in_ifces_cnt = 0;
          json_decref(json_struct);
          return -1;
       }
@@ -2172,6 +2173,7 @@ int service_decode_module_stats(char **data, int module_idx)
       running_modules[module_idx].out_ifces_data = (out_ifc_stats_t *) calloc(ifc_cnt, sizeof(out_ifc_stats_t));
       if (running_modules[module_idx].out_ifces_data == NULL) {
          VERBOSE(MODULE_EVENT, "%s [SERVICE] Error: could not allocate memory for \"%s\" output ifces data (statistics about ifces).\n", get_formatted_time(), running_modules[module_idx].module_name);
+         running_modules[module_idx].total_out_ifces_cnt = 0;
          json_decref(json_struct);
          return -1;
       }
