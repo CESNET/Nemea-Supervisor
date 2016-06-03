@@ -1,3 +1,13 @@
+2016-06-03 supervisor-1.4.2
+        * statistics from service interface no longer depend on number of interfaces
+        * updated README
+        * code maintenance
+	* bugfixes
+
+
+2016-05-10 (Marek Svepes): service thread: fixed counter of allocated memory for modules interface data
+2016-05-06 (Marek Svepes): statistics received via service interface are no longer dependent on the number of interfaces specified in the configuration file
+
 2016-04-24 supervisor-1.4.1
 	* clarified output of user operations
 	* all modules must have a profile
