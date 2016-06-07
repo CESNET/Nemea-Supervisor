@@ -9,6 +9,7 @@ pkgdata__DATA = amplification_detection.mkdir \
 	   dnstunnel_detection.mkdir \
 	   flow_meter.mkdir \
 	   hoststats.mkdir \
+	   haddrscandetector.mkdir \
 	   ipblacklistfilter.mkdir \
 	   multopt.mkdir \
 	   prepare_default_config.sh \
@@ -27,6 +28,7 @@ others__DATA = others/multopt.sup \
 detectors__DATA = detectors/amplification_detection.sup \
 	   detectors/dnstunnel_detection.sup \
 	   detectors/hoststats.sup \
+	   detectors/haddrscandetector.sup \
 	   detectors/ipblacklistfilter.sup \
 	   detectors/voipfrauddetection.sup \
 	   detectors/vportscandetector.sup
@@ -44,6 +46,7 @@ reporters__DATA = reporters/amplification_reporter.sup \
 loggers__DATA = loggers/amplification_logger.sup \
 	   loggers/dnstunnel_logger.sup \
 	   loggers/hoststats_logger.sup \
+	   loggers/haddrscan_aggr_logger.sup
 	   loggers/ipblacklistfilter_logger.sup \
 	   loggers/voip_fraud_logger.sup \
 	   loggers/vportscan_aggr_logger.sup \
