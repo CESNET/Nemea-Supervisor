@@ -46,7 +46,7 @@ reporters__DATA = reporters/amplification_reporter.sup \
 loggers__DATA = loggers/amplification_logger.sup \
 	   loggers/dnstunnel_logger.sup \
 	   loggers/hoststats_logger.sup \
-	   loggers/haddrscan_aggr_logger.sup
+	   loggers/haddrscan_aggr_logger.sup \
 	   loggers/ipblacklistfilter_logger.sup \
 	   loggers/voip_fraud_logger.sup \
 	   loggers/vportscan_aggr_logger.sup \
