@@ -1889,6 +1889,7 @@ int service_recv_data(int module_idx, uint32_t size, void **data)
          if (errno == EAGAIN  || errno == EWOULDBLOCK) {
             num_of_timeouts++;
             if (num_of_timeouts >= 3) {
+               VERBOSE(MODULE_EVENT,"%s [SERVICE] Timeout while receiving from module %d_%s !\n", get_formatted_time(), module_idx, running_modules[module_idx].module_name);
                return -1;
             } else {
                usleep(SERVICE_WAIT_BEFORE_TIMEOUT);
@@ -1913,6 +1914,7 @@ int service_send_data(int module_idx, uint32_t size, void **data)
          if (errno == EAGAIN  || errno == EWOULDBLOCK) {
             num_of_timeouts++;
             if (num_of_timeouts >= 3) {
+               VERBOSE(MODULE_EVENT,"%s [SERVICE] Timeout while sending to module %d_%s !\n", get_formatted_time(), module_idx, running_modules[module_idx].module_name);
                return -1;
             } else {
                usleep(SERVICE_WAIT_BEFORE_TIMEOUT);
