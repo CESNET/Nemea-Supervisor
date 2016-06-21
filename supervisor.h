@@ -114,11 +114,15 @@ struct str_lst_s {
 };
 
 typedef struct in_ifc_stats_s {
+   char ifc_type;
+   char *ifc_id;
    uint64_t recv_msg_cnt;
    uint64_t recv_buffer_cnt;
 } in_ifc_stats_t;
 
 typedef struct out_ifc_stats_s {
+   char ifc_type;
+   char *ifc_id;
    uint64_t sent_msg_cnt;
    uint64_t dropped_msg_cnt;
    uint64_t sent_buffer_cnt;

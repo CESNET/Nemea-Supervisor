@@ -765,7 +765,9 @@ char *make_formated_statistics(uint8_t stats_mask)
          if (running_modules[x].module_status == TRUE && running_modules[x].module_service_ifc_isconnected == TRUE) {
             if (running_modules[x].in_ifces_data != NULL) {
                for (y = 0; y < running_modules[x].total_in_ifces_cnt; y++) {
-                  ptr += sprintf(buffer + ptr, "%s,in,%d,%"PRIu64",%"PRIu64"\n", running_modules[x].module_name, y,
+                  ptr += sprintf(buffer + ptr, "%s,in,%c,%s,%"PRIu64",%"PRIu64"\n", running_modules[x].module_name,
+                                 running_modules[x].in_ifces_data[y].ifc_type,
+                                 (running_modules[x].in_ifces_data[y].ifc_id != NULL ? running_modules[x].in_ifces_data[y].ifc_id : "none"),
                                  running_modules[x].in_ifces_data[y].recv_msg_cnt,
                                  running_modules[x].in_ifces_data[y].recv_buffer_cnt);
                   if (strlen(buffer) >= (3 * size_of_buffer) / 5) {
@@ -777,7 +779,9 @@ char *make_formated_statistics(uint8_t stats_mask)
             }
             if (running_modules[x].out_ifces_data != NULL) {
                for (y = 0; y < running_modules[x].total_out_ifces_cnt; y++) {
-                  ptr += sprintf(buffer + ptr, "%s,out,%d,%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64"\n", running_modules[x].module_name, y,
+                  ptr += sprintf(buffer + ptr, "%s,out,%c,%s,%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64"\n", running_modules[x].module_name,
+                                 running_modules[x].out_ifces_data[y].ifc_type,
+                                 (running_modules[x].out_ifces_data[y].ifc_id != NULL ? running_modules[x].out_ifces_data[y].ifc_id : "none"),
                                  running_modules[x].out_ifces_data[y].sent_msg_cnt,
                                  running_modules[x].out_ifces_data[y].dropped_msg_cnt,
                                  running_modules[x].out_ifces_data[y].sent_buffer_cnt,
@@ -2106,7 +2110,7 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
 
 int service_decode_module_stats(char **data, int module_idx)
 {
-   int actual_ifc_index = 0;
+   int actual_ifc_index = 0, x = 0;
    size_t arr_idx = 0;
 
    json_error_t error;
@@ -2119,6 +2123,7 @@ int service_decode_module_stats(char **data, int module_idx)
    json_t *cnt = NULL;
 
    uint32_t ifc_cnt = 0;
+   const char *str = NULL;
 
    /***********************************/
 
@@ -2147,7 +2152,12 @@ int service_decode_module_stats(char **data, int module_idx)
    // Realloc memory for input ifces data if needed
    if (ifc_cnt != running_modules[module_idx].total_in_ifces_cnt) { // TODO do we need any limit check?
       VERBOSE(MODULE_EVENT, "%s [SERVICE] Number of \"%s\" input interfaces has changed (%u -> %u).\n", get_formatted_time(), running_modules[module_idx].module_name, running_modules[module_idx].total_in_ifces_cnt, ifc_cnt);
-      NULLP_TEST_AND_FREE(running_modules[module_idx].in_ifces_data);
+      if (running_modules[module_idx].in_ifces_data != NULL) {
+         for (x = 0; x < running_modules[module_idx].total_in_ifces_cnt; x++) {
+            NULLP_TEST_AND_FREE(running_modules[module_idx].in_ifces_data[x].ifc_id);
+         }
+         free(running_modules[module_idx].in_ifces_data);
+      }
       running_modules[module_idx].in_ifces_data = (in_ifc_stats_t *) calloc(ifc_cnt, sizeof(in_ifc_stats_t));
       if (running_modules[module_idx].in_ifces_data == NULL) {
          VERBOSE(MODULE_EVENT, "%s [SERVICE] Error: could not allocate memory for \"%s\" input ifces data (statistics about ifces).\n", get_formatted_time(), running_modules[module_idx].module_name);
@@ -2169,7 +2179,12 @@ int service_decode_module_stats(char **data, int module_idx)
    // Realloc memory for output ifces data if needed
    if (ifc_cnt != running_modules[module_idx].total_out_ifces_cnt) { // TODO do we need any limit check?
       VERBOSE(MODULE_EVENT, "%s [SERVICE] Number of \"%s\" output interfaces has changed (%u -> %u).\n", get_formatted_time(), running_modules[module_idx].module_name, running_modules[module_idx].total_out_ifces_cnt, ifc_cnt);
-      NULLP_TEST_AND_FREE(running_modules[module_idx].out_ifces_data);
+      if (running_modules[module_idx].out_ifces_data != NULL) {
+         for (x = 0; x < running_modules[module_idx].total_out_ifces_cnt; x++) {
+            NULLP_TEST_AND_FREE(running_modules[module_idx].out_ifces_data[x].ifc_id);
+         }
+         free(running_modules[module_idx].out_ifces_data);
+      }
       running_modules[module_idx].out_ifces_data = (out_ifc_stats_t *) calloc(ifc_cnt, sizeof(out_ifc_stats_t));
       if (running_modules[module_idx].out_ifces_data == NULL) {
          VERBOSE(MODULE_EVENT, "%s [SERVICE] Error: could not allocate memory for \"%s\" output ifces data (statistics about ifces).\n", get_formatted_time(), running_modules[module_idx].module_name);
@@ -2221,6 +2236,34 @@ int service_decode_module_stats(char **data, int module_idx)
             return -1;
          }
          running_modules[module_idx].in_ifces_data[actual_ifc_index].recv_buffer_cnt = json_integer_value(cnt);
+
+         cnt = json_object_get(in_ifc_cnts, "ifc_type");
+         if (cnt == NULL) {
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"ifc_type\" from an input interface json object (module %s).\n", get_formatted_time(), running_modules[module_idx].module_name);
+            json_decref(json_struct);
+            return -1;
+         }
+         running_modules[module_idx].in_ifces_data[actual_ifc_index].ifc_type = (char)(json_integer_value(cnt));
+
+         cnt = json_object_get(in_ifc_cnts, "ifc_id");
+         if (cnt == NULL) {
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"ifc_id\" from an input interface json object (module %s).\n", get_formatted_time(), running_modules[module_idx].module_name);
+            json_decref(json_struct);
+            return -1;
+         }
+         str = json_string_value(cnt);
+         if (str == NULL) {
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get string value of key \"ifc_id\" from an input interface json object (module %s).\n", get_formatted_time(), running_modules[module_idx].module_name);
+            json_decref(json_struct);
+            return -1;
+         }
+         if (running_modules[module_idx].in_ifces_data[actual_ifc_index].ifc_id == NULL) {
+            running_modules[module_idx].in_ifces_data[actual_ifc_index].ifc_id = strdup(str);
+         } else if (strcmp(running_modules[module_idx].in_ifces_data[actual_ifc_index].ifc_id, str) != 0) {
+            NULLP_TEST_AND_FREE(running_modules[module_idx].in_ifces_data[actual_ifc_index].ifc_id);
+            running_modules[module_idx].in_ifces_data[actual_ifc_index].ifc_id = strdup(str);
+         }
+
          actual_ifc_index++;
       }
    }
@@ -2283,6 +2326,34 @@ int service_decode_module_stats(char **data, int module_idx)
             return -1;
          }
          running_modules[module_idx].out_ifces_data[actual_ifc_index].autoflush_cnt = json_integer_value(cnt);
+
+         cnt = json_object_get(out_ifc_cnts, "ifc_type");
+         if (cnt == NULL) {
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"ifc_type\" from an output interface json object (module %s).\n", get_formatted_time(), running_modules[module_idx].module_name);
+            json_decref(json_struct);
+            return -1;
+         }
+         running_modules[module_idx].out_ifces_data[actual_ifc_index].ifc_type = (char)(json_integer_value(cnt));
+
+         cnt = json_object_get(out_ifc_cnts, "ifc_id");
+         if (cnt == NULL) {
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"ifc_id\" from an output interface json object (module %s).\n", get_formatted_time(), running_modules[module_idx].module_name);
+            json_decref(json_struct);
+            return -1;
+         }
+         str = json_string_value(cnt);
+         if (str == NULL) {
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get string value of key \"ifc_id\" from an output interface json object (module %s).\n", get_formatted_time(), running_modules[module_idx].module_name);
+            json_decref(json_struct);
+            return -1;
+         }
+         if (running_modules[module_idx].out_ifces_data[actual_ifc_index].ifc_id == NULL) {
+            running_modules[module_idx].out_ifces_data[actual_ifc_index].ifc_id = strdup(str);
+         } else if (strcmp(running_modules[module_idx].out_ifces_data[actual_ifc_index].ifc_id, str) != 0) {
+            NULLP_TEST_AND_FREE(running_modules[module_idx].out_ifces_data[actual_ifc_index].ifc_id);
+            running_modules[module_idx].out_ifces_data[actual_ifc_index].ifc_id = strdup(str);
+         }
+
          actual_ifc_index++;
       }
    }
@@ -3038,14 +3109,26 @@ void interactive_print_supervisor_info()
 
 void free_module_on_index(const int module_idx)
 {
+   int x = 0;
+
    free_module_interfaces_on_index(module_idx);
 
    NULLP_TEST_AND_FREE(running_modules[module_idx].config_ifces)
    NULLP_TEST_AND_FREE(running_modules[module_idx].module_path)
    NULLP_TEST_AND_FREE(running_modules[module_idx].module_name)
    NULLP_TEST_AND_FREE(running_modules[module_idx].module_params)
-   NULLP_TEST_AND_FREE(running_modules[module_idx].in_ifces_data)
-   NULLP_TEST_AND_FREE(running_modules[module_idx].out_ifces_data)
+   if (running_modules[module_idx].out_ifces_data != NULL) {
+      for (x = 0; x < running_modules[module_idx].total_out_ifces_cnt; x++) {
+         NULLP_TEST_AND_FREE(running_modules[module_idx].out_ifces_data[x].ifc_id);
+      }
+      free(running_modules[module_idx].out_ifces_data);
+   }
+   if (running_modules[module_idx].in_ifces_data != NULL) {
+      for (x = 0; x < running_modules[module_idx].total_in_ifces_cnt; x++) {
+         NULLP_TEST_AND_FREE(running_modules[module_idx].in_ifces_data[x].ifc_id);
+      }
+      free(running_modules[module_idx].in_ifces_data);
+   }
    running_modules[module_idx].total_in_ifces_cnt = 0;
    running_modules[module_idx].total_out_ifces_cnt = 0;
 }
