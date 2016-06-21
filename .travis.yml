@@ -26,7 +26,6 @@ addons:
       - make
       - automake
       - libxml2-devel
-      - libxml2
   coverity_scan:
     project:
       name: "CESNET/Nemea-Supervisor"
