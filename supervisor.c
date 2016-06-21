@@ -1967,6 +1967,7 @@ void service_connect_to_module(const int module)
    }
    running_modules[module].module_service_sd = sockfd;
    running_modules[module].module_service_ifc_isconnected = TRUE;
+   running_modules[module].module_service_ifc_conn_attempts = 0; // Successfully connected to the module, reset connection attempts counter
    VERBOSE(MODULE_EVENT,"%s [SERVICE] Connected to module %s.\n", get_formatted_time(), running_modules[module].module_name);
 }
 
