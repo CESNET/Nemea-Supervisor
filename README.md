@@ -292,7 +292,7 @@ List of **optional** parameters the program accepts:
 Note: All these parameters are optional so if the client is started without `-x` or `-r` (`supervisor_cli` or `supcli` from RPM installation) it enters configuration mode with [these functions](#supervisor-functions).
 
 
-#### Collecting statistics about modules
+### Collecting statistics about modules
 
   Supervisor client has a special mode that is enabled by `-x`. It allows user
   to get statistics about modules mentioned [here](#statistics-about-modules-interfaces).
@@ -307,53 +307,30 @@ Note: All these parameters are optional so if the client is started without `-x`
 <module unique name>,<information type>,<statistics/identification>
 ```
 
-For different "information type", the part "statistics/identification" differs.
+For different "information type", the part "statistics/identification" differs. There are 3 basic types of information:
 
-Example#1:
-```
-flowcounter1,in,0,1020229
-```
-The example means: number of received messages (1020229) of input interface (in)
-with interface number (0) of the module (flowcounter1).
-
-Example#2:
-```
-traffic_repeater2,out,0,510114,392,2
-```
-The example means: number of sent messages (510114), number of sent buffers (392),
-number of executed "buffer auto-flushes" (2) of output interface (out)
-with interface number (0) of the module (traffic_repeater2).
-
-Example#3:
-  flowcounter1,cpu,2,1
-The example means: usage of CPU (cpu) in percent in kernel mode (2) and user mode (1)
-of the module (flowcounter1).
+1. Module interfaces statistics: ```<module unique name>,<interface direction>,<interface type>,<interface ID>,<interface counters>```
+  * interface direction is either *in* or *out*
+  * interface type is one of *{t, u, f, g, b}* values corresponding to *{tcpip, unix-socket, file, generator, blackhole}*
+  * interface ID is *port number* (tcpip), *socket name* (unix-socket), *file name* (file) or *"none"* (generator, blackhole)
+  * interface counters are described [here](#statistics-about-modules-interfaces)
+2. Module CPU usage: ```<module unique name>,cpu,<kernel mode CPU usage>,<user mode CPU usage>```
+3. Module MEM usage: ```<module unique name>,mem,<size of virtual memory in MB>```
 
 
 #### Overall Example of the output with statistics:
 
 ```
-flowcounter1,in,0,1020229
-flowcounter2,in,0,507519
-flowcounter3,in,0,508817
-flowcounter4,in,0,508817
-traffic_repeater1,in,0,510115
-traffic_repeater1,out,0,510114,392,2
-traffic_repeater2,in,0,510115
-traffic_repeater2,out,0,510114,392,2
-nfreader1,out,0,515307,396,0
-nfreader2,out,0,533479,410,0
-traffic_merger3,in,0,510764
-traffic_merger3,in,1,510763
-traffic_merger3,out,0,1021527,786,2
-flowcounter1,cpu,2,1
-flowcounter2,cpu,1,0
-flowcounter3,cpu,1,0
-flowcounter4,cpu,2,0
-traffic_repeater1,cpu,2,1
-traffic_repeater2,cpu,2,1
-nfreader1,cpu,7,1
-nfreader2,cpu,5,0
-traffic_merger3,cpu,5,2
+dns_amplification,in,u,flow_data_source,92326719485,72985549
+dns_amplification,out,t,12001,789,0,540,7291604
+dnstunnel_detection,in,u,flow_data_source,3099282393,4126406
+dnstunnel_detection,out,t,12004,100591,0,8959,1128918
+dnstunnel_detection,out,u,dnstunnel_sdmoutput,224,0,0,1137913
+
+dns_amplification,cpu,0,4
+dnstunnel_detection,cpu,1,3
+
+dns_amplification,mem,193928
+dnstunnel_detection,mem,208600
 ```
 
