@@ -34,6 +34,16 @@
 # otherwise) arising in any way out of the use of this software, even
 # if advised of the possibility of such damage.
 
+
+if [ "$1" = "install" ] && [ "$2" != "" ]; then
+    exit 0
+elif [ "$1" = "uninstall" ]; then
+    /usr/sbin/userdel nemead
+    rm -f @prefix@/bin/supcli
+    exit 0
+fi
+
+
 prefix="@prefix@"
 exec_prefix="@exec_prefix@"
 includedir="@includedir@"
@@ -43,8 +53,14 @@ datadir="@datadir@"
 pkgdatadir="@pkgdatadir@"
 sysconfdir="@sysconfdir@"
 
-# creation of needed directories and permissions setup
+CONFIG_DIRS=(detectors loggers reporters data-sources others)
 
+# Create user and group "nemead"
+/usr/bin/getent group nemead >/dev/null || /usr/sbin/groupadd -r nemead
+/usr/bin/getent passwd nemead >/dev/null || /usr/sbin/useradd -r -d @sysconfdir@/ -s /sbin/nologin -g nemead nemead
+
+
+# creation of needed directories and permissions setup
 if ls *.mkdir >/dev/null 2>/dev/null; then
         directories=*.mkdir
 else
@@ -61,3 +77,41 @@ for f in $directories; do
                 fi
         done
 done
+
+
+# sysconfdir
+for dirname in ${CONFIG_DIRS[*]}; do
+    mkdir -p -m 775 @sysconfdir@/$dirname
+    chown nemead:nemead @sysconfdir@/$dirname
+done
+chown nemead:nemead @sysconfdir@/
+chmod 775 @sysconfdir@/
+chown nemead:nemead @sysconfdir@/supervisor_config_template.xml
+chmod 664 @sysconfdir@/supervisor_config_template.xml
+chown nemead:nemead @sysconfdir@/ipfixcol-startup.xml
+chmod 664 @sysconfdir@/ipfixcol-startup.xml
+
+
+# localstatedir
+mkdir -p -m 775 @localstatedir@/run/nemea-supervisor
+mkdir -p -m 775 @localstatedir@/log/nemea-supervisor
+chown nemead:nemead @localstatedir@/run/nemea-supervisor
+chown nemead:nemead @localstatedir@/log/nemea-supervisor
+
+
+# datadir
+chown -R nemead:nemead @datarootdir@/nemea-supervisor
+chmod 664 @datarootdir@/nemea-supervisor/*
+for dirname in ${CONFIG_DIRS[*]}; do
+    chmod 775 @datarootdir@/nemea-supervisor/$dirname
+done
+
+
+# Add and enable the nemea-supervisor service
+chkconfig --add nemea-supervisor 2> /dev/null || true
+systemctl daemon-reload
+systemctl enable nemea-supervisor.service 2> /dev/null || true
+
+
+# Create symlink "supcli"
+ln -fs @bindir@/supervisor_cli @prefix@/bin/supcli

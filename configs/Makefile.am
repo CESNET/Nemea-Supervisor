@@ -61,6 +61,5 @@ bin_SCRIPTS=prepare_default_config.sh set_default_nic.sh
 clean-local:
 	@rm -f ${BUILT_SOURCES}
 
-install-exec-hook:
-	bash ./prepare_default_config.sh install 2> /dev/null || echo "Creation of /data failed. Probably a permission issue."
-
+install-data-hook:
+	bash ./prepare_default_config.sh install $(DESTDIR) 2> /dev/null || echo "Creation of /data failed. Probably a permission issue."
