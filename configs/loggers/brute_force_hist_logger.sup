@@ -1,0 +1,13 @@
+<module>
+<name>brute_force_hist_logger</name>
+<enabled>true</enabled>
+<path>/usr/bin/nemea/logger</path>
+<params>-t -T -a /data/brute_force_hist_detector/detected.log</params>
+<trapinterfaces>
+<interface>
+  <type>UNIXSOCKET</type>
+  <direction>IN</direction>
+  <params>bfhd_data_out</params>
+</interface>
+</trapinterfaces>
+</module>
