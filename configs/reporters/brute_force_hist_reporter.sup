@@ -1,5 +1,5 @@
 <module>
-<name>bruteforce2idea</name>
+<name>bruteforcehist2idea</name>
 <enabled>false</enabled>
 <path>python</path>
 <params>/usr/bin/nemea/bruteforce2idea.py --name=cz.cesnet.nemea.bruteforce_hist_detector --mongodb=nemeadb --mongodb-coll=alerts_new</params>
