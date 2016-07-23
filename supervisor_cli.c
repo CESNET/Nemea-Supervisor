@@ -128,6 +128,7 @@ int connect_to_supervisor(char *socket_path)
 
 int main(int argc, char **argv)
 {
+   uint64_t timeouts = 0;
    client_internals = (client_internals_t *) calloc (1, sizeof(client_internals_t));
    if (client_internals == NULL) {
       exit(EXIT_FAILURE);
@@ -136,15 +137,17 @@ int main(int argc, char **argv)
    int x = 0, ret_val = 0;
    char *buffer = NULL;
    char *socket_path = NULL;
-   int just_stats_flag = FALSE;
+   int modules_stats_flag = FALSE;
+   int modules_info_flag = FALSE;
    int reload_command_flag = FALSE;
+   int flag_cnt = 0;
 
    FILE *tmp_file = NULL;
    char *file_path = NULL;
    int file_path_len = 0;
 
    int opt;
-   while ((opt = getopt(argc, argv, "rhs:x")) != -1) {
+   while ((opt = getopt(argc, argv, "rhs:xi")) != -1) {
       switch (opt) {
       case 'h':
          printf("Usage:  supervisor_cli  [OPTIONAL]...\n"
@@ -152,7 +155,8 @@ int main(int argc, char **argv)
                   "      [-h]   Prints this help.\n"
                   "      [-s <path>]   Path of the unix socket which is used for supervisor daemon and client communication.\n"
                   "      [-x]   Receives and prints statistics about modules and terminates.\n"
-                  "      [-r]   Sends a command to supervisor to reload the configuration.\n");
+                  "      [-r]   Sends a command to supervisor to reload the configuration.\n"
+                  "      [-i]   Receives and prints information about modules in JSON and terminates.\n");
          exit(EXIT_SUCCESS);
 
       case 's':
@@ -160,11 +164,18 @@ int main(int argc, char **argv)
          break;
 
       case 'x':
-         just_stats_flag = TRUE;
+         modules_stats_flag = TRUE;
+         flag_cnt++;
+         break;
+
+      case 'i':
+         modules_info_flag = TRUE;
+         flag_cnt++;
          break;
 
       case 'r':
          reload_command_flag = TRUE;
+         flag_cnt++;
          break;
 
       default:
@@ -173,8 +184,8 @@ int main(int argc, char **argv)
       }
    }
 
-   if (reload_command_flag && just_stats_flag) {
-      fprintf(stderr, "[ERROR] Cannot run client with \"-x\" and with \"-r\" arguments at the same time!\n");
+   if (flag_cnt > 1) {
+      fprintf(stderr, "[ERROR] Cannot run client with more than one parameter {x, r, i} at the same time!\n");
       free_client_internals_variables();
       exit(EXIT_FAILURE);
    }
@@ -216,9 +227,11 @@ int main(int argc, char **argv)
    fd_set read_fds;
    struct timeval tv;
 
-   if (just_stats_flag) {
+   if (modules_stats_flag == TRUE) {
       fprintf(client_internals->supervisor_output_stream,"%d\n", CLIENT_STATS_MODE_CODE);
-   } else if (reload_command_flag) {
+   } else if (modules_info_flag == TRUE) {
+      fprintf(client_internals->supervisor_output_stream,"%d\n", CLIENT_INFO_MODE_CODE);
+   } else if (reload_command_flag == TRUE) {
       fprintf(client_internals->supervisor_output_stream,"%d\n", CLIENT_RELOAD_MODE_CODE);
       fflush(client_internals->supervisor_output_stream);
       free_client_internals_variables();
@@ -267,7 +280,7 @@ int main(int argc, char **argv)
             usleep(200000);
             ioctl(client_internals->supervisor_input_stream_fd, FIONREAD, &bytes_to_read);
             if (bytes_to_read == 0 || bytes_to_read == -1) {
-               if (just_stats_flag != TRUE) {
+               if (modules_stats_flag != TRUE && modules_info_flag != TRUE) {
                   fprintf(stderr, FORMAT_WARNING "[WARNING] Supervisor has disconnected, I'm done!" FORMAT_RESET "\n");
                   fflush(stderr);
                }
@@ -281,6 +294,7 @@ int main(int argc, char **argv)
             }
          }
       } else {
+         timeouts++;
          // Check whether the tmp_file is available (it should contain path to the log file which has to be shown)
          if (access(SUP_CLI_TMP_FILE, R_OK) == 0) {
             tmp_file = fopen(SUP_CLI_TMP_FILE, "r");
@@ -298,7 +312,7 @@ int main(int argc, char **argv)
          }
       }
 
-      if (just_stats_flag) {
+      if ((modules_stats_flag == TRUE || modules_info_flag == TRUE) && timeouts > 3) {
          free_client_internals_variables();
          exit(EXIT_SUCCESS);
       }
