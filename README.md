@@ -19,6 +19,7 @@
 - [Supervisor client](#supervisor-client)
   - [Clients parameters](#clients-parameters)
   - [Collecting statistics about modules](#collecting-statistics-about-modules)
+  - [Collecting information about modules](#collecting-information-about-modules)
 
 
 
@@ -281,15 +282,16 @@ Signal handler catches the following signals:
 
 ## Supervisor client
 
-#### Clients parameters
+### Clients parameters
 
 List of **optional** parameters the program accepts:
 - `-h`   Prints program help.
 - `-s SOCKET`   Path of the unix socket which is used for supervisor daemon and client communication.
 - `-x`   Receives and prints statistics about modules and terminates.
 - `-r`   Sends a command to supervisor to reload the configuration.
+- `-i`   Receives and prints information about modules in JSON and terminates.
 
-Note: All these parameters are optional so if the client is started without `-x` or `-r` (`supervisor_cli` or `supcli` from RPM installation) it enters configuration mode with [these functions](#supervisor-functions).
+Note: All these parameters are optional so if the client is started without `-x`, `-r` or `-i` (`supervisor_cli` or `supcli` from RPM installation) it enters configuration mode with [these functions](#supervisor-functions).
 
 
 ### Collecting statistics about modules
@@ -318,7 +320,7 @@ For different "information type", the part "statistics/identification" differs. 
 3. Module MEM usage: ```<module unique name>,mem,<size of virtual memory in MB>```
 
 
-#### Overall Example of the output with statistics:
+#### Overall example of the output with statistics:
 
 ```
 dns_amplification,in,u,flow_data_source,92326719485,72985549
@@ -334,3 +336,51 @@ dns_amplification,mem,193928
 dnstunnel_detection,mem,208600
 ```
 
+
+### Collecting information about modules
+
+Another special mode of the supervisor client is enabled by `-i`. It allows user to get basic information about modules in JSON format:
+
+- module name (name of the running process)
+- module parameters
+- binary path
+- module status (running or stopped)
+- information about input and output interfaces
+
+In `-i` mode, client connects to the supervisor, receives and prints information, disconnects and terminates.
+
+
+#### Example of the output with modules information:
+
+```json
+{
+   "modules-number":2,
+   "modules":[
+      {
+         "module-name":"dns_amplification",
+         "status":"running",
+         "module-params":"-d /data/dns_amplification_detection/",
+         "bin-path":"/usr/bin/nemea/amplification_detection",
+         "inputs":[
+            "u:flow_data_source"
+         ],
+         "outputs":[
+            "t:12001"
+         ]
+      },
+      {
+         "module-name":"dnstunnel_detection",
+         "status":"running",
+         "module-params":"none",
+         "bin-path":"/usr/bin/nemea/dnstunnel_detection",
+         "inputs":[
+            "u:flow_data_source"
+         ],
+         "outputs":[
+            "t:12004",
+            "u:dnstunnel_sdmoutput"
+         ]
+      }
+   ]
+}
+```
