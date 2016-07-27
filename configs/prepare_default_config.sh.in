@@ -72,7 +72,7 @@ for f in $directories; do
                 mkdir -p "$d"
                 ## This is not secure enough! It grants full access to the directory:
                 #chmod 777 "$d"
-                if getent passwd nemead > /dev/null && getent group nemead; then
+                if getent passwd nemead > /dev/null && getent group nemead >/dev/null; then
                         chown nemead:nemead "$d"
                 fi
         done
