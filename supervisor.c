@@ -1800,14 +1800,20 @@ int service_check_modules_status()
    for (x=0; x<loaded_modules_cnt; x++) {
       if (running_modules[x].module_pid > 0) {
          if (kill(running_modules[x].module_pid, 0) == -1) {
-            if (errno == EINVAL) {
-               VERBOSE(MODULE_EVENT,"%s [STOP] kill -0: ernno EINVAL\n", get_formatted_time());
-            }
-            if (errno == EPERM) {
-               VERBOSE(MODULE_EVENT,"%s [STOP] kill -0: errno EPERM\n", get_formatted_time());
-            }
             if (errno == ESRCH) {
-               VERBOSE(MODULE_EVENT,"%s [STOP] kill -0: module %s (PID: %d) is not running !\n", get_formatted_time(), running_modules[x].module_name, running_modules[x].module_pid);
+               VERBOSE(MODULE_EVENT,"%s [STOP] kill -0: module \"%s\" (PID: %d) is not running!\n", get_formatted_time(), running_modules[x].module_name, running_modules[x].module_pid);
+            } else if (errno == EPERM) {
+               if (running_modules[x].module_root_perm_needed == FALSE) {
+                  VERBOSE(MODULE_EVENT,"%s [WARNING]] kill -0: Does not have permissions to send signals to module \"%s\"\n", get_formatted_time(), running_modules[x].module_name);
+                  running_modules[x].module_root_perm_needed = TRUE;
+               }
+               running_modules[x].module_status = TRUE;
+               /* Check whether the service thread keep running or not.
+                  In case it does not, do not count modules which cant be stopped by supervisor due to permissions. */
+               if (service_thread_continue == TRUE) {
+                  some_module_running++;
+               }
+               continue;
             }
             if (running_modules[x].module_service_sd != -1) {
                   close(running_modules[x].module_service_sd);
@@ -1818,6 +1824,7 @@ int service_check_modules_status()
             running_modules[x].module_pid = 0;
          } else {
             running_modules[x].module_status = TRUE;
+            running_modules[x].module_root_perm_needed = FALSE;
             some_module_running++;
          }
       }
@@ -1852,7 +1859,7 @@ void service_stop_modules_sigint()
 {
    unsigned int x;
    for (x=0; x<loaded_modules_cnt; x++) {
-      if (running_modules[x].module_status == TRUE
+      if (running_modules[x].module_status == TRUE && running_modules[x].module_root_perm_needed == FALSE
           && ((running_modules[x].modules_profile != NULL && running_modules[x].modules_profile->profile_enabled == FALSE) || running_modules[x].module_enabled == FALSE)
           && running_modules[x].sent_sigint == FALSE) {
          #ifdef nemea_plugin
@@ -2801,9 +2808,13 @@ void interactive_restart_module()
          } else if (running_modules[mod_to_dis].module_enabled == FALSE || running_modules[mod_to_dis].module_status == FALSE) {
             // Selected module is disabled or is not running-> skip it
          } else {
-            running_modules[mod_to_dis].module_served_by_service_thread = FALSE;
-            running_modules[mod_to_dis].module_enabled = FALSE;
-            running_modules[mod_to_dis].init_module = TRUE;
+            if (running_modules[mod_to_dis].module_root_perm_needed == TRUE) {
+               VERBOSE(N_STDOUT, "%s [WARNING] Do not have permissions to stop module \"%s\".\n", get_formatted_time(), running_modules[mod_to_dis].module_name);
+            } else {
+               running_modules[mod_to_dis].module_served_by_service_thread = FALSE;
+               running_modules[mod_to_dis].module_enabled = FALSE;
+               running_modules[mod_to_dis].init_module = TRUE;
+            }
          }
       }
       free(modules_to_disable);
@@ -2919,8 +2930,12 @@ user_input:
          } else if (running_modules[mod_to_dis].module_enabled == FALSE) {
             // Selected module is already disabled -> skip it
          } else {
-            running_modules[mod_to_dis].module_enabled = FALSE;
-            VERBOSE(MODULE_EVENT, "%s [ENABLED] Module %s set to disabled.\n", get_formatted_time(), running_modules[mod_to_dis].module_name);
+            if (running_modules[mod_to_dis].module_root_perm_needed == TRUE) {
+               VERBOSE(N_STDOUT, "%s [WARNING] Do not have permissions to stop module \"%s\".\n", get_formatted_time(), running_modules[mod_to_dis].module_name);
+            } else {
+               running_modules[mod_to_dis].module_enabled = FALSE;
+               VERBOSE(MODULE_EVENT, "%s [ENABLED] Module %s set to disabled.\n", get_formatted_time(), running_modules[mod_to_dis].module_name);
+            }
          }
       }
       free(modules_to_disable);
@@ -5158,6 +5173,7 @@ parse_default_config_file:
       running_modules[x].modules_profile = NULL;
       running_modules[x].module_max_restarts_per_minute = -1;
       running_modules[x].module_is_my_child = TRUE;
+      running_modules[x].module_root_perm_needed = FALSE;
       running_modules[x].init_module = FALSE;
       running_modules[x].remove_module = FALSE;
    }

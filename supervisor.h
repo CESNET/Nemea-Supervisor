@@ -171,6 +171,7 @@ typedef struct running_module_s {
    uint8_t module_checked_by_reload; ///< Variable used during reload_configuration, TRUE if a new module is added or already loaded module is checked (used for excluding modules with non-unique name)
    modules_profile_t *modules_profile;   /*** RELOAD ***/
    int module_is_my_child;   /*** RELOAD ***/
+   uint8_t module_root_perm_needed;
    int remove_module;   /*** RELOAD ***/
    int init_module;   /*** RELOAD ***/
 
