@@ -1181,6 +1181,8 @@ int daemon_init_process()
       VERBOSE(N_STDOUT,"%s [ERROR] Fork: could not initialize daemon process!\n", get_formatted_time());
       return -1;
    } else if (process_id > 0) {
+      NULLP_TEST_AND_FREE(config_files_path)
+      NULLP_TEST_AND_FREE(gener_config_file)
       NULLP_TEST_AND_FREE(templ_config_file)
       NULLP_TEST_AND_FREE(logs_path)
       free_output_file_strings_and_streams();
