@@ -1,3 +1,32 @@
+2016-07-28 supervisor-1.4.3
+	* new feature: supervisor client now accepts parameter "-i" for obtaining information about modules in JSON format
+	* Update of JSON data received via service ifc (new "ifc_id" and "ifc_type" items, added also to "supcli -x" output)
+	* added configs for new modules (miner_detector, brute_force_detectors, haddrscan_detector)
+	* bugfixes
+	* update of README
+
+2016-07-27 (Marek Svepes): rpm: removed stdout of commands during rpm installation
+2016-07-27 (Marek Svepes): fixed few memory leaks
+2016-07-27 (Marek Svepes): bugfix: modules started by another user than supervisor are no longer started again
+2016-07-23 (Marek Svepes): doc: README: update of the supervisor client section - added info about -i mode
+2016-07-23 (Marek Svepes): new feature: supervisor client now accepts parameter "-i" for obtaining information about modules in JSON format
+2016-07-14 (Erik Sabik): Supervisor/configs: Changed name of brute_force_hist_detector reporter to differentiate from brute_force_detector reporter
+2016-07-14 (Erik Sabik): Supervisor/configs: Fixed directory name for brute_force_hist_detector
+2016-07-14 (Erik Sabik): Supervisor/configs: Added .sup and .mkdir files for brute_force_detector
+2016-07-14 (Erik Sabik): Supervisor/configs: Added .sup and .mkdir files for brute_force_hist_detector
+2016-07-13 (Erik Sabik): Supervisor-configs: Added .sup and .mkdir files for miner_detector
+2016-07-12 (Marek Svepes): configs&installation: unified result of the installation from RPM and from source codes
+2016-06-21 (Marek Svepes): Fix2 of the travis build
+2016-06-21 (Marek Svepes): Fix in travis build
+2016-06-21 (Marek Svepes): bugfix: connecting to service interface was blocked after reaching connection attempt limit despite successful attempt
+2016-06-21 (Marek Svepes): Added info messages about timeout during sending or receiving to/from service interface.
+2016-06-21 (Marek Svepes): doc: Update of README - supervisor client and "collecting statistics about modules" (new output format)
+2016-06-21 (Marek Svepes): Update of JSON (received via service ifc) decode function (new "ifc_id" and "ifc_type" items)
+2016-06-07 (Marek Svepes): configs: fix in Makefile
+2016-06-07 (Marek Svepes): configs: removed unused files and added haddrscan_detector files to Makefile
+2016-06-07 (Marek Svepes): configs: adding new modules haddrscan_detector config
+
+
 2016-06-03 supervisor-1.4.2
         * statistics from service interface no longer depend on number of interfaces
         * updated README
