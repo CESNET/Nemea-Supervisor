@@ -1,3 +1,9 @@
+2016-08-05 supervisor-1.4.4
+	* changed way of installing service file
+
+2016-08-05 (Tomas Cejka): install: updated var names and skip script exec after install
+2016-08-05 (Tomas Cejka): rpm: always install service file
+
 2016-07-28 supervisor-1.4.3
 	* new feature: supervisor client now accepts parameter "-i" for obtaining information about modules in JSON format
 	* Update of JSON data received via service ifc (new "ifc_id" and "ifc_type" items, added also to "supcli -x" output)
