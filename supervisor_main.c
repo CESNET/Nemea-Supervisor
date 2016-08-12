@@ -61,19 +61,22 @@ void interactive_mode()
          interactive_restart_module();
          break;
       case 4:
-         interactive_show_running_modules_status();
+         interactive_print_brief_status();
          break;
       case 5:
-         interactive_show_available_modules();
+         interactive_print_detailed_status();
          break;
       case 6:
-         reload_configuration(RELOAD_DEFAULT_CONFIG_FILE, NULL);
+         interactive_print_loaded_configuration();
          break;
       case 7:
-         interactive_print_supervisor_info();
+         reload_configuration(RELOAD_DEFAULT_CONFIG_FILE, NULL);
          break;
       case 8:
-         interactive_show_logs();
+         interactive_print_supervisor_info();
+         break;
+      case 9:
+         interactive_browse_log_files();
          break;
       default:
          VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] Wrong input.\n" FORMAT_RESET);

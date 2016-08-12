@@ -475,7 +475,7 @@ void supervisor_termination(const uint8_t stop_all_modules, const uint8_t genera
  * Prints out loaded modules grouped by their profile (if they have any) and all information about them
  * (starting with its name, status, parameters and interfaces - including interfaces parameters).
  */
-void interactive_show_available_modules();
+void interactive_print_loaded_configuration();
 
 /**
  * Prints out menu with options (start/stop module, start/stop configuration, show status etc.)
@@ -517,7 +517,7 @@ void interactive_set_disabled();
  * Prints out loaded modules grouped by their profile (if they have any)
  * and their status (running or stopped) and their PID (process id).
  */
-void interactive_show_running_modules_status();
+void interactive_print_brief_status();
 
 /**
  * Prints out important information about current program
