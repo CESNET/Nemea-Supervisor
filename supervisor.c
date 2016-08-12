@@ -2371,6 +2371,14 @@ int service_decode_module_stats(char **data, int module_idx)
          }
          running_modules[module_idx].in_ifces_data[actual_ifc_index].ifc_type = (char)(json_integer_value(cnt));
 
+         cnt = json_object_get(in_ifc_cnts, "ifc_state");
+         if (cnt == NULL) {
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"ifc_state\" from an input interface json object (module %s).\n", get_formatted_time(), running_modules[module_idx].module_name);
+            json_decref(json_struct);
+            return -1;
+         }
+         running_modules[module_idx].in_ifces_data[actual_ifc_index].ifc_state = (uint8_t)(json_integer_value(cnt));
+
          cnt = json_object_get(in_ifc_cnts, "ifc_id");
          if (cnt == NULL) {
             VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"ifc_id\" from an input interface json object (module %s).\n", get_formatted_time(), running_modules[module_idx].module_name);
@@ -2452,6 +2460,14 @@ int service_decode_module_stats(char **data, int module_idx)
             return -1;
          }
          running_modules[module_idx].out_ifces_data[actual_ifc_index].autoflush_cnt = json_integer_value(cnt);
+
+         cnt = json_object_get(out_ifc_cnts, "num_clients");
+         if (cnt == NULL) {
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"num_clients\" from an output interface json object (module %s).\n", get_formatted_time(), running_modules[module_idx].module_name);
+            json_decref(json_struct);
+            return -1;
+         }
+         running_modules[module_idx].out_ifces_data[actual_ifc_index].num_clients = (int32_t)(json_integer_value(cnt));
 
          cnt = json_object_get(out_ifc_cnts, "ifc_type");
          if (cnt == NULL) {

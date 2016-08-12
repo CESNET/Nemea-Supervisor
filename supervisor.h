@@ -114,6 +114,7 @@ struct str_lst_s {
 };
 
 typedef struct in_ifc_stats_s {
+   uint8_t ifc_state;
    char ifc_type;
    char *ifc_id;
    uint64_t recv_msg_cnt;
@@ -121,6 +122,7 @@ typedef struct in_ifc_stats_s {
 } in_ifc_stats_t;
 
 typedef struct out_ifc_stats_s {
+   int32_t num_clients;
    char ifc_type;
    char *ifc_id;
    uint64_t sent_msg_cnt;
