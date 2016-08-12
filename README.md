@@ -190,11 +190,12 @@ User can do various operations with modules via Supervisor. After launch (either
 - `1. ENABLE MODULE OR PROFILE` - prints a list of disabled modules and profiles, the selected ones are enabled
 - `2. DISABLE MODULE OR PROFILE` - prints a list of enabled modules and profiles, the selected ones are disabled
 - `3. RESTART RUNNING MODULE` - prints a list of running modules, the selected ones are restarted
-- `4. CONFIGURATION STATUS` - prints a table of the loaded configuration and shows enabled, status and PID of all modules
-- `5. AVAILABLE MODULES` - prints the current loaded configuration in detail (same as option 4 plus all information from the configuration file about every module)
-- `6. RELOAD CONFIGURATION` - performs reload of the configuration (see [Reload configuration](#reload-configuration))
-- `7. PRINT SUPERVISOR INFO` - basic information about running supervisor - package and git version, used paths etc.
-- `8. SHOW LOGS` - prints a list of all log files, selected log file is opened with pager (see [Log files](#log-files))
+- `4. PRINT BRIEF STATUS` - prints a table of the loaded modules divided into profiles and shows enabled, status and PID of all modules
+- `5. PRINT DETAILED STATUS` - prints the same information as the option 4 plus status of all modules interfaces including [service interface](https://github.com/CESNET/Nemea-Framework/blob/master/libtrap/service-ifc.md) (whether it is connected or number of connected clients)
+- `6. PRINT LOADED CONFIGURATION` - prints all information from the configuration file
+- `7. RELOAD CONFIGURATION` - performs reload of the configuration (see [Reload configuration](#reload-configuration))
+- `8. PRINT SUPERVISOR INFO` - basic information about running supervisor - package and git version, used paths etc.
+- `9. BROWSE LOG FILES` - prints a list of all log files, selected log file is opened with pager (see [Log files](#log-files))
 - `0. STOP SUPERVISOR` - stops the supervisor **but not the running modules**
 
 If the supervisor is running as a system daemon, last option "STOP SUPERVISOR" is replaced with
