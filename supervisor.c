@@ -678,8 +678,6 @@ void init_module_variables(int module_number)
    running_modules[module_number].module_service_sd = -1;
    running_modules[module_number].module_service_ifc_isconnected = FALSE;
    running_modules[module_number].module_service_ifc_conn_attempts = 0;
-   running_modules[module_number].module_service_ifc_conn_fails = 0;
-   running_modules[module_number].module_service_ifc_conn_block = FALSE;
    running_modules[module_number].module_service_ifc_timer = 0;
 }
 
@@ -1790,12 +1788,7 @@ void service_disconnect_from_module(const int module_idx)
       }
       running_modules[module_idx].module_service_ifc_isconnected = FALSE;
    }
-
-   running_modules[module_idx].module_service_ifc_conn_fails++;
-
-   if (running_modules[module_idx].module_service_ifc_conn_fails == 1) {
-      running_modules[module_idx].module_service_ifc_timer = 0;
-   }
+   running_modules[module_idx].module_service_ifc_timer = 0;
 }
 
 // Returns a number of running modules
@@ -1967,37 +1960,24 @@ void service_check_connections()
 {
    uint x = 0;
 
-    for (x = 0; x < loaded_modules_cnt; x++) {
-         // If supervisor couldn't connect to service interface or too many errors during sending/receiving occurred, connecting is blocked
-         if (running_modules[x].module_service_ifc_conn_block == TRUE) {
-            continue;
-         }
-
-         // Check whether the module has service interface and is running
-         if (running_modules[x].module_status == TRUE) {
-
+   for (x = 0; x < loaded_modules_cnt; x++) {
+      // Check connection between module and supervisor
+      if (running_modules[x].module_status == TRUE && running_modules[x].module_service_ifc_isconnected == FALSE) {
+         if (running_modules[x].module_service_ifc_conn_attempts < SERVICE_IFC_CONN_ATTEMPTS_LIMIT) {
+            // Check module socket descriptor, closed socket has descriptor set to -1
+            if (running_modules[x].module_service_sd != -1) {
+               close(running_modules[x].module_service_sd);
+               running_modules[x].module_service_sd = -1;
+            }
+            service_connect_to_module(x);
+         } else {
             if (++running_modules[x].module_service_ifc_timer >= NUM_SERVICE_IFC_PERIODS) {
                running_modules[x].module_service_ifc_timer = 0;
-               running_modules[x].module_service_ifc_conn_fails = 0;
-            }
-
-            if (running_modules[x].module_service_ifc_conn_fails >= MAX_SERVICE_IFC_CONN_FAILS) {
-               VERBOSE(MODULE_EVENT, "%s [WARNING] Module %s reached %d errors during connections -> it is blocked.\n", get_formatted_time(), running_modules[x].module_name, MAX_SERVICE_IFC_CONN_FAILS);
-               running_modules[x].module_service_ifc_conn_block = TRUE;
-               continue;
-            }
-
-            // Check connection between module and supervisor, if they are not connected and number of attempts <= 3, try to connect
-            if (running_modules[x].module_service_ifc_isconnected == FALSE) {
-               // Check module socket descriptor, closed socket has descriptor set to -1
-               if (running_modules[x].module_service_sd != -1) {
-                  close(running_modules[x].module_service_sd);
-                  running_modules[x].module_service_sd = -1;
-               }
-               service_connect_to_module(x);
+               running_modules[x].module_service_ifc_conn_attempts = 0;
             }
          }
       }
+   }
 }
 
 
@@ -2066,15 +2046,8 @@ void service_connect_to_module(const int module)
    // Increase counter of connection attempts to the service interface
    running_modules[module].module_service_ifc_conn_attempts++;
 
-   if (running_modules[module].module_service_ifc_conn_attempts > SERVICE_IFC_CONN_ATTEMPTS_LIMIT) {
-      VERBOSE(MODULE_EVENT,"%s [WARNING] Connection attempts to service interface of module %s exceeded %d, enough trying!\n", get_formatted_time(), running_modules[module].module_name, SERVICE_IFC_CONN_ATTEMPTS_LIMIT);
-      running_modules[module].module_service_ifc_conn_block = TRUE;
-      return;
-   }
-
    memset(service_sock_spec, 0, 14 * sizeof(char));
    sprintf(service_sock_spec, "service_%d", running_modules[module].module_pid);
-   VERBOSE(MODULE_EVENT,"%s [SERVICE] Connecting to module %s on port %s...\n", get_formatted_time(), running_modules[module].module_name, service_sock_spec);
 
    memset(&addr, 0, sizeof(addr));
 

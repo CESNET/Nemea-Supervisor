@@ -198,8 +198,6 @@ typedef struct running_module_s {
    int module_service_sd; ///< Socket descriptor of the service connection.   /*** INIT ***/
    int module_service_ifc_isconnected; ///< if supervisor is connected to module ~ TRUE, else ~ FALSE   /*** INIT ***/
    int module_service_ifc_conn_attempts; // Count of supervisor's connection attempts to module's service interface    /*** INIT ***/
-   int module_service_ifc_conn_fails;   /*** INIT ***/
-   int module_service_ifc_conn_block;   /*** INIT ***/
    int module_service_ifc_timer;   /*** INIT ***/
 } running_module_t;
 
