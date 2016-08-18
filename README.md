@@ -343,10 +343,13 @@ dnstunnel_detection,mem,208600
 Another special mode of the supervisor client is enabled by `-i`. It allows user to get basic information about modules in JSON format:
 
 - module name (name of the running process)
+- module index (in supervisor´s configuration)
 - module parameters
 - binary path
 - module status (running or stopped)
 - information about input and output interfaces
+  - input ifc info format: `ifc_type:ifc_id:is_conn` where *is connected* is one char *0* or *1*
+  - output ifc info format: `ifc_type:ifc_id:num_clients` where *number of clients* is int32
 
 In `-i` mode, client connects to the supervisor, receives and prints information, disconnects and terminates.
 
@@ -358,28 +361,30 @@ In `-i` mode, client connects to the supervisor, receives and prints information
    "modules-number":2,
    "modules":[
       {
+         "module-idx":2,
          "module-name":"dns_amplification",
          "status":"running",
          "module-params":"-d /data/dns_amplification_detection/",
          "bin-path":"/usr/bin/nemea/amplification_detection",
          "inputs":[
-            "u:flow_data_source"
+            "u:flow_data_source:0"
          ],
          "outputs":[
-            "t:12001"
+            "t:12001:1"
          ]
       },
       {
+         "module-idx":3,
          "module-name":"dnstunnel_detection",
          "status":"running",
          "module-params":"none",
          "bin-path":"/usr/bin/nemea/dnstunnel_detection",
          "inputs":[
-            "u:flow_data_source"
+            "u:flow_data_source:0"
          ],
          "outputs":[
-            "t:12004",
-            "u:dnstunnel_sdmoutput"
+            "t:12004:1",
+            "u:dnstunnel_sdmoutput:0"
          ]
       }
    ]
