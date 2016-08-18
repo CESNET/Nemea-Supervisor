@@ -772,7 +772,8 @@ char *make_json_modules_info()
    for (x = 0; x < loaded_modules_cnt; x++) {
       // Array of input ifces
       for (y = 0; y < running_modules[x].total_in_ifces_cnt; y++) {
-         needed_len = strlen(running_modules[x].in_ifces_data[y].ifc_id) + 3 * sizeof(char); // +3 because 1 char for ifc type, 1 for ':' and 1 for terminating the string (ifc info format  type:id)
+         // +5 because 1 char for ifc type, 1 char for ifc is_conn, 2 for ':' and 1 for terminating the string (ifc info format "type:id:is_conn")
+         needed_len = strlen(running_modules[x].in_ifces_data[y].ifc_id) + 5 * sizeof(char);
          if (needed_len > ifc_info_str_len) {
             // realloc ifc_info_str
             ifc_info_str = (char *) realloc(ifc_info_str, needed_len * sizeof(char));
@@ -780,7 +781,9 @@ char *make_json_modules_info()
             memset(ifc_info_str, 0, needed_len * sizeof(char));
          }
 
-         sprintf(ifc_info_str, "%c:%s", running_modules[x].in_ifces_data[y].ifc_type, running_modules[x].in_ifces_data[y].ifc_id);
+         sprintf(ifc_info_str, "%c:%s:%c", running_modules[x].in_ifces_data[y].ifc_type,
+                                           running_modules[x].in_ifces_data[y].ifc_id,
+                                           (running_modules[x].in_ifces_data[y].ifc_state == TRUE ? '1' : '0'));
 
          if (json_array_append_new(in_ifc_arr[x], json_string(ifc_info_str)) == -1) {
             VERBOSE(SUP_LOG, "[ERROR] Could not append module input ifc info to JSON array (module \"%s\").\n", running_modules[x].module_name);
@@ -789,7 +792,8 @@ char *make_json_modules_info()
       }
       // Array of output ifces
       for (y = 0; y < running_modules[x].total_out_ifces_cnt; y++) {
-         needed_len = strlen(running_modules[x].out_ifces_data[y].ifc_id) + 3 * sizeof(char); // +3 because 1 char for ifc type, 1 for ':' and 1 for terminating the string (ifc info format  type:id)
+         // +14 because 1 char for ifc type, 10 for maxint32, 2 for ':' and 1 for terminating the string (ifc info format "type:id:num_clients")
+         needed_len = strlen(running_modules[x].out_ifces_data[y].ifc_id) + 14 * sizeof(char);
          if (needed_len > ifc_info_str_len) {
             // realloc ifc_info_str
             ifc_info_str = (char *) realloc(ifc_info_str, needed_len * sizeof(char));
@@ -797,7 +801,9 @@ char *make_json_modules_info()
             memset(ifc_info_str, 0, needed_len * sizeof(char));
          }
 
-         sprintf(ifc_info_str, "%c:%s", running_modules[x].out_ifces_data[y].ifc_type, running_modules[x].out_ifces_data[y].ifc_id);
+         sprintf(ifc_info_str, "%c:%s:%" PRIu32, running_modules[x].out_ifces_data[y].ifc_type,
+                                                 running_modules[x].out_ifces_data[y].ifc_id,
+                                                 running_modules[x].out_ifces_data[y].num_clients);
 
          if (json_array_append_new(out_ifc_arr[x], json_string(ifc_info_str)) == -1) {
             VERBOSE(SUP_LOG, "[ERROR] Could not append module output ifc info to JSON array (module \"%s\").\n", running_modules[x].module_name);
@@ -805,12 +811,13 @@ char *make_json_modules_info()
          }
       }
 
-      module_info = json_pack("{sssssssssoso}", "module-name", running_modules[x].module_name,
-                                              "module-params", (running_modules[x].module_params == NULL ? "none" : running_modules[x].module_params),
-                                              "bin-path", running_modules[x].module_path,
-                                              "status", (running_modules[x].module_status == TRUE ? "running" : "stopped"),
-                                              "inputs", in_ifc_arr[x],
-                                              "outputs", out_ifc_arr[x]);
+      module_info = json_pack("{sisssssssssoso}", "module-idx", x,
+                                                  "module-name", running_modules[x].module_name,
+                                                  "module-params", (running_modules[x].module_params == NULL ? "none" : running_modules[x].module_params),
+                                                  "bin-path", running_modules[x].module_path,
+                                                  "status", (running_modules[x].module_status == TRUE ? "running" : "stopped"),
+                                                  "inputs", in_ifc_arr[x],
+                                                  "outputs", out_ifc_arr[x]);
       if (module_info == NULL) {
          VERBOSE(SUP_LOG, "[ERROR] Could not create JSON object of a module \"%s\".\n", running_modules[x].module_name);
          goto clean_up;
