@@ -678,8 +678,6 @@ void init_module_variables(int module_number)
    running_modules[module_number].module_service_sd = -1;
    running_modules[module_number].module_service_ifc_isconnected = FALSE;
    running_modules[module_number].module_service_ifc_conn_attempts = 0;
-   running_modules[module_number].module_service_ifc_conn_fails = 0;
-   running_modules[module_number].module_service_ifc_conn_block = FALSE;
    running_modules[module_number].module_service_ifc_timer = 0;
 }
 
@@ -774,7 +772,8 @@ char *make_json_modules_info()
    for (x = 0; x < loaded_modules_cnt; x++) {
       // Array of input ifces
       for (y = 0; y < running_modules[x].total_in_ifces_cnt; y++) {
-         needed_len = strlen(running_modules[x].in_ifces_data[y].ifc_id) + 3 * sizeof(char); // +3 because 1 char for ifc type, 1 for ':' and 1 for terminating the string (ifc info format  type:id)
+         // +5 because 1 char for ifc type, 1 char for ifc is_conn, 2 for ':' and 1 for terminating the string (ifc info format "type:id:is_conn")
+         needed_len = strlen(running_modules[x].in_ifces_data[y].ifc_id) + 5 * sizeof(char);
          if (needed_len > ifc_info_str_len) {
             // realloc ifc_info_str
             ifc_info_str = (char *) realloc(ifc_info_str, needed_len * sizeof(char));
@@ -782,7 +781,9 @@ char *make_json_modules_info()
             memset(ifc_info_str, 0, needed_len * sizeof(char));
          }
 
-         sprintf(ifc_info_str, "%c:%s", running_modules[x].in_ifces_data[y].ifc_type, running_modules[x].in_ifces_data[y].ifc_id);
+         sprintf(ifc_info_str, "%c:%s:%c", running_modules[x].in_ifces_data[y].ifc_type,
+                                           running_modules[x].in_ifces_data[y].ifc_id,
+                                           (running_modules[x].in_ifces_data[y].ifc_state == TRUE ? '1' : '0'));
 
          if (json_array_append_new(in_ifc_arr[x], json_string(ifc_info_str)) == -1) {
             VERBOSE(SUP_LOG, "[ERROR] Could not append module input ifc info to JSON array (module \"%s\").\n", running_modules[x].module_name);
@@ -791,7 +792,8 @@ char *make_json_modules_info()
       }
       // Array of output ifces
       for (y = 0; y < running_modules[x].total_out_ifces_cnt; y++) {
-         needed_len = strlen(running_modules[x].out_ifces_data[y].ifc_id) + 3 * sizeof(char); // +3 because 1 char for ifc type, 1 for ':' and 1 for terminating the string (ifc info format  type:id)
+         // +14 because 1 char for ifc type, 10 for maxint32, 2 for ':' and 1 for terminating the string (ifc info format "type:id:num_clients")
+         needed_len = strlen(running_modules[x].out_ifces_data[y].ifc_id) + 14 * sizeof(char);
          if (needed_len > ifc_info_str_len) {
             // realloc ifc_info_str
             ifc_info_str = (char *) realloc(ifc_info_str, needed_len * sizeof(char));
@@ -799,7 +801,9 @@ char *make_json_modules_info()
             memset(ifc_info_str, 0, needed_len * sizeof(char));
          }
 
-         sprintf(ifc_info_str, "%c:%s", running_modules[x].out_ifces_data[y].ifc_type, running_modules[x].out_ifces_data[y].ifc_id);
+         sprintf(ifc_info_str, "%c:%s:%" PRIu32, running_modules[x].out_ifces_data[y].ifc_type,
+                                                 running_modules[x].out_ifces_data[y].ifc_id,
+                                                 running_modules[x].out_ifces_data[y].num_clients);
 
          if (json_array_append_new(out_ifc_arr[x], json_string(ifc_info_str)) == -1) {
             VERBOSE(SUP_LOG, "[ERROR] Could not append module output ifc info to JSON array (module \"%s\").\n", running_modules[x].module_name);
@@ -807,12 +811,13 @@ char *make_json_modules_info()
          }
       }
 
-      module_info = json_pack("{sssssssssoso}", "module-name", running_modules[x].module_name,
-                                              "module-params", (running_modules[x].module_params == NULL ? "none" : running_modules[x].module_params),
-                                              "bin-path", running_modules[x].module_path,
-                                              "status", (running_modules[x].module_status == TRUE ? "running" : "stopped"),
-                                              "inputs", in_ifc_arr[x],
-                                              "outputs", out_ifc_arr[x]);
+      module_info = json_pack("{sisssssssssoso}", "module-idx", x,
+                                                  "module-name", running_modules[x].module_name,
+                                                  "module-params", (running_modules[x].module_params == NULL ? "none" : running_modules[x].module_params),
+                                                  "bin-path", running_modules[x].module_path,
+                                                  "status", (running_modules[x].module_status == TRUE ? "running" : "stopped"),
+                                                  "inputs", in_ifc_arr[x],
+                                                  "outputs", out_ifc_arr[x]);
       if (module_info == NULL) {
          VERBOSE(SUP_LOG, "[ERROR] Could not create JSON object of a module \"%s\".\n", running_modules[x].module_name);
          goto clean_up;
@@ -1446,11 +1451,12 @@ void daemon_send_options_to_client()
    VERBOSE(N_STDOUT, FORMAT_MENU "1. ENABLE MODULE OR PROFILE\n");
    VERBOSE(N_STDOUT, "2. DISABLE MODULE OR PROFILE\n");
    VERBOSE(N_STDOUT, "3. RESTART RUNNING MODULE\n");
-   VERBOSE(N_STDOUT, "4. CONFIGURATION STATUS\n");
-   VERBOSE(N_STDOUT, "5. AVAILABLE MODULES\n");
-   VERBOSE(N_STDOUT, "6. RELOAD CONFIGURATION\n");
-   VERBOSE(N_STDOUT, "7. PRINT SUPERVISOR INFO\n");
-   VERBOSE(N_STDOUT, "8. SHOW LOGS\n");
+   VERBOSE(N_STDOUT, "4. PRINT BRIEF STATUS\n");
+   VERBOSE(N_STDOUT, "5. PRINT DETAILED STATUS\n");
+   VERBOSE(N_STDOUT, "6. PRINT LOADED CONFIGURATION\n");
+   VERBOSE(N_STDOUT, "7. RELOAD CONFIGURATION\n");
+   VERBOSE(N_STDOUT, "8. PRINT SUPERVISOR INFO\n");
+   VERBOSE(N_STDOUT, "9. BROWSE LOG FILES\n");
    VERBOSE(N_STDOUT, "-- Type \"Cquit\" to exit client --\n");
    VERBOSE(N_STDOUT, "-- Type \"Dstop\" to stop daemon --\n" FORMAT_RESET);
    VERBOSE(N_STDOUT, FORMAT_INTERACTIVE "[INTERACTIVE] Your choice: " FORMAT_RESET);
@@ -1645,19 +1651,22 @@ void *daemon_serve_client_routine (void *cli)
                interactive_restart_module();
                break;
             case 4:
-               interactive_show_running_modules_status();
+               interactive_print_brief_status();
                break;
             case 5:
-               interactive_show_available_modules();
+               interactive_print_detailed_status();
                break;
             case 6:
-               reload_configuration(RELOAD_DEFAULT_CONFIG_FILE, NULL);
+               interactive_print_loaded_configuration();
                break;
             case 7:
-               interactive_print_supervisor_info();
+               reload_configuration(RELOAD_DEFAULT_CONFIG_FILE, NULL);
                break;
             case 8:
-               interactive_show_logs();
+               interactive_print_supervisor_info();
+               break;
+            case 9:
+               interactive_browse_log_files();
                break;
             case 0:
                nine_cnt++;
@@ -1786,12 +1795,7 @@ void service_disconnect_from_module(const int module_idx)
       }
       running_modules[module_idx].module_service_ifc_isconnected = FALSE;
    }
-
-   running_modules[module_idx].module_service_ifc_conn_fails++;
-
-   if (running_modules[module_idx].module_service_ifc_conn_fails == 1) {
-      running_modules[module_idx].module_service_ifc_timer = 0;
-   }
+   running_modules[module_idx].module_service_ifc_timer = 0;
 }
 
 // Returns a number of running modules
@@ -1963,37 +1967,24 @@ void service_check_connections()
 {
    uint x = 0;
 
-    for (x = 0; x < loaded_modules_cnt; x++) {
-         // If supervisor couldn't connect to service interface or too many errors during sending/receiving occurred, connecting is blocked
-         if (running_modules[x].module_service_ifc_conn_block == TRUE) {
-            continue;
-         }
-
-         // Check whether the module has service interface and is running
-         if (running_modules[x].module_status == TRUE) {
-
+   for (x = 0; x < loaded_modules_cnt; x++) {
+      // Check connection between module and supervisor
+      if (running_modules[x].module_status == TRUE && running_modules[x].module_service_ifc_isconnected == FALSE) {
+         if (running_modules[x].module_service_ifc_conn_attempts < SERVICE_IFC_CONN_ATTEMPTS_LIMIT) {
+            // Check module socket descriptor, closed socket has descriptor set to -1
+            if (running_modules[x].module_service_sd != -1) {
+               close(running_modules[x].module_service_sd);
+               running_modules[x].module_service_sd = -1;
+            }
+            service_connect_to_module(x);
+         } else {
             if (++running_modules[x].module_service_ifc_timer >= NUM_SERVICE_IFC_PERIODS) {
                running_modules[x].module_service_ifc_timer = 0;
-               running_modules[x].module_service_ifc_conn_fails = 0;
-            }
-
-            if (running_modules[x].module_service_ifc_conn_fails >= MAX_SERVICE_IFC_CONN_FAILS) {
-               VERBOSE(MODULE_EVENT, "%s [WARNING] Module %s reached %d errors during connections -> it is blocked.\n", get_formatted_time(), running_modules[x].module_name, MAX_SERVICE_IFC_CONN_FAILS);
-               running_modules[x].module_service_ifc_conn_block = TRUE;
-               continue;
-            }
-
-            // Check connection between module and supervisor, if they are not connected and number of attempts <= 3, try to connect
-            if (running_modules[x].module_service_ifc_isconnected == FALSE) {
-               // Check module socket descriptor, closed socket has descriptor set to -1
-               if (running_modules[x].module_service_sd != -1) {
-                  close(running_modules[x].module_service_sd);
-                  running_modules[x].module_service_sd = -1;
-               }
-               service_connect_to_module(x);
+               running_modules[x].module_service_ifc_conn_attempts = 0;
             }
          }
       }
+   }
 }
 
 
@@ -2062,15 +2053,8 @@ void service_connect_to_module(const int module)
    // Increase counter of connection attempts to the service interface
    running_modules[module].module_service_ifc_conn_attempts++;
 
-   if (running_modules[module].module_service_ifc_conn_attempts > SERVICE_IFC_CONN_ATTEMPTS_LIMIT) {
-      VERBOSE(MODULE_EVENT,"%s [WARNING] Connection attempts to service interface of module %s exceeded %d, enough trying!\n", get_formatted_time(), running_modules[module].module_name, SERVICE_IFC_CONN_ATTEMPTS_LIMIT);
-      running_modules[module].module_service_ifc_conn_block = TRUE;
-      return;
-   }
-
    memset(service_sock_spec, 0, 14 * sizeof(char));
    sprintf(service_sock_spec, "service_%d", running_modules[module].module_pid);
-   VERBOSE(MODULE_EVENT,"%s [SERVICE] Connecting to module %s on port %s...\n", get_formatted_time(), running_modules[module].module_name, service_sock_spec);
 
    memset(&addr, 0, sizeof(addr));
 
@@ -2371,6 +2355,14 @@ int service_decode_module_stats(char **data, int module_idx)
          }
          running_modules[module_idx].in_ifces_data[actual_ifc_index].ifc_type = (char)(json_integer_value(cnt));
 
+         cnt = json_object_get(in_ifc_cnts, "ifc_state");
+         if (cnt == NULL) {
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"ifc_state\" from an input interface json object (module %s).\n", get_formatted_time(), running_modules[module_idx].module_name);
+            json_decref(json_struct);
+            return -1;
+         }
+         running_modules[module_idx].in_ifces_data[actual_ifc_index].ifc_state = (uint8_t)(json_integer_value(cnt));
+
          cnt = json_object_get(in_ifc_cnts, "ifc_id");
          if (cnt == NULL) {
             VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"ifc_id\" from an input interface json object (module %s).\n", get_formatted_time(), running_modules[module_idx].module_name);
@@ -2453,6 +2445,14 @@ int service_decode_module_stats(char **data, int module_idx)
          }
          running_modules[module_idx].out_ifces_data[actual_ifc_index].autoflush_cnt = json_integer_value(cnt);
 
+         cnt = json_object_get(out_ifc_cnts, "num_clients");
+         if (cnt == NULL) {
+            VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"num_clients\" from an output interface json object (module %s).\n", get_formatted_time(), running_modules[module_idx].module_name);
+            json_decref(json_struct);
+            return -1;
+         }
+         running_modules[module_idx].out_ifces_data[actual_ifc_index].num_clients = (int32_t)(json_integer_value(cnt));
+
          cnt = json_object_get(out_ifc_cnts, "ifc_type");
          if (cnt == NULL) {
             VERBOSE(MODULE_EVENT, "%s [ERROR] Could not get key \"ifc_type\" from an output interface json object (module %s).\n", get_formatted_time(), running_modules[module_idx].module_name);
@@ -2494,7 +2494,7 @@ int service_decode_module_stats(char **data, int module_idx)
  * Interactive methods *
  *****************************************************************/
 
-void interactive_show_available_modules()
+void interactive_print_loaded_configuration()
 {
    unsigned int x = 0, y = 0;
    modules_profile_t * ptr = first_profile_ptr;
@@ -2508,33 +2508,16 @@ void interactive_show_available_modules()
    VERBOSE(N_STDOUT,"--- [PRINTING CONFIGURATION] ---\n");
 
    while (ptr != NULL) {
-      if (ptr->profile_enabled == TRUE) {
-         VERBOSE(N_STDOUT, FORMAT_BOLD "Profile: %s (" FORMAT_RUNNING "enabled" FORMAT_RESET ")\n", ptr->profile_name);
-      } else {
-         VERBOSE(N_STDOUT, FORMAT_BOLD "Profile: %s (" FORMAT_STOPPED "disabled" FORMAT_RESET ")\n" FORMAT_RESET, ptr->profile_name);
-      }
+      VERBOSE(N_STDOUT, FORMAT_BOLD "Profile: %s" FORMAT_RESET "\n", ptr->profile_name);
       for (x = 0; x < loaded_modules_cnt; x++) {
          if (running_modules[x].modules_profile != NULL) {
             if (running_modules[x].modules_profile == ptr) {
-               VERBOSE(N_STDOUT, "   %d%*c| %s", x, (longest_mod_num + 1 - get_digits_num(x)), ' ', running_modules[x].module_name);
-               // module's enabled
-               if (running_modules[x].module_enabled == TRUE) {
-                  VERBOSE(N_STDOUT, " | " FORMAT_RUNNING "enabled" FORMAT_RESET " | ");
-               } else {
-                  VERBOSE(N_STDOUT, " | " FORMAT_STOPPED "disabled" FORMAT_RESET " | ");
-               }
-               // module's status
-               if (running_modules[x].module_status == TRUE) {
-                  VERBOSE(N_STDOUT, FORMAT_RUNNING "running" FORMAT_RESET " | ");
-               } else {
-                  VERBOSE(N_STDOUT, FORMAT_STOPPED "stopped" FORMAT_RESET " | ");
-               }
-               VERBOSE(N_STDOUT, "PID: %d\n", running_modules[x].module_pid);
+               VERBOSE(N_STDOUT, "   %d%*c| %s\n", x, (longest_mod_num + 1 - get_digits_num(x)), ' ', running_modules[x].module_name);
 
                VERBOSE(N_STDOUT, "      " FORMAT_BOLD "PATH:" FORMAT_RESET " %s\n", (running_modules[x].module_path == NULL ? "none" : running_modules[x].module_path));
                VERBOSE(N_STDOUT, "      " FORMAT_BOLD "PARAMS:" FORMAT_RESET " %s\n", (running_modules[x].module_params == NULL ? "none" : running_modules[x].module_params));
                for (y=0; y<running_modules[x].config_ifces_cnt; y++) {
-                  VERBOSE(N_STDOUT,"      " FORMAT_BOLD "IFC%d:" FORMAT_RESET "  %s; %s; %s; %s\n", y, (running_modules[x].config_ifces[y].ifc_direction == NULL ? "none" : running_modules[x].config_ifces[y].ifc_direction),
+                  VERBOSE(N_STDOUT,"      " FORMAT_BOLD "IFC %d:" FORMAT_RESET "  %s; %s; %s; %s\n", y, (running_modules[x].config_ifces[y].ifc_direction == NULL ? "none" : running_modules[x].config_ifces[y].ifc_direction),
                                                                                                    (running_modules[x].config_ifces[y].ifc_type == NULL ? "none" : running_modules[x].config_ifces[y].ifc_type),
                                                                                                    (running_modules[x].config_ifces[y].ifc_params == NULL ? "none" : running_modules[x].config_ifces[y].ifc_params),
                                                                                                    (running_modules[x].config_ifces[y].ifc_note == NULL ? "none" : running_modules[x].config_ifces[y].ifc_note));
@@ -2554,11 +2537,12 @@ int interactive_get_option()
    VERBOSE(N_STDOUT, FORMAT_MENU "1. ENABLE MODULE OR PROFILE\n");
    VERBOSE(N_STDOUT, "2. DISABLE MODULE OR PROFILE\n");
    VERBOSE(N_STDOUT, "3. RESTART RUNNING MODULE\n");
-   VERBOSE(N_STDOUT, "4. CONFIGURATION STATUS\n");
-   VERBOSE(N_STDOUT, "5. AVAILABLE MODULES\n");
-   VERBOSE(N_STDOUT, "6. RELOAD CONFIGURATION\n");
-   VERBOSE(N_STDOUT, "7. PRINT SUPERVISOR INFO\n");
-   VERBOSE(N_STDOUT, "8. SHOW LOGS\n");
+   VERBOSE(N_STDOUT, "4. PRINT BRIEF STATUS\n");
+   VERBOSE(N_STDOUT, "5. PRINT DETAILED STATUS\n");
+   VERBOSE(N_STDOUT, "6. PRINT LOADED CONFIGURATION\n");
+   VERBOSE(N_STDOUT, "7. RELOAD CONFIGURATION\n");
+   VERBOSE(N_STDOUT, "8. PRINT SUPERVISOR INFO\n");
+   VERBOSE(N_STDOUT, "9. BROWSE LOG FILES\n");
    VERBOSE(N_STDOUT, "0. STOP SUPERVISOR\n" FORMAT_RESET);
    VERBOSE(N_STDOUT, FORMAT_INTERACTIVE "[INTERACTIVE] Your choice: " FORMAT_RESET);
 
@@ -2947,7 +2931,7 @@ user_input:
    pthread_mutex_unlock(&running_modules_lock);
 }
 
-void interactive_show_logs()
+void interactive_browse_log_files()
 {
    // format vars
    int log_idx_dig_num = 1;
@@ -3129,7 +3113,76 @@ exit_label:
    return;
 }
 
-void interactive_show_running_modules_status()
+void interactive_print_detailed_status()
+{
+   unsigned int x = 0, y = 0;
+   modules_profile_t * ptr = first_profile_ptr;
+   int longest_mod_num = get_digits_num(loaded_modules_cnt - 1);
+
+   if (loaded_modules_cnt == 0) {
+      VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] No module is loaded.\n" FORMAT_RESET);
+      return;
+   }
+
+   VERBOSE(N_STDOUT,"--- [PRINTING CONFIGURATION] ---\n");
+
+   while (ptr != NULL) {
+      if (ptr->profile_enabled == TRUE) {
+         VERBOSE(N_STDOUT, FORMAT_BOLD "Profile: %s (" FORMAT_RUNNING "enabled" FORMAT_RESET ")\n", ptr->profile_name);
+      } else {
+         VERBOSE(N_STDOUT, FORMAT_BOLD "Profile: %s (" FORMAT_STOPPED "disabled" FORMAT_RESET ")\n" FORMAT_RESET, ptr->profile_name);
+      }
+      for (x = 0; x < loaded_modules_cnt; x++) {
+         if (running_modules[x].modules_profile != NULL) {
+            if (running_modules[x].modules_profile == ptr) {
+               VERBOSE(N_STDOUT, "   %d%*c| %s", x, (longest_mod_num + 1 - get_digits_num(x)), ' ', running_modules[x].module_name);
+               // module's enabled
+               if (running_modules[x].module_enabled == TRUE) {
+                  VERBOSE(N_STDOUT, " | " FORMAT_RUNNING "enabled" FORMAT_RESET " | ");
+               } else {
+                  VERBOSE(N_STDOUT, " | " FORMAT_STOPPED "disabled" FORMAT_RESET " | ");
+               }
+               // module's status
+               if (running_modules[x].module_status == TRUE) {
+                  VERBOSE(N_STDOUT, FORMAT_RUNNING "running" FORMAT_RESET " | PID: %d\n", running_modules[x].module_pid);
+               } else {
+                  VERBOSE(N_STDOUT, FORMAT_STOPPED "stopped" FORMAT_RESET "\n");
+                  continue;
+               }
+
+               // service ifc state
+               if (running_modules[x].module_service_ifc_isconnected == TRUE) {
+                  VERBOSE(N_STDOUT, "      IFC service: " FORMAT_BOLD "connected" FORMAT_RESET "\n");
+               } else {
+                  VERBOSE(N_STDOUT, "      IFC service: " FORMAT_BOLD "not connected" FORMAT_RESET "\n");
+                  continue;
+               }
+
+               for (y = 0; y < running_modules[x].total_in_ifces_cnt; y++) {
+                  VERBOSE(N_STDOUT, "      IFC %d:  IN; %c; %s; ", y, running_modules[x].in_ifces_data[y].ifc_type,
+                                                                                                 running_modules[x].in_ifces_data[y].ifc_id);
+                  if (running_modules[x].in_ifces_data[y].ifc_state == TRUE) {
+                     VERBOSE(N_STDOUT, FORMAT_BOLD "connected" FORMAT_RESET "\n");
+                  } else {
+                     VERBOSE(N_STDOUT, FORMAT_BOLD "not connected" FORMAT_RESET "\n");
+                  }
+               }
+
+               for (y = 0; y < running_modules[x].total_out_ifces_cnt; y++) {
+                  VERBOSE(N_STDOUT,  "      IFC %d:  OUT; %c; %s; ", y + running_modules[x].total_in_ifces_cnt, running_modules[x].out_ifces_data[y].ifc_type,
+                                                                         running_modules[x].out_ifces_data[y].ifc_id);
+                  VERBOSE(N_STDOUT, FORMAT_BOLD "num of clients: %d" FORMAT_RESET "\n", running_modules[x].out_ifces_data[y].num_clients);
+               }
+            }
+         }
+      }
+      VERBOSE(N_STDOUT, "\n");
+      ptr = ptr->next;
+   }
+}
+
+
+void interactive_print_brief_status()
 {
    unsigned int x = 0;
    modules_profile_t * ptr = first_profile_ptr;

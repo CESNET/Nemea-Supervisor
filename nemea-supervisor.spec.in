@@ -37,7 +37,7 @@ make -j5 DESTDIR=$RPM_BUILD_ROOT install
 %{_sysconfdir}/init.d/nemea-supervisor
 %{_datarootdir}/munin/plugins/nemea_supervisor
 %{_datarootdir}/nemea-supervisor/*
-@SYSTEMD_SERVICE_FILE@
+@systemdsystemunitdir@
 %defattr(755, nemead, nemead)
 %config(noreplace) %{_sysconfdir}/nemea/ipfixcol-startup.xml
 %defattr(664, nemead, nemead)

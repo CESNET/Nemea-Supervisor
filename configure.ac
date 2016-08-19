@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.63])
-AC_INIT([nemea-supervisor], [1.4.3], [svepemar@fit.cvut.cz])
+AC_INIT([nemea-supervisor], [1.4.4], [svepemar@fit.cvut.cz])
 AC_CONFIG_SRCDIR([supervisor.c])
 AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE([foreign silent-rules])
@@ -16,6 +16,7 @@ AC_SUBST(USERMAIL)
 # Check for rpmbuild
 AC_CHECK_PROG(RPMBUILD, rpmbuild, rpmbuild, [""])
 AM_CONDITIONAL(MAKE_RPMS, test x$RPMBUILD != x)
+PKG_PROG_PKG_CONFIG
 
 pkgdatadir=${datadir}/nemea-supervisor
 AC_SUBST(pkgdatadir)
@@ -107,27 +108,23 @@ else
   AC_MSG_ERROR([getopt() was not found, module depend on it...])
 fi
 
-# allow to skip systemd, enabled by default
-AC_ARG_WITH([systemd],
-	AC_HELP_STRING([--without-systemd], [Disable checking and usage of systemd]),
-        [if test "$withval" = "no"; then
-                withsystemd="no"
-        else
-                withsystemd="yes"
-        fi], [withsystemd="yes"])
+AC_ARG_WITH([systemdsystemunitdir],
+	[AS_HELP_STRING([--with-systemdsystemunitdir=DIR], [Directory for systemd service files])],
+	[],
+	[with_systemdsystemunitdir=auto])
 
-if test "x$withsystemd" = "xyes"; then
-	PKG_CHECK_MODULES([systemd], [systemd], [
-	SYSTEMD_UNIT_DIR=$(pkg-config --variable=systemdsystemunitdir systemd)
-	SYSTEMD_SERVICE_FILE="$SYSTEMD_UNIT_DIR/nemea-supervisor.service"
-	AC_SUBST(SYSTEMD_SERVICE_FILE)
-	AC_SUBST(SYSTEMD_UNIT_DIR)
-	AM_CONDITIONAL([HAVE_SYSTEMD], [true])
-	], [AM_CONDITIONAL([HAVE_SYSTEMD], [false])])
-else
-	# disabled systemd
-	AM_CONDITIONAL([HAVE_SYSTEMD], [false])
-fi
+AS_IF([test "x$with_systemdsystemunitdir" = "xyes" -o "x$with_systemdsystemunitdir" = "xauto"], [
+def_systemdsystemunitdir=$(pkg-config --variable=systemdsystemunitdir systemd)])
+
+AS_IF([test "x$def_systemdsystemunitdir" = "x"], [AS_IF([test "x$with_systemdsystemunitdir" = "xyes"], [with_systemdsystemunitdir=no])],
+[with_systemdsystemunitdir="$def_systemdsystemunitdir"])
+#AC_MSG_ERROR([systemd support requested but pkg-config unable to query systemd package])],
+
+AS_IF([test "x$with_systemdsystemunitdir" = "xno" -o "x$with_systemdsystemunitdir" = "xauto"], [with_systemdsystemunitdir=/usr/lib/systemd/system])
+
+AC_SUBST([systemdsystemunitdir], [$with_systemdsystemunitdir])
+AM_CONDITIONAL([HAVE_SYSTEMD], [test "x$with_systemdsystemunitdir" != "xno"])
+
 
 AC_CONFIG_FILES([Makefile nemea-supervisor.spec nemea-supervisor nemea-supervisor.service munin/Makefile munin/nemea_supervisor configs/Makefile configs/prepare_default_config.sh configs/warning.sup configs/data-sources/ipfixcol.sup configs/supervisor_config_template.xml])
 AC_OUTPUT

@@ -11,11 +11,8 @@ EXTRA_DIST = nemea-supervisor README.md
 bin_SCRIPTS=nemea-supervisor
 
 
-DISTCHECK_CONFIGURE_FLAGS="--without-systemd"
-if HAVE_SYSTEMD
-systemddir=@SYSTEMD_UNIT_DIR@
-systemd_DATA=nemea-supervisor.service
-endif
+DISTCHECK_CONFIGURE_FLAGS="--with-systemdsystemunitdir=$$dc_install_base/$(systemdsystemunitdir)"
+systemdsystemunit_DATA=nemea-supervisor.service
 
 if MAKE_RPMS
 RPMDIR = RPMBUILD

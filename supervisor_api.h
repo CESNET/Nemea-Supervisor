@@ -64,11 +64,12 @@ void interactive_stop_configuration();
 void interactive_set_enabled();
 void interactive_set_disabled();
 void interactive_restart_module();
-void interactive_show_running_modules_status();
-void interactive_show_available_modules();
-void interactive_show_logs();
+void interactive_print_brief_status();
+void interactive_print_detailed_status();
+void interactive_print_loaded_configuration();
 int reload_configuration(const int, xmlNodePtr *);
 void interactive_print_supervisor_info();
+void interactive_browse_log_files();
 
 /* Daemon mode functions */
 int daemon_mode_initialization();

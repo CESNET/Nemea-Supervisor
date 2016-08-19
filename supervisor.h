@@ -114,6 +114,7 @@ struct str_lst_s {
 };
 
 typedef struct in_ifc_stats_s {
+   uint8_t ifc_state;
    char ifc_type;
    char *ifc_id;
    uint64_t recv_msg_cnt;
@@ -121,6 +122,7 @@ typedef struct in_ifc_stats_s {
 } in_ifc_stats_t;
 
 typedef struct out_ifc_stats_s {
+   int32_t num_clients;
    char ifc_type;
    char *ifc_id;
    uint64_t sent_msg_cnt;
@@ -196,8 +198,6 @@ typedef struct running_module_s {
    int module_service_sd; ///< Socket descriptor of the service connection.   /*** INIT ***/
    int module_service_ifc_isconnected; ///< if supervisor is connected to module ~ TRUE, else ~ FALSE   /*** INIT ***/
    int module_service_ifc_conn_attempts; // Count of supervisor's connection attempts to module's service interface    /*** INIT ***/
-   int module_service_ifc_conn_fails;   /*** INIT ***/
-   int module_service_ifc_conn_block;   /*** INIT ***/
    int module_service_ifc_timer;   /*** INIT ***/
 } running_module_t;
 
@@ -473,7 +473,7 @@ void supervisor_termination(const uint8_t stop_all_modules, const uint8_t genera
  * Prints out loaded modules grouped by their profile (if they have any) and all information about them
  * (starting with its name, status, parameters and interfaces - including interfaces parameters).
  */
-void interactive_show_available_modules();
+void interactive_print_loaded_configuration();
 
 /**
  * Prints out menu with options (start/stop module, start/stop configuration, show status etc.)
@@ -515,7 +515,7 @@ void interactive_set_disabled();
  * Prints out loaded modules grouped by their profile (if they have any)
  * and their status (running or stopped) and their PID (process id).
  */
-void interactive_show_running_modules_status();
+void interactive_print_brief_status();
 
 /**
  * Prints out important information about current program
