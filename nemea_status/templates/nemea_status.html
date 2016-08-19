@@ -1,0 +1,179 @@
+<html>
+<head>
+<meta charset="utf-8">
+<title>Nemea status</title>
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='nemea_status.css') }}">
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.2/jquery.min.js"></script>
+<script>
+$SCRIPT_ROOT = {{ request.script_root|tojson|safe }};
+
+var refreshing = false; // Whether refresh is in progress (to avoid multiple parallel calls if they are very slow and refresh interval is small)
+var last_refresh_time = null;
+
+// AJAX request to get ifc counter values
+function refresh() {
+    if (refreshing) {
+        return;
+    }
+    if (document["hidden"]) { // Skip refresh if page is not visible
+        return;
+    }
+    refreshing = true;
+    $("#refresh-spinner").css('visibility', 'visible');
+    $.getJSON(
+        $SCRIPT_ROOT + "/_stats",
+        function(data) {
+            if ("error" in data.stats) {
+                $("#refresh-error").text("ERROR").show();
+                $("#refresh-select").val("paused");
+                set_refresh_interval("paused");
+                return;
+            }
+            $("#refresh-error").hide();
+                                
+            if (!last_refresh_time) {
+                // First run - just store last_refresh_time
+                last_refresh_time = Date.now();
+            } else {            
+                // Get time from last refresh
+                var now = Date.now();
+                var time_diff = now - last_refresh_time;
+                last_refresh_time = now;
+                
+                // Print current refresh time                 
+                var d = new Date(last_refresh_time);
+                $("#last-refresh").text(d.toLocaleTimeString());                                
+                
+                // Initialize all counters to "??" (for case some are not included in returned data)
+                $(".ifc-counter").text("??");
+                $(".running .module-cpu").text("??\u2009%");
+                $(".running .module-mem").text("??\u2009MB");
+            }
+                        
+            // Set counter values for each module and each interface
+            var counters = data.stats;
+            for (cntrid in counters) {
+                if (cntrid.endsWith("_cpu")) {
+                    $("#"+cntrid.slice(0,-4)+" .module-cpu").text(("\u2007\u2007" + counters[cntrid]).slice(-3) + "\u2009%");
+                    continue;
+                }
+                if (cntrid.endsWith("_mem")) {
+                    $("#"+cntrid.slice(0,-4)+" .module-mem").text((counters[cntrid]/1024).toFixed(0) + "\u2009MB");
+                    continue;
+                }
+                // Compute difference of current value from last value
+                // (last value stored using .data())
+                var value = counters[cntrid];
+                var cntr_elem = $("#"+cntrid+" .ifc-counter");
+                //console.debug(cntr_elem);
+                //console.debug(cntr_elem.data("last_value"));
+                if (cntr_elem.data("last_value") != null) {
+                    var diff = value - cntr_elem.data("last_value");
+                    var diff_per_sec = diff / (time_diff / 1000);
+                    diff_per_sec = diff_per_sec.toFixed(1);
+                    // add thousand separators, regex from http://stackoverflow.com/a/2901298
+                    diff_per_sec = diff_per_sec.replace(/\B(?=(\d{3})+(?!\d))/g, "\u2009");
+                    $("#"+cntrid+" .ifc-counter").text(diff_per_sec + "/s");
+                }
+                cntr_elem.data("last_value", value);
+            }
+        }
+    )
+    .fail(function( jqxhr, textStatus, error ) {
+        $("#refresh-error").text("(" + textStatus + ": " + error + ")").show();
+        $("#refresh-select").val("paused");
+        set_refresh_interval("paused");
+    })
+    .always(function() {
+        refreshing = false;
+        $("#refresh-spinner").css('visibility', 'hidden');
+    });
+}
+
+// Set automatic refresh every 5s
+//var refresh_timer = window.setInterval(refresh, $("#refresh-select").val()*1000);
+var refresh_timer;
+
+function set_refresh_interval(interval) {
+    if (refresh_timer) {
+        window.clearInterval(refresh_timer);
+    }
+    if (interval != 'paused') {
+        refresh_timer = window.setInterval(refresh, interval*1000);
+        refresh();
+    }
+}
+
+window.onload = function() {
+    // Set automatic refreshing to 5 seconds
+    $("#refresh-select").val(5);
+    set_refresh_interval(5);
+    // Run first refresh immediately after page loads
+    refresh();
+};
+</script>
+</head>
+<body>
+
+{% if topology.error %}
+ <p class="error">ERROR: Getting NEMEA topology failed:<br>
+ {% if topology.error == 'callerror' %}
+  Commnad <tt>"{{topology.cmd}}"</tt> returned {{topology.code}}.<br>Output:<br><tt>{{topology.output}}</tt>
+ {% elif topology.error == 'invalidjson' %}
+  Output of <tt>"{{topology.cmd}}"</tt> is not a valid JSON:<br><tt>{{topology.output}}</tt>
+ {% endif %}
+ </p>
+{% else %}
+
+Refresh interval:
+<select id="refresh-select" onchange="set_refresh_interval(this.value)">
+ <option value="1">1s</option>
+ <option value="2">2s</option>
+ <option value="5" selected>5s</option>
+ <option value="10">10s</option>
+ <option value="30">30s</option>
+ <option value="60">60s</option>
+ <option value="paused">paused</option>
+</select>
+<img id="refresh-spinner" style="visibility: hidden" src="{{ url_for('static', filename='spin.gif') }}" alt="Loading" width="14" height="16">
+<span id="refresh-error" style="display: none">(error)</span>
+<br>
+Last refresh: <span id="last-refresh"></span>
+
+<table class="modules">
+
+{% for module in topology %}
+<tr><td class="input-col">
+
+{% for ifc in module.inputs %}
+ <div class="ifc" id="{{ module['module-name'] }}_in{{ loop.index-1 }}">
+  <span class="ifc-name" title="IFC type and parameters">{{ ifc.split(':')[:2]|join(':') }}</span>
+  <span class="ifc-counter" title="Number of messages transferred per second">--</span>
+  {% set conn = ifc.split(':')[3]|default(0)|int %}
+  <span class="ifc-marker {{'connected' if conn > 0 else 'notconnected'}}"></span>
+ </div>
+{% endfor %}
+
+</td><td id="{{module['module-name']}}" class="module-col {{ module.status }}">
+<div class="module-cpu" title="CPU usage">&#x2007;-- %</div>
+<div class="module-mem" title="Memory consumption">-- MB</div>
+<div class="module-name">{{ module['module-name'] }}</div>
+<div class="exec-name">{{ module['bin-path'] }}</div>
+
+</td><td class="output-col">
+{% for ifc in module.outputs %}
+ <div class="ifc" id="{{ module['module-name'] }}_out{{ loop.index-1 }}">
+  {% set conn = ifc.split(':')[3]|default(0)|int %}
+  <span class="ifc-marker {{'connected' if conn > 0 else 'notconnected'}}">{{conn if conn > 0 else ''}}</span>
+  <span class="ifc-counter">--</span>
+  <span class="ifc-name">{{ ifc }}</span>
+ </div>
+{% endfor %}
+</td></tr>
+{% endfor %}
+
+</table>
+
+{% endif %}{# topology.error #}
+</body>
+</html>
