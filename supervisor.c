@@ -1590,8 +1590,6 @@ void *daemon_serve_client_routine (void *cli)
 
    case CLIENT_STATS_MODE_CODE: { // send stats to current client and wait for new one
       VERBOSE(SUP_LOG, "%s [INFO] Got modules_stats_mode code. (client's ID: %d)\n", get_formatted_time(), client->client_id);
-      update_module_cpu_usage();
-      update_module_mem_usage();
       char *stats_buffer = make_formated_statistics((uint8_t) 7);
       fprintf(client->client_output_stream, "%s", stats_buffer);
       fflush(client->client_output_stream);
@@ -2149,6 +2147,10 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
 
       // Update status of every module before sending a request for their stats
       running_modules_cnt = service_check_modules_status();
+
+      // Update CPU and memory usage
+      update_module_cpu_usage();
+      update_module_mem_usage();
 
       // Set request header
       header->com = SERVICE_GET_COM;
