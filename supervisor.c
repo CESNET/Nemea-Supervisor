@@ -668,13 +668,10 @@ void init_module_variables(int module_number)
    // Initialize modules variables
    running_modules[module_number].sent_sigint = FALSE;
    running_modules[module_number].virtual_memory_usage = 0;
-   running_modules[module_number].total_cpu_usage_during_module_startup = get_total_cpu_usage();
    running_modules[module_number].last_period_cpu_usage_kernel_mode = 0;
    running_modules[module_number].last_period_cpu_usage_user_mode = 0;
    running_modules[module_number].last_period_percent_cpu_usage_kernel_mode = 0;
    running_modules[module_number].last_period_percent_cpu_usage_user_mode = 0;
-   running_modules[module_number].overall_percent_module_cpu_usage_kernel_mode = 0;
-   running_modules[module_number].overall_percent_module_cpu_usage_user_mode = 0;
    running_modules[module_number].module_service_sd = -1;
    running_modules[module_number].module_service_ifc_isconnected = FALSE;
    running_modules[module_number].module_service_ifc_conn_attempts = 0;
@@ -1116,13 +1113,6 @@ void update_module_cpu_usage()
          if (!fscanf(proc_stat_fd,"%*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %d %d", &utime , &stime)) {
             fclose(proc_stat_fd);
             continue;
-         }
-         if (running_modules[x].total_cpu_usage_during_module_startup != -1) {
-            running_modules[x].overall_percent_module_cpu_usage_kernel_mode = 100 * ((float)stime/(float)(new_total_cpu_usage - running_modules[x].total_cpu_usage_during_module_startup));
-            running_modules[x].overall_percent_module_cpu_usage_user_mode = 100 * ((float)utime/(float)(new_total_cpu_usage - running_modules[x].total_cpu_usage_during_module_startup));
-         } else {
-            running_modules[x].overall_percent_module_cpu_usage_kernel_mode = 0;
-            running_modules[x].overall_percent_module_cpu_usage_user_mode = 0;
          }
          running_modules[x].last_period_percent_cpu_usage_kernel_mode = 100 * (stime - running_modules[x].last_period_cpu_usage_kernel_mode)/difference_total;
          running_modules[x].last_period_percent_cpu_usage_user_mode = 100 * (utime - running_modules[x].last_period_cpu_usage_user_mode)/difference_total;

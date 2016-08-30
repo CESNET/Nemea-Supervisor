@@ -187,13 +187,10 @@ typedef struct running_module_s {
 
    unsigned int virtual_memory_usage;   /*** INIT ***/
 
-   long int total_cpu_usage_during_module_startup;   /*** INIT ***/
    int last_period_cpu_usage_kernel_mode; ///< Percentage of CPU usage in last period in kernel mode.   /*** INIT ***/
    int last_period_cpu_usage_user_mode; ///< Percentage of CPU usage in last period in user mode.   /*** INIT ***/
    int last_period_percent_cpu_usage_kernel_mode; ///< Percentage of CPU usage in current period in kernel mode.   /*** INIT ***/
    int last_period_percent_cpu_usage_user_mode; ///< Percentage of CPU usage in current period in user mode.   /*** INIT ***/
-   int overall_percent_module_cpu_usage_kernel_mode;   /*** INIT ***/
-   int overall_percent_module_cpu_usage_user_mode;   /*** INIT ***/
 
    int module_service_sd; ///< Socket descriptor of the service connection.   /*** INIT ***/
    int module_service_ifc_isconnected; ///< if supervisor is connected to module ~ TRUE, else ~ FALSE   /*** INIT ***/
