@@ -133,7 +133,7 @@ int service_thread_continue = FALSE; ///< condition variable of main loop of the
 int service_stop_all_modules = FALSE;
 
 
-long int last_total_cpu_usage = 0; // Variable with total cpu usage of whole operating system
+unsigned long int last_total_cpu = 0; // Variable with total cpu usage of whole operating system
 pthread_mutex_t running_modules_lock; ///< mutex for locking counters
 int max_restarts_per_minute_config = DEFAULT_MAX_RESTARTS_PER_MINUTE;
 
@@ -1067,55 +1067,81 @@ void generate_backup_config_file()
  * Functions for getting statistics *
  *****************************************************************/
 
-long int get_total_cpu_usage()
+int get_total_cpu_usage(unsigned long int *total_cpu_usage)
 {
-   long int new_total_cpu_usage = 0;
+   unsigned long int num = 0;
+   const char delim[2] = " ";
+   char *line = NULL, *token = NULL, *endptr = NULL;
+   int ret_val = 0;
+   size_t line_len = 0;
    FILE *proc_stat_fd = fopen("/proc/stat","r");
-   int x = 0, num = 0;
 
    if (proc_stat_fd == NULL) {
       return -1;
-   } else if (fscanf(proc_stat_fd,"cpu") != 0) {
-      fclose(proc_stat_fd);
-      return -1;
+   }
+   if (getline(&line, &line_len, proc_stat_fd) == -1) {
+      ret_val = -1;
+      goto cleanup;
    }
 
-   for (x=0; x<10; x++) {
-      if (!fscanf(proc_stat_fd,"%d",&num)) {
-         continue;
+   token = strtok(line, delim);
+   if (token == NULL) {
+      ret_val = -1;
+      goto cleanup;
+   }
+   if (strcmp(token, "cpu") != 0) {
+      ret_val = -1;
+      goto cleanup;
+   }
+   token = strtok(NULL, delim);
+
+   while (token != NULL) {
+      num = strtoul(token, &endptr, 10);
+      if (endptr == token) {
+         ret_val = -1;
+         break;
       }
-      new_total_cpu_usage += num;
+      *total_cpu_usage += num;
+      token = strtok(NULL, delim);
    }
 
+cleanup:
    fclose(proc_stat_fd);
-   return new_total_cpu_usage;
+   NULLP_TEST_AND_FREE(line);
+   return ret_val;
 }
 
 void update_module_cpu_usage()
 {
-   int utime = 0, stime = 0;
-   unsigned int x = 0;
    FILE *proc_stat_fd = NULL;
+   int x = 0;
    char path[20];
-   long int new_total_cpu_usage = get_total_cpu_usage();
-   long int difference_total = new_total_cpu_usage - last_total_cpu_usage;
+   unsigned long int utime = 0, stime = 0, diff_total_cpu = 0, new_total_cpu = 0;
 
-   last_total_cpu_usage = new_total_cpu_usage;
+   if (get_total_cpu_usage(&new_total_cpu) == -1) {
+      return;
+   }
 
-   for (x=0; x<loaded_modules_cnt; x++) {
+   diff_total_cpu = new_total_cpu - last_total_cpu;
+   if (diff_total_cpu == 0) {
+      return;
+   }
+   last_total_cpu = new_total_cpu;
+
+   for (x = 0; x < loaded_modules_cnt; x++) {
       if (running_modules[x].module_status == TRUE) {
-         memset(path,0,20*sizeof(char));
-         sprintf(path,"/proc/%d/stat",running_modules[x].module_pid);
-         proc_stat_fd = fopen(path,"r");
+         memset(path, 0, 20 * sizeof(char));
+         sprintf(path, "/proc/%d/stat", running_modules[x].module_pid);
+         proc_stat_fd = fopen(path, "r");
          if (proc_stat_fd == NULL) {
             continue;
          }
-         if (!fscanf(proc_stat_fd,"%*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %d %d", &utime , &stime)) {
+         if (!fscanf(proc_stat_fd,"%*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %lu %lu", &utime , &stime)) {
             fclose(proc_stat_fd);
             continue;
          }
-         running_modules[x].last_period_percent_cpu_usage_kernel_mode = 100 * (stime - running_modules[x].last_period_cpu_usage_kernel_mode)/difference_total;
-         running_modules[x].last_period_percent_cpu_usage_user_mode = 100 * (utime - running_modules[x].last_period_cpu_usage_user_mode)/difference_total;
+         running_modules[x].last_period_percent_cpu_usage_kernel_mode = 100 * (float)((stime - running_modules[x].last_period_cpu_usage_kernel_mode)/diff_total_cpu);
+         running_modules[x].last_period_percent_cpu_usage_user_mode = 100 * (float)((utime - running_modules[x].last_period_cpu_usage_user_mode)/diff_total_cpu);
          running_modules[x].last_period_cpu_usage_kernel_mode = stime;
          running_modules[x].last_period_cpu_usage_user_mode = utime;
          fclose(proc_stat_fd);
@@ -1289,7 +1315,7 @@ int daemon_mode_initialization()
 
 void daemon_mode_server_routine()
 {
-   last_total_cpu_usage = get_total_cpu_usage();
+   get_total_cpu_usage(&last_total_cpu);
    unsigned int x = 0;
    int ret_val = 0, new_client = 0;
    struct sockaddr_storage remoteaddr; // client address

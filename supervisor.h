@@ -187,10 +187,10 @@ typedef struct running_module_s {
 
    unsigned int virtual_memory_usage;   /*** INIT ***/
 
-   int last_period_cpu_usage_kernel_mode; ///< Percentage of CPU usage in last period in kernel mode.   /*** INIT ***/
-   int last_period_cpu_usage_user_mode; ///< Percentage of CPU usage in last period in user mode.   /*** INIT ***/
-   int last_period_percent_cpu_usage_kernel_mode; ///< Percentage of CPU usage in current period in kernel mode.   /*** INIT ***/
-   int last_period_percent_cpu_usage_user_mode; ///< Percentage of CPU usage in current period in user mode.   /*** INIT ***/
+   unsigned long int last_period_cpu_usage_kernel_mode; ///< Percentage of CPU usage in last period in kernel mode.   /*** INIT ***/
+   unsigned long int last_period_cpu_usage_user_mode; ///< Percentage of CPU usage in last period in user mode.   /*** INIT ***/
+   unsigned int last_period_percent_cpu_usage_kernel_mode; ///< Percentage of CPU usage in current period in kernel mode.   /*** INIT ***/
+   unsigned int last_period_percent_cpu_usage_user_mode; ///< Percentage of CPU usage in current period in user mode.   /*** INIT ***/
 
    int module_service_sd; ///< Socket descriptor of the service connection.   /*** INIT ***/
    int module_service_ifc_isconnected; ///< if supervisor is connected to module ~ TRUE, else ~ FALSE   /*** INIT ***/
@@ -639,7 +639,7 @@ int service_decode_module_stats(char **data, int module_idx);
 /**
  *
  */
-long int get_total_cpu_usage();
+int get_total_cpu_usage(unsigned long int *total_cpu_usage);
 void update_module_cpu_usage();
 void update_module_mem_usage();
 /**@}*/
