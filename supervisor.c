@@ -1140,8 +1140,8 @@ void update_module_cpu_usage()
             fclose(proc_stat_fd);
             continue;
          }
-         running_modules[x].last_period_percent_cpu_usage_kernel_mode = 100 * (float)((stime - running_modules[x].last_period_cpu_usage_kernel_mode)/diff_total_cpu);
-         running_modules[x].last_period_percent_cpu_usage_user_mode = 100 * (float)((utime - running_modules[x].last_period_cpu_usage_user_mode)/diff_total_cpu);
+         running_modules[x].last_period_percent_cpu_usage_kernel_mode = 100 * ((double)(stime - running_modules[x].last_period_cpu_usage_kernel_mode) / (double)diff_total_cpu);
+         running_modules[x].last_period_percent_cpu_usage_user_mode = 100 * ((double)(utime - running_modules[x].last_period_cpu_usage_user_mode) / (double)diff_total_cpu);
          running_modules[x].last_period_cpu_usage_kernel_mode = stime;
          running_modules[x].last_period_cpu_usage_user_mode = utime;
          fclose(proc_stat_fd);
