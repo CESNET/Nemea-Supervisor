@@ -901,7 +901,9 @@ char *make_formated_statistics(uint8_t stats_mask)
    if (print_cpu_stats == TRUE) {
       for (x=0; x<loaded_modules_cnt; x++) {
          if (running_modules[x].module_status == TRUE) {
-            ptr += sprintf(buffer + ptr, "%s,cpu,%d,%d\n", running_modules[x].module_name, running_modules[x].last_period_percent_cpu_usage_kernel_mode, running_modules[x].last_period_percent_cpu_usage_user_mode);
+            ptr += sprintf(buffer + ptr, "%s,cpu,%lu,%lu\n", running_modules[x].module_name,
+                                                             running_modules[x].last_period_percent_cpu_usage_kernel_mode,
+                                                             running_modules[x].last_period_percent_cpu_usage_user_mode);
             if (strlen(buffer) >= (3*size_of_buffer)/5) {
                size_of_buffer += size_of_buffer/2;
                buffer = (char *) realloc (buffer, size_of_buffer * sizeof(char));
@@ -914,7 +916,8 @@ char *make_formated_statistics(uint8_t stats_mask)
    if (print_memory_stats == TRUE) {
       for (x=0; x<loaded_modules_cnt; x++) {
          if (running_modules[x].module_status == TRUE) {
-            ptr += sprintf(buffer + ptr, "%s,mem,%d\n", running_modules[x].module_name, running_modules[x].virtual_memory_usage);
+            ptr += sprintf(buffer + ptr, "%s,mem,%lu\n", running_modules[x].module_name,
+                                                         running_modules[x].virtual_memory_usage / (1024*1024)); // to convert B to MB, divide by 1024*1024
             if (strlen(buffer) >= (3*size_of_buffer)/5) {
                size_of_buffer += size_of_buffer/2;
                buffer = (char *) realloc (buffer, size_of_buffer * sizeof(char));
@@ -1111,12 +1114,15 @@ cleanup:
    return ret_val;
 }
 
-void update_module_cpu_usage()
+void update_modules_resources_usage()
 {
+   const char delim[2] = " ";
+   char *line = NULL, *token = NULL, *endptr = NULL;
+   size_t line_len = 0;
    FILE *proc_stat_fd = NULL;
-   int x = 0;
+   int x = 0, y = 0;
    char path[20];
-   unsigned long int utime = 0, stime = 0, diff_total_cpu = 0, new_total_cpu = 0;
+   unsigned long int utime = 0, stime = 0, diff_total_cpu = 0, new_total_cpu = 0, num = 0;
 
    if (get_total_cpu_usage(&new_total_cpu) == -1) {
       return;
@@ -1132,60 +1138,57 @@ void update_module_cpu_usage()
       if (running_modules[x].module_status == TRUE) {
          memset(path, 0, 20 * sizeof(char));
          sprintf(path, "/proc/%d/stat", running_modules[x].module_pid);
+
          proc_stat_fd = fopen(path, "r");
          if (proc_stat_fd == NULL) {
             continue;
          }
-         if (!fscanf(proc_stat_fd,"%*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %*[^' '] %lu %lu", &utime , &stime)) {
+
+         if (getline(&line, &line_len, proc_stat_fd) == -1) {
             fclose(proc_stat_fd);
             continue;
          }
-         running_modules[x].last_period_percent_cpu_usage_kernel_mode = 100 * ((double)(stime - running_modules[x].last_period_cpu_usage_kernel_mode) / (double)diff_total_cpu);
-         running_modules[x].last_period_percent_cpu_usage_user_mode = 100 * ((double)(utime - running_modules[x].last_period_cpu_usage_user_mode) / (double)diff_total_cpu);
-         running_modules[x].last_period_cpu_usage_kernel_mode = stime;
-         running_modules[x].last_period_cpu_usage_user_mode = utime;
+
+         token = strtok(line, delim);
+         if (token == NULL) {
+            fclose(proc_stat_fd);
+            continue;
+         }
+
+         for (y = 1; y <= 23; y++) {
+            if (y == 14) { // position of "user mode time" field in /proc/pid/stat file is 14
+               utime = strtoul(token, &endptr, 10);
+               if (endptr == token) {
+                  continue;
+               }
+               running_modules[x].last_period_percent_cpu_usage_user_mode = 100 * ((double)(utime - running_modules[x].last_period_cpu_usage_user_mode) / (double)diff_total_cpu);
+               running_modules[x].last_period_cpu_usage_user_mode = utime;
+            } else if (y == 15) { // position of "kernel mode time" field in /proc/pid/stat file is 15
+               stime = strtoul(token, &endptr, 10);
+               if (endptr == token) {
+                  continue;
+               }
+               running_modules[x].last_period_percent_cpu_usage_kernel_mode = 100 * ((double)(stime - running_modules[x].last_period_cpu_usage_kernel_mode) / (double)diff_total_cpu);
+               running_modules[x].last_period_cpu_usage_kernel_mode = stime;
+            } else if (y == 23) {// position of "virtual memory size" field in /proc/pid/stat file is 23
+               num = strtoul(token, &endptr, 10);
+               if (endptr == token) {
+                  continue;
+               }
+               running_modules[x].virtual_memory_usage = num;
+            }
+
+            token = strtok(NULL, delim);
+            if (token == NULL) {
+               break;
+            }
+         }
+
          fclose(proc_stat_fd);
       }
    }
+   NULLP_TEST_AND_FREE(line);
 }
-
-void update_module_mem_usage()
-{
-   unsigned int x = 0;
-   FILE *proc_status_fd = NULL;
-   char *match = NULL;
-   int ret_val = 0;
-   char path[20];
-   char buffer[1024];
-
-   for (x=0; x<loaded_modules_cnt; x++) {
-      if (running_modules[x].module_status == TRUE) {
-         memset(path,0,20*sizeof(char));
-         sprintf(path,"/proc/%d/status",running_modules[x].module_pid);
-         proc_status_fd = fopen(path,"r");
-         if (proc_status_fd == NULL) {
-            continue;
-         }
-
-         ret_val = fread(buffer, sizeof(char), 1000, proc_status_fd);
-         if (ret_val < 1) {
-            fclose(proc_status_fd);
-            continue;
-         }
-
-         buffer[ret_val] = 0;
-
-         match = strstr(buffer, "VmSize");
-         if (match != NULL) {
-            if (sscanf(match, "%*[^' ']%*[' ']%d", &(running_modules[x].virtual_memory_usage)) < 1) {
-               running_modules[x].virtual_memory_usage = 0;
-            }
-         }
-         fclose(proc_status_fd);
-      }
-   }
-}
-
 
 
 /*****************************************************************
@@ -2149,8 +2152,7 @@ void *service_thread_routine(void *arg __attribute__ ((unused)))
       running_modules_cnt = service_check_modules_status();
 
       // Update CPU and memory usage
-      update_module_cpu_usage();
-      update_module_mem_usage();
+      update_modules_resources_usage();
 
       // Set request header
       header->com = SERVICE_GET_COM;
