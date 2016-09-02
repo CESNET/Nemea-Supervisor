@@ -737,19 +737,24 @@ void print_statistics_legend()
 }
 
 
-char *make_json_modules_info()
+char *make_json_modules_info(uint8_t info_mask)
 {
    uint x = 0, y = 0;
-   int needed_len = 0;
-   char *ifc_info_str = NULL;
-   int ifc_info_str_len = DEFAULT_SIZE_OF_BUFFER;
+   char ifc_type[2];
+   ifc_type[1] = 0;
 
-   json_t *result_json = NULL;
    json_t *module_info = NULL;
+   json_t *module = NULL;
+   json_t *ifc_info = NULL;
    json_t *in_ifc_arr[loaded_modules_cnt];
    json_t *out_ifc_arr[loaded_modules_cnt];
 
-   ifc_info_str = (char *) calloc(DEFAULT_SIZE_OF_BUFFER, sizeof(char));
+   uint8_t print_details = FALSE;
+
+   // Decide which information should be included according to the info mask
+   if ((info_mask & (uint8_t) 1) == (uint8_t) 1) {
+      print_details = TRUE;
+   }
 
    for (x = 0; x < loaded_modules_cnt; x++) {
       in_ifc_arr[x] = json_array();
@@ -760,85 +765,88 @@ char *make_json_modules_info()
       }
    }
 
-   json_t *modules_arr = json_array();
-   if (modules_arr == NULL) {
-      VERBOSE(SUP_LOG, "[ERROR] Could not create JSON arrays (probably not enough memory).\n");
-      goto clean_up;
-   }
+   json_t *modules_obj = NULL;
 
    for (x = 0; x < loaded_modules_cnt; x++) {
       // Array of input ifces
+      if (print_details == FALSE && running_modules[x].module_status == FALSE) {
+         continue;
+      }
       for (y = 0; y < running_modules[x].total_in_ifces_cnt; y++) {
-         // +5 because 1 char for ifc type, 1 char for ifc is_conn, 2 for ':' and 1 for terminating the string (ifc info format "type:id:is_conn")
-         needed_len = strlen(running_modules[x].in_ifces_data[y].ifc_id) + 5 * sizeof(char);
-         if (needed_len > ifc_info_str_len) {
-            // realloc ifc_info_str
-            ifc_info_str = (char *) realloc(ifc_info_str, needed_len * sizeof(char));
-            ifc_info_str_len = needed_len;
-            memset(ifc_info_str, 0, needed_len * sizeof(char));
-         }
+         ifc_type[0] = running_modules[x].in_ifces_data[y].ifc_type;
+         ifc_info = json_pack("{sssssisIsI}", "type", ifc_type,
+                                              "ID", running_modules[x].in_ifces_data[y].ifc_id,
+                                              "is-conn", running_modules[x].in_ifces_data[y].ifc_state,
+                                              "messages", running_modules[x].in_ifces_data[y].recv_msg_cnt,
+                                              "buffers", running_modules[x].in_ifces_data[y].recv_buffer_cnt);
 
-         sprintf(ifc_info_str, "%c:%s:%c", running_modules[x].in_ifces_data[y].ifc_type,
-                                           running_modules[x].in_ifces_data[y].ifc_id,
-                                           (running_modules[x].in_ifces_data[y].ifc_state == TRUE ? '1' : '0'));
-
-         if (json_array_append_new(in_ifc_arr[x], json_string(ifc_info_str)) == -1) {
+         if (ifc_info == NULL || json_array_append_new(in_ifc_arr[x], ifc_info) == -1) {
             VERBOSE(SUP_LOG, "[ERROR] Could not append module input ifc info to JSON array (module \"%s\").\n", running_modules[x].module_name);
             goto clean_up;
          }
       }
       // Array of output ifces
       for (y = 0; y < running_modules[x].total_out_ifces_cnt; y++) {
-         // +14 because 1 char for ifc type, 10 for maxint32, 2 for ':' and 1 for terminating the string (ifc info format "type:id:num_clients")
-         needed_len = strlen(running_modules[x].out_ifces_data[y].ifc_id) + 14 * sizeof(char);
-         if (needed_len > ifc_info_str_len) {
-            // realloc ifc_info_str
-            ifc_info_str = (char *) realloc(ifc_info_str, needed_len * sizeof(char));
-            ifc_info_str_len = needed_len;
-            memset(ifc_info_str, 0, needed_len * sizeof(char));
-         }
+         ifc_type[0] = running_modules[x].out_ifces_data[y].ifc_type;
+         ifc_info = json_pack("{sssssisIsIsIsI}", "type", ifc_type,
+                                                  "ID", running_modules[x].out_ifces_data[y].ifc_id,
+                                                  "cli-num", running_modules[x].out_ifces_data[y].num_clients,
+                                                  "sent-msg", running_modules[x].out_ifces_data[y].sent_msg_cnt,
+                                                  "drop-msg", running_modules[x].out_ifces_data[y].dropped_msg_cnt,
+                                                  "buffers", running_modules[x].out_ifces_data[y].sent_buffer_cnt,
+                                                  "autoflush", running_modules[x].out_ifces_data[y].autoflush_cnt);
 
-         sprintf(ifc_info_str, "%c:%s:%" PRIu32, running_modules[x].out_ifces_data[y].ifc_type,
-                                                 running_modules[x].out_ifces_data[y].ifc_id,
-                                                 running_modules[x].out_ifces_data[y].num_clients);
-
-         if (json_array_append_new(out_ifc_arr[x], json_string(ifc_info_str)) == -1) {
+         if (ifc_info == NULL || json_array_append_new(out_ifc_arr[x], ifc_info) == -1) {
             VERBOSE(SUP_LOG, "[ERROR] Could not append module output ifc info to JSON array (module \"%s\").\n", running_modules[x].module_name);
             goto clean_up;
          }
       }
 
-      module_info = json_pack("{sisssssssssoso}", "module-idx", x,
-                                                  "module-name", running_modules[x].module_name,
-                                                  "module-params", (running_modules[x].module_params == NULL ? "none" : running_modules[x].module_params),
-                                                  "bin-path", running_modules[x].module_path,
-                                                  "status", (running_modules[x].module_status == TRUE ? "running" : "stopped"),
-                                                  "inputs", in_ifc_arr[x],
-                                                  "outputs", out_ifc_arr[x]);
+
+      if (print_details == TRUE) {
+         module_info = json_pack("{sisssssssisisIsoso}", "idx", x,
+                                                         "params", (running_modules[x].module_params == NULL ? "none" : running_modules[x].module_params),
+                                                         "path", running_modules[x].module_path,
+                                                         "status", (running_modules[x].module_status == TRUE ? "running" : "stopped"),
+                                                         "CPU-u", running_modules[x].last_period_percent_cpu_usage_user_mode,
+                                                         "CPU-s", running_modules[x].last_period_percent_cpu_usage_kernel_mode,
+                                                         "mem", running_modules[x].virtual_memory_usage,
+                                                         "inputs", in_ifc_arr[x],
+                                                         "outputs", out_ifc_arr[x]);
+      } else {
+         module_info = json_pack("{sisisIsoso}", "CPU-u", running_modules[x].last_period_percent_cpu_usage_user_mode,
+                                                 "CPU-s", running_modules[x].last_period_percent_cpu_usage_kernel_mode,
+                                                 "mem", running_modules[x].virtual_memory_usage,
+                                                 "inputs", in_ifc_arr[x],
+                                                 "outputs", out_ifc_arr[x]);
+      }
+
       if (module_info == NULL) {
          VERBOSE(SUP_LOG, "[ERROR] Could not create JSON object of a module \"%s\".\n", running_modules[x].module_name);
          goto clean_up;
       }
 
-      if (json_array_append_new(modules_arr, module_info) == -1) {
-         VERBOSE(SUP_LOG, "[ERROR] Could not append module \"%s\" info to JSON array.\n", running_modules[x].module_name);
+      module = json_pack("{so}", running_modules[x].module_name, module_info);
+      if (module == NULL) {
+         VERBOSE(SUP_LOG, "[ERROR] Could not create JSON object of a module \"%s\".\n", running_modules[x].module_name);
          goto clean_up;
+      }
+
+      if (modules_obj == NULL) {
+         modules_obj = module;
+      } else {
+         if (json_object_update(modules_obj, module) == -1) {
+            VERBOSE(SUP_LOG, "[ERROR] Could not append module \"%s\" final JSON object.\n", running_modules[x].module_name);
+            goto clean_up;
+         }
       }
    }
 
-   result_json = json_pack("{siso}", "modules-number", loaded_modules_cnt, "modules", modules_arr);
-   if (result_json == NULL) {
-      VERBOSE(SUP_LOG, "[ERROR] Could not create final JSON object with modules info.\n");
-      goto clean_up;
-   }
-
-   char *data = json_dumps(result_json, 0);
-   json_decref(result_json);
-   NULLP_TEST_AND_FREE(ifc_info_str)
+   char *data = json_dumps(modules_obj, 0);
+   json_decref(modules_obj);
    return data;
 
 clean_up:
-   NULLP_TEST_AND_FREE(ifc_info_str)
    return NULL;
 }
 
@@ -1593,10 +1601,15 @@ void *daemon_serve_client_routine (void *cli)
 
    case CLIENT_STATS_MODE_CODE: { // send stats to current client and wait for new one
       VERBOSE(SUP_LOG, "%s [INFO] Got modules_stats_mode code. (client's ID: %d)\n", get_formatted_time(), client->client_id);
-      char *stats_buffer = make_formated_statistics((uint8_t) 7);
-      fprintf(client->client_output_stream, "%s", stats_buffer);
+      char *info_buffer = make_json_modules_info(0); // info_buffer is a string returned from json_dump function, null-terminated
+      if (info_buffer == NULL) {
+         VERBOSE(SUP_LOG, "%s [INFO] JSON data was not created successfully -> modules info could not be sent to client. (client's ID: %d)\n", get_formatted_time(), client->client_id);
+         daemon_disconnect_client(client);
+         pthread_exit(EXIT_SUCCESS);
+      }
+      fprintf(client->client_output_stream, "%s", info_buffer);
       fflush(client->client_output_stream);
-      NULLP_TEST_AND_FREE(stats_buffer)
+      NULLP_TEST_AND_FREE(info_buffer)
       VERBOSE(SUP_LOG, "%s [INFO] Modules stats sent to client. (client's ID: %d)\n", get_formatted_time(), client->client_id);
       daemon_disconnect_client(client);
       pthread_exit(EXIT_SUCCESS);
@@ -1604,7 +1617,7 @@ void *daemon_serve_client_routine (void *cli)
 
    case CLIENT_INFO_MODE_CODE: {
       VERBOSE(SUP_LOG, "%s [INFO] Got modules_info_mode code. (client's ID: %d)\n", get_formatted_time(), client->client_id);
-      char *info_buffer = make_json_modules_info(); // info_buffer is a string returned from json_dump function, null-terminated
+      char *info_buffer = make_json_modules_info(1); // info_buffer is a string returned from json_dump function, null-terminated
       if (info_buffer == NULL) {
          VERBOSE(SUP_LOG, "%s [INFO] JSON data was not created successfully -> modules info could not be sent to client. (client's ID: %d)\n", get_formatted_time(), client->client_id);
          daemon_disconnect_client(client);
