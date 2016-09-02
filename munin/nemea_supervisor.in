@@ -47,6 +47,7 @@ import os
 import time
 import signal
 import subprocess
+import json
 
 LOG_FILENAME = '/tmp/nemea_supervisor_munin.log'
 #LOG_LEVEL = logging.DEBUG
@@ -70,32 +71,32 @@ supervisor_cli = "@bindir@/supervisor_cli"
 
 # labels of counters in graphs
 labels = {
-	"in": ["received messages", "received buffers"],
-	"out": ["sent messages", "dropped messages", "sent buffers", "autoflush"],
+	"inputs": ["received messages", "received buffers"],
+	"outputs": ["sent messages", "dropped messages", "sent buffers", "autoflush"],
 	"cpu": ["kernel mode", "user mode"],
 	"mem": ["virtual memory"],
 }
 
 # data types of counters in graphs
 datatypes = {
-	"in": ["DERIVE", "DERIVE"],
-	"out": ["DERIVE", "DERIVE", "DERIVE", "DERIVE"],
+	"inputs": ["DERIVE", "DERIVE"],
+	"outputs": ["DERIVE", "DERIVE", "DERIVE", "DERIVE"],
 	"cpu": ["GAUGE", "GAUGE"],
 	"mem": ["GAUGE"],
 }
 
 # vertical axis labels
 vlabels = {
-	"in": "count",
-	"out": "count",
+	"inputs": "count",
+	"outputs": "count",
 	"cpu": "%",
 	"mem": "kB",
 }
 
 # graph titles
 graph_title = {
-	"in": "input IFC",
-	"out": "output IFC",
+	"inputs": "input IFC",
+	"outputs": "output IFC",
 	"cpu": "CPU usage",
 	"mem": "Memory usage",
 }
@@ -129,20 +130,109 @@ signal.alarm(2)
 
 # get data
 if test:
-	data = """MAIN_Anonymizer,in,0,-792698113,1334
-MAIN_Anonymizer,out,0,-792698114,443,74068444,13382
-MAIN_Anonymizer,out,1,698114,6543,74068444,13382
-MAIN_ipv6stats,in,0,-170390356,423
-MAIN_dns_amplification,in,0,-1398852332,14896
-MAIN_dns_amplification,out,0,125580,439,72686,2774847
-MAIN_Anonymizer,cpu,0,3
-MAIN_ipv6stats,cpu,0,0
-MAIN_dns_amplification,cpu,0,24
-MAIN_dns_amp_report_handler,cpu,0,0
-MAIN_Anonymizer,mem,110000
-MAIN_ipv6stats,mem,220000
-MAIN_dns_amplification,mem,330000
-MAIN_dns_amp_report_handler,mem,440000
+	data = """{
+   "dns_amplification":{
+      "CPU-u":0,
+      "CPU-s":0,
+      "outputs":[
+         {
+            "buffers":0,
+            "type":"t",
+            "ID":"12001",
+            "cli-num":1,
+            "sent-msg":0,
+            "drop-msg":0,
+            "autoflush":5
+         }
+      ],
+      "mem":186204160,
+      "inputs":[
+         {
+            "buffers":0,
+            "type":"u",
+            "ID":"flow_data_source",
+            "is-conn":0,
+            "messages":0
+         }
+      ]
+   },
+   "dnstunnel_detection":{
+      "CPU-u":0,
+      "CPU-s":0,
+      "outputs":[
+         {
+            "buffers":0,
+            "type":"t",
+            "ID":"12004",
+            "cli-num":1,
+            "sent-msg":0,
+            "drop-msg":0,
+            "autoflush":4
+         },
+         {
+            "buffers":0,
+            "type":"u",
+            "ID":"dnstunnel_sdmoutput",
+            "cli-num":0,
+            "sent-msg":0,
+            "drop-msg":0,
+            "autoflush":4
+         }
+      ],
+      "mem":213610496,
+      "inputs":[
+         {
+            "buffers":0,
+            "type":"u",
+            "ID":"flow_data_source",
+            "is-conn":0,
+            "messages":0
+         }
+      ]
+   },
+   "vportscan_aggregator":{
+      "CPU-u":0,
+      "CPU-s":0,
+      "outputs":[
+         {
+            "buffers":0,
+            "type":"t",
+            "ID":"12005",
+            "cli-num":1,
+            "sent-msg":0,
+            "drop-msg":0,
+            "autoflush":0
+         }
+      ],
+      "mem":351088640,
+      "inputs":[
+         {
+            "buffers":0,
+            "type":"u",
+            "ID":"vportscan_out",
+            "is-conn":1,
+            "messages":0
+         }
+      ]
+   },
+   "dnstunnel_logger":{
+      "CPU-u":0,
+      "CPU-s":0,
+      "outputs":[
+
+      ],
+      "mem":93093888,
+      "inputs":[
+         {
+            "buffers":0,
+            "type":"t",
+            "ID":"12004",
+            "is-conn":1,
+            "messages":0
+         }
+      ]
+   }
+}
 """
 else:
 	current_time = time.time()
@@ -180,136 +270,169 @@ else:
 			for line in f.readlines():
 				data = data + line
 
-
+# ----------------------------------------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------------
 
 def parseData(data):
 	modules = {}
-	counters = []
 	try:
-		for line in data.split('\n'):
-			if not line:
-				continue
-			parsed_line = line.split(',')
-			parsed_line[0] = parsed_line[0].replace("-", "_")
-			counters.append(parsed_line)
-			if parsed_line[0] not in modules:
-				modules[parsed_line[0]] = {}
-			if parsed_line[1] not in modules[parsed_line[0]]:
-				modules[parsed_line[0]][parsed_line[1]] = []
-			modules[parsed_line[0]][parsed_line[1]].append(parsed_line[2:])
+		modules = json.loads(data)
 	except Exception as e:
 		logging.error("Cannot parse data. ({})".format(e))
 	return modules
 
-def genModuleGraph(name, data):
-	for i in "cpu", "in", "out", "mem":
-		if i in data:
-			for graphid in range(0, data[i].__len__()):
-				print("multigraph {}_{}{}".format(name, i, graphid))
-				if i == "cpu":
-					print('graph_title {} {}'.format(name, graph_title[i]))
-				else:
-					print('graph_title {} {} {}'.format(name, graph_title[i], graphid))
-				print('graph_vlabel {}'.format(vlabels[i]))
-				print("graph_category nemea_supervisor")
-				graph = data[i][graphid]
-				if i in ["cpu", "mem"]:
-					r = range(0, graph.__len__())
-				else:
-					r = range(0, graph.__len__()-1)
-				for statid in r:
-					print("stat{}.label {}".format(statid, labels[i][statid]))
-					print("stat{}.type {}".format(statid, datatypes[i][statid]))
-					if i == "cpu":
-						print("stat{}.min 0".format(statid))
-						print("stat{}.max 100".format(statid))
+def genModuleCpuConfig(m, modules):
+	print("multigraph {0}_CPU".format(m))
+	print("graph_title {0} {1}".format(m, graph_title["cpu"]))
+	print("graph_vlabel {0}".format(vlabels["cpu"]))
+	print("graph_category nemea_supervisor")
+	for statid in [0, 1]:
+		print("stat{0}.label {1}".format(statid, labels["cpu"][statid]))
+		print("stat{0}.type {1}".format(statid, datatypes["cpu"][statid]))
+		print("stat{0}.min 0".format(statid))
+		print("stat{0}.max 100".format(statid))
+	print("")
 
-				print("")
+def genModuleMemConfig(m, modules):
+	print("multigraph {0}_MEM".format(m))
+	print("graph_title {0} {1}".format(m, graph_title["mem"]))
+	print("graph_vlabel {0}".format(vlabels["mem"]))
+	print("graph_category nemea_supervisor")
+	print("stat0.label {0}".format(labels["mem"][0]))
+	print("stat0.type {0}".format(datatypes["mem"][0]))
+	print("")
+
+def genModuleInputsConfig(m, modules):
+	for ifc_num in range(0, modules[m]["inputs"].__len__()):
+		print("multigraph {0}_INIFC{1}".format(m, ifc_num))
+		print("graph_title {0} {1} {2}".format(m, graph_title["inputs"], ifc_num))
+		print("graph_vlabel {0}".format(vlabels["outputs"]))
+		print("graph_category nemea_supervisor")
+		for statid in range(0, 2):
+			print("stat{0}.label {1}".format(statid, labels["inputs"][statid]))
+			print("stat{0}.type {1}".format(statid, datatypes["inputs"][statid]))
+		print("")
 
 
-def getTotalCPUConfiguration(modules):
+def genModuleOutputsConfig(m, modules):
+	for ifc_num in range(0, modules[m]["outputs"].__len__()):
+		print("multigraph {0}_OUTIFC{1}".format(m, ifc_num))
+		print("graph_title {0} {1} {2}".format(m, graph_title["outputs"], ifc_num))
+		print("graph_vlabel {0}".format(vlabels["inputs"]))
+		print("graph_category nemea_supervisor")
+		for statid in range(0, 4):
+			print("stat{0}.label {1}".format(statid, labels["outputs"][statid]))
+			print("stat{0}.type {1}".format(statid, datatypes["outputs"][statid]))
+		print("")
+
+def genTotalCpuConfig(modules):
 	sel_modules = []
-	for i in modules:
-		if "cpu" in modules[i]:
-			sel_modules.append(i)
+	for m in modules:
+		if "CPU-s" in modules[m] and "CPU-u" in modules[m]:
+			sel_modules.append(m)
 	if sel_modules:
 		print("multigraph nemea_modules_cpu")
 		print("graph_title CPU usage of Nemea modules")
 		print("graph_category nemea_supervisor")
-		print('graph_vlabel {}'.format(vlabels["cpu"]))
+		print('graph_vlabel {0}'.format(vlabels["cpu"]))
 		print("graph_info User CPU usage of all running and monitored modules.")
-		for i in sel_modules:
-			print("{}.label {}".format(i, i.replace("_", " ")))
-			print("{}.min 0".format(i))
-			print("{}.type GAUGE".format(i))
-			print("{}.draw AREASTACK".format(i))
+		for m in sel_modules:
+			print("{0}.label {1}".format(m, m.replace("_", " ")))
+			print("{0}.min 0".format(m))
+			print("{0}.type GAUGE".format(m))
+			print("{0}.draw AREASTACK".format(m))
+		print("")
 
-def getTotalCPUValues(modules):
+def genTotalMemConfig(modules):
 	sel_modules = []
-	for i in modules:
-		if "cpu" in modules[i]:
-			sel_modules.append(i)
-	if sel_modules:
-		print("multigraph nemea_modules_cpu")
-		for i in sel_modules:
-			print("{}.value {}".format(i, modules[i]["cpu"][0][1]))
-
-def getTotalMEMConfiguration(modules):
-	sel_modules = []
-	for i in modules:
-		if "mem" in modules[i]:
-			sel_modules.append(i)
+	for m in modules:
+		if "mem" in modules[m]:
+			sel_modules.append(m)
 	if sel_modules:
 		print("multigraph nemea_modules_mem")
 		print("graph_title Virtual memory usage of Nemea modules")
 		print("graph_category nemea_supervisor")
-		print('graph_vlabel {}'.format(vlabels["mem"]))
+		print('graph_vlabel {0}'.format(vlabels["mem"]))
 		print("graph_info Virtual memory usage of all running and monitored modules.")
-		for i in sel_modules:
-			print("{}.label {}".format(i, i.replace("_", " ")))
-			print("{}.min 0".format(i))
-			print("{}.type GAUGE".format(i))
-			print("{}.draw AREASTACK".format(i))
+		for m in sel_modules:
+			print("{0}.label {1}".format(m, m.replace("_", " ")))
+			print("{0}.min 0".format(m))
+			print("{0}.type GAUGE".format(m))
+			print("{0}.draw AREASTACK".format(m))
+		print("")
 
-def getTotalMEMValues(modules):
+def getConfig(modules):
+	genTotalCpuConfig(modules)
+	genTotalMemConfig(modules)
+	for m in modules:
+		genModuleCpuConfig(m, modules)
+		genModuleMemConfig(m, modules)
+		genModuleInputsConfig(m, modules)
+		genModuleOutputsConfig(m, modules)
+
+# -----------------------------------------------------------------------------------------------
+
+
+def genModuleCpuValues(m, modules):
+	print("multigraph {0}_CPU".format(m))
+	print("stat0.value {0}".format(modules[m]["CPU-s"]))
+	print("stat1.value {0}".format(modules[m]["CPU-u"]))
+	print("")
+
+def genModuleMemValues(m, modules):
+	print("multigraph {0}_MEM".format(m))
+	print("stat0.value {0}".format(((int)(modules[m]["mem"])) / 1024))
+	print("")
+
+def genModuleInputsValues(m, modules):
+	for ifc_num in range(0, modules[m]["inputs"].__len__()):
+		print("multigraph {0}_INIFC{1}".format(m, ifc_num))
+		print("stat0.value {0}".format(modules[m]["inputs"][ifc_num]["messages"]))
+		print("stat1.value {0}".format(modules[m]["inputs"][ifc_num]["buffers"]))
+		print("")
+
+def genModuleOutputsValues(m, modules):
+	for ifc_num in range(0, modules[m]["outputs"].__len__()):
+		print("multigraph {0}_OUTIFC{1}".format(m, ifc_num))
+		print("stat0.value {0}".format(modules[m]["outputs"][ifc_num]["sent-msg"]))
+		print("stat1.value {0}".format(modules[m]["outputs"][ifc_num]["drop-msg"]))
+		print("stat2.value {0}".format(modules[m]["outputs"][ifc_num]["buffers"]))
+		print("stat3.value {0}".format(modules[m]["outputs"][ifc_num]["autoflush"]))
+		print("")
+
+def genTotalCpuValues(modules):
 	sel_modules = []
-	for i in modules:
-		if "mem" in modules[i]:
-			sel_modules.append(i)
+	for m in modules:
+		if "CPU-s" in modules[m] and "CPU-u" in modules[m]:
+			sel_modules.append(m)
+	if sel_modules:
+		print("multigraph nemea_modules_cpu")
+		for m in sel_modules:
+			print("{0}.value {1}".format(m, modules[m]["CPU-u"]))
+	print("")
+
+def genTotalMemValues(modules):
+	sel_modules = []
+	for m in modules:
+		if "mem" in modules[m]:
+			sel_modules.append(m)
 	if sel_modules:
 		print("multigraph nemea_modules_mem")
-		for i in sel_modules:
-			print("{}.value {}".format(i, modules[i]["mem"][0][0]))
-
-def getConfiguration(modules):
-	getTotalCPUConfiguration(modules)
-	getTotalMEMConfiguration(modules)
-	for module in modules:
-		genModuleGraph(module, modules[module])
+		for m in sel_modules:
+			print("{0}.value {1}".format(m, ((int)(modules[m]["mem"])) / 1024))
+	print("")
 
 def getValues(modules):
-	getTotalCPUValues(modules)
-	getTotalMEMValues(modules)
-	for module in modules:
-		# iterate over Nemea modules
-		for cat in modules[module]:
-			# each Nemea module supplies some graphs, iterate over graphs
-			graphs = modules[module][cat]
-			for graphid in range(0, graphs.__len__()):
-				graph = graphs[graphid]
-				print("multigraph {}_{}{}".format(module, cat, graphid))
-				if cat == "cpu":
-					r = range(0, graph.__len__())
-					for val in r:
-						print("stat{}.value {}".format(val, abs(int(graph[val]))))
-				elif cat == "mem":
-					r = range(0, graph.__len__())
-					for val in r:
-						print("stat{}.value {}".format(val, abs(int(graph[val]))))
-				else:
-					r = range(1, graph.__len__())
-					for val in r:
-						print("stat{}.value {}".format(val-1, abs(int(graph[val]))))
+	genTotalCpuValues(modules)
+	genTotalMemValues(modules)
+	for m in modules:
+		genModuleCpuValues(m, modules)
+		genModuleMemValues(m, modules)
+		genModuleInputsValues(m, modules)
+		genModuleOutputsValues(m, modules)
+
+# ------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------------------------
 
 import sys
 if not data:
@@ -318,13 +441,13 @@ if not data:
 	exit(1)
 
 modules = parseData(data)
+
 if len(sys.argv) == 2 and sys.argv[1] == "autoconf":
 	print("yes")
 elif len(sys.argv) == 2 and sys.argv[1] == "config":
-	getConfiguration(modules)
+	getConfig(modules)
 elif len(sys.argv) == 2 and sys.argv[1] == "suggest":
 	print("")
 else:
-	#values
 	getValues(modules)
 
