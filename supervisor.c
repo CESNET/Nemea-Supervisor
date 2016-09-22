@@ -351,7 +351,7 @@ add_param:
          if (params_cnt == params_arr_size) { // if needed, resize the array of parsed parameters
             params_arr_size += params_arr_size;
             params = (char **) realloc(params, sizeof(char *) * params_arr_size);
-            memset(params + ((params_arr_size / 2) * sizeof(char *)), 0, ((params_arr_size / 2) * sizeof(char *)));
+            memset(params + (params_arr_size / 2), 0, ((params_arr_size / 2) * sizeof(char *)));
          }
 
          params[params_cnt] = strdup(buffer);
