@@ -1,3 +1,29 @@
+2016-10-04 supervisor-1.5.0
+        * added Sip Brute-Force Detector sup files
+	* supervisor_cli output now in JSON`
+	* bugfixes
+
+2016-09-22 (Marek Svepes): bugfix: invalid write of memset - wrong address offset
+2016-09-21 (Marek Svepes): ncnemea: update of yang model
+2016-09-20 (Tomas Jansky): added sup files for sip_bf_detector
+2016-09-02 (Marek Svepes): munin: update of the nemea_supervisor plugin to accept JSON format from "supervisor_cli -x"
+2016-09-02 (Marek Svepes): client: output of the "supervisor_cli -x" was transformed into JSON and structure of the "supervisor_cli -i" output was modified
+2016-08-31 (Marek Svepes): modules' resources usage: both CPU and memory usage is obtained from /proc/pid/stat file (instead of /proc/pid/{stat,status})
+2016-08-31 (Marek Svepes): CPU usage: bugfix: integer division typecast bug
+2016-08-30 (Marek Svepes): CPU/mem usage: these statistics are now refreshed (and cached) periodically by service thread
+2016-08-30 (Marek Svepes): CPU usage: bugfix: division by zero with 2 "supcli -x" at the same time
+2016-08-30 (Marek Svepes): CPU usage: removed unused overall CPU usage monitoring of modules
+2016-08-30 (Tomas Jansky): ipfixcol-startup: BUGFIX - order of fields for voip_data_source
+2016-08-23 (Tomas Jansky): config: changed template of voip_data_source
+2016-08-19 (Vaclav Bartos): NemeaStatus: README updated, screenshot added
+2016-08-19 (Vaclav Bartos): NemeaStatus: Added code for Nemea Status web page
+2016-08-18 (Marek Svepes): sup client: extended output of "supcli -i" mode
+2016-08-18 (Marek Svepes): doc: README: update of supervisor's client -i output
+2016-08-17 (Marek Svepes): (bug)fix: simplification of the service interface connection handling
+2016-08-12 (Marek Svepes): doc: README: update of the "supervisor functions" section
+2016-08-12 (Marek Svepes): Changes in menu with available options
+2016-08-12 (Marek Svepes): Update of JSON (received via service ifc) decode function (new "ifc_state" and "num_clients" items)
+
 2016-08-05 supervisor-1.4.4
 	* changed way of installing service file
 
