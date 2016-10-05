@@ -61,7 +61,7 @@ loggers_DATA = loggers/amplification_logger.sup \
 	   loggers/haddrscan_aggr_logger.sup \
 	   loggers/hoststats_logger.sup \
 	   loggers/ipblacklistfilter_logger.sup \
-	   logger/miner_detector_logger.sup \
+	   loggers/miner_detector_logger.sup \
 	   loggers/sip_bf_logger.sup \
 	   loggers/voip_fraud_logger.sup \
 	   loggers/vportscan_aggr_logger.sup
