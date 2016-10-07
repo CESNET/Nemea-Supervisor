@@ -1,3 +1,10 @@
+2016-10-07 supervisor-1.5.1
+        * added sup files for sip2bf and haddrscan reporters
+
+2016-10-07 (Tomas Jansky): reporters: added haddrscan_reporter.sup
+2016-10-07 (Tomas Jansky): reporters: sip2bf: set default state to false
+2016-10-07 (Tomas Jansky): added sip2idea reporter
+
 2016-10-04 supervisor-1.5.0
         * added Sip Brute-Force Detector sup files
 	* supervisor_cli output now in JSON`

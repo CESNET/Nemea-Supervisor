@@ -1,6 +1,6 @@
 <module>
 <name>haddrscan2idea</name>
-<enabled>true</enabled>
+<enabled>false</enabled>
 <path>/usr/bin/nemea/haddrscan2idea.py</path>
 <params>--name=cz.cesnet.nemea.haddrscan --mongodb=nemeadb --mongodb-coll=alerts_new</params>
 <trapinterfaces>
