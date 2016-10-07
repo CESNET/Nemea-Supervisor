@@ -47,6 +47,7 @@ reporters_DATA = reporters/amplification_reporter.sup \
 	   reporters/brute_force_hist_reporter.sup \
 	   reporters/brute_force_reporter.sup \
 	   reporters/dnstunnel_reporter.sup \
+	   reporters/haddrscan_reporter.sup \
 	   reporters/hoststats_reporter.sup \
 	   reporters/ipblacklistfilter_reporter.sup \
 	   reporters/miner_detector_reporter.sup \
