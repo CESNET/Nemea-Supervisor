@@ -50,6 +50,7 @@ reporters_DATA = reporters/amplification_reporter.sup \
 	   reporters/hoststats_reporter.sup \
 	   reporters/ipblacklistfilter_reporter.sup \
 	   reporters/miner_detector_reporter.sup \
+	   reporters/sipbf2idea.sup \
 	   reporters/voip_fraud_reporter.sup \
 	   reporters/vportscan_reporter.sup
 
