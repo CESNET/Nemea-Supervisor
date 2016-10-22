@@ -68,7 +68,6 @@
 #define SERVICE_IFC_CONN_ATTEMPTS_LIMIT   3 // Maximum count of connection attempts to service interface
 #define MAX_SERVICE_IFC_CONN_FAILS   3
 
-#define MODULES_UNIXSOCKET_PATH_FILENAME_FORMAT   "/tmp/trap-localhost-%s.sock" ///< Modules output interfaces socket, to which connects service thread.
 #define DEFAULT_DAEMON_SERVER_SOCKET   DEFAULT_PATH_TO_SOCKET  ///<  Daemon server socket
 #define DEFAULT_NETCONF_SERVER_SOCKET   "/tmp/netconf_supervisor.sock"  ///<  Netconf server socket
 
@@ -1934,7 +1933,7 @@ void service_stop_modules_sigkill()
                }
                memset(buffer, 0, DEFAULT_SIZE_OF_BUFFER);
                get_param_by_delimiter(running_modules[x].config_ifces[y].ifc_params, &dest_port, ',');
-               sprintf(buffer,MODULES_UNIXSOCKET_PATH_FILENAME_FORMAT,dest_port);
+               sprintf(buffer,trap_default_socket_path_format,dest_port);
                VERBOSE(MODULE_EVENT, "%s [CLEAN] Deleting socket %s - module %s\n", get_formatted_time(), buffer, running_modules[x].module_name);
                unlink(buffer);
                NULLP_TEST_AND_FREE(dest_port)
@@ -1945,7 +1944,7 @@ void service_stop_modules_sigkill()
          if (running_modules[x].config_ifces_cnt > 0) {
             memset(service_sock_spec, 0, 14 * sizeof(char));
             sprintf(service_sock_spec, "service_%d", running_modules[x].module_pid);
-            sprintf(buffer, MODULES_UNIXSOCKET_PATH_FILENAME_FORMAT, service_sock_spec);
+            sprintf(buffer, trap_default_socket_path_format, service_sock_spec);
             VERBOSE(MODULE_EVENT, "%s [CLEAN] Deleting socket %s - module %s\n", get_formatted_time(), buffer, running_modules[x].module_name);
             unlink(buffer);
          }
@@ -2089,7 +2088,7 @@ void service_connect_to_module(const int module)
    memset(&addr, 0, sizeof(addr));
 
    addr.unix_addr.sun_family = AF_UNIX;
-   snprintf(addr.unix_addr.sun_path, sizeof(addr.unix_addr.sun_path) - 1, MODULES_UNIXSOCKET_PATH_FILENAME_FORMAT, service_sock_spec);
+   snprintf(addr.unix_addr.sun_path, sizeof(addr.unix_addr.sun_path) - 1, trap_default_socket_path_format, service_sock_spec);
    sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
    if (sockfd == -1) {
       VERBOSE(MODULE_EVENT,"%s [SERVICE] Error while opening socket for connection with module %s.\n", get_formatted_time(), running_modules[module].module_name);
