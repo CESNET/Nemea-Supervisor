@@ -107,7 +107,7 @@ graph_title = {
 logging.basicConfig(filename=LOG_FILENAME,
 		level=LOG_LEVEL,
 		format='%(asctime)s %(levelname)s %(message)s',
-		filemod='a')
+		filemode='a')
 child_pid = -1
 
 def handler_function(signum, stackframe):
