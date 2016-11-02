@@ -140,8 +140,8 @@ if test:
             "type":"t",
             "ID":"12001",
             "cli-num":1,
-            "sent-msg":0,
-            "drop-msg":0,
+            "sent-msg":123,
+            "drop-msg":10,
             "autoflush":5
          }
       ],
@@ -152,7 +152,7 @@ if test:
             "type":"u",
             "ID":"flow_data_source",
             "is-conn":0,
-            "messages":0
+            "messages":118
          }
       ]
    },
@@ -165,8 +165,8 @@ if test:
             "type":"t",
             "ID":"12004",
             "cli-num":1,
-            "sent-msg":0,
-            "drop-msg":0,
+            "sent-msg":10,
+            "drop-msg":1,
             "autoflush":4
          },
          {
@@ -174,8 +174,8 @@ if test:
             "type":"u",
             "ID":"dnstunnel_sdmoutput",
             "cli-num":0,
-            "sent-msg":0,
-            "drop-msg":0,
+            "sent-msg":100,
+            "drop-msg":20,
             "autoflush":4
          }
       ],
@@ -269,6 +269,35 @@ else:
 		with open(data_temp_file, "r") as f:
 			for line in f.readlines():
 				data = data + line
+
+def getTotalCountersConfig(m, modules):
+    print("""multigraph nemea_ifcs_total
+graph_title Total numbers of messages through all modules
+graph_vlabel count
+graph_category nemea_supervisor
+sent.label sent messages
+sent.type DERIVE
+recv.label received messages
+recv.type DERIVE
+drop.label dropped messages
+drop.type DERIVE
+""")
+
+def getTotalCountersValues(m, modules):
+	r = 0
+	s = 0
+	d = 0
+	for i in modules:
+		for ifc in modules[i]["inputs"]:
+			r += ifc["messages"]
+		for ifc in modules[i]["outputs"]:
+			s += ifc["sent-msg"]
+			d += ifc["drop-msg"]
+	print("multigraph nemea_ifcs_total")
+	print("sent.value " + str(s))
+	print("recv.value " + str(-r))
+	print("drop.value " + str(d))
+
 
 # ----------------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------------
@@ -369,6 +398,7 @@ def getConfig(modules):
 		genModuleMemConfig(m, modules)
 		genModuleInputsConfig(m, modules)
 		genModuleOutputsConfig(m, modules)
+		getTotalCountersConfig(m, modules)
 
 # -----------------------------------------------------------------------------------------------
 
@@ -430,6 +460,7 @@ def getValues(modules):
 		genModuleMemValues(m, modules)
 		genModuleInputsValues(m, modules)
 		genModuleOutputsValues(m, modules)
+	getTotalCountersValues(m, modules)
 
 # ------------------------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------------------------
