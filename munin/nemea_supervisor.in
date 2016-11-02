@@ -126,7 +126,8 @@ signal.signal(signal.SIGALRM,handler_function)
 
 #Sets an alarm in 10 seconds
 #If uncaught will terminate your process.
-signal.alarm(2)
+if not test:
+	signal.alarm(2)
 
 # get data
 if test:
