@@ -90,7 +90,7 @@ vlabels = {
 	"inputs": "count",
 	"outputs": "count",
 	"cpu": "%",
-	"mem": "kB",
+	"mem": "B",
 }
 
 # graph titles
@@ -381,7 +381,7 @@ def genModuleCpuValues(m, modules):
 
 def genModuleMemValues(m, modules):
 	print("multigraph {0}_MEM".format(m))
-	print("stat0.value {0}".format(((int)(modules[m]["mem"])) / 1024))
+	print("stat0.value {0}".format((int)(modules[m]["mem"])))
 	print("")
 
 def genModuleInputsValues(m, modules):
@@ -419,7 +419,7 @@ def genTotalMemValues(modules):
 	if sel_modules:
 		print("multigraph nemea_modules_mem")
 		for m in sel_modules:
-			print("{0}.value {1}".format(m, ((int)(modules[m]["mem"])) / 1024))
+			print("{0}.value {1}".format(m, (int)(modules[m]["mem"])))
 	print("")
 
 def getValues(modules):
