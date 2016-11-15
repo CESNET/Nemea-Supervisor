@@ -66,7 +66,7 @@ def get_topology():
             'output': e.output,
         }
     try:
-        return sorted(json.loads(out)['modules'], key=lambda mod: mod.get('module-idx',0))
+        return sorted(json.loads(out).items(), key=lambda mod: mod[1]['idx'])
     except ValueError:
         return {
             'error': 'invalidjson',
@@ -102,29 +102,15 @@ def get_stats():
     # Parse output
     try:
         res = {}
-        for l in out.splitlines():
-            module, type, rest = l.split(',', 2)
-            if type == 'in':
-                iftype, ifid, cnt_msg, cnt_buf = rest.split(',')
-                cnt_msg = int(cnt_msg)
-                cnt_buf = int(cnt_buf)
-                res[get_indxed_key(res, module+'_'+type)] = cnt_msg
-            elif type == 'out':
-                iftype, ifid, cnt_msg, cnt_buf, cnt_drop, cnt_autoflush = rest.split(',')
-                cnt_msg = int(cnt_msg)
-                cnt_buf = int(cnt_buf)
-                cnt_drop = int(cnt_drop)
-                cnt_autoflush = int(cnt_autoflush)
-                res[get_indxed_key(res, module+'_'+type)] = cnt_msg
-                res[get_indxed_key(res, module+'_'+type) + '_drop'] = cnt_drop
-            elif type == 'cpu':
-                cpu_kernel, cpu_user = rest.split(',')
-                cpu_kernel = int(cpu_kernel)
-                cpu_user = int(cpu_user)
-                res[module + '_cpu'] = cpu_kernel + cpu_user
-            elif type == 'mem':
-                mem = int(rest)
-                res[module + '_mem'] = mem
+        j = json.loads(out)
+        for module, data in j.iteritems():
+            res[module + '_mem'] = data['mem']/1000
+            res[module + '_cpu'] = data['CPU-u'] + data['CPU-s']
+            for inpt in data['inputs']:
+                res[get_indxed_key(res, module+'_in')] = inpt['messages']
+            for otpt in data['outputs']:
+                res[get_indxed_key(res, module+'_out')] = otpt['sent-msg']
+                res[get_indxed_key(res, module+'_out')] = otpt['drop-msg']
         return res
     except Exception:
         raise

@@ -142,31 +142,31 @@ Last refresh: <span id="last-refresh"></span>
 
 <table class="modules">
 
-{% for module in topology %}
+{% for name, module in topology %}
 <tr><td class="input-col">
 
 {% for ifc in module.inputs %}
- <div class="ifc" id="{{ module['module-name'] }}_in{{ loop.index-1 }}">
-  <span class="ifc-name" title="IFC type and parameters">{{ ifc.split(':')[:2]|join(':') }}</span>
+ <div class="ifc" id="{{ name }}_in{{ loop.index-1 }}">
+  <span class="ifc-name" title="IFC type and parameters">{{ ifc['type'] }}:{{ ifc['ID'] }}</span>
   <span class="ifc-counter" title="Number of messages transferred per second">--</span>
-  {% set conn = ifc.split(':')[3]|default(0)|int %}
+  {% set conn = ifc['is-conn']|default(0)|int %}
   <span class="ifc-marker {{'connected' if conn > 0 else 'notconnected'}}"></span>
  </div>
 {% endfor %}
 
-</td><td id="{{module['module-name']}}" class="module-col {{ module.status }}">
+</td><td id="{{ name }}" class="module-col {{ module.status }}">
 <div class="module-cpu" title="CPU usage">&#x2007;-- %</div>
 <div class="module-mem" title="Memory consumption">-- MB</div>
-<div class="module-name">{{ module['module-name'] }}</div>
-<div class="exec-name">{{ module['bin-path'] }}</div>
+<div class="module-name">{{ name }}</div>
+<div class="exec-name">{{ module['path'] }}</div>
 
 </td><td class="output-col">
 {% for ifc in module.outputs %}
- <div class="ifc" id="{{ module['module-name'] }}_out{{ loop.index-1 }}">
-  {% set conn = ifc.split(':')[3]|default(0)|int %}
+ <div class="ifc" id="{{ name }}_out{{ loop.index-1 }}">
+  {% set conn = ifc['is-conn']|default(0)|int %}
   <span class="ifc-marker {{'connected' if conn > 0 else 'notconnected'}}">{{conn if conn > 0 else ''}}</span>
   <span class="ifc-counter">--</span>
-  <span class="ifc-name">{{ ifc }}</span>
+  <span class="ifc-name">{{ ifc['type'] }}:{{ ifc['ID'] }}</span>
  </div>
 {% endfor %}
 </td></tr>
