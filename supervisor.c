@@ -64,7 +64,8 @@
 #include <libtrap/trap.h>
 
 #define TRAP_PARAM   "-i" ///< Interface parameter for libtrap
-#define DEFAULT_MAX_RESTARTS_PER_MINUTE   3  ///< Maximum number of module restarts per minute
+#define DEFAULT_MODULE_RESTARTS_NUM   3  ///< Default number of module restarts per minute
+#define MAX_MODULE_RESTARTS_NUM  30  ///< Maximum number of module restarts per minute (loaded from configuration file)
 #define SERVICE_IFC_CONN_ATTEMPTS_LIMIT   3 // Maximum count of connection attempts to service interface
 #define MAX_SERVICE_IFC_CONN_FAILS   3
 
@@ -134,7 +135,7 @@ int service_stop_all_modules = FALSE;
 
 unsigned long int last_total_cpu = 0; // Variable with total cpu usage of whole operating system
 pthread_mutex_t running_modules_lock; ///< mutex for locking counters
-int max_restarts_per_minute_config = DEFAULT_MAX_RESTARTS_PER_MINUTE;
+int module_restarts_num_config = DEFAULT_MODULE_RESTARTS_NUM;
 
 
 pthread_t service_thread_id; ///< Service thread identificator.
@@ -1971,7 +1972,7 @@ void service_update_modules_status()
       if (running_modules[x].module_max_restarts_per_minute > -1) {
          max_restarts = running_modules[x].module_max_restarts_per_minute;
       } else {
-         max_restarts = max_restarts_per_minute_config;
+         max_restarts = module_restarts_num_config;
       }
 
       if ((running_modules[x].modules_profile != NULL && running_modules[x].modules_profile->profile_enabled == TRUE)
@@ -3916,8 +3917,8 @@ int reload_check_supervisor_element(reload_config_vars_t **config_vars)
          key = xmlNodeListGetString((*config_vars)->doc_tree_ptr, (*config_vars)->module_elem->xmlChildrenNode, 1);
          if (key != NULL) {
             /* The value in module-restarts element must be positive number (including 0) */
-            if ((sscanf((const char *) key,"%d",&number) != 1) || (number < 0)) {
-               VERBOSE(N_STDOUT, "[ERROR] Value in \"module-restarts\" element must be positive number!\n");
+            if ((sscanf((const char *) key,"%d",&number) != 1) || (number < 0) || (number > MAX_MODULE_RESTARTS_NUM)) {
+               VERBOSE(N_STDOUT, "[ERROR] Value in \"module-restarts\" element must be positive number in range <0,%d>!\n", MAX_MODULE_RESTARTS_NUM);
                goto error_label;
             }
          } else {
@@ -3960,9 +3961,9 @@ void reload_process_supervisor_element(reload_config_vars_t **config_vars)
          key = xmlNodeListGetString((*config_vars)->doc_tree_ptr, (*config_vars)->module_elem->xmlChildrenNode, 1);
          if (key != NULL) {
             x = 0;
-            if ((sscanf((const char *) key,"%d",&number) == 1) && (number >= 0)) {
+            if ((sscanf((const char *) key,"%d",&number) == 1) && (number >= 0) && (number <= MAX_MODULE_RESTARTS_NUM)) {
                x = (unsigned int) number;
-               max_restarts_per_minute_config = x;
+               module_restarts_num_config = x;
             }
          }
       }
@@ -4314,8 +4315,8 @@ int reload_check_module_element(reload_config_vars_t **config_vars, str_lst_t **
          key = xmlNodeListGetString((*config_vars)->doc_tree_ptr, (*config_vars)->module_atr_elem->xmlChildrenNode, 1);
          if (key != NULL) {
             /* The value in module-restarts element must be positive number (including 0) */
-            if ((sscanf((const char *) key,"%d",&number) != 1) || (number < 0)) {
-               VERBOSE(N_STDOUT, "[ERROR] Value in \"module-restarts\" element must be positive number!\n");
+            if ((sscanf((const char *) key,"%d",&number) != 1) || (number < 0) || (number > MAX_MODULE_RESTARTS_NUM)) {
+               VERBOSE(N_STDOUT, "[ERROR] Value in \"module-restarts\" element must be positive number in range <0,%d>!\n", MAX_MODULE_RESTARTS_NUM);
                goto error_label;
             }
          } else {
