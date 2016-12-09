@@ -278,10 +278,13 @@ graph_vlabel count
 graph_category nemea_supervisor
 sent.label sent messages
 sent.type DERIVE
+sent.min 0
 recv.label received messages
 recv.type DERIVE
+recv.max 0
 drop.label dropped messages
 drop.type DERIVE
+drop.min 0
 """)
 
 def getTotalCountersValues(m, modules):
@@ -330,6 +333,7 @@ def genModuleMemConfig(m, modules):
 	print("graph_category nemea_supervisor")
 	print("stat0.label {0}".format(labels["mem"][0]))
 	print("stat0.type {0}".format(datatypes["mem"][0]))
+	print("stat0.min 0")
 	print("")
 
 def genModuleInputsConfig(m, modules):
@@ -341,6 +345,7 @@ def genModuleInputsConfig(m, modules):
 		for statid in range(0, 2):
 			print("stat{0}.label {1}".format(statid, labels["inputs"][statid]))
 			print("stat{0}.type {1}".format(statid, datatypes["inputs"][statid]))
+			print("stat{0}.min 0".format(statid))
 		print("")
 
 
@@ -353,6 +358,7 @@ def genModuleOutputsConfig(m, modules):
 		for statid in range(0, 4):
 			print("stat{0}.label {1}".format(statid, labels["outputs"][statid]))
 			print("stat{0}.type {1}".format(statid, datatypes["outputs"][statid]))
+			print("stat{0}.min 0".format(statid))
 		print("")
 
 def genTotalCpuConfig(modules):
