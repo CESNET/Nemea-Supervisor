@@ -185,7 +185,8 @@ typedef struct running_module_s {
    pid_t module_pid; ///< Modules process PID.   /*** RELOAD/START ***/
    int sent_sigint;   /*** INIT ***/
 
-   unsigned long int virtual_memory_usage;   /*** INIT ***/
+   uint64_t virtual_memory_size;  ///< loaded from /proc/PID/stat in B
+   uint64_t resident_set_size;  ///< loaded from /proc/PID/status in kB
 
    unsigned long int last_period_cpu_usage_kernel_mode; ///< Percentage of CPU usage in last period in kernel mode.   /*** INIT ***/
    unsigned long int last_period_cpu_usage_user_mode; ///< Percentage of CPU usage in last period in user mode.   /*** INIT ***/

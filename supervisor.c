@@ -667,7 +667,8 @@ void init_module_variables(int module_number)
 
    // Initialize modules variables
    running_modules[module_number].sent_sigint = FALSE;
-   running_modules[module_number].virtual_memory_usage = 0;
+   running_modules[module_number].virtual_memory_size = 0;
+   running_modules[module_number].resident_set_size = 0;
    running_modules[module_number].last_period_cpu_usage_kernel_mode = 0;
    running_modules[module_number].last_period_cpu_usage_user_mode = 0;
    running_modules[module_number].last_period_percent_cpu_usage_kernel_mode = 0;
@@ -804,19 +805,21 @@ char *make_json_modules_info(uint8_t info_mask)
 
 
       if (print_details == TRUE) {
-         module_info = json_pack("{sisssssssisisIsoso}", "idx", x,
+         module_info = json_pack("{sisssssssisisIsIsoso}", "idx", x,
                                                          "params", (running_modules[x].module_params == NULL ? "none" : running_modules[x].module_params),
                                                          "path", running_modules[x].module_path,
                                                          "status", (running_modules[x].module_status == TRUE ? "running" : "stopped"),
                                                          "CPU-u", running_modules[x].last_period_percent_cpu_usage_user_mode,
                                                          "CPU-s", running_modules[x].last_period_percent_cpu_usage_kernel_mode,
-                                                         "mem", running_modules[x].virtual_memory_usage,
+                                                         "MEM-vms", running_modules[x].virtual_memory_size,
+                                                         "MEM-rss", running_modules[x].resident_set_size * 1024, // Output RSS in bytes as well as VMS
                                                          "inputs", in_ifc_arr[x],
                                                          "outputs", out_ifc_arr[x]);
       } else {
-         module_info = json_pack("{sisisIsoso}", "CPU-u", running_modules[x].last_period_percent_cpu_usage_user_mode,
+         module_info = json_pack("{sisisIsIsoso}", "CPU-u", running_modules[x].last_period_percent_cpu_usage_user_mode,
                                                  "CPU-s", running_modules[x].last_period_percent_cpu_usage_kernel_mode,
-                                                 "mem", running_modules[x].virtual_memory_usage,
+                                                 "MEM-vms", running_modules[x].virtual_memory_size,
+                                                 "MEM-rss", running_modules[x].resident_set_size * 1024, // Output RSS in bytes as well as VMS
                                                  "inputs", in_ifc_arr[x],
                                                  "outputs", out_ifc_arr[x]);
       }
@@ -925,7 +928,7 @@ char *make_formated_statistics(uint8_t stats_mask)
       for (x=0; x<loaded_modules_cnt; x++) {
          if (running_modules[x].module_status == TRUE) {
             ptr += sprintf(buffer + ptr, "%s,mem,%lu\n", running_modules[x].module_name,
-                                                         running_modules[x].virtual_memory_usage / (1024*1024)); // to convert B to MB, divide by 1024*1024
+                                                         running_modules[x].virtual_memory_size / (1024*1024)); // to convert B to MB, divide by 1024*1024
             if (strlen(buffer) >= (3*size_of_buffer)/5) {
                size_of_buffer += size_of_buffer/2;
                buffer = (char *) realloc (buffer, size_of_buffer * sizeof(char));
@@ -1129,7 +1132,7 @@ void update_modules_resources_usage()
    size_t line_len = 0;
    FILE *proc_stat_fd = NULL;
    int x = 0, y = 0;
-   char path[20];
+   char path[DEFAULT_SIZE_OF_BUFFER];
    unsigned long int utime = 0, stime = 0, diff_total_cpu = 0, new_total_cpu = 0, num = 0;
 
    if (get_total_cpu_usage(&new_total_cpu) == -1) {
@@ -1144,8 +1147,8 @@ void update_modules_resources_usage()
 
    for (x = 0; x < loaded_modules_cnt; x++) {
       if (running_modules[x].module_status == TRUE) {
-         memset(path, 0, 20 * sizeof(char));
-         sprintf(path, "/proc/%d/stat", running_modules[x].module_pid);
+         memset(path, 0, DEFAULT_SIZE_OF_BUFFER * sizeof(char));
+         snprintf(path, DEFAULT_SIZE_OF_BUFFER * sizeof(char), "/proc/%d/stat", running_modules[x].module_pid);
 
          proc_stat_fd = fopen(path, "r");
          if (proc_stat_fd == NULL) {
@@ -1183,7 +1186,7 @@ void update_modules_resources_usage()
                if (endptr == token) {
                   continue;
                }
-               running_modules[x].virtual_memory_usage = num;
+               running_modules[x].virtual_memory_size = num;
             }
 
             token = strtok(NULL, delim);
@@ -1191,7 +1194,30 @@ void update_modules_resources_usage()
                break;
             }
          }
+         fclose(proc_stat_fd);
 
+         memset(path, 0, DEFAULT_SIZE_OF_BUFFER * sizeof(char));
+         snprintf(path, DEFAULT_SIZE_OF_BUFFER * sizeof(char), "/proc/%d/status", running_modules[x].module_pid);
+
+         proc_stat_fd = fopen(path, "r");
+         if (proc_stat_fd == NULL) {
+            continue;
+         }
+
+         while (getline(&line, &line_len, proc_stat_fd) != -1) {
+            if (strstr(line, "VmRSS") != NULL) {
+               token = strtok(line, delim);
+               while (token != NULL) {
+                  num = strtoul(token, &endptr, 10);
+                  if (num > 0) {
+                     running_modules[x].resident_set_size = num;
+                     break;
+                  }
+                  token = strtok(NULL, delim);
+               }
+               break;
+            }
+         }
          fclose(proc_stat_fd);
       }
    }
