@@ -74,7 +74,7 @@ labels = {
 	"inputs": ["received messages", "received buffers"],
 	"outputs": ["sent messages", "dropped messages", "sent buffers", "autoflush"],
 	"cpu": ["kernel mode", "user mode"],
-	"mem": ["virtual memory"],
+	"mem": ["virtual memory size", "resident set size"],
 }
 
 # data types of counters in graphs
@@ -82,7 +82,7 @@ datatypes = {
 	"inputs": ["DERIVE", "DERIVE"],
 	"outputs": ["DERIVE", "DERIVE", "DERIVE", "DERIVE"],
 	"cpu": ["GAUGE", "GAUGE"],
-	"mem": ["GAUGE"],
+	"mem": ["GAUGE", "GAUGE"],
 }
 
 # vertical axis labels
@@ -331,9 +331,10 @@ def genModuleMemConfig(m, modules):
 	print("graph_title {0} {1}".format(m, graph_title["mem"]))
 	print("graph_vlabel {0}".format(vlabels["mem"]))
 	print("graph_category nemea_supervisor")
-	print("stat0.label {0}".format(labels["mem"][0]))
-	print("stat0.type {0}".format(datatypes["mem"][0]))
-	print("stat0.min 0")
+	for statid in [0, 1]:
+		print("stat{0}.label {1}".format(statid, labels["mem"][statid]))
+		print("stat{0}.type {1}".format(statid, datatypes["mem"][statid]))
+		print("stat{0}.min 0".format(statid))
 	print("")
 
 def genModuleInputsConfig(m, modules):
@@ -379,13 +380,13 @@ def genTotalCpuConfig(modules):
 			print("{0}.draw AREASTACK".format(m))
 		print("")
 
-def genTotalMemConfig(modules):
+def genTotalMemVmsConfig(modules):
 	sel_modules = []
 	for m in modules:
-		if "mem" in modules[m]:
+		if "MEM-vms" in modules[m]:
 			sel_modules.append(m)
 	if sel_modules:
-		print("multigraph nemea_modules_mem")
+		print("multigraph nemea_modules_mem_vms")
 		print("graph_title Virtual memory usage of Nemea modules")
 		print("graph_category nemea_supervisor")
 		print('graph_vlabel {0}'.format(vlabels["mem"]))
@@ -397,9 +398,28 @@ def genTotalMemConfig(modules):
 			print("{0}.draw AREASTACK".format(m))
 		print("")
 
+def genTotalMemRssConfig(modules):
+	sel_modules = []
+	for m in modules:
+		if "MEM-rss" in modules[m]:
+			sel_modules.append(m)
+	if sel_modules:
+		print("multigraph nemea_modules_mem_rss")
+		print("graph_title Resident set size of Nemea modules")
+		print("graph_category nemea_supervisor")
+		print('graph_vlabel {0}'.format(vlabels["mem"]))
+		print("graph_info Resident set size of all running and monitored modules.")
+		for m in sel_modules:
+			print("{0}.label {1}".format(m, m.replace("_", " ")))
+			print("{0}.min 0".format(m))
+			print("{0}.type GAUGE".format(m))
+			print("{0}.draw AREASTACK".format(m))
+		print("")
+
 def getConfig(modules):
 	genTotalCpuConfig(modules)
-	genTotalMemConfig(modules)
+	genTotalMemVmsConfig(modules)
+	genTotalMemRssConfig(modules)
 	for m in modules:
 		genModuleCpuConfig(m, modules)
 		genModuleMemConfig(m, modules)
@@ -418,7 +438,8 @@ def genModuleCpuValues(m, modules):
 
 def genModuleMemValues(m, modules):
 	print("multigraph {0}_MEM".format(m))
-	print("stat0.value {0}".format((int)(modules[m]["mem"])))
+	print("stat0.value {0}".format((int)(modules[m]["MEM-vms"])))
+	print("stat1.value {0}".format((int)(modules[m]["MEM-rss"])))
 	print("")
 
 def genModuleInputsValues(m, modules):
@@ -448,20 +469,32 @@ def genTotalCpuValues(modules):
 			print("{0}.value {1}".format(m, modules[m]["CPU-u"]))
 	print("")
 
-def genTotalMemValues(modules):
+def genTotalMemVmsValues(modules):
 	sel_modules = []
 	for m in modules:
-		if "mem" in modules[m]:
+		if "MEM-vms" in modules[m]:
 			sel_modules.append(m)
 	if sel_modules:
-		print("multigraph nemea_modules_mem")
+		print("multigraph nemea_modules_mem_vms")
 		for m in sel_modules:
-			print("{0}.value {1}".format(m, (int)(modules[m]["mem"])))
+			print("{0}.value {1}".format(m, (int)(modules[m]["MEM-vms"])))
+	print("")
+
+def genTotalMemRssValues(modules):
+	sel_modules = []
+	for m in modules:
+		if "MEM-rss" in modules[m]:
+			sel_modules.append(m)
+	if sel_modules:
+		print("multigraph nemea_modules_mem_rss")
+		for m in sel_modules:
+			print("{0}.value {1}".format(m, (int)(modules[m]["MEM-rss"])))
 	print("")
 
 def getValues(modules):
 	genTotalCpuValues(modules)
-	genTotalMemValues(modules)
+	genTotalMemVmsValues(modules)
+	genTotalMemRssValues(modules)
 	for m in modules:
 		genModuleCpuValues(m, modules)
 		genModuleMemValues(m, modules)
