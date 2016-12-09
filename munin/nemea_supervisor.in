@@ -340,7 +340,7 @@ def genModuleMemConfig(m, modules):
 def genModuleInputsConfig(m, modules):
 	for ifc_num in range(0, modules[m]["inputs"].__len__()):
 		print("multigraph {0}_INIFC{1}".format(m, ifc_num))
-		print("graph_title {0} {1} {2}".format(m, graph_title["inputs"], ifc_num))
+		print("graph_title {0} {1} {2}".format(m, graph_title["inputs"], modules[m]["inputs"][ifc_num]["ID"]))
 		print("graph_vlabel {0}".format(vlabels["outputs"]))
 		print("graph_category nemea_supervisor")
 		for statid in range(0, 2):
@@ -353,7 +353,7 @@ def genModuleInputsConfig(m, modules):
 def genModuleOutputsConfig(m, modules):
 	for ifc_num in range(0, modules[m]["outputs"].__len__()):
 		print("multigraph {0}_OUTIFC{1}".format(m, ifc_num))
-		print("graph_title {0} {1} {2}".format(m, graph_title["outputs"], ifc_num))
+		print("graph_title {0} {1} {2}".format(m, graph_title["outputs"], modules[m]["outputs"][ifc_num]["ID"]))
 		print("graph_vlabel {0}".format(vlabels["inputs"]))
 		print("graph_category nemea_supervisor")
 		for statid in range(0, 4):
