@@ -104,7 +104,7 @@ def get_stats():
         res = {}
         j = json.loads(out)
         for module, data in j.iteritems():
-            res[module + '_mem'] = data['mem']/1000
+            res[module + '_mem'] = data['MEM-vms']/1000
             res[module + '_cpu'] = data['CPU-u'] + data['CPU-s']
             for inpt in data['inputs']:
                 res[get_indxed_key(res, module+'_in')] = inpt['messages']
