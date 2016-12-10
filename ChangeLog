@@ -1,3 +1,16 @@
+2016-12-10 supervisor-1.5.2
+        * module's socket path changed
+	* updated munin graphs
+
+2016-12-07 (Marek Svepes): configs: added MANDATORY/OPTIONAL tags, range of values and default values to config_example.xml file
+2016-12-07 (Marek Svepes): fixed value range check of the module-restarts from the configuration file
+2016-11-15 (Petr Velan): Updated nemea_status to work with current json format
+2016-11-02 (Tomas Cejka): munin: testing: removed automatic self-killing
+2016-11-02 (Tomas Cejka): munin: add aggregated graph with total message numbers
+2016-11-02 (Tomas Cejka): munin: fixed incompatibility in python3
+2016-11-02 (Tomas Cejka): munin: change units of memory graphs
+2016-10-22 (Marek Svepes): sockets: modules' socket path format of the service IFC and UNIX IFC is now included from libtrap
+
 2016-10-07 supervisor-1.5.1
         * added sup files for sip2bf and haddrscan reporters
 
