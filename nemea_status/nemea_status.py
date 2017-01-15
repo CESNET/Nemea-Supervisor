@@ -132,7 +132,7 @@ def get_stats():
     try:
         res = {}
         j = json.loads(out)
-        for module, data in j.iteritems():
+        for module, data in j.items():
             res[module + '_mem'] = data['MEM-vms']/1000
             res[module + '_cpu'] = data['CPU-u'] + data['CPU-s']
             for inpt in data['inputs']:
