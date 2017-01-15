@@ -16,7 +16,7 @@ app.jinja_env.lstrip_blocks = True
 
 
 # *** Load config ***
-config_file = './nemea_status.conf' #'/etc/nemea/nemea_status.conf'
+config_file = '/etc/nemea/nemea_status.conf'
 # Initialize cfg with defaults
 cfg = {
     'supervisor_cli': '/usr/bin/nemea/supervisor_cli',
