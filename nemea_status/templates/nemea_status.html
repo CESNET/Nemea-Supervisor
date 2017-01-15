@@ -160,6 +160,17 @@ $(function() {
 </head>
 <body>
 
+{% if LINKS %}
+<div id="links">
+Switch to:
+{% for title,url in LINKS %}
+  <a href="{{ url }}">{{ title }}</a>
+{% endfor %}
+</div>
+{% endif %}
+
+<div id="content">
+
 {% if topology.error %}
  <p class="error">ERROR: Getting NEMEA topology failed:<br>
  {% if topology.error == 'callerror' %}
@@ -220,5 +231,7 @@ Last refresh: <span id="last-refresh"></span>
 </table>
 
 {% endif %}{# topology.error #}
+
+</div>
 </body>
 </html>

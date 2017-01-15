@@ -31,7 +31,7 @@ try:
                 continue
             key, val = map(str.strip, line.split('=', 1))
             if key == 'link': # parse link specification and append to the list of links
-                cfg['links'].append(map(str.strip, val.split('|', 1)))
+                cfg['links'].append(tuple(map(str.strip, val.split('|', 1))))
             else:
                 cfg[key] = val
 except IOError as e:
@@ -45,8 +45,9 @@ SUP_SOCK_PATH = cfg['supervisor_socket']
 
 MUNIN_BASE = cfg.get('munin_base', '')
 
+LINKS = cfg['links']
+
 # TODO: detection of topology change (in Javascript, ifcs returned from _stats don't match the ones loaded -> tell user to reload page)
-# TODO: links to other machines in page header according to configuration (i.e. add config file) 
 
 #####
 

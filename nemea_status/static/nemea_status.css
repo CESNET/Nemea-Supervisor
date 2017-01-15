@@ -6,6 +6,30 @@ body {
   background: #eee;
   color: #000;
   font-family: sans-serif;
+  margin: 0;
+}
+
+#content {
+  margin: 0.5em 1em;
+}
+
+#links {
+  background: #333;
+  color: #fff;
+  font-size: 1.0em;
+  padding: 0 1em; 
+}
+#links a {
+  display: inline-block;
+  margin: 0;
+  padding: 0.4em 0.5em;
+  
+  text-decoration: none;
+  color: #ccf;
+}
+#links a:hover {
+  background: #555;
+  color: #ccf;
 }
 
 p.error {
