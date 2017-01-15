@@ -16,6 +16,8 @@ app.jinja_env.lstrip_blocks = True
 SUP_PATH = '/usr/bin/nemea/supervisor_cli'
 SUP_SOCK_PATH = '/var/run/nemea-supervisor/nemea-supervisor.sock'
 
+# TODO set this in config
+MUNIN_BASE = ''
 
 # TODO: detection of topology change (in Javascript, ifcs returned from _stats don't match the ones loaded -> tell user to reload page)
 # TODO: links to other machines in page header according to configuration (i.e. add config file) 
@@ -107,10 +109,10 @@ def get_stats():
             res[module + '_mem'] = data['MEM-vms']/1000
             res[module + '_cpu'] = data['CPU-u'] + data['CPU-s']
             for inpt in data['inputs']:
-                res[get_indxed_key(res, module+'_in')] = inpt['messages']
+                res[get_indxed_key(res, module+'_INIFC')] = inpt['messages']
             for otpt in data['outputs']:
-                res[get_indxed_key(res, module+'_out')] = otpt['sent-msg']
-                res[get_indxed_key(res, module+'_out')] = otpt['drop-msg']
+                res[get_indxed_key(res, module+'_OUTIFC')] = otpt['sent-msg']
+                res[get_indxed_key(res, module+'_OUTIFC')] = otpt['drop-msg']
         return res
     except Exception:
         raise
@@ -126,7 +128,7 @@ def get_stats():
 @app.route('/')
 def main():
     topology = get_topology()
-    return render_template('nemea_status.html', topology=topology)
+    return render_template('nemea_status.html', topology=topology, **globals())
 
 
 # ***** Get statistics via AJAX request *****

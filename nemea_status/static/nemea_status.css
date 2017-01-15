@@ -128,5 +128,12 @@ div.ifc {
   padding: 0;
 }
 
-
+/* Override some default jQueryUI styles */
+.ui-tooltip {
+  max-width: 600px;
+}
+.ui-widget-shadow {
+  -webkit-box-shadow: 0px 0px 8px #aaaaaa;
+  box-shadow: 0px 0px 8px #aaaaaa;
+}
 

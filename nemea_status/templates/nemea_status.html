@@ -2,10 +2,14 @@
 <head>
 <meta charset="utf-8">
 <title>Nemea status</title>
-<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='nemea_status.css') }}">
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.2/jquery.min.js"></script>
+<link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css">
+<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='nemea_status.css') }}">
 <script>
 $SCRIPT_ROOT = {{ request.script_root|tojson|safe }};
+
+$MUNIN_BASE = "{{ MUNIN_BASE }}";
 
 var refreshing = false; // Whether refresh is in progress (to avoid multiple parallel calls if they are very slow and refresh interval is small)
 var last_refresh_time = null;
@@ -111,6 +115,47 @@ window.onload = function() {
     // Run first refresh immediately after page loads
     refresh();
 };
+
+$(function() {
+    if ($MUNIN_BASE != "") {
+        $("table.modules").tooltip({
+            items: "span.ifc-counter, div.module-cpu, div.module-mem",
+            track: false,
+            show: { delay: 200, effect: "none" },
+            hide: { effect: "fadeOut", duration: 100 }, // FadeOut is needed allow keeping the tooltip opened
+            content: function() {
+                var elem = $(this);
+                var name;
+                if (elem.parent().is(['.stopped'])) {
+                    return false;
+                }
+                if (elem.is(".ifc-counter")) {
+                    name = elem.parent().attr('id');
+                }
+                else if (elem.is('.module-cpu')) {
+                    name = elem.parent().attr('id') + '_CPU';
+                }
+                else if (elem.is('.module-mem')) {
+                    name = elem.parent().attr('id') + '_MEM';
+                }
+                return '<a href="' + $MUNIN_BASE + name + '.html"><img src="' + $MUNIN_BASE + name + '-day.png" width="497" height="292"></a>';
+            },
+            position: {my: "left top", at: "right-2px top-10px", collision: "flip"},
+            // The following allows to keep the tooltip open by moving mouse over it
+            close: function (event, ui) {
+                ui.tooltip.hover(
+                function () {
+                    $(this).stop(true).fadeTo(10, 1);
+                },    
+                function () {
+                    $(this).fadeOut(100, function () {
+                        $(this).remove();
+                    })
+                });
+            }
+        });
+    }
+})
 </script>
 </head>
 <body>
@@ -146,7 +191,7 @@ Last refresh: <span id="last-refresh"></span>
 <tr><td class="input-col">
 
 {% for ifc in module.inputs %}
- <div class="ifc" id="{{ name }}_in{{ loop.index-1 }}">
+ <div class="ifc" id="{{ name }}_INIFC{{ loop.index-1 }}">
   <span class="ifc-name" title="IFC type and parameters">{{ ifc['type'] }}:{{ ifc['ID'] }}</span>
   <span class="ifc-counter" title="Number of messages transferred per second">--</span>
   {% set conn = ifc['is-conn']|default(0)|int %}
@@ -162,7 +207,7 @@ Last refresh: <span id="last-refresh"></span>
 
 </td><td class="output-col">
 {% for ifc in module.outputs %}
- <div class="ifc" id="{{ name }}_out{{ loop.index-1 }}">
+ <div class="ifc" id="{{ name }}_OUTIFC{{ loop.index-1 }}">
   {% set conn = ifc['is-conn']|default(0)|int %}
   <span class="ifc-marker {{'connected' if conn > 0 else 'notconnected'}}">{{conn if conn > 0 else ''}}</span>
   <span class="ifc-counter">--</span>
