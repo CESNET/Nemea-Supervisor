@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 # Needs Python 3.x or Python 2.6+
+from __future__ import print_function
+import sys
 import random
 import time
 import subprocess
@@ -13,11 +15,35 @@ app.jinja_env.trim_blocks = True
 app.jinja_env.lstrip_blocks = True
 
 
-SUP_PATH = '/usr/bin/nemea/supervisor_cli'
-SUP_SOCK_PATH = '/var/run/nemea-supervisor/nemea-supervisor.sock'
+# *** Load config ***
+config_file = './nemea_status.conf' #'/etc/nemea/nemea_status.conf'
+# Initialize cfg with defaults
+cfg = {
+    'supervisor_cli': '/usr/bin/nemea/supervisor_cli',
+    'supervisor_socket': '/var/run/nemea-supervisor/nemea-supervisor.sock',
+    'links': [],
+}
+# Load and parse config file
+try:
+    with open(config_file) as f:
+        for n,line in enumerate(f):
+            if line.lstrip().startswith('#') or not line.strip(): # skip comments and empty lines
+                continue
+            key, val = map(str.strip, line.split('=', 1))
+            if key == 'link': # parse link specification and append to the list of links
+                cfg['links'].append(map(str.strip, val.split('|', 1)))
+            else:
+                cfg[key] = val
+except IOError as e:
+    print("Warning: Can't load config file (using defaults): {}".format(str(e)), file=sys.stderr)
+except Exception as e:
+    print("Error in config file on line {}.".format(n+1), file=sys.stderr)
+    sys.exit(1)
 
-# TODO set this in config
-MUNIN_BASE = ''
+SUP_PATH = cfg['supervisor_cli']
+SUP_SOCK_PATH = cfg['supervisor_socket']
+
+MUNIN_BASE = cfg.get('munin_base', '')
 
 # TODO: detection of topology change (in Javascript, ifcs returned from _stats don't match the ones loaded -> tell user to reload page)
 # TODO: links to other machines in page header according to configuration (i.e. add config file) 
