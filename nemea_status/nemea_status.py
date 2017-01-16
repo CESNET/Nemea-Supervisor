@@ -139,7 +139,7 @@ def get_stats():
                 res[get_indxed_key(res, module+'_INIFC')] = inpt['messages']
             for otpt in data['outputs']:
                 res[get_indxed_key(res, module+'_OUTIFC')] = otpt['sent-msg']
-                res[get_indxed_key(res, module+'_OUTIFC')] = otpt['drop-msg']
+                res[get_indxed_key(res, module+'_OUTIFC_dropped')] = otpt['drop-msg']
         return res
     except Exception:
         raise
