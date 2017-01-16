@@ -219,7 +219,7 @@ Last refresh: <span id="last-refresh"></span>
 </td><td class="output-col">
 {% for ifc in module.outputs %}
  <div class="ifc" id="{{ name }}_OUTIFC{{ loop.index-1 }}">
-  {% set conn = ifc['is-conn']|default(0)|int %}
+  {% set conn = ifc['cli-num']|default(0)|int %}
   <span class="ifc-marker {{'connected' if conn > 0 else 'notconnected'}}">{{conn if conn > 0 else ''}}</span>
   <span class="ifc-counter">--</span>
   <span class="ifc-name">{{ ifc['type'] }}:{{ ifc['ID'] }}</span>
