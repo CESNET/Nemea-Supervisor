@@ -50,6 +50,7 @@ function refresh() {
                 
                 // Initialize all counters to "??" (for case some are not included in returned data)
                 $(".ifc-counter").text("??");
+                $(".ifc-counter-dropped").text("??");
                 $(".running .module-cpu").text("??\u2009%");
                 $(".running .module-mem").text("??\u2009MB");
             }
@@ -59,27 +60,55 @@ function refresh() {
             for (cntrid in counters) {
                 if (cntrid.endsWith("_cpu")) {
                     $("#"+cntrid.slice(0,-4)+" .module-cpu").text(("\u2007\u2007" + counters[cntrid]).slice(-3) + "\u2009%");
-                    continue;
                 }
-                if (cntrid.endsWith("_mem")) {
+                else if (cntrid.endsWith("_mem")) {
                     $("#"+cntrid.slice(0,-4)+" .module-mem").text((counters[cntrid]/1024).toFixed(0) + "\u2009MB");
-                    continue;
                 }
+                // Sent and dropped messages
                 // Compute difference of current value from last value
                 // (last value stored using .data())
-                var value = counters[cntrid];
-                var cntr_elem = $("#"+cntrid+" .ifc-counter");
-                //console.debug(cntr_elem);
-                //console.debug(cntr_elem.data("last_value"));
-                if (cntr_elem.data("last_value") != null) {
-                    var diff = value - cntr_elem.data("last_value");
-                    var diff_per_sec = diff / (time_diff / 1000);
-                    diff_per_sec = diff_per_sec.toFixed(1);
-                    // add thousand separators, regex from http://stackoverflow.com/a/2901298
-                    diff_per_sec = diff_per_sec.replace(/\B(?=(\d{3})+(?!\d))/g, "\u2009");
-                    $("#"+cntrid+" .ifc-counter").text(diff_per_sec + "/s");
+                else {
+                    var value;
+                    var cntr_elem;
+                    var dropped = cntrid.endsWith("_dropped");
+                    if (dropped) { // dropped messages
+                        value = counters[cntrid];
+                        cntr_elem = $("#"+cntrid.slice(0,-8)+" .ifc-counter-dropped");
+                    } else { // send messages
+                        value = counters[cntrid];
+                        cntr_elem = $("#"+cntrid+" .ifc-counter");
+                    }
+                    if (cntr_elem.data("last_value") != null) {
+                        var diff = value - cntr_elem.data("last_value");
+                        var diff_per_sec = diff / (time_diff / 1000);
+                        cntr_elem.data("diff_per_sec", diff_per_sec);
+                        diff_per_sec = diff_per_sec.toFixed((dropped) ? 1 : 1);
+                        // add thousand separators, regex from http://stackoverflow.com/a/2901298
+                        diff_per_sec = diff_per_sec.replace(/\B(?=(\d{3})+(?!\d))/g, "\u2009");
+                        cntr_elem.text(diff_per_sec + "/s");
+                    }
+                    cntr_elem.data("last_value", value);
                 }
-                cntr_elem.data("last_value", value);
+            }
+            
+            // Set drop-rate class (color of dropped counter)
+            for (cntrid in counters) {
+                if (cntrid.endsWith("_dropped")) {
+                    var cntr_elem = $("#"+cntrid.slice(0,-8)+" .ifc-counter-dropped");
+                    var sent = $("#"+cntrid.slice(0,-8)+" .ifc-counter").data("diff_per_sec");
+                    var dropped = cntr_elem.data("diff_per_sec");
+                    cntr_elem.removeClass("drop-rate-ok drop-rate-low drop-rate-high");
+                    //console.debug(cntrid, sent, dropped, dropped/sent);
+                    if (!dropped) {
+                        cntr_elem.addClass("drop-rate-ok");
+                    }
+                    else if ((dropped / sent) < 0.001) { // < 0.1 % messages dropped
+                        cntr_elem.addClass("drop-rate-low");
+                    }
+                    else {
+                        cntr_elem.addClass("drop-rate-high");
+                    }
+                }
             }
         }
     )
@@ -119,7 +148,7 @@ window.onload = function() {
 $(function() {
     if ($MUNIN_BASE != "") {
         $("table.modules").tooltip({
-            items: "span.ifc-counter, div.module-cpu, div.module-mem",
+            items: "span.ifc-counters, div.module-cpu, div.module-mem",
             track: false,
             show: { delay: 200, effect: "none" },
             hide: { effect: "fadeOut", duration: 100 }, // FadeOut is needed allow keeping the tooltip opened
@@ -129,7 +158,7 @@ $(function() {
                 if (elem.parent().is(['.stopped'])) {
                     return false;
                 }
-                if (elem.is(".ifc-counter")) {
+                if (elem.is(".ifc-counters")) {
                     name = elem.parent().attr('id');
                 }
                 else if (elem.is('.module-cpu')) {
@@ -221,7 +250,10 @@ Last refresh: <span id="last-refresh"></span>
  <div class="ifc" id="{{ name }}_OUTIFC{{ loop.index-1 }}">
   {% set conn = ifc['cli-num']|default(0)|int %}
   <span class="ifc-marker {{'connected' if conn > 0 else 'notconnected'}}">{{conn if conn > 0 else ''}}</span>
+  <span class="ifc-counters">
   <span class="ifc-counter">--</span>
+  <span class="ifc-counter-dropped">--</span>
+  </span>
   <span class="ifc-name">{{ ifc['type'] }}:{{ ifc['ID'] }}</span>
  </div>
 {% endfor %}

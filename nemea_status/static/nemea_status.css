@@ -106,13 +106,27 @@ div.ifc {
   position: relative;
 }
 
-.ifc-counter {
+.ifc-counter,
+.ifc-counter-dropped {
   font-weight: bold;
   padding: 0 0.5em;
   vertical-align: center;
   text-align: right;
   display: inline-block;
-  min-width: 5em;
+  min-width: 5.5em;
+}
+.ifc-counter-dropped {
+  min-width: 3em;
+  font-size: 0.8em;
+}
+.drop-rate-ok {
+  color: #444;
+}
+.drop-rate-low {
+  color: #ff5;
+}
+.drop-rate-high {
+  color: #e00;
 }
 .ifc-name {
   font-size: 0.8em;
