@@ -743,12 +743,14 @@ char *make_json_modules_info(uint8_t info_mask)
    uint x = 0, y = 0;
    char ifc_type[2];
    ifc_type[1] = 0;
+   char *result_data = NULL;
 
    json_t *module_info = NULL;
    json_t *module = NULL;
    json_t *ifc_info = NULL;
-   json_t *in_ifc_arr[loaded_modules_cnt];
-   json_t *out_ifc_arr[loaded_modules_cnt];
+   json_t *in_ifc_arr = NULL;
+   json_t *out_ifc_arr = NULL;
+   json_t *modules_obj = NULL;
 
    uint8_t print_details = FALSE;
 
@@ -758,21 +760,18 @@ char *make_json_modules_info(uint8_t info_mask)
    }
 
    for (x = 0; x < loaded_modules_cnt; x++) {
-      in_ifc_arr[x] = json_array();
-      out_ifc_arr[x] = json_array();
-      if (in_ifc_arr[x] == NULL || out_ifc_arr[x] == NULL) {
-         VERBOSE(SUP_LOG, "[ERROR] Could not create JSON arrays (probably not enough memory).\n");
-         goto clean_up;
-      }
-   }
-
-   json_t *modules_obj = NULL;
-
-   for (x = 0; x < loaded_modules_cnt; x++) {
-      // Array of input ifces
       if (print_details == FALSE && running_modules[x].module_status == FALSE) {
          continue;
       }
+
+      in_ifc_arr = json_array();
+      out_ifc_arr = json_array();
+      if (in_ifc_arr == NULL || out_ifc_arr == NULL) {
+         VERBOSE(SUP_LOG, "[ERROR] Could not create JSON arrays (probably not enough memory).\n");
+         goto clean_up;
+      }
+
+      // Array of input ifces
       for (y = 0; y < running_modules[x].total_in_ifces_cnt; y++) {
          ifc_type[0] = running_modules[x].in_ifces_data[y].ifc_type;
          ifc_info = json_pack("{sssssisIsI}", "type", ifc_type,
@@ -781,7 +780,7 @@ char *make_json_modules_info(uint8_t info_mask)
                                               "messages", running_modules[x].in_ifces_data[y].recv_msg_cnt,
                                               "buffers", running_modules[x].in_ifces_data[y].recv_buffer_cnt);
 
-         if (ifc_info == NULL || json_array_append_new(in_ifc_arr[x], ifc_info) == -1) {
+         if (ifc_info == NULL || json_array_append_new(in_ifc_arr, ifc_info) == -1) {
             VERBOSE(SUP_LOG, "[ERROR] Could not append module input ifc info to JSON array (module \"%s\").\n", running_modules[x].module_name);
             goto clean_up;
          }
@@ -797,7 +796,7 @@ char *make_json_modules_info(uint8_t info_mask)
                                                   "buffers", running_modules[x].out_ifces_data[y].sent_buffer_cnt,
                                                   "autoflush", running_modules[x].out_ifces_data[y].autoflush_cnt);
 
-         if (ifc_info == NULL || json_array_append_new(out_ifc_arr[x], ifc_info) == -1) {
+         if (ifc_info == NULL || json_array_append_new(out_ifc_arr, ifc_info) == -1) {
             VERBOSE(SUP_LOG, "[ERROR] Could not append module output ifc info to JSON array (module \"%s\").\n", running_modules[x].module_name);
             goto clean_up;
          }
@@ -805,23 +804,25 @@ char *make_json_modules_info(uint8_t info_mask)
 
 
       if (print_details == TRUE) {
-         module_info = json_pack("{sisssssssisisIsIsoso}", "idx", x,
-                                                         "params", (running_modules[x].module_params == NULL ? "none" : running_modules[x].module_params),
-                                                         "path", running_modules[x].module_path,
-                                                         "status", (running_modules[x].module_status == TRUE ? "running" : "stopped"),
-                                                         "CPU-u", running_modules[x].last_period_percent_cpu_usage_user_mode,
-                                                         "CPU-s", running_modules[x].last_period_percent_cpu_usage_kernel_mode,
-                                                         "MEM-vms", running_modules[x].virtual_memory_size,
-                                                         "MEM-rss", running_modules[x].resident_set_size * 1024, // Output RSS in bytes as well as VMS
-                                                         "inputs", in_ifc_arr[x],
-                                                         "outputs", out_ifc_arr[x]);
+         module_info = json_pack("{sisssssssisisIsIsoso}",
+                                 "idx", x,
+                                 "params", (running_modules[x].module_params == NULL ? "none" : running_modules[x].module_params),
+                                 "path", running_modules[x].module_path,
+                                 "status", (running_modules[x].module_status == TRUE ? "running" : "stopped"),
+                                 "CPU-u", running_modules[x].last_period_percent_cpu_usage_user_mode,
+                                 "CPU-s", running_modules[x].last_period_percent_cpu_usage_kernel_mode,
+                                 "MEM-vms", running_modules[x].virtual_memory_size,
+                                 "MEM-rss", running_modules[x].resident_set_size * 1024, // Output RSS in bytes as well as VMS
+                                 "inputs", in_ifc_arr,
+                                 "outputs", out_ifc_arr);
       } else {
-         module_info = json_pack("{sisisIsIsoso}", "CPU-u", running_modules[x].last_period_percent_cpu_usage_user_mode,
-                                                 "CPU-s", running_modules[x].last_period_percent_cpu_usage_kernel_mode,
-                                                 "MEM-vms", running_modules[x].virtual_memory_size,
-                                                 "MEM-rss", running_modules[x].resident_set_size * 1024, // Output RSS in bytes as well as VMS
-                                                 "inputs", in_ifc_arr[x],
-                                                 "outputs", out_ifc_arr[x]);
+         module_info = json_pack("{sisisIsIsoso}",
+                                 "CPU-u", running_modules[x].last_period_percent_cpu_usage_user_mode,
+                                 "CPU-s", running_modules[x].last_period_percent_cpu_usage_kernel_mode,
+                                 "MEM-vms", running_modules[x].virtual_memory_size,
+                                 "MEM-rss", running_modules[x].resident_set_size * 1024, // Output RSS in bytes as well as VMS
+                                 "inputs", in_ifc_arr,
+                                 "outputs", out_ifc_arr);
       }
 
       if (module_info == NULL) {
@@ -842,14 +843,21 @@ char *make_json_modules_info(uint8_t info_mask)
             VERBOSE(SUP_LOG, "[ERROR] Could not append module \"%s\" final JSON object.\n", running_modules[x].module_name);
             goto clean_up;
          }
+         json_decref(module);
       }
    }
 
-   char *data = json_dumps(modules_obj, 0);
-   json_decref(modules_obj);
-   return data;
+
+   result_data = json_dumps(modules_obj, 0);
+   if (modules_obj != NULL) {
+      json_decref(modules_obj);
+   }
+   return result_data;
 
 clean_up:
+   if (modules_obj != NULL) {
+      json_decref(modules_obj);
+   }
    return NULL;
 }
 
