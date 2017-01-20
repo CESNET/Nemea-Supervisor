@@ -6,6 +6,7 @@ othersdir = $(pkgdatadir)/others
 
 pkgdata_DATA = amplification_detection.mkdir \
 	   dnstunnel_detection.mkdir \
+	   booterfilter.mkdir \
 	   brute_force_detector.mkdir \
 	   brute_force_hist_detector.mkdir \
 	   flow_meter.mkdir \
