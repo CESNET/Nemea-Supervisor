@@ -1,3 +1,18 @@
+2017-01-21 supervisor-1.5.3
+
+2017-01-21 (Marek Svepes): simplified mechanism of connection to service interface
+2017-01-20 (Marek Svepes): configs: added booterfilter mkdir file
+2017-01-17 (Vaclav Bartos): nemea_status: output ifc now shows number of dropped messages
+2017-01-17 (Marek Svepes): fixed growing memory leaks in service thread
+2017-01-16 (Vaclav Bartos): nemea_status: Another fix in parsing data from supervisor
+2017-01-16 (Vaclav Bartos): nemea_status: Fixed number of clients in output ifc
+2017-01-15 (Vaclav Bartos): nemea_status: Fixed path to config file
+2017-01-15 (Vaclav Bartos): nemea_status: README.md updated
+2017-01-15 (Vaclav Bartos): nemea_status: Fixed Py3 compatibility (iteritems->items)
+2017-01-15 (Vaclav Bartos): nemea_status: Added strip with links to other servers
+2017-01-15 (Vaclav Bartos): nemea_status: Added config file
+2017-01-15 (Vaclav Bartos): nemea_status: Show graphs from Munin as tooltips
+
 2016-12-10 supervisor-1.5.2
         * module's socket path changed
 	* updated munin graphs
