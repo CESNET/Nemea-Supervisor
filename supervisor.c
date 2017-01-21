@@ -66,7 +66,6 @@
 #define TRAP_PARAM   "-i" ///< Interface parameter for libtrap
 #define DEFAULT_MODULE_RESTARTS_NUM   3  ///< Default number of module restarts per minute
 #define MAX_MODULE_RESTARTS_NUM  30  ///< Maximum number of module restarts per minute (loaded from configuration file)
-#define SERVICE_IFC_CONN_ATTEMPTS_LIMIT   3 // Maximum count of connection attempts to service interface
 #define MAX_SERVICE_IFC_CONN_FAILS   3
 
 #define DEFAULT_DAEMON_SERVER_SOCKET   DEFAULT_PATH_TO_SOCKET  ///<  Daemon server socket
@@ -675,8 +674,7 @@ void init_module_variables(int module_number)
    running_modules[module_number].last_period_percent_cpu_usage_user_mode = 0;
    running_modules[module_number].module_service_sd = -1;
    running_modules[module_number].module_service_ifc_isconnected = FALSE;
-   running_modules[module_number].module_service_ifc_conn_attempts = 0;
-   running_modules[module_number].module_service_ifc_timer = 0;
+   running_modules[module_number].service_ifc_conn_timer = 0;
 }
 
 char *get_param_by_delimiter(const char *source, char **dest, const char delimiter)
@@ -1859,7 +1857,7 @@ void service_disconnect_from_module(const int module_idx)
       }
       running_modules[module_idx].module_service_ifc_isconnected = FALSE;
    }
-   running_modules[module_idx].module_service_ifc_timer = 0;
+   running_modules[module_idx].service_ifc_conn_timer = 0;
 }
 
 // Returns a number of running modules
@@ -1968,7 +1966,7 @@ void service_stop_modules_sigkill()
                }
                memset(buffer, 0, DEFAULT_SIZE_OF_BUFFER);
                get_param_by_delimiter(running_modules[x].config_ifces[y].ifc_params, &dest_port, ',');
-               sprintf(buffer,trap_default_socket_path_format,dest_port);
+               sprintf(buffer, trap_default_socket_path_format, dest_port);
                VERBOSE(MODULE_EVENT, "%s [CLEAN] Deleting socket %s - module %s\n", get_formatted_time(), buffer, running_modules[x].module_name);
                unlink(buffer);
                NULLP_TEST_AND_FREE(dest_port)
@@ -2034,18 +2032,13 @@ void service_check_connections()
    for (x = 0; x < loaded_modules_cnt; x++) {
       // Check connection between module and supervisor
       if (running_modules[x].module_status == TRUE && running_modules[x].module_service_ifc_isconnected == FALSE) {
-         if (running_modules[x].module_service_ifc_conn_attempts < SERVICE_IFC_CONN_ATTEMPTS_LIMIT) {
+         if ((++running_modules[x].service_ifc_conn_timer % NUM_SERVICE_IFC_PERIODS) == 1) {
             // Check module socket descriptor, closed socket has descriptor set to -1
             if (running_modules[x].module_service_sd != -1) {
                close(running_modules[x].module_service_sd);
                running_modules[x].module_service_sd = -1;
             }
             service_connect_to_module(x);
-         } else {
-            if (++running_modules[x].module_service_ifc_timer >= NUM_SERVICE_IFC_PERIODS) {
-               running_modules[x].module_service_ifc_timer = 0;
-               running_modules[x].module_service_ifc_conn_attempts = 0;
-            }
          }
       }
    }
@@ -2114,9 +2107,6 @@ void service_connect_to_module(const int module)
    int sockfd = -1;
    union tcpip_socket_addr addr;
 
-   // Increase counter of connection attempts to the service interface
-   running_modules[module].module_service_ifc_conn_attempts++;
-
    memset(service_sock_spec, 0, 14 * sizeof(char));
    sprintf(service_sock_spec, "service_%d", running_modules[module].module_pid);
 
@@ -2131,14 +2121,16 @@ void service_connect_to_module(const int module)
       return;
    }
    if (connect(sockfd, (struct sockaddr *) &addr.unix_addr, sizeof(addr.unix_addr)) == -1) {
-      VERBOSE(MODULE_EVENT,"%s [SERVICE] Error while connecting to module %s on port %s\n", get_formatted_time(), running_modules[module].module_name, service_sock_spec);
+      if (running_modules[module].service_ifc_conn_timer == 1) {
+         VERBOSE(MODULE_EVENT,"%s [SERVICE] Error while connecting to module %s with socket \"%s\"\n", get_formatted_time(), running_modules[module].module_name, addr.unix_addr.sun_path);
+      }
       running_modules[module].module_service_ifc_isconnected = FALSE;
       close(sockfd);
       return;
    }
    running_modules[module].module_service_sd = sockfd;
    running_modules[module].module_service_ifc_isconnected = TRUE;
-   running_modules[module].module_service_ifc_conn_attempts = 0; // Successfully connected to the module, reset connection attempts counter
+   running_modules[module].service_ifc_conn_timer = 0; // Successfully connected to the module, reset connection timer
    VERBOSE(MODULE_EVENT,"%s [SERVICE] Connected to module %s.\n", get_formatted_time(), running_modules[module].module_name);
 }
 

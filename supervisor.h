@@ -194,9 +194,8 @@ typedef struct running_module_s {
    unsigned long int last_period_percent_cpu_usage_user_mode; ///< Percentage of CPU usage in current period in user mode.   /*** INIT ***/
 
    int module_service_sd; ///< Socket descriptor of the service connection.   /*** INIT ***/
-   int module_service_ifc_isconnected; ///< if supervisor is connected to module ~ TRUE, else ~ FALSE   /*** INIT ***/
-   int module_service_ifc_conn_attempts; // Count of supervisor's connection attempts to module's service interface    /*** INIT ***/
-   int module_service_ifc_timer;   /*** INIT ***/
+   uint8_t module_service_ifc_isconnected; ///< if supervisor is connected to module ~ TRUE, else ~ FALSE   /*** INIT ***/
+   uint64_t service_ifc_conn_timer;   /*** INIT ***/
 } running_module_t;
 
 
