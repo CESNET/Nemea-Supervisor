@@ -7,12 +7,17 @@ import time
 import subprocess
 import json
 
-from flask import Flask, request, render_template, g, jsonify
+from api import auth, db
+from api.module import Module
+from api.user import User, UserException
+from api.role import Role
 
-app = Flask(__name__)
+#from flask import Flask, request, render_template, g, jsonify
 
-app.jinja_env.trim_blocks = True
-app.jinja_env.lstrip_blocks = True
+#app = Flask(__name__)
+
+#app.jinja_env.trim_blocks = True
+#app.jinja_env.lstrip_blocks = True
 
 
 # *** Load config ***
@@ -24,7 +29,7 @@ cfg = {
     'links': [],
 }
 # Load and parse config file
-try:
+"""try:
     with open(config_file) as f:
         for n,line in enumerate(f):
             if line.lstrip().startswith('#') or not line.strip(): # skip comments and empty lines
@@ -39,7 +44,7 @@ except IOError as e:
 except Exception as e:
     print("Error in config file on line {}.".format(n+1), file=sys.stderr)
     sys.exit(1)
-
+"""
 SUP_PATH = cfg['supervisor_cli']
 SUP_SOCK_PATH = cfg['supervisor_socket']
 
@@ -150,23 +155,21 @@ def get_stats():
             'output': out,
         }
 
-        
 
 # ***** Main page *****
-@app.route('/')
-def main():
+def nemea_main():
     topology = get_topology()
     return render_template('nemea_status.html', topology=topology, **globals())
 
 
 # ***** Get statistics via AJAX request *****
-@app.route('/_stats')
-def events():
+def nemea_events():
     stats = get_stats()
     #time.sleep(1)
-    return jsonify(stats=stats)
+    return json_util.dumps(stats=stats)
 
+n_status = Module('nemea_status', __name__, url_prefix='/nemea/status', no_version=True)
+n_status.add_url_rule('', view_func=nemea_main, methods=['GET'])
+n_status.add_url_rule('/stats', view_func=nemea_events, methods=['GET'])
 
-if __name__ == "__main__":
-    app.run(host='0.0.0.0',debug=True)
 
