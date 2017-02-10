@@ -13,6 +13,7 @@ from api.user import User, UserException
 from api.role import Role
 
 #from flask import Flask, request, render_template, g, jsonify
+from bson import json_util
 
 #app = Flask(__name__)
 
@@ -159,14 +160,15 @@ def get_stats():
 # ***** Main page *****
 def nemea_main():
     topology = get_topology()
-    return render_template('nemea_status.html', topology=topology, **globals())
+    return(json_util.dumps(topology))
+    #return render_template('nemea_status.html', topology=topology, **globals())
 
 
 # ***** Get statistics via AJAX request *****
 def nemea_events():
     stats = get_stats()
     #time.sleep(1)
-    return json_util.dumps(stats=stats)
+    return json_util.dumps(stats)
 
 n_status = Module('nemea_status', __name__, url_prefix='/nemea/status', no_version=True)
 n_status.add_url_rule('', view_func=nemea_main, methods=['GET'])
