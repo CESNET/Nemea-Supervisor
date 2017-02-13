@@ -138,15 +138,19 @@ def get_stats():
     try:
         res = {}
         j = json.loads(out)
+        #print(json.dumps(j))
         for module, data in j.items():
-            res[module + '_mem'] = data['MEM-vms']/1000
-            res[module + '_cpu'] = data['CPU-u'] + data['CPU-s']
+            res[module] = {}
+            res[module]['mem'] = data['MEM-vms']/1000
+            res[module]['cpu'] = data['CPU-u'] + data['CPU-s']
+            res[module]['outputs'] = data['outputs']
             for inpt in data['inputs']:
-                res[get_indxed_key(res, module+'_INIFC')] = inpt['messages']
-            for otpt in data['outputs']:
-                ifcid = get_indxed_key(res, module+'_OUTIFC')
-                res[ifcid] = otpt['sent-msg']
-                res[ifcid + '_dropped'] = otpt['drop-msg']
+                res[module][get_indxed_key(res, 'INIFC')] = inpt['messages']
+            #for otpt in data['outputs']:
+                #print(otpt)
+               # ifcid = get_indxed_key(otpt, 'OUTIFC')
+                #res[module]['outputs'].append({'ID' : otpt['ID'], 'sent-msg' : otpt['sent-msg'], 'drop-msg' : otpt['drop-msg']})
+                #res[module][ifcid + '_dropped'] = otpt['drop-msg']
         return res
     except Exception:
         raise
