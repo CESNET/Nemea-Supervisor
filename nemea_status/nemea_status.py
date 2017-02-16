@@ -146,11 +146,6 @@ def get_stats():
             res[module]['outputs'] = data['outputs']
             for inpt in data['inputs']:
                 res[module][get_indxed_key(res, 'INIFC')] = inpt['messages']
-            #for otpt in data['outputs']:
-                #print(otpt)
-               # ifcid = get_indxed_key(otpt, 'OUTIFC')
-                #res[module]['outputs'].append({'ID' : otpt['ID'], 'sent-msg' : otpt['sent-msg'], 'drop-msg' : otpt['drop-msg']})
-                #res[module][ifcid + '_dropped'] = otpt['drop-msg']
         return res
     except Exception:
         raise
@@ -165,15 +160,14 @@ def get_stats():
 def nemea_main():
     topology = get_topology()
     return(json_util.dumps(topology))
-    #return render_template('nemea_status.html', topology=topology, **globals())
 
 
 # ***** Get statistics via AJAX request *****
 def nemea_events():
     stats = get_stats()
-    #time.sleep(1)
-    return json_util.dumps(stats)
+    return(json_util.dumps(stats))
 
+# REST API Module setup
 n_status = Module('nemea_status', __name__, url_prefix='/nemea/status', no_version=True)
 n_status.add_url_rule('', view_func=nemea_main, methods=['GET'])
 n_status.add_url_rule('/stats', view_func=nemea_events, methods=['GET'])
