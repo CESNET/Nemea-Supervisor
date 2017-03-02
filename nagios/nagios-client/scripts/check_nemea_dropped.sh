@@ -9,7 +9,7 @@ if [ $# -ne 1 ]; then
    exit 3
 fi
 
-. ./nemea_common.sh
+. $(dirname $0)/nemea_common.sh
 
 pf="/tmp/`basename $0`-prevval"
 

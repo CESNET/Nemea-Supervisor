@@ -6,11 +6,11 @@ TOTAL=$(cat /proc/meminfo | grep MemTotal | tr -s ' ' | cut -d' ' -f2)
 FREE=$(cat /proc/meminfo | grep MemFree | tr -s ' ' | cut -d' ' -f2)
 
 #PERCENT of total memory used
-PERCENT=$( echo "scale=2; ($FREE/$TOTAL)*100" | bc | cut -d'.' -f1)
+PERCENT=$( echo "scale=2; (($TOTAL-$FREE)/$TOTAL)*100" | bc | cut -d'.' -f1)
 
-if [ "$PERCENT" -lt 90 ]; then
+if [ "$PERCENT" -lt "$1" ]; then
    echo "Memory OK."
    exit 0
 fi
-echo "Running out. Less than 10% free memory."
+echo "Running out. Consuming $PERCENT% memory, limit is $1%."
 exit 2

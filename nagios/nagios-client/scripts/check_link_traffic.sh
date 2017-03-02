@@ -26,7 +26,7 @@ if [ "$curtime" -ne "$prevtime" ]; then
    for i in `echo "$curval"`; do
       counter=$(($counter+1))
       previous=`echo "$prevval" | cut -d' ' -f"$counter"`
-      if [ $i -eq $previous ]; then
+      if [ "$i" -eq $previous ]; then
          echo "Link $(($counter-1)) is DOWN."
          exit 2
       fi
