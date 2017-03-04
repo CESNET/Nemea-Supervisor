@@ -1,3 +1,6 @@
+2017-03-04 supervisor-1.5.4
+	* moved sup files for reporters to nemea-modules
+
 2017-01-21 supervisor-1.5.3
 
 2017-01-21 (Marek Svepes): simplified mechanism of connection to service interface
