@@ -1,6 +1,5 @@
 detectorsdir = $(pkgdatadir)/detectors
 datasourcesdir = $(pkgdatadir)/data-sources
-reportersdir = $(pkgdatadir)/reporters
 loggersdir = $(pkgdatadir)/loggers
 othersdir = $(pkgdatadir)/others
 
@@ -44,18 +43,6 @@ detectors_DATA = detectors/amplification_detection.sup \
 datasources_DATA = data-sources/flow_meter.sup \
 	   data-sources/ipfixcol.sup
 
-reporters_DATA = reporters/amplification_reporter.sup \
-	   reporters/brute_force_hist_reporter.sup \
-	   reporters/brute_force_reporter.sup \
-	   reporters/dnstunnel_reporter.sup \
-	   reporters/haddrscan_reporter.sup \
-	   reporters/hoststats_reporter.sup \
-	   reporters/ipblacklistfilter_reporter.sup \
-	   reporters/miner_detector_reporter.sup \
-	   reporters/sipbf2idea.sup \
-	   reporters/voip_fraud_reporter.sup \
-	   reporters/vportscan_reporter.sup
-
 loggers_DATA = loggers/amplification_logger.sup \
 	   loggers/brute_force_hist_logger.sup \
 	   loggers/brute_force_logger.sup \
@@ -71,7 +58,7 @@ loggers_DATA = loggers/amplification_logger.sup \
 	   
 
 
-EXTRA_DIST = ipfixcol-startup.xml supervisor_config_template.xml ${pkgdata_DATA} ${detectors_DATA} ${datasources_DATA} ${others_DATA} ${reporters_DATA} ${loggers_DATA}
+EXTRA_DIST = ipfixcol-startup.xml supervisor_config_template.xml ${pkgdata_DATA} ${detectors_DATA} ${datasources_DATA} ${others_DATA} ${loggers_DATA}
 
 sysconf_DATA = supervisor_config_template.xml ipfixcol-startup.xml
 bin_SCRIPTS=prepare_default_config.sh set_default_nic.sh
