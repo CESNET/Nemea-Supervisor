@@ -30,8 +30,8 @@ if [ "$curtime" -ne "$prevtime" ]; then
          counter=$(($counter+6))
       fi
       previous=`echo "$prevval" | cut -d' ' -f"$counter"`
-      if [ "$i" -eq $previous ]; then
-         echo "Link $(($counter-1)) is DOWN."
+      if [ "$i" -eq "$previous" ]; then
+         echo "Link $(($counter-1)) divided by 7 is DOWN."
          exit 2
       fi
    done
