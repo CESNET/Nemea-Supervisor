@@ -42,7 +42,6 @@ if [ "$curtime" -ne "$prevtime" ]; then
          exit 2
       fi
    done
-else
-   echo "All links are UP."
-   exit 0
 fi
+echo "All links are UP."
+exit 0
