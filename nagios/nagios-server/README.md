@@ -9,4 +9,5 @@ NEMEA.
 You may add multiple hosts using `define host`, just make sure you
 add them into `nemea-collectors` hostgroup as well.
 
+Run `service nagios restart` after changes in configuration.
 
