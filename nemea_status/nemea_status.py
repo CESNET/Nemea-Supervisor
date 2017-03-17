@@ -7,10 +7,10 @@ import time
 import subprocess
 import json
 
-from api import auth, db
-from api.module import Module
-from api.user import User, UserException
-from api.role import Role
+from liberouterapi import auth, db
+from .module import Module
+from ..user import User, UserException
+from ..role import Role
 
 #from flask import Flask, request, render_template, g, jsonify
 from bson import json_util
