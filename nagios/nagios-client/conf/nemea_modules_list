@@ -1,0 +1,18 @@
+#Add modules that you want to monitor.
+#Empty lines and lines starting with hash are ignored as comments.
+
+#ipfixcol
+#hoststatsnemea
+#vportscan_detector
+#bruteforce_detector
+#sip_bf_detector
+#link_traffic
+#proto_traffic
+#warden_hostats2idea
+#warden_amplification2idea
+#warden_ipblacklist2idea
+#warden_vportscan2idea
+#warden_bruteforce2idea
+#reporter_leaktest
+#warden_booterfilter2idea
+#warden_sipbruteforce2idea

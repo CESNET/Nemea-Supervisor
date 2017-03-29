@@ -6,7 +6,7 @@
 
 if [ $# -ne 1 ]; then
    echo Usage: `basename $0` maxlimit
-   exit 3
+   exit 2
 fi
 
 . $(dirname $0)/nemea_common.sh

@@ -6,7 +6,7 @@
 
 if [ $# -ne 1 ]; then
    echo Usage: `basename $0` minlimit
-   exit 3
+   exit 2
 fi
 
 . ./nemea_common.sh

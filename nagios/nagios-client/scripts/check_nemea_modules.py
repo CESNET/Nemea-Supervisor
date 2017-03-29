@@ -1,46 +1,39 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*- vim:fileencoding=utf-8:
-# vim: tabstop=4:shiftwidth=4:softtabstop=4:expandtab
-
+#!/usr/bin/python
+#Checks whether all modules in list below are running.
 
 import os
 import sys
 import json
 
-check_modules = [
-    "ipfixcol",
-    "hoststatsnemea",
-    "vportscan_detector",
-    "bruteforce_detector",
-    "sip_bf_detector",
-    "link_traffic",
-    "proto_traffic",
-    "warden_hoststats2idea",
-    "warden_amplification2idea",
-    "warden_ipblacklist2idea",
-    "warden_vportscan2idea",
-    "warden_bruteforce2idea",
-    "reporter_leaktest",
-    "warden_booterfilter2idea",
-    "warden_haddrscan2idea",
-    "warden_sipbruteforce2idea",
-    "warden_venom2idea"
-]
+#importing modules configured in /etc/nemea/check_modules_list
+check_modules = []
+with open("/etc/nemea/check_modules_list", "r") as conf:
+   for line in conf:
+      line = line.rstrip()
+      if not line:
+         continue
+      elif line[0] != '#':
+         check_modules.append(line)
+   conf.close()
 
-with os.popen("supcli -i") as f:
-    data = f.read()
-    f.close()
+with os.popen("supcli -i 2>/dev/null") as f:
+   data = f.read()
+   if not data:
+      print("Could not read from supervisor.")
+      sys.exit(2)
+   f.close()
 
 errors = []
 jd = json.loads(data)
+
+#checking for occurence of given lists in output of "supcli -i"
 for module in check_modules:
-    if module not in jd or (module in jd and jd[module]["status"] != "running"):
-        errors.append(module)
+   if module not in jd or (module in jd and jd[module]["status"] != "running"):
+      errors.append(module)
 
 if not errors:
-    print("All monitored modules are running")
-    sys.exit(0)
+   print("All monitored modules are running.")
+   sys.exit(0)
 else:
-    print("Stopped modules: " + ", ".join(errors))
-    sys.exit(2)
-
+   print("Stopped modules:"+",".join(errors))
+   sys.exit(2)
