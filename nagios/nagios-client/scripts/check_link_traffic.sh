@@ -3,12 +3,13 @@
 
 # Path to socket of link_traffic module:
 SOCKPATH=/var/run/libtrap/munin_link_traffic
-
+OUTPUTPATH=/tmp/link_traffic_output
 pf="/tmp/`basename $0`-prevval"
 
 #getting current output of munin_link_traffic script
-headers="`nc -U "$SOCKPATH" </dev/null 2>/dev/null| awk 'NR==1' | tr ',' ' '`"
-curval="`nc -U "$SOCKPATH" </dev/null 2>/dev/null| awk 'NR==2' | tr ',' ' '`"
+nc -U "$SOCKPATH" </dev/null 2>/dev/null >"$OUTPUTPATH"
+headers="`cat "$OUTPUTPATH" | awk 'NR==1' | tr ',' ' '`"
+curval="`cat "$OUTPUTPATH" | awk 'NR==2' | tr ',' ' '`"
 curtime="`date +%s`"
 
 if [ -z "$curval" ]; then

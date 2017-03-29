@@ -6,7 +6,7 @@
 if [ $# -gt 1 ]; then
    echo "Too many arguments."
    echo "Usage: `basename $0` [maxlimit]"
-   exit 3
+   exit 2
 fi
 
 TOTAL=$(cat /proc/meminfo | grep SwapTotal | tr -s ' ' | cut -d' ' -f2)
@@ -18,7 +18,7 @@ if [ $# -eq 0 ]; then
 else
    if [ $1 -lt 1 -o $1 -gt 100 ]; then
       echo "Argument must be a number between 1-100."
-      exit 3
+      exit 2
    fi
    LIMIT="$1"
 fi

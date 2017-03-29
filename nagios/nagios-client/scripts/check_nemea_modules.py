@@ -2,30 +2,21 @@
 #Checks whether all modules in list below are running.
 
 import os
-import sys 
+import sys
 import json
 
-#in this list specify all modules that you want to be running
-check_modules = [ 
-   "ipfixcol",
-   "hoststatsnemea",
-   "vportscan_detector",
-   "bruteforce_detector",
-   "sip_bf_detector",
-   "link_traffic",
-   "proto_traffic",
-   "warden_hostats2idea",
-   "warden_amplification2idea",
-   "warden_ipblacklist2idea",
-   "warden_vportscan2idea",
-   "warden_bruteforce2idea",
-   "reporter_leaktest",
-   "warden_booterfilter2idea",
-   "warden_sipbruteforce2idea",
-   "warden_venom2idea"
-]
+#importing modules configured in /etc/nemea/check_modules_list
+check_modules = []
+with open("/etc/nemea/check_modules_list", "r") as conf:
+   for line in conf:
+      line = line.rstrip()
+      if not line:
+         continue
+      elif line[0] != '#':
+         check_modules.append(line)
+   conf.close()
 
-with os.popen("supcli -i") as f:
+with os.popen("supcli -i 2>/dev/null") as f:
    data = f.read()
    if not data:
       print("Could not read from supervisor.")
