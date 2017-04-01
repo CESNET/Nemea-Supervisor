@@ -139,6 +139,7 @@ AC_CONFIG_FILES([Makefile
 	configs/supervisor_config_template.xml
 	nagios/nagios-client/Makefile
 	nagios/nagios-server/Makefile
+	nagios/selinux/Makefile
 	nagios/Makefile])
 
 

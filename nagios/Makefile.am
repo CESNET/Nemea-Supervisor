@@ -1,1 +1,1 @@
-SUBDIRS=nagios-client nagios-server
+SUBDIRS=nagios-client nagios-server selinux
