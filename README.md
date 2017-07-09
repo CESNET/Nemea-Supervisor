@@ -85,14 +85,14 @@ List of **optional** parameters the program accepts:
 
 Supervisor can run in one of the following modes:
 
-####1) Interactive Mode
+#### 1) Interactive Mode
 
 ```
 supervisor -T supervisor_config_template.xml -L logs_path
 ```
 
 
-####2) System daemon
+#### 2) System daemon
 
 Program is executed with `-d` (or `--daemon`) argument and runs as a process in backround.
 
@@ -110,7 +110,7 @@ supervisor_cli (after installation from RPM, there is symlink "supcli" for the c
   that is used for communication between daemon and client (more information about the client can be found in the section "Supervisor client").
 
 
-####3) System service
+#### 3 ) System service
 
 Supervisor is installed as a systemd service with the following commands:
 
@@ -124,7 +124,7 @@ Supervisor is installed as a systemd service with the following commands:
 
 ## Configuration
 
-###Example
+### Example
 
 Example configuration file with comments: [config_example.xml](https://github.com/CESNET/Nemea-Supervisor/blob/master/configs/config_example.xml)
 
@@ -133,7 +133,7 @@ The picture below should help to understand the configuration file. It consists 
 ![Configuration file principle](doc/config-file-expl.png)
 
 
-###Real usage of the configuration file
+### Real usage of the configuration file
 
 It is split into smaller parts called **sup files** (file.sup) for easier maintaining by multiple users. Example of such a file is [this sup file](https://github.com/CESNET/Nemea-Supervisor/blob/master/configs/detectors/dnstunnel_detection.sup) containing a configuration of one Nemea detection module called dns tunnel detector.
 
@@ -149,7 +149,7 @@ Sup files can be placed into directories according to their category (e.g. detec
 Path to the XML template is one of mandatory parameters for the supervisor (`-T FILE` or `--config-template=path`).
 
 
-###Reload configuration
+### Reload configuration
 
 The most important functionality of the supervisor. It updates the configuration according to the configuration file. It has the following phases:
 
@@ -166,7 +166,7 @@ There are three basic cases that can occur during "Apply config" phase:
 - A module in loaded configuration was not found in the new configuration -> it is **removed**.
 
 
-###Installed configuration
+### Installed configuration
 
 After installation from RPM or by using
 
@@ -183,7 +183,7 @@ It is possible to copy directories with .sup files from `/usr/share/nemea-superv
 
 
 
-##Supervisor functions
+## Supervisor functions
 
 User can do various operations with modules via Supervisor. After launch (either supervisor in non-daemon mode or supervisor_cli) a menu with the following operations appears:
 
@@ -205,14 +205,14 @@ If the supervisor is running as a system daemon, last option "STOP SUPERVISOR" i
 
 
 
-##Monitoring Nemea modules
+## Monitoring Nemea modules
 
-####Modules status
+#### Modules status
 
 Supervisor monitors the status of every module. The status can be **running** or **stopped** and it depends on the **enabled flag** of the module. Once the module is set to enabled, supervisor will automatically start it. If the module stops but is still enabled (user did not disable it), supervisor will restart it. Maximum number of restarts per minute can be specified with **module-restarts** in the configuration file. When the limit is reached, module is automatically set to disabled.
 If the module is running and it is disabled by user, SIGINT is used to stop the module. If it keeps running, SIGKILL must be used.
 
-####Statistics about modules´ interfaces
+#### Statistics about modules´ interfaces
 
 Every Nemea module has an implicit **service interface**, which allows Supervisor to get statistics about modules interfaces. These statistics include the following counters:
 
@@ -221,7 +221,7 @@ Every Nemea module has an implicit **service interface**, which allows Superviso
 
 Data sent via service interface are encoded in JSON format. More information about service interface [here](https://github.com/CESNET/Nemea-Framework/blob/master/libtrap/service-ifc.md)
 
-####CPU and memory usage
+#### CPU and memory usage
 
 The last monitored statistic is CPU usage (kernel and user mode) and system memory usage of every module.
 
