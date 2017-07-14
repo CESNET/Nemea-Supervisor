@@ -42,10 +42,7 @@ if [ "$curtime" -ne "$prevtime" ]; then
          old_down="$new_down"
          new_down=`echo "$headers" | cut -d' ' -f"$counter" | cut -d'-' -f1`
          if [ "$new_down" != "$old_down" ]; then
-            #hotfix for skipping telia links
-            if [ "$new_down" != "telia" ]; then
-               link_down=`echo "$link_down $new_down"`
-            fi
+            link_down=`echo "$link_down $new_down"`
          fi
          down_flag=1
       fi
