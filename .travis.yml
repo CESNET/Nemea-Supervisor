@@ -1,7 +1,6 @@
 language: c
 compiler:
   - gcc
-  - clang
 os:
   - linux
 
@@ -40,9 +39,13 @@ addons:
 before_install:
    - ( git clone https://github.com/CESNET/Nemea-Framework; cd Nemea-Framework; ./bootstrap.sh && ./configure -q --prefix=/usr && make -j10 && sudo make install; )
 
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
+
 script:
   - ./bootstrap.sh && ./configure --disable-repobuild && make distcheck
   - mkdir dist-pkgs && cp *.spec *.tar.gz dist-pkgs && (cd dist-pkgs/"$d"; tar --strip-components=1 -xf *.tar.gz;)
+  - ./configure -q --enable-debug CXXFLAGS=-coverage CFLAGS=-coverage LDFLAGS=-lgcov && make clean && make check
 
 deploy:
   provider: pages
