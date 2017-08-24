@@ -1,22 +1,22 @@
 ACLOCAL_AMFLAGS = -I m4
 
-SUBDIRS=munin configs
+SUBDIRS = munin configs
 
-bin_PROGRAMS=supervisor supervisor_cli
-supervisor_SOURCES= supervisor.c supervisor.h supervisor_api.h supervisor_main.c internal.c internal.h
+bin_PROGRAMS = supervisor supervisor_cli
+supervisor_SOURCES = supervisor.c supervisor.h supervisor_api.h supervisor_main.c internal.c internal.h
 supervisor_LDADD = -lpthread -ltrap
-supervisor_cli_SOURCES= supervisor_cli.c internal.h internal.c
-doc_DATA=README.md
+supervisor_cli_SOURCES = supervisor_cli.c internal.h internal.c
+doc_DATA = README.md
 EXTRA_DIST = nemea-supervisor README.md
-bin_SCRIPTS=nemea-supervisor
+bin_SCRIPTS = nemea-supervisor
 
 
-DISTCHECK_CONFIGURE_FLAGS="--with-systemdsystemunitdir=$$dc_install_base/$(systemdsystemunitdir)"
-systemdsystemunit_DATA=nemea-supervisor.service
+DISTCHECK_CONFIGURE_FLAGS = "--with-systemdsystemunitdir=$$dc_install_base/$(systemdsystemunitdir)"
+systemdsystemunit_DATA = nemea-supervisor.service
 
 if MAKE_RPMS
 RPMDIR = RPMBUILD
-RPMFILENAME=$(PACKAGE_NAME)-$(VERSION)
+RPMFILENAME = $(PACKAGE_NAME)-$(VERSION)
 .PHONY: rpm
 rpm:
 	rm -rf "$(RPMDIR)/SOURCES/$(RPMFILENAME)"
