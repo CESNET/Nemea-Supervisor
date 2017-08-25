@@ -464,59 +464,61 @@ functions](#supervisor-functions).
 
   Supervisor client has a special mode that is enabled by `-x`. It
   allows user to get statistics about modules mentioned
-  [here](#statistics-about-modules-interfaces). In `-x` mode, client
-  connects to the supervisor, receives and prints statistics,
-  disconnects and terminates.
+  [here](#statistics-about-modules-interfaces) in JSON format. In `-x`
+  mode, client connects to the supervisor, receives and prints
+  statistics, disconnects and terminates.
 
   Note: this mode is used by plugin
   [nemea-supervisor](https://github.com/CESNET/Nemea-Supervisor/tree/master/munin)
   for munin.
 
-#### Output format
+#### Output notes
 
-```
-<module unique name>,<information type>,<statistics/identification>
-```
+* interface type is one of *{t, u, f, g, b}* values corresponding to
+  *{tcpip, unix-socket, file, generator, blackhole}*
 
-For different "information type", the part "statistics/identification"
-differs. There are 3 basic types of information:
+* interface ID is *port number* (tcpip), *socket name* (unix-socket),
+  *file name* (file) or *"none"* (generator, blackhole)
 
-1. Module interfaces statistics:
-   ```<module unique name>,<interface direction>,<interface type>,<interface ID>,<interface counters>```
-
-  * interface direction is either *in* or *out*
-
-  * interface type is one of *{t, u, f, g, b}* values corresponding to
-    *{tcpip, unix-socket, file, generator, blackhole}*
-
-  * interface ID is *port number* (tcpip), *socket name*
-    (unix-socket), *file name* (file) or *"none"* (generator,
-    blackhole)
-
-  * interface counters are described
-    [here](#statistics-about-modules-interfaces)
-
-2. Module CPU usage:
-   ```<module unique name>,cpu,<kernel mode CPU usage>,<user mode CPU usage>```
-
-3. Module MEM usage:
-   ```<module unique name>,mem,<size of virtual memory in MB>```
+* interface counters are described
+  [here](#statistics-about-modules-interfaces)
 
 
-#### Overall example of the output with statistics:
+#### Overall example of the output with statistics (reformatted):
 
-```
-dns_amplification,in,u,flow_data_source,92326719485,72985549
-dns_amplification,out,t,12001,789,0,540,7291604
-dnstunnel_detection,in,u,flow_data_source,3099282393,4126406
-dnstunnel_detection,out,t,12004,100591,0,8959,1128918
-dnstunnel_detection,out,u,dnstunnel_sdmoutput,224,0,0,1137913
-
-dns_amplification,cpu,0,4
-dnstunnel_detection,cpu,1,3
-
-dns_amplification,mem,193928
-dnstunnel_detection,mem,208600
+```json
+{"haddrscan_detector": {"CPU-s": 0,
+                        "CPU-u": 0,
+                        "MEM-rss": 15396864,
+                        "MEM-vms": 226459648,
+                        "inputs": [{"ID": "egress_flow_data_source",
+                                    "buffers": 412139,
+                                    "is-conn": 1,
+                                    "messages": 412139,
+                                    "type": "u"}],
+                        "outputs": [{"ID": "haddrscan_alerts",
+                                     "autoflush": 4398,
+                                     "buffers": 0,
+                                     "cli-num": 1,
+                                     "drop-msg": 0,
+                                     "sent-msg": 0,
+                                     "type": "u"}]},
+ "vportscan_detector": {"CPU-s": 0,
+                        "CPU-u": 0,
+                        "MEM-rss": 15392768,
+                        "MEM-vms": 226455552,
+                        "inputs": [{"ID": "egress_flow_data_source",
+                                    "buffers": 412154,
+                                    "is-conn": 1,
+                                    "messages": 412154,
+                                    "type": "u"}],
+                        "outputs": [{"ID": "vportscan_alerts",
+                                     "autoflush": 4398,
+                                     "buffers": 0,
+                                     "cli-num": 1,
+                                     "drop-msg": 0,
+                                     "sent-msg": 0,
+                                     "type": "u"}]}}
 ```
 
 
@@ -551,39 +553,48 @@ more modules the [nemea-modulesinfo](nemea-modulesinfo.in) command is
 available.
 
 
-#### Example of the output with modules information:
+#### Example of the output with modules information (reformatted):
 
 ```json
-{
-   "modules-number":2,
-   "modules":[
-      {
-         "module-idx":2,
-         "module-name":"dns_amplification",
-         "status":"running",
-         "module-params":"-d /data/dns_amplification_detection/",
-         "bin-path":"/usr/bin/nemea/amplification_detection",
-         "inputs":[
-            "u:flow_data_source:0"
-         ],
-         "outputs":[
-            "t:12001:1"
-         ]
-      },
-      {
-         "module-idx":3,
-         "module-name":"dnstunnel_detection",
-         "status":"running",
-         "module-params":"none",
-         "bin-path":"/usr/bin/nemea/dnstunnel_detection",
-         "inputs":[
-            "u:flow_data_source:0"
-         ],
-         "outputs":[
-            "t:12004:1",
-            "u:dnstunnel_sdmoutput:0"
-         ]
-      }
-   ]
-}
+{"haddrscan_detector": {"CPU-s": 0,
+                        "CPU-u": 0,
+                        "MEM-rss": 15396864,
+                        "MEM-vms": 226459648,
+                        "idx": 5,
+                        "inputs": [{"ID": "egress_flow_data_source",
+                                    "buffers": 382585,
+                                    "is-conn": 1,
+                                    "messages": 382585,
+                                    "type": "u"}],
+                        "outputs": [{"ID": "haddrscan_alerts",
+                                     "autoflush": 4082,
+                                     "buffers": 0,
+                                     "cli-num": 1,
+                                     "drop-msg": 0,
+                                     "sent-msg": 0,
+                                     "type": "u"}],
+                        "params": "-i u:egress_flow_data_source,u:haddrscan_alerts",
+                        "path": "/usr/bin/nemea/haddrscan_detector",
+                        "status": "running"},
+ "vportscan_detector": {"CPU-s": 0,
+                        "CPU-u": 0,
+                        "MEM-rss": 15392768,
+                        "MEM-vms": 226455552,
+                        "idx": 4,
+                        "inputs": [{"ID": "egress_flow_data_source",
+                                    "buffers": 382600,
+                                    "is-conn": 1,
+                                    "messages": 382600,
+                                    "type": "u"}],
+                        "outputs": [{"ID": "vportscan_alerts",
+                                     "autoflush": 4082,
+                                     "buffers": 0,
+                                     "cli-num": 1,
+                                     "drop-msg": 0,
+                                     "sent-msg": 0,
+                                     "type": "u"}],
+                        "params": "-i u:egress_flow_data_source,u:vportscan_alerts",
+                        "path": "/usr/bin/nemea/vportscan_detector",
+                        "status": "running"}}
+
 ```
