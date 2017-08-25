@@ -336,6 +336,18 @@ information about service interface
 The last monitored statistic is CPU usage (kernel and user mode) and
 system memory usage of every module.
 
+#### Supervisor modules configuration
+
+There is also a monitoring plugin to check that the supervisor could
+parse its modules configuration, see
+[check_nemea_loaded_module_config](check_nemea_loaded_module_config.in).
+
+#### Modules connection status
+
+Among the information the supervisor extracts from each module is
+wether its input interfaces are connected, use the monitoring plugin
+[check_nemea_modules_connected](check_nemea_modules_connected.in) to
+keep track of this status.
 
 
 ## Log files
@@ -533,6 +545,10 @@ allows user to get basic information about modules in JSON format:
 
 In `-i` mode, client connects to the supervisor, receives and prints
 information, disconnects and terminates.
+
+To see this data more clearly laid out and select only data for one or
+more modules the [nemea-modulesinfo](nemea-modulesinfo.in) command is
+available.
 
 
 #### Example of the output with modules information:

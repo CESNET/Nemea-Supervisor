@@ -8,6 +8,8 @@ Makefile.in
 RPMBUILD
 aclocal.m4
 autom4te.cache
+check_nemea_loaded_module_config
+check_nemea_modules_connected
 compile
 config.guess
 config.h
@@ -30,6 +32,7 @@ m4/libtool.m4
 m4/lt*.m4
 missing
 munin/nemea_supervisor
+nemea-modulesinfo
 nemea-supervisor
 nemea-supervisor-*.tar.gz
 nemea-supervisor.service
