@@ -91,22 +91,7 @@ AC_TYPE_UINT64_T
 AC_TYPE_UINT8_T
 
 # Checks for library functions.
-AC_FUNC_FORK
-AC_FUNC_REALLOC
-AC_CHECK_FUNCS([dup2 memset mkdir realpath select socket strchr strdup strstr getopt_long getopt])
-
-# Define SUP_GETOPT()
-if test "x$ac_cv_func_getopt_long" = xyes; then
-  AC_DEFINE_UNQUOTED([SUP_GETOPT(argc, argv, optstr, longopts)],
-    [getopt_long(argc, argv, optstr, longopts, NULL)],
-    [Supervisor getopt macro. Argc and argv are number and values of arguments, optstr is a string containing legitimate option characters, longopts is the array of option structures (unused on system without getopt_long())])
-elif test "x$ac_cv_func_getopt" = xyes; then
-  AC_DEFINE_UNQUOTED([SUP_GETOPT(argc, argv, optstr, longopts)],
-  [getopt(argc, argv, optstr)],
-  [Supervisor getopt macro. Argc and argv are number and values of arguments, optstr is a string containing legitimate option characters, longopts is the array of option structures (unused for on system without getopt_long())])
-else
-  AC_MSG_ERROR([getopt() was not found, module depend on it...])
-fi
+AC_CHECK_FUNCS([dup2 memset mkdir realpath select socket strchr strdup strstr])
 
 AC_ARG_WITH([systemdsystemunitdir],
 	[AS_HELP_STRING([--with-systemdsystemunitdir=DIR], [Directory for systemd service files])],

@@ -3852,7 +3852,7 @@ int parse_prog_args(int *argc, char **argv)
    char c = 0;
 
    while (1) {
-      c = SUP_GETOPT(*argc, argv, "dC:T:hs:L:", long_options);
+      c = TRAP_GETOPT(*argc, argv, "dC:T:hs:L:", long_options);
       if (c == -1) {
          break;
       }
