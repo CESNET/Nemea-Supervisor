@@ -12,6 +12,7 @@ pkgdata_DATA = amplification_detection.mkdir \
 	   hoststats.mkdir \
 	   haddrscandetector.mkdir \
 	   ipblacklistfilter.mkdir \
+	   ipv6stats.mkdir \
 	   miner_detector.mkdir \
 	   multopt.mkdir \
 	   prepare_default_config.sh \
@@ -26,7 +27,8 @@ pkgdata_DATA = amplification_detection.mkdir \
 	   README.md
 
 others_DATA = others/multopt.sup \
-       others/traffic_repeater.sup
+       others/traffic_repeater.sup \
+       others/ipv6stats.sup
 
 detectors_DATA = detectors/amplification_detection.sup \
 	   detectors/brute_force_detector.sup \
@@ -55,7 +57,7 @@ loggers_DATA = loggers/amplification_logger.sup \
 	   loggers/sip_bf_logger.sup \
 	   loggers/voip_fraud_logger.sup \
 	   loggers/vportscan_aggr_logger.sup
-	   
+
 
 
 EXTRA_DIST = ipfixcol-startup.xml supervisor_config_template.xml ${pkgdata_DATA} ${detectors_DATA} ${datasources_DATA} ${others_DATA} ${loggers_DATA}
