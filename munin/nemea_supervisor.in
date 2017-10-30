@@ -416,6 +416,24 @@ def genTotalMemRssConfig(modules):
 			print("{0}.draw AREASTACK".format(m))
 		print("")
 
+def genInputAlertsConfig(modules):
+	sel_modules = []
+	for m in modules:
+		if "inputs" in modules[m]:
+			sel_modules.append(m)
+	if sel_modules:
+		print("multigraph nemea_alerts")
+		print("graph_title Input messages on report modules")
+		print("graph_category nemea_supervisor")
+		print('graph_vlabel {0}'.format(vlabels["alerts"]))
+		print("graph_info Input messages on all reporter modules.")
+		for m in sel_modules:
+			print("{0}.label {1}".format(m, m.replace("_", " ")))
+			print("{0}.min 0".format(m))
+			print("{0}.type GAUGE".format(m))
+			print("{0}.draw AREASTACK".format(m))
+		print("")
+
 def getConfig(modules):
 	genTotalCpuConfig(modules)
 	genTotalMemVmsConfig(modules)
@@ -426,6 +444,8 @@ def getConfig(modules):
 		genModuleInputsConfig(m, modules)
 		genModuleOutputsConfig(m, modules)
 		getTotalCountersConfig(m, modules)
+        if m.endswith("2idea"):
+            genInputAlertsConfig(m, modules)
 
 # -----------------------------------------------------------------------------------------------
 
@@ -491,6 +511,17 @@ def genTotalMemRssValues(modules):
 			print("{0}.value {1}".format(m, (int)(modules[m]["MEM-rss"])))
 	print("")
 
+def genInputAlertsValues(modules):
+	sel_modules = []
+	for m in modules:
+		if "inputs" in modules[m]:
+			sel_modules.append(m)
+	if sel_modules:
+		print("multigraph nemea_alerts")
+		for m in sel_modules:
+			print("{0}.value {1}".format(m, modules[m]["inputs"]))
+	print("")
+
 def getValues(modules):
 	genTotalCpuValues(modules)
 	genTotalMemVmsValues(modules)
@@ -500,6 +531,8 @@ def getValues(modules):
 		genModuleMemValues(m, modules)
 		genModuleInputsValues(m, modules)
 		genModuleOutputsValues(m, modules)
+        if m.endswith("2idea"):
+            genInputAlertsValues(m, modules)
 	getTotalCountersValues(m, modules)
 
 # ------------------------------------------------------------------------------------------------
