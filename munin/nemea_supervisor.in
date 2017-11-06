@@ -271,7 +271,7 @@ else:
 			for line in f.readlines():
 				data = data + line
 
-def getTotalCountersConfig(m, modules):
+def getTotalCountersConfig(modules):
     print("""multigraph nemea_ifcs_total
 graph_title Total numbers of messages through all modules
 graph_vlabel count
@@ -287,7 +287,7 @@ drop.type DERIVE
 drop.min 0
 """)
 
-def getTotalCountersValues(m, modules):
+def getTotalCountersValues(modules):
 	r = 0
 	s = 0
 	d = 0
@@ -444,7 +444,7 @@ def getConfig(modules):
 		genModuleMemConfig(m, modules)
 		genModuleInputsConfig(m, modules)
 		genModuleOutputsConfig(m, modules)
-		getTotalCountersConfig(m, modules)
+	getTotalCountersConfig(modules)
     genInputAlertsConfig(m, modules)
 
 # -----------------------------------------------------------------------------------------------
@@ -533,7 +533,7 @@ def getValues(modules):
 		genModuleInputsValues(m, modules)
 		genModuleOutputsValues(m, modules)
     genInputAlertsValues(m, modules)
-	getTotalCountersValues(m, modules)
+	getTotalCountersValues(modules)
 
 # ------------------------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------------------------
