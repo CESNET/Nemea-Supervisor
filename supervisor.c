@@ -158,6 +158,12 @@ int get_digits_num(const int number)
    return cnt;
 }
 
+// Checks if str ends with suffix.
+int strsuffixis(const char *str, const char *suffix)
+{
+   return strcmp(str + strlen(str) - strlen(suffix), suffix) == 0;
+}
+
 // Returns absolute path of the file / directory passed in file_name parameter
 char *get_absolute_file_path(char *file_name)
 {
@@ -5042,7 +5048,7 @@ void include_item(buffer_t *buffer, char **item_path)
    struct dirent *dir_entry;
 
    if (check_file_type_perm(*item_path, CHECK_FILE, R_OK) == 0) {
-      if (strstr(*item_path, ".sup") != NULL) {
+      if (strsuffixis(*item_path, ".sup")) {
          append_file_content(buffer, *item_path);
       }
       return;
@@ -5076,10 +5082,10 @@ void include_item(buffer_t *buffer, char **item_path)
       }
 
       if (check_file_type_perm(dir_entry_path, CHECK_FILE, R_OK) == 0) {
-         if (strstr(dir_entry->d_name, ".sup") == NULL) {
-            continue;
-         } else {
+         if (strsuffixis(dir_entry->d_name, ".sup")) {
             append_file_content(buffer, dir_entry_path);
+         } else {
+            continue;
          }
       }
    }
@@ -5727,3 +5733,7 @@ xmlDocPtr netconf_get_state_data()
    return doc_tree_ptr;
 }
 #endif
+
+// Local variables:
+// c-basic-offset: 3;
+// End:
