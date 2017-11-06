@@ -5727,3 +5727,7 @@ xmlDocPtr netconf_get_state_data()
    return doc_tree_ptr;
 }
 #endif
+
+// Local variables:
+// c-basic-offset: 3;
+// End:
