@@ -432,7 +432,7 @@ def genInputAlertsConfig(modules):
 		for m in sel_modules:
 			print("{0}.label {1}".format(m, m.replace("_", " ")))
 			print("{0}.min 0".format(m))
-			print("{0}.type GAUGE".format(m))
+			print("{0}.type DERIVE".format(m))
 			print("{0}.draw AREASTACK".format(m))
 		print("")
 
