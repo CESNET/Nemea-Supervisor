@@ -419,9 +419,9 @@ def genTotalMemRssConfig(modules):
 def genInputAlertsConfig(modules):
 	sel_modules = []
 	for m in modules:
-        if m.endswith("2idea"):
-	        if "inputs" in modules[m]:
-		    	sel_modules.append(m)
+		if m.endswith("2idea"):
+			if "inputs" in modules[m]:
+				sel_modules.append(m)
 	if sel_modules:
 		print("multigraph nemea_alerts")
 		print("graph_title Input messages on report modules")
@@ -445,7 +445,7 @@ def getConfig(modules):
 		genModuleInputsConfig(m, modules)
 		genModuleOutputsConfig(m, modules)
 	getTotalCountersConfig(modules)
-    genInputAlertsConfig(m, modules)
+	genInputAlertsConfig(modules)
 
 # -----------------------------------------------------------------------------------------------
 
@@ -514,13 +514,13 @@ def genTotalMemRssValues(modules):
 def genInputAlertsValues(modules):
 	sel_modules = []
 	for m in modules:
-        if m.endswith("2idea"):
-	        if "inputs" in modules[m]:
-		    	sel_modules.append(m)
+		if m.endswith("2idea"):
+			if "inputs" in modules[m]:
+				sel_modules.append(m)
 	if sel_modules:
 		print("multigraph nemea_alerts")
 		for m in sel_modules:
-			print("{0}.value {1}".format(m, modules[m]["inputs"]))
+			print("{0}.value {1}".format(m, modules[m]["inputs"][0]["messages"]))
 	print("")
 
 def getValues(modules):
@@ -532,7 +532,7 @@ def getValues(modules):
 		genModuleMemValues(m, modules)
 		genModuleInputsValues(m, modules)
 		genModuleOutputsValues(m, modules)
-    genInputAlertsValues(m, modules)
+	genInputAlertsValues(modules)
 	getTotalCountersValues(modules)
 
 # ------------------------------------------------------------------------------------------------
