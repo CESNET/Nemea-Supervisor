@@ -3,10 +3,10 @@
 # \brief Export script for the Munin system to translate date from supervisor.
 # \author Tomas Cejka <cejkat@cesnet.cz>
 # \author Marek Svepes <svepemar@fit.cvut.cz>
-# \date 2014
-# \date 2015
+# \author Jaroslav Hlavac <hlavac@cesnet.cz>
+# \date 2017
 #
-# Copyright (C) 2014-2015 CESNET
+# Copyright (C) 2014-2017 CESNET
 #
 # LICENSE TERMS
 #
