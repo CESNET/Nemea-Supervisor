@@ -87,6 +87,7 @@ datatypes = {
 
 # vertical axis labels
 vlabels = {
+	"alerts": "count",
 	"inputs": "count",
 	"outputs": "count",
 	"cpu": "%",
