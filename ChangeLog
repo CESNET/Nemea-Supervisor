@@ -1,3 +1,8 @@
+2017-11-28 supervisor-1.5.6
+	* configuration now read only from files with ".sup" suffix
+	* specify c-basic-offset in Emacs local varibles
+	* added graph for input alerts
+
 2017-10-10 supervisor-1.5.5
 	* updated .sup file of sip_bf_detector (removed one output interface)
 	* added .mkdir and .sup file for ipv6stats module
