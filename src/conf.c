@@ -5,8 +5,6 @@
 #include "module.h"
 
 /*--BEGIN superglobal vars--*/
-bool daemon_flag = false; ///< CLI startup option to tell whether to start as daemon
-char *logs_path = NULL; ///< Path to where logs directory should reside
 extern const char * ns_root_sr_path;
 /*--END superglobal vars--*/
 

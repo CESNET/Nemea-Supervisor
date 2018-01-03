@@ -1,13 +1,24 @@
+# This is demo
 FROM fedora:26
 
-
 RUN dnf update -y
-RUN dnf install autoconf automake gcc gcc-c++ libtool libxml2-devel make pkgconfig libpcap libidn bison flex python3 python3-devel dnf-plugins-core git -y
-RUN dnf install cmake pcre -y
+RUN dnf install autoconf automake gcc gcc-c++ libtool libxml2-devel make pkgconfig \
+                libpcap libidn bison flex python3 python3-devel dnf-plugins-core git \
+                cmake -y
+RUN dnf install wget -y
+
+# Install ipfixcol
 RUN dnf copr enable @CESNET/IPFIXcol -y
 RUN dnf install ipfixcol -y
+WORKDIR /data/ipfixcol-files
+RUN mkdir -p /data/flow/live/emails /data/ipfixcol-files
+RUN wget https://owncloud.cesnet.cz/index.php/s/0BQGHSCj4YK0IOu/download \
+         --quiet -O ipfixcol-files.tar.gz
+RUN tar xzf ipfixcol-files.tar.gz
+
 RUN dnf copr enable @CESNET/NEMEA -y
-RUN dnf install nemea-framework nemea-common nemea-detectors nemea-modules libtrap libtrap-devel -y
+RUN dnf install nemea-framework nemea-common nemea-detectors nemea-modules -y
+RUN dnf install libtrap libtrap-devel -y
 
 ENV SRC_FLD /var/nemea_source
 RUN mkdir ${SRC_FLD}
@@ -23,7 +34,7 @@ RUN git clone https://github.com/sysrepo/libredblack.git && \
 		ldconfig
 WORKDIR ${SRC_FLD}
 
-RUN dnf install pcre-devel -y
+RUN dnf install pcre pcre-devel -y
 
 #  2) libyang
 RUN git clone https://github.com/CESNET/libyang.git && \
@@ -40,18 +51,26 @@ RUN dnf install swig protobuf-c-devel protobuf-c libssh openssl-devel libev-deve
 # Install sysrepo
 RUN git clone https://github.com/sysrepo/sysrepo.git && \
 		cd sysrepo && mkdir build && cd build && \
-		cmake -DCMAKE_BUILD_TYPE:String="Release" -DGEN_PYTHON_VERSION=3 .. && \
+		cmake -DCMAKE_INSTALL_PREFIX:PATH=/usr -DCMAKE_BUILD_TYPE:String="Release" -DGEN_PYTHON_VERSION=3 .. && \
 		make -j2 && \
 		make install && \
 		ldconfig
 WORKDIR ${SRC_FLD}
 
+# It's probably not needed as user running supervisor is root, but it
+#  should be noted somewhere...
+RUN mkdir -p /var/run/sysrepo-subscriptions/ && \
+    chmod -R 777 /var/run/sysrepo-subscriptions/
+
 # Install nemea-supervisor-sysrepo-edition
 RUN git clone https://github.com/zidekmat/nemea-supervisor-sysrepo-edition && \
-		cd nemea-supervisor-sysrepo-edition && mkdir build && cd build && \
-		cmake .. 
-#&& \
-#		make
-WORKDIR ${SRC_FLD}
+		cd nemea-supervisor-sysrepo-edition && mkdir build && cd build &&  \
+		cmake .. && \
+		make
+WORKDIR ${SRC_FLD}/nemea-supervisor-sysrepo-edition
+RUN ./bootstrap.sh
+WORKDIR build/src/
+
+
 
 CMD ["/bin/bash"]

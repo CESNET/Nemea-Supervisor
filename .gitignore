@@ -17,3 +17,6 @@ tests/intable_module
 tests/test_stats
 tests/test_conf
 tests/test_run_changes
+src/nemea-supervisor
+src/cmake_install.cmake
+

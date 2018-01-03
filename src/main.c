@@ -4,7 +4,8 @@
 #include "supervisor.h"
 
 /*--BEGIN superglobal vars--*/
-//without extern
+bool daemon_flag = false;
+char *logs_path = NULL;
 /*--END superglobal vars--*/
 
 /*--BEGIN local #define--*/
@@ -15,7 +16,6 @@
                   "   OPTIONAL parameters:\n"\
                   "      [-d, --daemon]   Runs supervisor as a system daemon.\n"\
                   "      [-h, --help]   Prints this help.\n"\
-                  "      [-s, --daemon-socket=path]   "\
                   "Path of the unix socket which is used for supervisor daemon and client communication.\n"\
 
 /*--END local #define--*/
@@ -28,15 +28,15 @@
 
 /* --BEGIN full fns prototypes-- */
 /**
- * Function parses program arguments using SUP_GETOPT macro (it is set by configure script to getopt
- * or getopt_long function according to the available system libraries).
+ * @details Function parses program arguments using SUP_GETOPT macro (it is set
+ *  by configure script to getopt or getopt_long function according to the
+ *  available system libraries).
  *
  * @param[in] argc Argument counter passed from the main function.
  * @param[in] argv Argument values passed from the main function.
  * @return DAEMON_MODE_CODE or INTERACTIVE_MODE_CODE in case of success, otherwise -1.
- */
-//int parse_prog_args(int *argc, char **argv, char *logs_path, char *sock_path);
-/**@}*/
+ * */
+int parse_prog_args(int *argc, char **argv);
 /* --END full fns prototypes-- */
 
 
@@ -61,22 +61,23 @@ int parse_prog_args(int *argc, char **argv)
       }
 
       switch (c) {
-      case ':':
-         PRINT_ERR("Wrong arguments, use \"supervisor -h\" for help.")
-         return -1;
-      case '?':
-         PRINT_ERR("Unknown option, use \"supervisor -h\" for help.")
-         return -1;
-      case 'h':
-         printf(USAGE_MSG);
-         return -1;
-      case 'd':
-         daemon_flag = true;
-         break;
-      case 'L':
-         logs_path = strdup(optarg);
-         break;
-      }
+         case ':':
+            PRINT_ERR("Wrong arguments, use \"supervisor -h\" for help.")
+            return -1;
+         case '?':
+            PRINT_ERR("Unknown option, use \"supervisor -h\" for help.")
+            return -1;
+         case 'h':
+            printf(USAGE_MSG);
+            return -1;
+         case 'd':
+            daemon_flag = true;
+            break;
+         case 'L':
+            logs_path = strdup(optarg);
+            // TODO memcheck
+            break;
+         }
    }
 
    if (logs_path == NULL) {
@@ -94,7 +95,7 @@ int parse_prog_args(int *argc, char **argv)
 
 int main (int argc, char *argv [])
 {
-   if (-1 == parse_prog_args(&argc, argv)) {
+   if (parse_prog_args(&argc, argv) == -1) {
       NULLP_TEST_AND_FREE(logs_path);
       exit(EXIT_FAILURE);
    }
@@ -105,9 +106,12 @@ int main (int argc, char *argv [])
       exit(EXIT_FAILURE);
    }
    VERBOSE(DEBUG, "======= STARTING =======")
+   // TODO verbosity arguments
+   // if argv.contains(-vvv) ->
+   //sr_log_stderr(SR_LL_DBG);
 
    if (daemon_flag) {
-      // Initialize a new daemon process and it's socket
+      // Initialize a new daemon process
       fflush(stdout); // TODO why?
       if (daemon_init_process() == 0) {
 

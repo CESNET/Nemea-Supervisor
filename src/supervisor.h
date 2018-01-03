@@ -20,7 +20,10 @@
  /*--END superglobal typedef--*/
 
  /*--BEGIN superglobal vars--*/
-extern const char *ns_root_sr_path; ///< TODO
+/**
+ * @brief Prefixed YANG model tree root for configuration
+ * */
+extern const char *ns_root_sr_path;
  /*--END superglobal vars--*/
 
  /*--BEGIN superglobal fn prototypes--*/

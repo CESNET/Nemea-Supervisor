@@ -9,46 +9,48 @@
 #include <sysrepo/values.h>
 
 #include "supervisor.h"
-#include "module_control.h"
+#include "instance_control.h"
 #include "conf.h"
 #include "run_changes.h"
 #include "stats.h"
+#include "main.h"
 
-/****************************************************************************/
  /*--BEGIN superglobal vars--*/
 #ifndef TEST
 const char *ns_root_sr_path = "/nemea:nemea-supervisor";
 #endif
  /*--END superglobal vars--*/
- /****************************************************************************/
 
- /****************************************************************************/
  /*--BEGIN local #define--*/
-#define PROGRAM_IDENTIFIER_FSR "nemea-supervisor" ///< Program identifier supplied to
-                                                  ///<  sysrepo
+/**
+ * @brief Program identifier supplied to Sysrepo
+ * */
+#define PROGRAM_IDENTIFIER_FSR "nemea-supervisor"
 
 #define CHECK_DIR 1
 #define CHECK_FILE 2
 
 
 
-/*
- * Time in micro seconds for which the service thread spends sleeping after each period.
- * The period means all tasks service thread has to complete - restart/stop instances
- * according to their enable flag, receive their statistics etc.
+/**
+ * @brief Time in micro seconds for which the service thread spends sleeping
+ *  after each period.
+ * @details The period means all tasks service thread has to complete -
+ *  restart/stop instances according to their enable flag, receive their
+ *  statistics etc.
  */
 #define SERVICE_THREAD_SLEEP_IN_MICSEC 1500000
 
-//
+/**
+ * @brief TODO
+ * */
 #define SERVICE_WAIT_BEFORE_TIMEOUT 25000
 
-#define NUM_SERVICE_IFC_PERIOD 30 ///< Defines number of supervisor_routine loops
-                                   ///<  to take before reconnecting again
-
-
-///< Permissions of directory with stdout and stderr logs of instances
-#define PERM_LOGSDIR   (S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | \
-                        S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH)
+/**
+ * @brief Defines number of supervisor_routine loops to
+ *  take before reconnecting again
+ * */
+#define NUM_SERVICE_IFC_PERIOD 30
 
 #define VERBOSE_STATISTICS_LEGEND VERBOSE(STATISTICS,"Legend for an interface statistics:\n"\
                         "\tCNT_RM - counter of received messages  on the input interface\n"\
@@ -69,23 +71,35 @@ const char *ns_root_sr_path = "/nemea:nemea-supervisor";
  /****************************************************************************/
  /*--BEGIN local typedef--*/
 
+/**
+ * @brief TODO
+ * */
 typedef struct sr_conn_link_s {
  sr_conn_ctx_t *conn; ///< Sysrepo connection to use in application
  sr_session_ctx_t *sess; ///< Sysrepo session to use in application
  sr_subscription_ctx_t *subscr;
 } sr_conn_link_t;
 
+/**
+ * @brief TODO
+ * */
 typedef enum service_msg_header_type_e {
    SERVICE_GET_COM = 10,
    SERVICE_SET_COM = 11,
    SERVICE_OK_REPLY = 12
 } service_msg_header_type_t;
 
+/**
+ * @brief TODO
+ * */
 typedef union tcpip_socket_addr_u {
    struct addrinfo tcpip_sa; ///< used for TCPIP socket
    struct sockaddr_un unix_sa; ///< used for path of UNIX socket
 } tcpip_socket_addr_t;
 
+/**
+ * @brief TODO
+ * */
 typedef struct service_msg_header_s {
    service_msg_header_type_t com;
    uint32_t data_size;
@@ -123,13 +137,11 @@ static char *get_absolute_file_path(char *file_name);
 static void free_output_file_strings_and_streams();
 static int load_configuration();
 static void sig_handler(int catched_signal);
-static void insts_start();
 
 
 static void insts_update_resources_usage();
 static int get_total_cpu_usage(uint64_t *total_cpu_usage);
 
-static inline void insts_terminate_all();
 
 // fetching stats + communication
 static inline void inst_get_stats(instance_t *inst);
@@ -142,12 +154,6 @@ static int send_ifc_stats_request(const instance_t *inst);
 inline static int recv_ifc_stats(instance_t *inst);
 static int service_recv_data(instance_t *inst, uint32_t size, void *data);
 static int service_decode_inst_stats(char *data, instance_t *inst);
-
-/**
- * @brief Start single instance process
- * @param inst Instance to start
- * */
-static void inst_start(instance_t *inst);
 
 /**
  * @brief Saves PIDs of running instances to sysrepo so that they can be
@@ -407,11 +413,12 @@ void terminate_supervisor(bool should_terminate_insts)
    // Unsubscribe sysrepo callbacks first so that they won't run on empty structures
    if (sr_conn_link.subscr != NULL) {
       sr_unsubscribe(sr_conn_link.sess, sr_conn_link.subscr);
+      sr_conn_link.subscr = NULL;
    }
 
    if (supervisor_initialized) {
       if (should_terminate_insts) {
-         insts_terminate_all();
+         insts_terminate();
       } else {
          insts_save_running_pids();
       }
@@ -434,10 +441,12 @@ void terminate_supervisor(bool should_terminate_insts)
 
    if (sr_conn_link.sess != NULL) {
       sr_session_stop(sr_conn_link.sess);
+      sr_conn_link.sess = NULL;
    }
 
    if (sr_conn_link.conn != NULL) {
       sr_disconnect(sr_conn_link.conn);
+      sr_conn_link.conn = NULL;
    }
 
 }
@@ -447,25 +456,6 @@ void terminate_supervisor(bool should_terminate_insts)
 
  /****************************************************************************/
  /* --BEGIN local fns-- */
-
-static inline void insts_terminate_all()
-{
-   instance_t *inst = NULL;
-   pthread_mutex_lock(&config_lock);
-   FOR_EACH_IN_VEC(insts_v, inst) {
-      if (inst->enabled) {
-         inst->enabled = false;
-      }
-   }
-
-   VERBOSE(DEBUG, "killing all the flies")
-   // Ensure they get killed
-   insts_stop_sigint();
-   usleep(WAIT_FOR_INSTS_TO_HANDLE_SIGINT);
-   (void) get_running_insts_cnt();
-   insts_stop_sigkill();
-   pthread_mutex_unlock(&config_lock);
-}
 
 int check_file_type_perm(char *item_path, uint8_t file_type, int file_perm)
 {
@@ -684,10 +674,10 @@ void supervisor_routine()
 
       // -------------
       // DEBUG OPTIONS START
-      if (((period_cnt % 30) == 0) && (running_insts_cnt > 0)) {
+/*      if (((period_cnt % 30) == 0) && (running_insts_cnt > 0)) {
          print_statistics();
       }
-      period_cnt++;
+      period_cnt++;*/
 
       // tests turning off
       //modules->enabled = false;
@@ -695,9 +685,9 @@ void supervisor_routine()
       //   VERBOSE(DEBUG,"w")
       //}
 
-      if ((period_cnt % 2) == 0) {
+/*      if ((period_cnt % 2) == 0) {
          supervisor_stopped = true;
-      }
+      }*/
       // -------------
       // DEBUG OPTIONS STOP
       // -------------
@@ -1420,118 +1410,6 @@ cleanup:
    fclose(proc_stat_fd);
    NULLP_TEST_AND_FREE(line);
    return ret_val;
-}
-
-void insts_start()
-{
-   instance_t *inst = NULL;
-   time_t time_now;
-   VERBOSE(V3, "Updating instances status")
-
-   FOR_EACH_IN_VEC(insts_v, inst) {
-      if (inst->module->group->enabled == false || inst->enabled == false ||
-            inst->running == true) {
-         continue;
-      }
-
-      time(&time_now);
-
-      // Has it been less than minute since last start attempt?
-      if (time_now - inst->restart_time <= 60) {
-         inst->restarts_cnt++;
-         if (inst->restarts_cnt == inst->max_restarts_minute) {
-            VERBOSE(MOD_EVNT,
-                    "Instance '%s' reached restart limit. Disabling.",
-                    inst->name)
-            inst->enabled = false;
-         } else {
-            inst_start(inst);
-         }
-      } else {
-         inst->restarts_cnt = 0;
-         inst->restart_time = time_now;
-         inst_start(inst);
-      }
-   }
-}
-
-static void inst_start(instance_t *inst)
-{
-   char log_path_out[PATH_MAX];
-   char log_path_err[PATH_MAX];
-
-   VERBOSE(V2, "Starting '%s'", instance_tree_path(inst))
-
-   memset(log_path_err, 0, PATH_MAX);
-   memset(log_path_out, 0, PATH_MAX);
-   sprintf(log_path_out,"%s%s/%s_stdout", logs_path, INSTANCES_LOGS_DIR_NAME, inst->name);
-   sprintf(log_path_err,"%s%s/%s_stderr", logs_path, INSTANCES_LOGS_DIR_NAME, inst->name);
-
-   time_t time_now;
-   time(&time_now);
-
-   fflush(stdout);
-   inst->pid = fork();
-
-   if (inst->pid == -1) {
-      inst->running = false;
-      VERBOSE(N_ERR,"Fork: could not fork supervisor process!")
-      return;
-   }
-
-   if (inst->pid != 0) {
-      // Running as parent
-      inst->is_my_child = true;
-      inst->running = true;
-   } else {
-      // Running as forked child
-      int fd_stdout = open(log_path_out, O_RDWR | O_CREAT | O_APPEND, PERM_LOGSDIR);
-      int fd_stderr = open(log_path_err, O_RDWR | O_CREAT | O_APPEND, PERM_LOGSDIR);
-
-      if (fd_stdout != -1) {
-         dup2(fd_stdout, 1); //stdout
-         close(fd_stdout);
-      }
-      if (fd_stderr != -1) {
-         dup2(fd_stderr, 2); //stderr
-         close(fd_stderr);
-      }
-
-      /*
-       * TODO rewrite. why? just comment?
-       * Important for sending SIGINT to supervisor.
-       * Modules can't receive the signal too !!!
-       * */
-      setsid();
-
-      // Don't even think about rewriting this to VERBOSE macro
-      fprintf(stdout, "[INFO]%s Supervisor executed command: ",
-              get_formatted_time());
-      for(int i = 0; inst->exec_args[i] != NULL; i++) {
-         fprintf(stdout, " %s", inst->exec_args[i]);
-      }
-      fprintf(stdout, "\n");
-
-      // Make sure execution message gets written to logs files
-      fflush(stdout);
-      fflush(stderr);
-
-      execv(inst->module->path, inst->exec_args);
-
-      { // If correctly started, this won't be executed
-         VERBOSE(N_ERR,
-                 "Could not execute '%s' binary! (execvp errno=%d)",
-                 inst->name,
-                 errno)
-         fflush(stdout);
-         //terminate_supervisor(false);
-         VERBOSE(DEBUG, " trying to exit")
-         close(fd_stdout);
-         close(fd_stderr);
-         _exit(EXIT_FAILURE);
-         VERBOSE(DEBUG, " trying to exit")
-      }
-   }
 }
 
 static void insts_save_running_pids()

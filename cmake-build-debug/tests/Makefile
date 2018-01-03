@@ -244,6 +244,36 @@ __/src/conf.c.s:
 	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_run_changes.dir/build.make tests/CMakeFiles/test_run_changes.dir/__/src/conf.c.s
 .PHONY : __/src/conf.c.s
 
+__/src/instance_control.o: __/src/instance_control.c.o
+
+.PHONY : __/src/instance_control.o
+
+# target to build an object file
+__/src/instance_control.c.o:
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_supervisor.dir/build.make tests/CMakeFiles/test_supervisor.dir/__/src/instance_control.c.o
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_run_changes.dir/build.make tests/CMakeFiles/test_run_changes.dir/__/src/instance_control.c.o
+.PHONY : __/src/instance_control.c.o
+
+__/src/instance_control.i: __/src/instance_control.c.i
+
+.PHONY : __/src/instance_control.i
+
+# target to preprocess a source file
+__/src/instance_control.c.i:
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_supervisor.dir/build.make tests/CMakeFiles/test_supervisor.dir/__/src/instance_control.c.i
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_run_changes.dir/build.make tests/CMakeFiles/test_run_changes.dir/__/src/instance_control.c.i
+.PHONY : __/src/instance_control.c.i
+
+__/src/instance_control.s: __/src/instance_control.c.s
+
+.PHONY : __/src/instance_control.s
+
+# target to generate assembly for a file
+__/src/instance_control.c.s:
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_supervisor.dir/build.make tests/CMakeFiles/test_supervisor.dir/__/src/instance_control.c.s
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_run_changes.dir/build.make tests/CMakeFiles/test_run_changes.dir/__/src/instance_control.c.s
+.PHONY : __/src/instance_control.c.s
+
 __/src/module.o: __/src/module.c.o
 
 .PHONY : __/src/module.o
@@ -279,36 +309,6 @@ __/src/module.c.s:
 	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_conf.dir/build.make tests/CMakeFiles/test_conf.dir/__/src/module.c.s
 	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_run_changes.dir/build.make tests/CMakeFiles/test_run_changes.dir/__/src/module.c.s
 .PHONY : __/src/module.c.s
-
-__/src/module_control.o: __/src/module_control.c.o
-
-.PHONY : __/src/module_control.o
-
-# target to build an object file
-__/src/module_control.c.o:
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_supervisor.dir/build.make tests/CMakeFiles/test_supervisor.dir/__/src/module_control.c.o
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_run_changes.dir/build.make tests/CMakeFiles/test_run_changes.dir/__/src/module_control.c.o
-.PHONY : __/src/module_control.c.o
-
-__/src/module_control.i: __/src/module_control.c.i
-
-.PHONY : __/src/module_control.i
-
-# target to preprocess a source file
-__/src/module_control.c.i:
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_supervisor.dir/build.make tests/CMakeFiles/test_supervisor.dir/__/src/module_control.c.i
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_run_changes.dir/build.make tests/CMakeFiles/test_run_changes.dir/__/src/module_control.c.i
-.PHONY : __/src/module_control.c.i
-
-__/src/module_control.s: __/src/module_control.c.s
-
-.PHONY : __/src/module_control.s
-
-# target to generate assembly for a file
-__/src/module_control.c.s:
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_supervisor.dir/build.make tests/CMakeFiles/test_supervisor.dir/__/src/module_control.c.s
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_run_changes.dir/build.make tests/CMakeFiles/test_run_changes.dir/__/src/module_control.c.s
-.PHONY : __/src/module_control.c.s
 
 __/src/run_changes.o: __/src/run_changes.c.o
 
@@ -583,12 +583,12 @@ help:
 	@echo "... __/src/conf.o"
 	@echo "... __/src/conf.i"
 	@echo "... __/src/conf.s"
+	@echo "... __/src/instance_control.o"
+	@echo "... __/src/instance_control.i"
+	@echo "... __/src/instance_control.s"
 	@echo "... __/src/module.o"
 	@echo "... __/src/module.i"
 	@echo "... __/src/module.s"
-	@echo "... __/src/module_control.o"
-	@echo "... __/src/module_control.i"
-	@echo "... __/src/module_control.s"
 	@echo "... __/src/run_changes.o"
 	@echo "... __/src/run_changes.i"
 	@echo "... __/src/run_changes.s"

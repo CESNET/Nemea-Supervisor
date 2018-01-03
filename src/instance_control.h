@@ -16,14 +16,16 @@
  */
 #define WAIT_FOR_INSTS_TO_HANDLE_SIGINT 500000
 
+///< Permissions of directory with stdout and stderr logs of instances
+#define PERM_LOGSDIR   (S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | \
+                        S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH)
+
 /*--END macros--*/
 
 /*--BEGIN superglobal typedef--*/
 /*--END superglobal typedef--*/
 
 /*--BEGIN superglobal vars--*/
-// denote with extern
-//extern sr_conn_ctx_t *sr_con = NULL;
 /*--END superglobal vars--*/
 
 /*--BEGIN superglobal fn prototypes--*/
@@ -74,6 +76,16 @@ extern void module_stop_remove_by_name(const char *name);
  * @param remove Whether to remove module from vector of configured modules
  * */
 extern void instance_stop_remove_by_name(const char *name);
+
+/**
+ * @brief Start all instances in insts_v vector
+ * */
+extern void insts_start();
+
+/**
+ * TODO
+ * */
+extern void insts_terminate();
 /*--END superglobal fn prototypes--*/
 
 #endif

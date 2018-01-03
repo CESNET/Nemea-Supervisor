@@ -163,6 +163,60 @@ conf.c.s:
 	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f src/CMakeFiles/nemea-supervisor.dir/build.make src/CMakeFiles/nemea-supervisor.dir/conf.c.s
 .PHONY : conf.c.s
 
+instance_control.o: instance_control.c.o
+
+.PHONY : instance_control.o
+
+# target to build an object file
+instance_control.c.o:
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f src/CMakeFiles/nemea-supervisor.dir/build.make src/CMakeFiles/nemea-supervisor.dir/instance_control.c.o
+.PHONY : instance_control.c.o
+
+instance_control.i: instance_control.c.i
+
+.PHONY : instance_control.i
+
+# target to preprocess a source file
+instance_control.c.i:
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f src/CMakeFiles/nemea-supervisor.dir/build.make src/CMakeFiles/nemea-supervisor.dir/instance_control.c.i
+.PHONY : instance_control.c.i
+
+instance_control.s: instance_control.c.s
+
+.PHONY : instance_control.s
+
+# target to generate assembly for a file
+instance_control.c.s:
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f src/CMakeFiles/nemea-supervisor.dir/build.make src/CMakeFiles/nemea-supervisor.dir/instance_control.c.s
+.PHONY : instance_control.c.s
+
+main.o: main.c.o
+
+.PHONY : main.o
+
+# target to build an object file
+main.c.o:
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f src/CMakeFiles/nemea-supervisor.dir/build.make src/CMakeFiles/nemea-supervisor.dir/main.c.o
+.PHONY : main.c.o
+
+main.i: main.c.i
+
+.PHONY : main.i
+
+# target to preprocess a source file
+main.c.i:
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f src/CMakeFiles/nemea-supervisor.dir/build.make src/CMakeFiles/nemea-supervisor.dir/main.c.i
+.PHONY : main.c.i
+
+main.s: main.c.s
+
+.PHONY : main.s
+
+# target to generate assembly for a file
+main.c.s:
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f src/CMakeFiles/nemea-supervisor.dir/build.make src/CMakeFiles/nemea-supervisor.dir/main.c.s
+.PHONY : main.c.s
+
 module.o: module.c.o
 
 .PHONY : module.o
@@ -189,33 +243,6 @@ module.s: module.c.s
 module.c.s:
 	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f src/CMakeFiles/nemea-supervisor.dir/build.make src/CMakeFiles/nemea-supervisor.dir/module.c.s
 .PHONY : module.c.s
-
-module_control.o: module_control.c.o
-
-.PHONY : module_control.o
-
-# target to build an object file
-module_control.c.o:
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f src/CMakeFiles/nemea-supervisor.dir/build.make src/CMakeFiles/nemea-supervisor.dir/module_control.c.o
-.PHONY : module_control.c.o
-
-module_control.i: module_control.c.i
-
-.PHONY : module_control.i
-
-# target to preprocess a source file
-module_control.c.i:
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f src/CMakeFiles/nemea-supervisor.dir/build.make src/CMakeFiles/nemea-supervisor.dir/module_control.c.i
-.PHONY : module_control.c.i
-
-module_control.s: module_control.c.s
-
-.PHONY : module_control.s
-
-# target to generate assembly for a file
-module_control.c.s:
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f src/CMakeFiles/nemea-supervisor.dir/build.make src/CMakeFiles/nemea-supervisor.dir/module_control.c.s
-.PHONY : module_control.c.s
 
 run_changes.o: run_changes.c.o
 
@@ -270,33 +297,6 @@ stats.s: stats.c.s
 stats.c.s:
 	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f src/CMakeFiles/nemea-supervisor.dir/build.make src/CMakeFiles/nemea-supervisor.dir/stats.c.s
 .PHONY : stats.c.s
-
-sup_main.o: sup_main.c.o
-
-.PHONY : sup_main.o
-
-# target to build an object file
-sup_main.c.o:
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f src/CMakeFiles/nemea-supervisor.dir/build.make src/CMakeFiles/nemea-supervisor.dir/sup_main.c.o
-.PHONY : sup_main.c.o
-
-sup_main.i: sup_main.c.i
-
-.PHONY : sup_main.i
-
-# target to preprocess a source file
-sup_main.c.i:
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f src/CMakeFiles/nemea-supervisor.dir/build.make src/CMakeFiles/nemea-supervisor.dir/sup_main.c.i
-.PHONY : sup_main.c.i
-
-sup_main.s: sup_main.c.s
-
-.PHONY : sup_main.s
-
-# target to generate assembly for a file
-sup_main.c.s:
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f src/CMakeFiles/nemea-supervisor.dir/build.make src/CMakeFiles/nemea-supervisor.dir/sup_main.c.s
-.PHONY : sup_main.c.s
 
 supervisor.o: supervisor.c.o
 
@@ -365,21 +365,21 @@ help:
 	@echo "... conf.o"
 	@echo "... conf.i"
 	@echo "... conf.s"
+	@echo "... instance_control.o"
+	@echo "... instance_control.i"
+	@echo "... instance_control.s"
+	@echo "... main.o"
+	@echo "... main.i"
+	@echo "... main.s"
 	@echo "... module.o"
 	@echo "... module.i"
 	@echo "... module.s"
-	@echo "... module_control.o"
-	@echo "... module_control.i"
-	@echo "... module_control.s"
 	@echo "... run_changes.o"
 	@echo "... run_changes.i"
 	@echo "... run_changes.s"
 	@echo "... stats.o"
 	@echo "... stats.i"
 	@echo "... stats.s"
-	@echo "... sup_main.o"
-	@echo "... sup_main.i"
-	@echo "... sup_main.s"
 	@echo "... supervisor.o"
 	@echo "... supervisor.i"
 	@echo "... supervisor.s"

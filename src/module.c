@@ -597,13 +597,6 @@ void module_free(module_t *module)
    VERBOSE(DEBUG, "Freeing of module '%s'", module->name)
    NULLP_TEST_AND_FREE(module->name)
    NULLP_TEST_AND_FREE(module->path)
-
-/*   instance_t *inst = NULL;
-   FOR_EACH_IN_VEC(module->insts, inst) {
-      instance_free(inst);
-   }
-   vector_free(&module->insts);*/
-
    NULLP_TEST_AND_FREE(module)
 }
 
@@ -615,7 +608,7 @@ void modules_free()
          module_free(mod);
       }
    }
-   vector_free(&insts_v);
+   vector_free(&mods_v);
 }
 
 void instances_free()

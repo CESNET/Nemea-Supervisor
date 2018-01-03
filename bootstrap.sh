@@ -35,4 +35,6 @@
 # if advised of the possibility of such damage.
 #
 
-autoreconf -i
+#autoreconf -i
+sysrepocfg --import=/var/nemea_source/nemea-supervisor-sysrepo-edition/yang/nemea-staas-startup-config.xml --datastore startup nemea
+sysrepoctl --install --yang /var/nemea_source/nemea-supervisor-sysrepo-edition/yang/nemea.yang

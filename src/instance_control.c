@@ -1,9 +1,9 @@
 
 #include <libtrap/trap.h>
-#include "module_control.h"
+#include "instance_control.h"
+#include "main.h"
 
 /*--BEGIN superglobal vars--*/
-//without extern
 /*--END superglobal vars--*/
 
 /*--BEGIN local #define--*/
@@ -26,6 +26,12 @@
  *  those get removed in this function as well.
  * */
 static void clean_after_children();
+
+/**
+ * @brief Start single instance process
+ * @param inst Instance to start
+ * */
+static void inst_start(instance_t *inst);
 /* --END full fns prototypes-- */
 
 /* --BEGIN superglobal fns-- */
@@ -146,6 +152,58 @@ void instance_stop_remove_by_name(const char *name)
    instance_remove_at(fi);
    instance_free(inst);
 }
+
+void insts_terminate()
+{
+   instance_t *inst = NULL;
+   pthread_mutex_lock(&config_lock);
+   FOR_EACH_IN_VEC(insts_v, inst) {
+      if (inst->enabled) {
+         inst->enabled = false;
+      }
+   }
+
+   VERBOSE(DEBUG, "killing all the flies")
+   // Ensure they get killed
+   insts_stop_sigint();
+   usleep(WAIT_FOR_INSTS_TO_HANDLE_SIGINT);
+   (void) get_running_insts_cnt();
+   insts_stop_sigkill();
+   pthread_mutex_unlock(&config_lock);
+}
+
+void insts_start()
+{
+   instance_t *inst = NULL;
+   time_t time_now;
+   VERBOSE(V3, "Updating instances status")
+
+   FOR_EACH_IN_VEC(insts_v, inst) {
+      if (inst->module->group->enabled == false || inst->enabled == false ||
+          inst->running == true) {
+         continue;
+      }
+
+      time(&time_now);
+
+      // Has it been less than minute since last start attempt?
+      if (time_now - inst->restart_time <= 60) {
+         inst->restarts_cnt++;
+         if (inst->restarts_cnt == inst->max_restarts_minute) {
+            VERBOSE(MOD_EVNT,
+                    "Instance '%s' reached restart limit. Disabling.",
+                    inst->name)
+            inst->enabled = false;
+         } else {
+            inst_start(inst);
+         }
+      } else {
+         inst->restarts_cnt = 0;
+         inst->restart_time = time_now;
+         inst_start(inst);
+      }
+   }
+}
 /* --END superglobal fns-- */
 
 /* --BEGIN local fns-- */
@@ -222,6 +280,85 @@ void instance_set_running_status(instance_t *inst)
             inst->running = false;
             inst->pid = 0;
             inst->service_ifc_connected = false;
+      }
+   }
+}
+
+void inst_start(instance_t *inst)
+{
+   char log_path_out[PATH_MAX];
+   char log_path_err[PATH_MAX];
+
+   VERBOSE(V2, "Starting '%s'", instance_tree_path(inst))
+
+   memset(log_path_err, 0, PATH_MAX);
+   memset(log_path_out, 0, PATH_MAX);
+   sprintf(log_path_out,"%s%s/%s_stdout", logs_path, INSTANCES_LOGS_DIR_NAME, inst->name);
+   sprintf(log_path_err,"%s%s/%s_stderr", logs_path, INSTANCES_LOGS_DIR_NAME, inst->name);
+
+   time_t time_now;
+   time(&time_now);
+
+   fflush(stdout);
+   inst->pid = fork();
+
+   if (inst->pid == -1) {
+      inst->running = false;
+      VERBOSE(N_ERR,"Fork: could not fork supervisor process!")
+      return;
+   }
+
+   if (inst->pid != 0) {
+      // Running as parent
+      inst->is_my_child = true;
+      inst->running = true;
+   } else {
+      // Running as forked child
+      int fd_stdout = open(log_path_out, O_RDWR | O_CREAT | O_APPEND, PERM_LOGSDIR);
+      int fd_stderr = open(log_path_err, O_RDWR | O_CREAT | O_APPEND, PERM_LOGSDIR);
+
+      if (fd_stdout != -1) {
+         dup2(fd_stdout, 1); //stdout
+         close(fd_stdout);
+      }
+      if (fd_stderr != -1) {
+         dup2(fd_stderr, 2); //stderr
+         close(fd_stderr);
+      }
+
+      /*
+       * TODO rewrite. why? just comment?
+       * Important for sending SIGINT to supervisor.
+       * Modules can't receive the signal too !!!
+       * */
+      setsid();
+
+      // Don't even think about rewriting this to VERBOSE macro
+      fprintf(stdout, "[INFO]%s Supervisor executed command: ",
+              get_formatted_time());
+      for(int i = 0; inst->exec_args[i] != NULL; i++) {
+         fprintf(stdout, " %s", inst->exec_args[i]);
+      }
+      fprintf(stdout, "\n");
+
+      // Make sure execution message gets written to logs files
+      fflush(stdout);
+      fflush(stderr);
+
+      execv(inst->module->path, inst->exec_args);
+
+      { // If correctly started, this won't be executed
+         VERBOSE(N_ERR,
+                 "Could not execute '%s' binary! (execvp errno=%d)",
+                 inst->name,
+                 errno)
+         fflush(stdout);
+         //terminate_supervisor(false);
+         VERBOSE(DEBUG, " trying to exit")
+         close(fd_stdout);
+         close(fd_stderr);
+         _exit(EXIT_FAILURE);
+         VERBOSE(DEBUG, " trying to exit")
       }
    }
 }

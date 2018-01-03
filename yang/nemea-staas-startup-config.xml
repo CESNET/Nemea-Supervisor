@@ -9,7 +9,7 @@
       <instance>
 				<name>ipfixcol1</name>
         <enabled>true</enabled>
-        <params>-c /home/jelen/Desktop/etc/ipfixcol/ipfixcol-startup.xml -p /tmp/ipfixcol.pid</params>
+				<params>-c /data/ipfixcol-files/ipfixcol-startup.xml -p /tmp/ipfixcol.pid</params>
       </instance>
     </module>
     <module>
@@ -18,7 +18,7 @@
       <instance>
         <name>ipfixsend1</name>
         <enabled>true</enabled>
-        <params>-i /home/jelen/Desktop/data.ipfix -R 0.5</params>
+				<params>-i /data/ipfixcol-files/data.ipfix -R 0.5</params>
       </instance>
     </module>
   </module-group>

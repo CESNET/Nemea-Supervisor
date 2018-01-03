@@ -4,7 +4,7 @@
 #include "utils.h"
 #include "module.h"
 #include "conf.h"
-#include "module_control.h"
+#include "instance_control.h"
 
 /*--BEGIN superglobal vars--*/
 extern const char *ns_root_sr_path;

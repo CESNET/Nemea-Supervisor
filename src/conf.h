@@ -3,8 +3,8 @@
  * @brief Defines functions for loading configuration from sysrepo.
  */
 
-#ifndef SR_CONFIG_H
-#define SR_CONFIG_H
+#ifndef CONF_H
+#define CONF_H
 
 #include <sysrepo.h>
 
@@ -18,8 +18,6 @@
  /*--END superglobal typedef--*/
 
  /*--BEGIN superglobal vars--*/
-extern bool daemon_flag;
-extern char *logs_path;
  /*--END superglobal vars--*/
 
  /*--BEGIN superglobal fn prototypes--*/
