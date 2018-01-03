@@ -689,7 +689,7 @@ void supervisor_routine()
       }
       period_cnt++;
 
-      // test turning off
+      // tests turning off
       //modules->enabled = false;
       //if ((period_cnt % 2) == 0) {
       //   VERBOSE(DEBUG,"w")

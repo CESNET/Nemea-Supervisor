@@ -53,8 +53,8 @@ LOG_FILENAME = '/tmp/nemea_supervisor_munin.log'
 #LOG_LEVEL = logging.DEBUG
 LOG_LEVEL = logging.ERROR
 
-# test set to True disables reading new current data
-#test = True
+# tests set to True disables reading new current data
+#tests = True
 test = False
 
 # path to supervisor socket

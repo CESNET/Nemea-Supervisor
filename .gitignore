@@ -13,6 +13,7 @@ old_src/
 ncnemea/
 tests/test_supervisor
 tests/test_module
-tests/stats_tests
-tests/run_changes_tests
 tests/intable_module
+tests/test_stats
+tests/test_conf
+tests/test_run_changes

@@ -1,6 +1,0 @@
-<module>
-<name>ipfixcol</name>
-<enabled>false</enabled>
-<path>/usr/bin/ipfixcol</path>
-<params>-c /home/ioku/school/diplomka/libs_from_git/installed_libs/fake_etc/ipfixcol-startup.xml</params>
-</module>

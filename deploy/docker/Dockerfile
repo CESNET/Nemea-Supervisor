@@ -47,7 +47,6 @@ RUN git clone https://github.com/sysrepo/sysrepo.git && \
 WORKDIR ${SRC_FLD}
 
 # Install nemea-supervisor-sysrepo-edition
-RUN dnf install cmocka -y
 RUN git clone https://github.com/zidekmat/nemea-supervisor-sysrepo-edition && \
 		cd nemea-supervisor-sysrepo-edition && mkdir build && cd build && \
 		cmake .. 
