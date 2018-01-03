@@ -1,0 +1,168 @@
+module "nemea" {
+  namespace "urn:ietf:params:xml:ns:yang:nemea";
+  prefix "nemea";
+  organization "CESNET, z.s.p.o.";
+  contact "cejkat@cesnet.cz";
+  description "Module specifying configuration of Nemea supervisor.";
+  revision "2017-08-02" { description "First version"; }
+
+  typedef "trapifc-type" {
+    type "enumeration" {
+      enum "TCP" { description "IP/TCP for intermachine connections."; }
+      enum "UNIXSOCKET" { description "UNIX socket for local connections."; }
+      enum "FILE" { description "File interface for loading or saving the data from or to a file."; }
+      enum "BLACKHOLE" { description "Output interface dropping everything."; }
+    }
+    description "Trap interface type.";
+  }
+
+  typedef "trapifc-dir" {
+    type "enumeration" {
+      enum "IN" { description "Input interface."; }
+      enum "OUT" { description "Output interface."; }
+    }
+    description "Direction of trap interface.";
+  }
+
+  container "nemea-supervisor" {
+    /* Begin list module-group */
+    list "module-group" {
+      key "name";
+      leaf "name" {
+        type "string";
+        description "Name of group of Nemea modules_ll.";
+      }
+      leaf "enabled" {
+        type "boolean";
+        description "Activation of group of Nemea modules_ll.";
+      }
+      /* Begin list module */
+      list "module" {
+        key "name";
+        leaf "name" {
+          type "string";
+          description "Unique name of the module.";
+        }
+        leaf "path" {
+          type "string";
+          mandatory "true";
+          description "Path to module (executable file).";
+        }
+        leaf "enabled" {
+          type "boolean";
+          mandatory "true";
+          description "Specify whether to start the module or not.";
+        }
+				leaf "params" {
+					type "string";
+				}
+				/*
+        list "param" {
+         key "arg";
+          description "Used parameters and their arguments for the module.";
+          /* Example:
+           *
+           * Without supervisor module would be run like this: ./module -s 2 Q 11
+           * To make supervisor understand the module parameters following must be
+           * set in the module configuration:
+           *  <param>
+           *    <label>-s</label>
+           *    <arg>2</arg>
+           *    <arg>Q</arg>
+           *    <arg>11</arg>
+           *  </param>
+           */
+          leaf "label" {
+            type "string";
+            mandatory "true";
+            description "Parameter label, e.g. -s or --sequence.";
+          }
+          leaf-list "arg" {
+            type "string";
+            description "Additional parameter arguments.";
+          }
+        }
+				*/
+        leaf "module-restarts" {
+          type "uint8";
+          default "3";
+          description "How many times the module will be automatically restarted (in case it
+          terminated) before setting disabled";
+        }
+        /* Begin list interface */
+        list "interface" {
+          key "type direction params";
+            leaf "type" {
+              type "trapifc-type";
+              mandatory "true";
+              description "Type of libtrap communication interface.";
+            }
+            leaf "direction" {
+              type "trapifc-dir";
+              mandatory "true";
+              description "Type of libtrap communication interface.";
+            }
+            leaf "params" {
+              type "string";
+              mandatory "true";
+              description "Parameters of libtrap interface: hostname,port for input interface; port for output interface.";
+            }
+            leaf "note" {
+              type "string";
+              description "Optional note for interface";
+            }
+            leaf "sent-msg-cnt" {
+              type "uint64";
+              config "false";
+              description "Number of sent messages.";
+            }
+            leaf "dropped-msg-cnt" {
+              type "uint64";
+              config "false";
+              description "Number of dropped messages.";
+            }
+            leaf "recv-msg-cnt" {
+              type "uint64";
+              config "false";
+              description "Number of received messages.";
+            }
+            leaf "sent-buffer-cnt" {
+              type "uint64";
+              config "false";
+              description "Number of sent buffers.";
+            }
+            leaf "autoflush-cnt" {
+              type "uint64";
+              config "false";
+              description "Number of Auto-Flush calls.";
+            }
+            leaf "drop-buffer-cnt" {
+              type "uint64";
+              config "false";
+              description "Number of dropped buffers.";
+            }
+            leaf "drop-msg-cnt" {
+              type "uint64";
+              config "false";
+              description "Number of dropped messages.";
+            }
+        }
+        /* End list interface */
+
+        leaf "running" {
+          type "boolean";
+          config "false";
+          description "Specify whether the module is running.";
+        }
+        leaf "restart-counter" {
+          type "uint8";
+          config "false";
+          description "The number of repeated starts of the module.";
+        }
+       }
+       /* End List module */
+      }
+    /* Begin list module-group */
+    }
+}
+

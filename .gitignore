@@ -1,0 +1,6 @@
+autom4te.cache
+CMakeCache.txt
+CMakeFiles/
+test/CMakeCache.txt
+test/CMakeFiles/
+logs/

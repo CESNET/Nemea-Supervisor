@@ -1,13 +1,13 @@
 <?xml version="1.0"?>
 <nemea-supervisor>
 
-  <!-- Defines one group of modules (modules profile) -->
+  <!-- Defines one group of modules_ll (modules_ll profile) -->
   <modules>
     <!-- MANDATORY element -->
-    <!-- Unique name of the modules profile -->
+    <!-- Unique name of the modules_ll profile -->
     <name>Example profile</name>
     <!-- MANDATORY element, values {true,false} -->
-    <!-- Profile switch for all modules in this profile determining whether the modules should run or not -->
+    <!-- Profile switch for all modules_ll in this profile determining whether the modules_ll should run or not -->
     <enabled>true</enabled>
     <!-- Switches explanation:
     Profile switch  | Module switch   | Module will run

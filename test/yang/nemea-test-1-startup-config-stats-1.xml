@@ -1,0 +1,31 @@
+<nemea-supervisor xmlns="urn:ietf:params:xml:ns:yang:nemea-test-1">
+	<module-group>
+    <name>Grp1</name>
+    <enabled>true</enabled>
+		<module>
+			 <name>Intable</name>
+			 <path>/asdasd</path>
+			 <instance>
+				 <name>Intable1</name>
+			   <enabled>true</enabled>
+ 			 	 <interface>
+			 	  <name>if1</name>
+			 	  <type>UNIXSOCKET</type>
+			 	  <direction>OUT</direction>
+			 	  <unix-params>
+			 	  	<socket-name>test_out</socket-name>
+			 	  </unix-params>
+			 	 </interface>
+
+				<interface>
+			 	  <name>if2</name>
+			 	  <type>UNIXSOCKET</type>
+			 	  <direction>IN</direction>
+			 	  <unix-params>
+			 	  	<socket-name>test_in</socket-name>
+			 	  </unix-params>
+			 	 </interface>
+			 </instance>
+		</module>
+  </module-group>
+</nemea-supervisor>

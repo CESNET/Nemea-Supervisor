@@ -6317,7 +6317,7 @@ func_mode_link ()
 	  fi
 	  case $linkmode in
 	  lib)
-	    # Linking convenience modules into shared libraries is allowed,
+	    # Linking convenience modules_ll into shared libraries is allowed,
 	    # but linking other static libraries is non-portable.
 	    case " $dlpreconveniencelibs " in
 	    *" $deplib "*) ;;
@@ -6704,7 +6704,7 @@ func_mode_link ()
 	  # This is a shared library
 
 	  # Warn about portability, can't link against -module's on some
-	  # systems (darwin).  Don't bleat about dlopened modules though!
+	  # systems (darwin).  Don't bleat about dlopened modules_ll though!
 	  dlopenmodule=""
 	  for dlpremoduletest in $dlprefiles; do
 	    if test "X$dlpremoduletest" = "X$lib"; then
@@ -7252,7 +7252,7 @@ func_mode_link ()
 	  func_fatal_help "libtool library \`$output' must begin with \`lib'"
 
 	if test "$need_lib_prefix" != no; then
-	  # Add the "lib" prefix for modules if required
+	  # Add the "lib" prefix for modules_ll if required
 	  func_stripname '' '.la' "$outputname"
 	  name=$func_stripname_result
 	  eval shared_ext=\"$shrext_cmds\"
@@ -9410,7 +9410,7 @@ revision=$revision
 # Is this an already installed library?
 installed=$installed
 
-# Should we warn about portability when linking against -modules?
+# Should we warn about portability when linking against -modules_ll?
 shouldnotlink=$module
 
 # Files to dlopen/dlpreopen

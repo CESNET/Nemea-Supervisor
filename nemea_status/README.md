@@ -1,6 +1,6 @@
 # Nemea Status web
 
-Simple web frontend showing current set of Nemea modules and several statisics - counters of messages transferred over IFCs and CPU and memory consupmption of each module.
+Simple web frontend showing current set of Nemea modules_ll and several statisics - counters of messages transferred over IFCs and CPU and memory consupmption of each module.
 If the Nemea instance in monitored by Munin, this page can also show graphs from that Munin (path to Munin must be set in configuration file).
 
 The web is written in Python-Flask. It gets data from Nemea Supervisor running on the same machine.

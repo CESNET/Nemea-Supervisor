@@ -1,0 +1,524 @@
+#!/usr/bin/python
+# \file nemea_supervisor
+# \brief Export script for the Munin system to translate date from supervisor.
+# \author Tomas Cejka <cejkat@cesnet.cz>
+# \author Marek Svepes <svepemar@fit.cvut.cz>
+# \date 2014
+# \date 2015
+#
+# Copyright (C) 2014-2015 CESNET
+#
+# LICENSE TERMS
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in
+#    the documentation and/or other materials provided with the
+#    distribution.
+# 3. Neither the name of the Company nor the names of its contributors
+#    may be used to endorse or promote products derived from this
+#    software without specific prior written permission.
+#
+# ALTERNATIVELY, provided that this notice is retained in full, this
+# product may be distributed under the terms of the GNU General Public
+# License (GPL) version 2 or later, in which case the provisions
+# of the GPL apply INSTEAD OF those given above.
+#
+# This software is provided ``as is'', and any express or implied
+# warranties, including, but not limited to, the implied warranties of
+# merchantability and fitness for a particular purpose are disclaimed.
+# In no event shall the company or contributors be liable for any
+# direct, indirect, incidental, special, exemplary, or consequential
+# damages (including, but not limited to, procurement of substitute
+# goods or services; loss of use, data, or profits; or business
+# interruption) however caused and on any theory of liability, whether
+# in contract, strict liability, or tort (including negligence or
+# otherwise) arising in any way out of the use of this software, even
+# if advised of the possibility of such damage.
+#
+# set to false to call supervisor_cli to get data
+
+import logging
+import os
+import time
+import signal
+import subprocess
+import json
+
+LOG_FILENAME = '/tmp/nemea_supervisor_munin.log'
+#LOG_LEVEL = logging.DEBUG
+LOG_LEVEL = logging.ERROR
+
+# test set to True disables reading new current data
+#test = True
+test = False
+
+# path to supervisor socket
+supervisor_socket = '/home/ioku/school/diplomka/libs_from_git/installed_libs/var/run/nemea-supervisor/nemea-supervisor.sock'
+
+# temporary file with downloaded data
+data_temp_file = "/tmp/munin_nemea_data.txt"
+
+# munin interval, typically 5mins (-5 seconds tolerance)
+munin_interval = 5*60-5
+
+# path to supervisor_cli
+supervisor_cli = "/home/ioku/school/diplomka/nemea_src/nemea-supervisor/supervisor_cli"
+
+# labels of counters in graphs
+labels = {
+	"inputs": ["received messages", "received buffers"],
+	"outputs": ["sent messages", "dropped messages", "sent buffers", "autoflush"],
+	"cpu": ["kernel mode", "user mode"],
+	"mem": ["virtual memory size", "resident set size"],
+}
+
+# data types of counters in graphs
+datatypes = {
+	"inputs": ["DERIVE", "DERIVE"],
+	"outputs": ["DERIVE", "DERIVE", "DERIVE", "DERIVE"],
+	"cpu": ["GAUGE", "GAUGE"],
+	"mem": ["GAUGE", "GAUGE"],
+}
+
+# vertical axis labels
+vlabels = {
+	"inputs": "count",
+	"outputs": "count",
+	"cpu": "%",
+	"mem": "B",
+}
+
+# graph titles
+graph_title = {
+	"inputs": "input IFC",
+	"outputs": "output IFC",
+	"cpu": "CPU usage",
+	"mem": "Memory usage",
+}
+
+#==============================
+# end of configuration        #
+#==============================
+logging.basicConfig(filename=LOG_FILENAME,
+		level=LOG_LEVEL,
+		format='%(asctime)s %(levelname)s %(message)s',
+		filemode='a')
+child_pid = -1
+
+def handler_function(signum, stackframe):
+	global child_pid
+	try:
+		os.unlink(data_temp_file)
+	except:
+		pass
+	if child_pid != -1:
+		os.kill(child_pid, signal.SIGTERM)
+	logging.error("Timouted... Exiting.")
+	exit(1)
+
+#Sets an handler function, you can comment it if you don't need it.
+signal.signal(signal.SIGALRM,handler_function)
+
+#Sets an alarm in 10 seconds
+#If uncaught will terminate your process.
+if not test:
+	signal.alarm(2)
+
+# get data
+if test:
+	data = """{
+   "dns_amplification":{
+      "CPU-u":0,
+      "CPU-s":0,
+      "outputs":[
+         {
+            "buffers":0,
+            "type":"t",
+            "ID":"12001",
+            "cli-num":1,
+            "sent-msg":123,
+            "drop-msg":10,
+            "autoflush":5
+         }
+      ],
+      "mem":186204160,
+      "inputs":[
+         {
+            "buffers":0,
+            "type":"u",
+            "ID":"flow_data_source",
+            "is-conn":0,
+            "messages":118
+         }
+      ]
+   },
+   "dnstunnel_detection":{
+      "CPU-u":0,
+      "CPU-s":0,
+      "outputs":[
+         {
+            "buffers":0,
+            "type":"t",
+            "ID":"12004",
+            "cli-num":1,
+            "sent-msg":10,
+            "drop-msg":1,
+            "autoflush":4
+         },
+         {
+            "buffers":0,
+            "type":"u",
+            "ID":"dnstunnel_sdmoutput",
+            "cli-num":0,
+            "sent-msg":100,
+            "drop-msg":20,
+            "autoflush":4
+         }
+      ],
+      "mem":213610496,
+      "inputs":[
+         {
+            "buffers":0,
+            "type":"u",
+            "ID":"flow_data_source",
+            "is-conn":0,
+            "messages":0
+         }
+      ]
+   },
+   "vportscan_aggregator":{
+      "CPU-u":0,
+      "CPU-s":0,
+      "outputs":[
+         {
+            "buffers":0,
+            "type":"t",
+            "ID":"12005",
+            "cli-num":1,
+            "sent-msg":0,
+            "drop-msg":0,
+            "autoflush":0
+         }
+      ],
+      "mem":351088640,
+      "inputs":[
+         {
+            "buffers":0,
+            "type":"u",
+            "ID":"vportscan_out",
+            "is-conn":1,
+            "messages":0
+         }
+      ]
+   },
+   "dnstunnel_logger":{
+      "CPU-u":0,
+      "CPU-s":0,
+      "outputs":[
+
+      ],
+      "mem":93093888,
+      "inputs":[
+         {
+            "buffers":0,
+            "type":"t",
+            "ID":"12004",
+            "is-conn":1,
+            "messages":0
+         }
+      ]
+   }
+}
+"""
+else:
+	current_time = time.time()
+	last_time = 0
+	try:
+		last_time = os.stat(data_temp_file).st_mtime
+	except:
+		logging.debug("{} not found or cannot read info.".format(data_temp_file))
+		pass
+	if (current_time - last_time) > munin_interval:
+		logging.debug("Download new data.")
+		sup = ""
+		try:
+			sup = subprocess.Popen([supervisor_cli, "-x", "-s", supervisor_socket], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+			child_pid = sup.pid
+			(data, errdata) = sup.communicate()
+			sup.wait()
+			if "ERROR" in data or "WARNING" in data:
+				logging.error(data)
+				exit(1)
+			if errdata:
+				logging.error(errdata)
+				exit(1)
+			with open(data_temp_file, "w") as f:
+				f.write(data)
+		except Exception as e:
+			logging.critical("Download failed. ({})".format(e))
+			if child_pid != -1:
+				os.kill(child_pid, signal.SIGTERM)
+			exit(1)
+	else:
+		logging.debug("Use existing data.")
+		data = ""
+		with open(data_temp_file, "r") as f:
+			for line in f.readlines():
+				data = data + line
+
+def getTotalCountersConfig(m, modules):
+    print("""multigraph nemea_ifcs_total
+graph_title Total numbers of messages through all modules_ll
+graph_vlabel count
+graph_category nemea_supervisor
+sent.label sent messages
+sent.type DERIVE
+sent.min 0
+recv.label received messages
+recv.type DERIVE
+recv.max 0
+drop.label dropped messages
+drop.type DERIVE
+drop.min 0
+""")
+
+def getTotalCountersValues(m, modules):
+	r = 0
+	s = 0
+	d = 0
+	for i in modules:
+		for ifc in modules[i]["inputs"]:
+			r += ifc["messages"]
+		for ifc in modules[i]["outputs"]:
+			s += ifc["sent-msg"]
+			d += ifc["drop-msg"]
+	print("multigraph nemea_ifcs_total")
+	print("sent.value " + str(s))
+	print("recv.value " + str(-r))
+	print("drop.value " + str(d))
+
+
+# ----------------------------------------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------------
+
+def parseData(data):
+	modules = {}
+	try:
+		modules = json.loads(data)
+	except Exception as e:
+		logging.error("Cannot parse data. ({})".format(e))
+	return modules
+
+def genModuleCpuConfig(m, modules):
+	print("multigraph {0}_CPU".format(m))
+	print("graph_title {0} {1}".format(m, graph_title["cpu"]))
+	print("graph_vlabel {0}".format(vlabels["cpu"]))
+	print("graph_category nemea_supervisor")
+	for statid in [0, 1]:
+		print("stat{0}.label {1}".format(statid, labels["cpu"][statid]))
+		print("stat{0}.type {1}".format(statid, datatypes["cpu"][statid]))
+		print("stat{0}.min 0".format(statid))
+		print("stat{0}.max 100".format(statid))
+	print("")
+
+def genModuleMemConfig(m, modules):
+	print("multigraph {0}_MEM".format(m))
+	print("graph_title {0} {1}".format(m, graph_title["mem"]))
+	print("graph_vlabel {0}".format(vlabels["mem"]))
+	print("graph_category nemea_supervisor")
+	for statid in [0, 1]:
+		print("stat{0}.label {1}".format(statid, labels["mem"][statid]))
+		print("stat{0}.type {1}".format(statid, datatypes["mem"][statid]))
+		print("stat{0}.min 0".format(statid))
+	print("")
+
+def genModuleInputsConfig(m, modules):
+	for ifc_num in range(0, modules[m]["inputs"].__len__()):
+		print("multigraph {0}_INIFC{1}".format(m, ifc_num))
+		print("graph_title {0} {1} {2}".format(m, graph_title["inputs"], modules[m]["inputs"][ifc_num]["ID"]))
+		print("graph_vlabel {0}".format(vlabels["outputs"]))
+		print("graph_category nemea_supervisor")
+		for statid in range(0, 2):
+			print("stat{0}.label {1}".format(statid, labels["inputs"][statid]))
+			print("stat{0}.type {1}".format(statid, datatypes["inputs"][statid]))
+			print("stat{0}.min 0".format(statid))
+		print("")
+
+
+def genModuleOutputsConfig(m, modules):
+	for ifc_num in range(0, modules[m]["outputs"].__len__()):
+		print("multigraph {0}_OUTIFC{1}".format(m, ifc_num))
+		print("graph_title {0} {1} {2}".format(m, graph_title["outputs"], modules[m]["outputs"][ifc_num]["ID"]))
+		print("graph_vlabel {0}".format(vlabels["inputs"]))
+		print("graph_category nemea_supervisor")
+		for statid in range(0, 4):
+			print("stat{0}.label {1}".format(statid, labels["outputs"][statid]))
+			print("stat{0}.type {1}".format(statid, datatypes["outputs"][statid]))
+			print("stat{0}.min 0".format(statid))
+		print("")
+
+def genTotalCpuConfig(modules):
+	sel_modules = []
+	for m in modules:
+		if "CPU-s" in modules[m] and "CPU-u" in modules[m]:
+			sel_modules.append(m)
+	if sel_modules:
+		print("multigraph nemea_modules_cpu")
+		print("graph_title CPU usage of Nemea modules_ll")
+		print("graph_category nemea_supervisor")
+		print('graph_vlabel {0}'.format(vlabels["cpu"]))
+		print("graph_info User CPU usage of all running and monitored modules_ll.")
+		for m in sel_modules:
+			print("{0}.label {1}".format(m, m.replace("_", " ")))
+			print("{0}.min 0".format(m))
+			print("{0}.type GAUGE".format(m))
+			print("{0}.draw AREASTACK".format(m))
+		print("")
+
+def genTotalMemVmsConfig(modules):
+	sel_modules = []
+	for m in modules:
+		if "MEM-vms" in modules[m]:
+			sel_modules.append(m)
+	if sel_modules:
+		print("multigraph nemea_modules_mem_vms")
+		print("graph_title Virtual memory usage of Nemea modules_ll")
+		print("graph_category nemea_supervisor")
+		print('graph_vlabel {0}'.format(vlabels["mem"]))
+		print("graph_info Virtual memory usage of all running and monitored modules_ll.")
+		for m in sel_modules:
+			print("{0}.label {1}".format(m, m.replace("_", " ")))
+			print("{0}.min 0".format(m))
+			print("{0}.type GAUGE".format(m))
+			print("{0}.draw AREASTACK".format(m))
+		print("")
+
+def genTotalMemRssConfig(modules):
+	sel_modules = []
+	for m in modules:
+		if "MEM-rss" in modules[m]:
+			sel_modules.append(m)
+	if sel_modules:
+		print("multigraph nemea_modules_mem_rss")
+		print("graph_title Resident set size of Nemea modules_ll")
+		print("graph_category nemea_supervisor")
+		print('graph_vlabel {0}'.format(vlabels["mem"]))
+		print("graph_info Resident set size of all running and monitored modules_ll.")
+		for m in sel_modules:
+			print("{0}.label {1}".format(m, m.replace("_", " ")))
+			print("{0}.min 0".format(m))
+			print("{0}.type GAUGE".format(m))
+			print("{0}.draw AREASTACK".format(m))
+		print("")
+
+def getConfig(modules):
+	genTotalCpuConfig(modules)
+	genTotalMemVmsConfig(modules)
+	genTotalMemRssConfig(modules)
+	for m in modules:
+		genModuleCpuConfig(m, modules)
+		genModuleMemConfig(m, modules)
+		genModuleInputsConfig(m, modules)
+		genModuleOutputsConfig(m, modules)
+		getTotalCountersConfig(m, modules)
+
+# -----------------------------------------------------------------------------------------------
+
+
+def genModuleCpuValues(m, modules):
+	print("multigraph {0}_CPU".format(m))
+	print("stat0.value {0}".format(modules[m]["CPU-s"]))
+	print("stat1.value {0}".format(modules[m]["CPU-u"]))
+	print("")
+
+def genModuleMemValues(m, modules):
+	print("multigraph {0}_MEM".format(m))
+	print("stat0.value {0}".format((int)(modules[m]["MEM-vms"])))
+	print("stat1.value {0}".format((int)(modules[m]["MEM-rss"])))
+	print("")
+
+def genModuleInputsValues(m, modules):
+	for ifc_num in range(0, modules[m]["inputs"].__len__()):
+		print("multigraph {0}_INIFC{1}".format(m, ifc_num))
+		print("stat0.value {0}".format(modules[m]["inputs"][ifc_num]["messages"]))
+		print("stat1.value {0}".format(modules[m]["inputs"][ifc_num]["buffers"]))
+		print("")
+
+def genModuleOutputsValues(m, modules):
+	for ifc_num in range(0, modules[m]["outputs"].__len__()):
+		print("multigraph {0}_OUTIFC{1}".format(m, ifc_num))
+		print("stat0.value {0}".format(modules[m]["outputs"][ifc_num]["sent-msg"]))
+		print("stat1.value {0}".format(modules[m]["outputs"][ifc_num]["drop-msg"]))
+		print("stat2.value {0}".format(modules[m]["outputs"][ifc_num]["buffers"]))
+		print("stat3.value {0}".format(modules[m]["outputs"][ifc_num]["autoflush"]))
+		print("")
+
+def genTotalCpuValues(modules):
+	sel_modules = []
+	for m in modules:
+		if "CPU-s" in modules[m] and "CPU-u" in modules[m]:
+			sel_modules.append(m)
+	if sel_modules:
+		print("multigraph nemea_modules_cpu")
+		for m in sel_modules:
+			print("{0}.value {1}".format(m, modules[m]["CPU-u"]))
+	print("")
+
+def genTotalMemVmsValues(modules):
+	sel_modules = []
+	for m in modules:
+		if "MEM-vms" in modules[m]:
+			sel_modules.append(m)
+	if sel_modules:
+		print("multigraph nemea_modules_mem_vms")
+		for m in sel_modules:
+			print("{0}.value {1}".format(m, (int)(modules[m]["MEM-vms"])))
+	print("")
+
+def genTotalMemRssValues(modules):
+	sel_modules = []
+	for m in modules:
+		if "MEM-rss" in modules[m]:
+			sel_modules.append(m)
+	if sel_modules:
+		print("multigraph nemea_modules_mem_rss")
+		for m in sel_modules:
+			print("{0}.value {1}".format(m, (int)(modules[m]["MEM-rss"])))
+	print("")
+
+def getValues(modules):
+	genTotalCpuValues(modules)
+	genTotalMemVmsValues(modules)
+	genTotalMemRssValues(modules)
+	for m in modules:
+		genModuleCpuValues(m, modules)
+		genModuleMemValues(m, modules)
+		genModuleInputsValues(m, modules)
+		genModuleOutputsValues(m, modules)
+	getTotalCountersValues(m, modules)
+
+# ------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------------------------
+
+import sys
+if not data:
+	logging.error("Have no data.")
+	os.unlink(data_temp_file)
+	exit(1)
+
+modules = parseData(data)
+
+if len(sys.argv) == 2 and sys.argv[1] == "autoconf":
+	print("yes")
+elif len(sys.argv) == 2 and sys.argv[1] == "config":
+	getConfig(modules)
+elif len(sys.argv) == 2 and sys.argv[1] == "suggest":
+	print("")
+else:
+	getValues(modules)
+

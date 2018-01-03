@@ -1,0 +1,131 @@
+module nemea-test-1 {
+  namespace "urn:ietf:params:xml:ns:yang:nemea-test-1";
+  prefix "nemea-test-1";
+	include trap-interfaces-test-1;
+  organization "CESNET, z.s.p.o.";
+  contact "cejkat@cesnet.cz";
+  description "Module specifying configuration of Nemea supervisor.";
+  revision "2017-08-02" { description "First version"; }
+
+  grouping nemea-key-name {
+    leaf name {
+      type string {
+				length "1..255";
+        pattern "[0-9a-zA-Z _-]+";
+			}
+      mandatory true;
+    }
+  } // End grouping nemea-key-name
+
+	grouping nemea-module-instance-stats {
+		/* This grouping is here just to make nemea-supervisor container
+		 *  more readable */
+		container stats {
+			config false;
+			description "TODO";
+
+	  	leaf running {
+	  	  type boolean;
+	  	  description "Specify whether the module is running.";
+	  	}
+	  	leaf restart-counter {
+	  	  type uint8;
+	  	  description "The number of repeated starts of the module.";
+	  	}
+			leaf cpu-user {
+				type uint64;
+				description "TODO";
+			}
+			leaf cpu-kern {
+				type uint64;
+				description "TODO";
+			}
+			leaf mem-vms {
+				type uint64;
+				description "TODO";
+			}
+			leaf mem-rss {
+				type uint64;
+				description "TODO";
+			}
+		}
+	} // End grouping nemea-module-instance-stats
+
+
+  container nemea-supervisor {
+    list module-group {
+      key name;
+			uses nemea-key-name {
+        description "Name of group of Nemea modules.";
+			}
+      leaf enabled {
+        type boolean;
+        description "Activation of group of Nemea modules.";
+      }
+    
+      list module {
+        key name;
+				uses nemea-key-name {
+          description "Unique name of the module executable.";
+				}
+        leaf path {
+          type string {
+						pattern "^/.+";
+          }
+          mandatory true;
+          description "Full path to where module binary resides.";
+        }
+				list instance {
+					key name;
+					uses nemea-key-name {
+        	  description "Name of one module instance.";
+					}
+					leaf enabled {
+        	  type boolean;
+        	  mandatory true;
+        	  description "Specify whether instance should be started or not.";
+        	}
+        	leaf max-restarts-per-min {
+        	  type uint8;
+        	  default 3;
+        	  description "How many times the module will be automatically restarted (in case it
+						             terminated) before setting disabled";
+        	}
+					leaf last-pid {
+						type uint32 {	range "1..max"; }
+						description "In case supervisor was interrupted and shouldn't have stopped the
+												 modules, PID of this Nemea module process is stored so that
+												 supervisor can reconnect to it once it starts again.";
+					}
+					leaf sysrepo-ready {
+						type boolean;
+						default false;
+						description "Specifies whether module has it's own YANG model derived from Nemea module template and is capable of loading configuration from Sysrepo when passed -sr 'INSTANCE_NAME'. INSTANCE_NAME is TODO";
+					}
+
+					uses trap-ifcs-list;
+					uses nemea-module-instance-stats;
+
+					choice is-module-sysrepo-ready {
+						case module-sysrepo-ready {
+							when "sysrepo-ready = 'true'";
+							description "TODO";
+							// TODO this part should be modeled in the futur
+						} // End case module-sysrepo-ready
+
+						case module-not-sysrepo-ready {
+							when "sysrepo-ready = 'false'";
+							description "TODO";
+
+		        	leaf params {
+		        	  type string;
+								description "TODO";
+		        	}
+						} // End case module-not-sysrepo-ready
+					} // End choice is-module-sysrepo-ready
+				} // End list instance
+		  } // End list module
+    } // End list module-group
+  } // End container nemea-supervisor
+} // End module nemea-test-1
+

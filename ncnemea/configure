@@ -12601,7 +12601,7 @@ extract_expsyms_cmds=$lt_extract_expsyms_cmds
 # restored at link time.
 variables_saved_for_relink=$lt_variables_saved_for_relink
 
-# Do we need the "lib" prefix for modules?
+# Do we need the "lib" prefix for modules_ll?
 need_lib_prefix=$need_lib_prefix
 
 # Do we need a version for libraries?

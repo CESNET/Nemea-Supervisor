@@ -47,15 +47,15 @@ module "nemea" {
 
   container "nemea-supervisor" {
 
-    list "modules" {
+    list "modules_ll" {
       key "name";
       leaf "name" {
         type "string";
-        description "Name of group of Nemea modules.";
+        description "Name of group of Nemea modules_ll.";
       }
       leaf "enabled" {
         type "boolean";
-        description "Activation of group of Nemea modules.";
+        description "Activation of group of Nemea modules_ll.";
       }
       list "module" {
         key "name";

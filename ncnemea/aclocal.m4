@@ -2907,7 +2907,7 @@ _LT_DECL([], [variables_saved_for_relink], [1],
     [Variables whose values should be saved in libtool wrapper scripts and
     restored at link time])
 _LT_DECL([], [need_lib_prefix], [0],
-    [Do we need the "lib" prefix for modules?])
+    [Do we need the "lib" prefix for modules_ll?])
 _LT_DECL([], [need_version], [0], [Do we need a version for libraries?])
 _LT_DECL([], [version_type], [0], [Library versioning type])
 _LT_DECL([], [runpath_var], [0],  [Shared library runtime path variable])

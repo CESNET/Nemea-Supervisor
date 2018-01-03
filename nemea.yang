@@ -1,0 +1,61 @@
+module "nemea" {
+  namespace "urn:cesnet:tmc:nemea:1.0";
+  prefix "nemea";
+  organization
+    "CESNET, z.s.p.o.";
+  contact
+    "cejkat@cesnet.cz";
+  description
+    "Module specifying configuration of Nemea supervisor.";
+  revision "2017-06-28" {
+    description
+      "Model with state information and notification.";
+  }
+
+  typedef "trapifc-type" {
+    type "enumeration" {
+      enum "TCP" {
+        description
+          "IP/TCP for intermachine connections.";
+      }
+      enum "UNIXSOCKET" {
+        description
+          "UNIX socket for local connections.";
+      }
+      enum "FILE" {
+        description
+          "File interface for loading or saving the data from or to a file.";
+      }
+      enum "BLACKHOLE" {
+        description
+          "Output interface dropping everything.";
+      }
+    }
+  }
+  typedef "trapifc-direction" {
+    type "enumeration" {
+      enum "IN" {
+        description
+          "Input interface.";
+      }
+      enum "OUT" {
+        description
+          "Output interface.";
+      }
+    }
+  }
+
+  leaf mod_info_full {
+   type string;
+   config false;
+  }
+
+  container "nemea-supervisor" {
+  }
+
+  notification moduleStatusChanged {
+    description
+      "Indicates that the status of module has changed.";
+  }
+}
+

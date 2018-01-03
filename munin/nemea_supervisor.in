@@ -3,10 +3,10 @@
 # \brief Export script for the Munin system to translate date from supervisor.
 # \author Tomas Cejka <cejkat@cesnet.cz>
 # \author Marek Svepes <svepemar@fit.cvut.cz>
-# \author Jaroslav Hlavac <hlavac@cesnet.cz>
-# \date 2017
+# \date 2014
+# \date 2015
 #
-# Copyright (C) 2014-2017 CESNET
+# Copyright (C) 2014-2015 CESNET
 #
 # LICENSE TERMS
 #
@@ -87,7 +87,6 @@ datatypes = {
 
 # vertical axis labels
 vlabels = {
-	"alerts": "count",
 	"inputs": "count",
 	"outputs": "count",
 	"cpu": "%",
@@ -272,9 +271,9 @@ else:
 			for line in f.readlines():
 				data = data + line
 
-def getTotalCountersConfig(modules):
+def getTotalCountersConfig(m, modules):
     print("""multigraph nemea_ifcs_total
-graph_title Total numbers of messages through all modules
+graph_title Total numbers of messages through all modules_ll
 graph_vlabel count
 graph_category nemea_supervisor
 sent.label sent messages
@@ -288,7 +287,7 @@ drop.type DERIVE
 drop.min 0
 """)
 
-def getTotalCountersValues(modules):
+def getTotalCountersValues(m, modules):
 	r = 0
 	s = 0
 	d = 0
@@ -370,10 +369,10 @@ def genTotalCpuConfig(modules):
 			sel_modules.append(m)
 	if sel_modules:
 		print("multigraph nemea_modules_cpu")
-		print("graph_title CPU usage of Nemea modules")
+		print("graph_title CPU usage of Nemea modules_ll")
 		print("graph_category nemea_supervisor")
 		print('graph_vlabel {0}'.format(vlabels["cpu"]))
-		print("graph_info User CPU usage of all running and monitored modules.")
+		print("graph_info User CPU usage of all running and monitored modules_ll.")
 		for m in sel_modules:
 			print("{0}.label {1}".format(m, m.replace("_", " ")))
 			print("{0}.min 0".format(m))
@@ -388,10 +387,10 @@ def genTotalMemVmsConfig(modules):
 			sel_modules.append(m)
 	if sel_modules:
 		print("multigraph nemea_modules_mem_vms")
-		print("graph_title Virtual memory usage of Nemea modules")
+		print("graph_title Virtual memory usage of Nemea modules_ll")
 		print("graph_category nemea_supervisor")
 		print('graph_vlabel {0}'.format(vlabels["mem"]))
-		print("graph_info Virtual memory usage of all running and monitored modules.")
+		print("graph_info Virtual memory usage of all running and monitored modules_ll.")
 		for m in sel_modules:
 			print("{0}.label {1}".format(m, m.replace("_", " ")))
 			print("{0}.min 0".format(m))
@@ -406,33 +405,14 @@ def genTotalMemRssConfig(modules):
 			sel_modules.append(m)
 	if sel_modules:
 		print("multigraph nemea_modules_mem_rss")
-		print("graph_title Resident set size of Nemea modules")
+		print("graph_title Resident set size of Nemea modules_ll")
 		print("graph_category nemea_supervisor")
 		print('graph_vlabel {0}'.format(vlabels["mem"]))
-		print("graph_info Resident set size of all running and monitored modules.")
+		print("graph_info Resident set size of all running and monitored modules_ll.")
 		for m in sel_modules:
 			print("{0}.label {1}".format(m, m.replace("_", " ")))
 			print("{0}.min 0".format(m))
 			print("{0}.type GAUGE".format(m))
-			print("{0}.draw AREASTACK".format(m))
-		print("")
-
-def genInputAlertsConfig(modules):
-	sel_modules = []
-	for m in modules:
-		if m.endswith("2idea"):
-			if "inputs" in modules[m]:
-				sel_modules.append(m)
-	if sel_modules:
-		print("multigraph nemea_alerts")
-		print("graph_title Input messages on report modules")
-		print("graph_category nemea_supervisor")
-		print('graph_vlabel {0}'.format(vlabels["alerts"]))
-		print("graph_info Input messages on all reporter modules.")
-		for m in sel_modules:
-			print("{0}.label {1}".format(m, m.replace("_", " ")))
-			print("{0}.min 0".format(m))
-			print("{0}.type DERIVE".format(m))
 			print("{0}.draw AREASTACK".format(m))
 		print("")
 
@@ -445,8 +425,7 @@ def getConfig(modules):
 		genModuleMemConfig(m, modules)
 		genModuleInputsConfig(m, modules)
 		genModuleOutputsConfig(m, modules)
-	getTotalCountersConfig(modules)
-	genInputAlertsConfig(modules)
+		getTotalCountersConfig(m, modules)
 
 # -----------------------------------------------------------------------------------------------
 
@@ -512,18 +491,6 @@ def genTotalMemRssValues(modules):
 			print("{0}.value {1}".format(m, (int)(modules[m]["MEM-rss"])))
 	print("")
 
-def genInputAlertsValues(modules):
-	sel_modules = []
-	for m in modules:
-		if m.endswith("2idea"):
-			if "inputs" in modules[m]:
-				sel_modules.append(m)
-	if sel_modules:
-		print("multigraph nemea_alerts")
-		for m in sel_modules:
-			print("{0}.value {1}".format(m, modules[m]["inputs"][0]["messages"]))
-	print("")
-
 def getValues(modules):
 	genTotalCpuValues(modules)
 	genTotalMemVmsValues(modules)
@@ -533,8 +500,7 @@ def getValues(modules):
 		genModuleMemValues(m, modules)
 		genModuleInputsValues(m, modules)
 		genModuleOutputsValues(m, modules)
-	genInputAlertsValues(modules)
-	getTotalCountersValues(modules)
+	getTotalCountersValues(m, modules)
 
 # ------------------------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------------------------

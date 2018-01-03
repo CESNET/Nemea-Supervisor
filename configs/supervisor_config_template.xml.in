@@ -2,27 +2,27 @@
 <nemea-supervisor>
 <!-- include @datarootdir@/nemea-supervisor/warning.sup -->
 
-  <modules>
+  <modules_ll>
     <name>Data sources</name>
     <enabled>true</enabled>
     <!-- include @sysconfdir@/data-sources -->
-  </modules>
+  </modules_ll>
 
-  <modules>
+  <modules_ll>
     <name>Detectors</name>
     <enabled>true</enabled>
     <!-- include @sysconfdir@/detectors -->
-  </modules>
+  </modules_ll>
 
-  <modules>
+  <modules_ll>
     <name>Reporters</name>
     <enabled>true</enabled>
     <!-- include @sysconfdir@/reporters -->
-  </modules>
+  </modules_ll>
 
-  <modules>
+  <modules_ll>
     <name>Loggers</name>
     <enabled>true</enabled>
     <!-- include @sysconfdir@/loggers -->
-  </modules>
+  </modules_ll>
 </nemea-supervisor>
