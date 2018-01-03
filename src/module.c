@@ -420,6 +420,7 @@ instance_t * instance_alloc()
 
    inst->enabled = false;
    inst->running = false;
+   inst->should_die = false;
    inst->root_perm_needed = false;
    inst->is_my_child = false;
    inst->sigint_sent = false;
@@ -639,7 +640,7 @@ void instance_clear_socks(instance_t *inst)
       memset(buffer, 0, DEFAULT_SIZE_OF_BUFFER);
       sprintf(buffer, trap_default_socket_path_format,
               ifc->specific_params.nix->socket_name);
-      VERBOSE(MOD_EVNT, "Deleting socket %s of %s", buffer, instance_tree_path(inst))
+      VERBOSE(V2, "Deleting socket %s of %s", buffer, instance_tree_path(inst))
       unlink(buffer);
 
    }
@@ -649,7 +650,7 @@ void instance_clear_socks(instance_t *inst)
       memset(service_sock_spec, 0, 14 * sizeof(char));
       sprintf(service_sock_spec, "service_%d", inst->pid);
       sprintf(buffer, trap_default_socket_path_format, service_sock_spec);
-      VERBOSE(MOD_EVNT, "Deleting socket %s of %s", buffer, instance_tree_path(inst))
+      VERBOSE(V2, "Deleting socket %s of %s", buffer, instance_tree_path(inst))
       unlink(buffer);
    }
 }
@@ -815,6 +816,7 @@ void module_clear(module_t *module)
 void instance_clear(instance_t *inst)
 {
    inst->running = false;
+   inst->should_die = false;
    inst->root_perm_needed = false;
    inst->is_my_child = false;
    inst->sigint_sent = false;

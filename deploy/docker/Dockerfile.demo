@@ -9,16 +9,18 @@ RUN dnf install wget -y
 
 # Install ipfixcol
 RUN dnf copr enable @CESNET/IPFIXcol -y
-RUN dnf install ipfixcol -y
-WORKDIR /data/ipfixcol-files
+RUN dnf install ipfixcol ipfixcol-lnfstore-output ipfixcol-unirec-output \
+                ipfixcol-profilestats-inter -y
 RUN mkdir -p /data/flow/live/emails /data/ipfixcol-files
+WORKDIR /data
 RUN wget https://owncloud.cesnet.cz/index.php/s/0BQGHSCj4YK0IOu/download \
          --quiet -O ipfixcol-files.tar.gz
-RUN tar xzf ipfixcol-files.tar.gz
+RUN tar xzf ipfixcol-files.tar.gz && rm ipfixcol-files.tar.gz
 
 RUN dnf copr enable @CESNET/NEMEA -y
 RUN dnf install nemea-framework nemea-common nemea-detectors nemea-modules -y
-RUN dnf install libtrap libtrap-devel -y
+RUN dnf install libtrap libtrap-devel -y && \
+    mkdir -p /var/run/libtrap && chmod 777 /var/run/libtrap
 
 ENV SRC_FLD /var/nemea_source
 RUN mkdir ${SRC_FLD}
@@ -64,7 +66,7 @@ RUN mkdir -p /var/run/sysrepo-subscriptions/ && \
 
 # Install nemea-supervisor-sysrepo-edition
 RUN git clone https://github.com/zidekmat/nemea-supervisor-sysrepo-edition && \
-		cd nemea-supervisor-sysrepo-edition && mkdir build && cd build &&  \
+		cd nemea-supervisor-sysrepo-edition  && mkdir build && cd build &&  \
 		cmake .. && \
 		make
 WORKDIR ${SRC_FLD}/nemea-supervisor-sysrepo-edition

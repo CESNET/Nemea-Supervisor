@@ -667,7 +667,7 @@ void supervisor_routine()
          // Handle connection between supervisor and instances via service interface
          check_insts_connections();
          get_service_ifces_stats();
-         running_insts_cnt = get_running_insts_cnt();
+         (void) get_running_insts_cnt();
       }
       pthread_mutex_unlock(&config_lock);
       usleep(SERVICE_THREAD_SLEEP_IN_MICSEC);

@@ -57,11 +57,16 @@ void insts_stop_sigkill()
    // Find running status of each instance first
    (void) get_running_insts_cnt();
 
+   bool should_be_killed;
    instance_t *inst = NULL;
    FOR_EACH_IN_VEC(insts_v, inst) {
+      should_be_killed = (inst->module->group->enabled == false
+                    || inst->enabled == false
+                    || inst->should_die);
+
       if (inst->running
           && inst->sigint_sent
-          && (inst->module->group->enabled == false || inst->enabled == false)) {
+          && should_be_killed) {
 
          // Only running instance that is disabled or has group disabled
          VERBOSE(V2, "Stopping inst (%s). Sending SIGKILL",
@@ -74,12 +79,17 @@ void insts_stop_sigkill()
 
 void insts_stop_sigint()
 {
+   bool should_be_killed;
    instance_t *inst = NULL;
    FOR_EACH_IN_VEC(insts_v, inst) {
+      should_be_killed = (inst->module->group->enabled == false
+                   || inst->enabled == false
+                   || inst->should_die);
+
       if (inst->running
           && inst->root_perm_needed == false
           && inst->sigint_sent == false
-          && (inst->module->group->enabled == false || inst->enabled == false)) {
+          && should_be_killed) {
 
             VERBOSE(V2, "Stopping inst (%s). Sending SIGINT", instance_tree_path(inst))
             kill(inst->pid, SIGINT);
@@ -203,6 +213,9 @@ void insts_start()
          inst_start(inst);
       }
    }
+
+   // Clean after instances that failed to start
+   clean_after_children();
 }
 /* --END superglobal fns-- */
 
@@ -215,14 +228,16 @@ static void clean_after_children()
    int status;
 
    FOR_EACH_IN_VEC(insts_v, inst) {
-      if (inst->pid > 0 && inst->is_my_child && inst->sigint_sent) {
+      if (inst->pid > 0 && inst->is_my_child) {
          /* waitpid releases children that failed to execute execv in inst_start.
           * if this would be left out, processes would stay there as zombies */
          result = waitpid(inst->pid , &status, WNOHANG);
          switch (result) {
             case 0:
-               VERBOSE(V1, "Instance (%s) is still running after killing",
-                       instance_tree_path(inst))
+               if (inst->sigint_sent) {
+                  VERBOSE(V1, "Instance (%s) is still running after killing",
+                          instance_tree_path(inst))
+               }
                break;
 
             case -1: // Error
@@ -232,13 +247,15 @@ static void clean_after_children()
                }
                VERBOSE(V2, "Some error occured, but inst %s is not running",
                        instance_tree_path(inst))
-               inst->running = false;
+               inst->should_die = true;
+               //inst->running = false;
                instance_clear_socks(inst);
                break;
 
             default: // Module is not running
-               VERBOSE(V2, "Instance %s is not running", instance_tree_path(inst))
-               inst->running = false;
+               VERBOSE(V2, "Instance %s is not running %d", instance_tree_path(inst), result)
+               inst->should_die = true;
+               //inst->running = false;
                instance_clear_socks(inst);
          }
       }
@@ -299,6 +316,10 @@ void inst_start(instance_t *inst)
    time_t time_now;
    time(&time_now);
 
+   // If the instance was killed due to one of these variables, they should be reseted
+   inst->should_die = false;
+   inst->sigint_sent = false;
+
    fflush(stdout);
    inst->pid = fork();
 
@@ -334,12 +355,13 @@ void inst_start(instance_t *inst)
       setsid();
 
       // Don't even think about rewriting this to VERBOSE macro
-      fprintf(stdout, "[INFO]%s Supervisor executed command: ",
-              get_formatted_time());
+      fprintf(stdout, "[INFO]%s Supervisor executed following command from path=%s: ",
+              get_formatted_time(), inst->module->path);
       for(int i = 0; inst->exec_args[i] != NULL; i++) {
          fprintf(stdout, " %s", inst->exec_args[i]);
       }
       fprintf(stdout, "\n");
+      VERBOSE(N_INFO, "")
 
       // Make sure execution message gets written to logs files
       fflush(stdout);
@@ -358,7 +380,6 @@ void inst_start(instance_t *inst)
          close(fd_stdout);
          close(fd_stderr);
          _exit(EXIT_FAILURE);
-         VERBOSE(DEBUG, " trying to exit")
       }
    }
 }

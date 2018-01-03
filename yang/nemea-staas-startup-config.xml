@@ -27,7 +27,7 @@
     <enabled>true</enabled>
     <module>
       <name>vportscan_detector</name>
-      <path>/usr/local/bin/vportscan_detector</path>
+      <path>/usr/bin/nemea/vportscan_detector</path>
       <instance>
         <name>vportscan_detector1</name>
         <enabled>true</enabled>

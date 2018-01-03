@@ -218,6 +218,7 @@ typedef struct instance_s {
    //TODO int init_module;   // resi jestli se ma modul znovu nastavit kvuli novy konfiguraci
 
    bool running; ///< Is module running?
+   bool should_die; ///< Whether instance is marked for kill
    bool sigint_sent; ///< Specifies whether SIGKILL was sent to module.
    pid_t pid; ///< Module process PID.
    uint8_t restarts_cnt; ///< Number of attempts at starting the module in last
