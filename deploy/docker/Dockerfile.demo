@@ -7,6 +7,12 @@ RUN dnf install autoconf automake gcc gcc-c++ libtool libxml2-devel make pkgconf
                 cmake -y
 RUN dnf install wget -y
 
+
+RUN dnf copr enable @CESNET/NEMEA -y
+RUN dnf install nemea-framework nemea-common nemea-detectors nemea-modules -y
+RUN dnf install libtrap libtrap-devel -y && \
+    mkdir -p /var/run/libtrap && chmod 777 /var/run/libtrap
+
 # Install ipfixcol
 RUN dnf copr enable @CESNET/IPFIXcol -y
 RUN dnf install ipfixcol ipfixcol-lnfstore-output ipfixcol-unirec-output \
@@ -16,11 +22,6 @@ WORKDIR /data
 RUN wget https://owncloud.cesnet.cz/index.php/s/0BQGHSCj4YK0IOu/download \
          --quiet -O ipfixcol-files.tar.gz
 RUN tar xzf ipfixcol-files.tar.gz && rm ipfixcol-files.tar.gz
-
-RUN dnf copr enable @CESNET/NEMEA -y
-RUN dnf install nemea-framework nemea-common nemea-detectors nemea-modules -y
-RUN dnf install libtrap libtrap-devel -y && \
-    mkdir -p /var/run/libtrap && chmod 777 /var/run/libtrap
 
 ENV SRC_FLD /var/nemea_source
 RUN mkdir ${SRC_FLD}
