@@ -9,9 +9,8 @@ RUN dnf install wget -y
 
 
 RUN dnf copr enable @CESNET/NEMEA -y
-RUN dnf install nemea-framework nemea-common nemea-detectors nemea-modules -y
-RUN dnf install libtrap libtrap-devel -y && \
-    mkdir -p /var/run/libtrap && chmod 777 /var/run/libtrap
+RUN dnf install nemea-framework nemea-common nemea-detectors nemea-modules libtrap-devel -y
+RUN mkdir -p /var/run/libtrap && chmod 777 /var/run/libtrap
 
 # Install ipfixcol
 RUN dnf copr enable @CESNET/IPFIXcol -y
