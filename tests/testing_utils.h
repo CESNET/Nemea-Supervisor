@@ -41,6 +41,9 @@
       fail_msg("Sysrepo error - %s\n", sr_strerror((rc))); \
    } \
 } while(0);
+
+#define NS_ROOT_XPATH "/nemea-test-1:supervisor"
+#define NS_ROOT_XPATH_LEN 17
 /*--END macros--*/
 
 /*--BEGIN superglobal typedef--*/

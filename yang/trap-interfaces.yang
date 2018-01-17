@@ -1,12 +1,12 @@
 submodule trap-interfaces {
-	belongs-to nemea { prefix nemea; }
+  belongs-to nemea { prefix nemea; }
 
-	import ietf-inet-types { prefix inet; }
+  import ietf-inet-types { prefix inet; }
 
-	typedef trap-ifc-type {
+  typedef trap-ifc-type {
     type enumeration {
       enum TCP { description "IP/TCP for intermachine connections."; }
-			enum TCP-TLS { description "Same as TCP but using TLS on top."; }
+      enum TCP-TLS { description "Same as TCP but using TLS on top."; }
       enum UNIXSOCKET { description "UNIX socket for local connections."; }
       enum FILE { description "File interface for loading or saving the data from or to a file."; }
       enum BLACKHOLE { description "Output interface dropping everything."; }
@@ -22,243 +22,243 @@ submodule trap-interfaces {
     description "Direction of trap interface.";
   }
 
-	typedef full-file-path {
-		type string { 
-			length "1..255";
-			pattern "/.+"; 
-		}
-		description "Full UNIX path to file";
-	}
+  typedef full-file-path {
+    type string { 
+      length "1..255";
+      pattern "/.+"; 
+    }
+    description "Full UNIX path to file";
+  }
 
 
-	grouping tls-key-cert-ca-files {
-		leaf keyfile {
-			type full-file-path;
-			mandatory true;
-			description "Path to private key file in PEM format.";
-		}
-		leaf certfile {
-			type full-file-path;
-			mandatory true;
-			description "Path to certificate file in PEM format.";
-		}
-		leaf cafile {
-			type full-file-path;
-			mandatory true;
-			description "Path to CA certificate file in PEM format.";
-		}
-	}
+  grouping tls-key-cert-ca-files {
+    leaf keyfile {
+      type full-file-path;
+      mandatory true;
+      description "Path to private key file in PEM format.";
+    }
+    leaf certfile {
+      type full-file-path;
+      mandatory true;
+      description "Path to certificate file in PEM format.";
+    }
+    leaf cafile {
+      type full-file-path;
+      mandatory true;
+      description "Path to CA certificate file in PEM format.";
+    }
+  }
 
-	grouping tcp-port {
+  grouping tcp-port {
     leaf port {
       type inet:port-number;
       mandatory true;
       description "Port number indetifying TCP socket.";
     }
-	}
+  }
 
-	grouping tcp-host {
+  grouping tcp-host {
     leaf host { 
       type inet:host; 
       description "Hostname or IP address identifying TCP socket.
                    Host option can be skipped and in that case localhost is used.";
     }
-	}
+  }
 
-	grouping trap-ifc-max-clients {
-		leaf max-clients {
-			type uint16 { range "1..65535"; }
-			// libtrap default 64;
-			description "Maximal number of connected clients (input interfaces).";
-		}
-	}
+  grouping trap-ifc-max-clients {
+    leaf max-clients {
+      type uint16 { range "1..65535"; }
+      // libtrap default 64;
+      description "Maximal number of connected clients (input interfaces).";
+    }
+  }
 
-	grouping unix-socket-name {
-		leaf socket-name {
-			type string { length "1..255"; }
-			mandatory true;
-			description "Name of UNIX socket to connect to.";
-		}
-	}
+  grouping unix-socket-name {
+    leaf socket-name {
+      type string { length "1..255"; }
+      mandatory true;
+      description "Name of UNIX socket to connect to.";
+    }
+  }
 
-	grouping trap-ifc-file-name {
-		leaf name {
-			type string { length "1..255"; }
-			mandatory true;
-			description "Name of file to be used as interface.";
-		}
-	}
+  grouping trap-ifc-file-name {
+    leaf name {
+      type string { length "1..255"; }
+      mandatory true;
+      description "Name of file to be used as interface.";
+    }
+  }
 
-	grouping trap-ifc-file-out-params {
-		leaf mode {
-			type string { pattern "[aw]"; length 1; }
-			default "a";
-			description "Defines file access mode, 'a' for append and 'w' for write.
-									 Append mode creates new file with an integer suffix
-									 e.g. data.trapcap.0 if the former exists.";
-		}
-		leaf time {
-			type uint16 { range "1..65535"; }
-			description "If set, interface will split captured data to individual files
-									 as often, as value of this parameter indicates. Values are in
-									 minutes and format of created files is 'filename.YYYYmmddHHMM'.
-									 If both 'time' and 'size' options are specified, the data are
-									 split primarily by time, and only if a file of one time interval
-									 exceeds the size limit, it is further splitted. The index of
-									 size-splitted file is appended after the time,
-									 e.g. 'data.trapcap.201604181000.0'.";
-		}
-		leaf size {
-			type uint16 { range "1..65535"; }
-			description "If set, interface will split captured data to individual files
-									 after size of current file exceeds given threshold. Values are
-									 in MB and numeric suffix as added to original file name for each
-									 file in ascending order starting with 0.
+  grouping trap-ifc-file-out-params {
+    leaf mode {
+      type string { pattern "[aw]"; length 1; }
+      default "a";
+      description "Defines file access mode, 'a' for append and 'w' for write.
+                   Append mode creates new file with an integer suffix
+                   e.g. data.trapcap.0 if the former exists.";
+    }
+    leaf time {
+      type uint16 { range "1..65535"; }
+      description "If set, interface will split captured data to individual files
+                   as often, as value of this parameter indicates. Values are in
+                   minutes and format of created files is 'filename.YYYYmmddHHMM'.
                    If both 'time' and 'size' options are specified, the data are
                    split primarily by time, and only if a file of one time interval
                    exceeds the size limit, it is further splitted. The index of
                    size-splitted file is appended after the time,
                    e.g. 'data.trapcap.201604181000.0'.";
-		}
-	} // end grouping trap-ifc-file-out-params
+    }
+    leaf size {
+      type uint16 { range "1..65535"; }
+      description "If set, interface will split captured data to individual files
+                   after size of current file exceeds given threshold. Values are
+                   in MB and numeric suffix as added to original file name for each
+                   file in ascending order starting with 0.
+                   If both 'time' and 'size' options are specified, the data are
+                   split primarily by time, and only if a file of one time interval
+                   exceeds the size limit, it is further splitted. The index of
+                   size-splitted file is appended after the time,
+                   e.g. 'data.trapcap.201604181000.0'.";
+    }
+  } // end grouping trap-ifc-file-out-params
 
-	grouping trap-ifc-timeout {
+  grouping trap-ifc-timeout {
     leaf timeout {
       type string { pattern "(([1-9]+[0-9]*)|WAIT|NO_WAIT|HALF_WAIT)"; }
       // libtrap default "WAIT";
       description "Time in microseconds that an IFC can block waiting for" +
                   " message send/receive. Or one of special values.";
     }
-	}
+  }
 
   grouping trap-ifcs-list {
 
-  	list interface {
-			key name; 
+    list interface {
+      key name; 
       leaf name {
         type string {
           length "1..255";
           pattern "[0-9a-zA-Z _-]+";
         }
-				mandatory true;
+        mandatory true;
         description "Name of interface. It's here because YANG doesn't allow to
-											automatically generate list IDs and derivation of key
-											from other leaves is not possible since some modules may
-											have multiple interfaces of same direction and type.";
+                      automatically generate list IDs and derivation of key
+                      from other leaves is not possible since some modules may
+                      have multiple interfaces of same direction and type.";
       }
 
-  	  leaf type {
-  	    type trap-ifc-type;
-  	    mandatory true;
-  	    description "Type of libtrap communication interface.";
-  	  }
+      leaf type {
+        type trap-ifc-type;
+        mandatory true;
+        description "Type of libtrap communication interface.";
+      }
 
-  	  leaf direction {
-  	    type trap-ifc-dir;
-  	    mandatory true;
-  	    description "Type of libtrap communication interface.";
-  	  }
+      leaf direction {
+        type trap-ifc-dir;
+        mandatory true;
+        description "Type of libtrap communication interface.";
+      }
 
-			uses trap-ifc-timeout;
-			must "direction = 'OUT' or (direction = 'IN' and timeout != 'HALF_WAIT')" {
-					error-message "IN interface can't use timeout option HALF_WAIT!";
-			}
+      uses trap-ifc-timeout;
+      must "direction = 'OUT' or (direction = 'IN' and timeout != 'HALF_WAIT')" {
+          error-message "IN interface can't use timeout option HALF_WAIT!";
+      }
 
-	  	leaf buffer {
-				when "../direction = 'OUT'";
-	  	  type string { pattern "(on|off)"; }
-	  	  // libtrap default "on";
-	  	  description "Specifies buffering of data and whether to send in
-										  larger bulks (increases troughput).";
-	  	}
-	
-	  	leaf autoflush {
-				when "../direction = 'OUT'";
-	  	  type string { pattern "(off|[1-9][0-9]*)"; }
-	  	  // libtrap default "500000";
-	  	  description "Normally data are not sent until the buffer is full.
-										  When autoflush is enabled, even non-full buffers
-										  are sent every X microseconds.";
-	  	}
+      leaf buffer {
+        when "../direction = 'OUT'";
+        type string { pattern "(on|off)"; }
+        // libtrap default "on";
+        description "Specifies buffering of data and whether to send in
+                      larger bulks (increases troughput).";
+      }
+  
+      leaf autoflush {
+        when "../direction = 'OUT'";
+        type string { pattern "(off|[1-9][0-9]*)"; }
+        // libtrap default "500000";
+        description "Normally data are not sent until the buffer is full.
+                      When autoflush is enabled, even non-full buffers
+                      are sent every X microseconds.";
+      }
 
-			choice type-params {
-				case tcp-params {
-					container tcp-params {
-						uses tcp-host { when "../direction = 'IN'"; }
-						uses tcp-port;
-						uses trap-ifc-max-clients { when "../direction = 'OUT'"; }
-					}
-				}
+      choice type-params {
+        case tcp-params {
+          container tcp-params {
+            uses tcp-host { when "../direction = 'IN'"; }
+            uses tcp-port;
+            uses trap-ifc-max-clients { when "../direction = 'OUT'"; }
+          }
+        }
 
-				case tcp-tls-params {
-					container tcp-tls-params {
-						uses tcp-host { when "../direction = 'IN'"; }
-						uses tcp-port;
-						uses tls-key-cert-ca-files;
-						uses trap-ifc-max-clients { when "../direction = 'OUT'"; }
-					}
-				}
+        case tcp-tls-params {
+          container tcp-tls-params {
+            uses tcp-host { when "../direction = 'IN'"; }
+            uses tcp-port;
+            uses tls-key-cert-ca-files;
+            uses trap-ifc-max-clients { when "../direction = 'OUT'"; }
+          }
+        }
 
-				case unix-params {
-					container unix-params {
-						uses unix-socket-name;
-						uses trap-ifc-max-clients { when "../direction = 'OUT'"; }
-					}
-				}
+        case unix-params {
+          container unix-params {
+            uses unix-socket-name;
+            uses trap-ifc-max-clients { when "../direction = 'OUT'"; }
+          }
+        }
 
-				case file-params {
-					container file-params {
-						uses trap-ifc-file-name;
-						uses trap-ifc-file-out-params { when "../direction = 'OUT'"; }
-					}
-				}
-				case blackhole-params {
-					// Blackhole type has no parameters
-				}
-			} // end choice type-params
+        case file-params {
+          container file-params {
+            uses trap-ifc-file-name;
+            uses trap-ifc-file-out-params { when "../direction = 'OUT'"; }
+          }
+        }
+        case blackhole-params {
+          // Blackhole type has no parameters
+        }
+      } // end choice type-params
 
-		
-			container stats {
-  			config false;
+    
+      container stats {
+        config false;
 
-				// { Start stats for interfaces with IN direction
- 				leaf recv-msg-cnt {
-  				when "../direction = 'IN'";
- 					type uint64;
- 					description "Number of received messages.";
- 				}
- 				leaf recv-buff-cnt {
-  				when "../direction = 'IN'";
- 					type uint64;
- 					description "TODO";
- 				}
-				// } End stats for interfaces with IN direction
+        // { Start stats for interfaces with IN direction
+         leaf recv-msg-cnt {
+          when "../direction = 'IN'";
+           type uint64;
+           description "Number of received messages.";
+         }
+         leaf recv-buff-cnt {
+          when "../direction = 'IN'";
+           type uint64;
+           description "TODO";
+         }
+        // } End stats for interfaces with IN direction
 
 
-				// { Start stats for interfaces with OUT direction
-  	  	leaf sent-msg-cnt {
-  				when "../direction = 'OUT'";
-  	  	  type uint64;
-  	  	  description "Number of sent messages.";
-  	  	}
-  			leaf sent-buff-cnt {
-  				when "../direction = 'OUT'";
-  				type uint64;
-  				description "TODO";
-  			}
-  			leaf dropped-msg-cnt {
-  				when "../direction = 'OUT'";
-  				type uint64;
-  				description "TODO";
-  			}
-  			leaf autoflush-cnt {
-  				when "../direction = 'OUT'";
-  				type uint64;
-  				description "TODO";
-  			}
-				// } End stats for interfaces with OUT direction
-			} // end of stats container  
+        // { Start stats for interfaces with OUT direction
+        leaf sent-msg-cnt {
+          when "../direction = 'OUT'";
+          type uint64;
+          description "Number of sent messages.";
+        }
+        leaf sent-buff-cnt {
+          when "../direction = 'OUT'";
+          type uint64;
+          description "TODO";
+        }
+        leaf dropped-msg-cnt {
+          when "../direction = 'OUT'";
+          type uint64;
+          description "TODO";
+        }
+        leaf autoflush-cnt {
+          when "../direction = 'OUT'";
+          type uint64;
+          description "TODO";
+        }
+        // } End stats for interfaces with OUT direction
+      } // end of stats container  
 
-  	} // end list interface
-	} // end grouping interfaces list
+    } // end list interface
+  } // end grouping interfaces list
 }

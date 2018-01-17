@@ -19,6 +19,9 @@ vector_t insts_v = {.total = 0, .capacity = 0, .items = NULL};
 vector_t mods_v = {.total = 0, .capacity = 0, .items = NULL};
 vector_t mgrps_v = {.total = 0, .capacity = 0, .items = NULL};
 
+vector_t avmods_v = {.total = 0, .capacity = 0, .items = NULL};
+vector_t modz_v = {.total = 0, .capacity = 0, .items = NULL};
+
 /*--END superglobal vars--*/
 
 /*--BEGIN local #define--*/
@@ -37,11 +40,11 @@ static char * tcp_tls_ifc_to_cli_arg(const interface_t *ifc);
 static char * unix_ifc_to_cli_arg(const interface_t *ifc);
 static char * file_ifc_to_cli_arg(const interface_t *ifc);
 static char * bh_ifc_to_cli_arg(const interface_t *ifc);
-static inline char * module_get_ifcs_as_arg(instance_t *module);
+static inline char * module_get_ifcs_as_arg(run_module_t *module);
 
 char * strcat_many(uint8_t cnt, ...);
 
-static char **module_params_no_ifc_arr(const instance_t *module, uint32_t *params_num,
+static char **module_params_to_ifc_arr(const run_module_t *module, uint32_t *params_num,
                                        int *rc);
 static char *ifc_param_concat(char *base, char *param_s, uint16_t param_u);
 static inline void free_interface_specific_params(interface_t *ifc);
@@ -206,7 +209,7 @@ err_cleanup:
    return -1;
 }
 
-int module_group_add(module_group_t *group)
+/*int module_group_add(module_group_t *group)
 {
    return vector_add(&mgrps_v, group);
 }
@@ -254,10 +257,10 @@ int instance_add(instance_t *inst)
 {
    int rc;
 
-/*   rc = vector_add(&inst->module->insts, inst);
+*//*   rc = vector_add(&inst->module->insts, inst);
    if (rc != 0) {
       return rc;
-   }*/
+   }*//*
 
    rc = vector_add(&insts_v, inst);
    if (rc != 0) {
@@ -267,35 +270,43 @@ int instance_add(instance_t *inst)
    // TODO inst->module->group->insts_cnt++;
 
    return 0;
+}*/
+
+
+void av_module_remove_at(uint32_t index)
+{/*
+   instance_t *inst = insts_v.items[index];*/
+   vector_delete(&avmods_v, index);
+   // TODO inst->modle->group->insts_cnt--;
 }
 
-void instance_remove_at(uint32_t index)
+void run_module_remove_at(uint32_t index)
 {/*
    instance_t *inst = insts_v.items[index];*/
    vector_delete(&insts_v, index);
    // TODO inst->module->group->insts_cnt--;
 }
 
-void instance_remove_by_name(const char * name)
+/*void instance_remove_by_name(const char * name)
 {
    instance_t *inst = NULL;
    for (uint32_t i = 0; i < insts_v.total; i++) {
       inst = insts_v.items[i];
       if (strcmp(inst->name, name) == 0) {
-         instance_remove_at(i);
+         run_module_remove_at(i);
          return;
       }
    }
-}
+}*/
 
-int instance_interface_add(instance_t *inst, interface_t *ifc)
+int run_module_interface_add(run_module_t *mod, interface_t *ifc)
 {
    int rc;
 
    if (ifc->direction == NS_IF_DIR_IN) {
-      rc = vector_add(&inst->in_ifces, ifc);
+      rc = vector_add(&mod->in_ifces, ifc);
    } else {
-      rc = vector_add(&inst->out_ifces, ifc);
+      rc = vector_add(&mod->out_ifces, ifc);
    }
 
    if (rc != 0) {
@@ -305,7 +316,7 @@ int instance_interface_add(instance_t *inst, interface_t *ifc)
 
    return 0;
 }
-
+/*
 void print_module_group(const module_group_t *group)
 {
    VERBOSE(DEBUG, "Group: %s", group->name)
@@ -332,7 +343,7 @@ void print_instance(instance_t *inst)
    FOR_EACH_IN_VEC(inst->in_ifces, ifc) {
       print_ifc(ifc);
    }
-}
+}*/
 
 void print_ifc_stats()
 {
@@ -377,7 +388,7 @@ void print_ifc(interface_t *ifc)
 
 }
 
-module_group_t * module_group_alloc()
+/*module_group_t * module_group_alloc()
 {
    module_group_t * group = (module_group_t *) calloc(1, sizeof(module_group_t));
    if (NULL == group) {
@@ -402,20 +413,33 @@ module_t * module_alloc()
    mod->path = NULL;
    mod->group = NULL;
 
-/*   int rc;
+*//*   int rc;
    rc = vector_init(&mod->insts, 1);
    if (rc != 0) {
       NO_MEM_ERR
       free(mod);
       return NULL;
-   }*/
+   }*//*
+
+   return mod;
+}*/
+
+av_module_t * av_module_alloc()
+{
+   av_module_t * mod = (av_module_t *) calloc(1, sizeof(av_module_t));
+   IF_NO_MEM_NULL_ERR(mod)
+
+   mod->name = NULL;
+   mod->path = NULL;
+   mod->is_sr_en = false;
+   mod->is_nemea = false;
 
    return mod;
 }
 
-instance_t * instance_alloc()
+run_module_t * run_module_alloc()
 {
-   instance_t * inst = (instance_t *) calloc(1, sizeof(instance_t));
+   run_module_t * inst = (run_module_t *) calloc(1, sizeof(run_module_t));
    IF_NO_MEM_NULL_ERR(inst)
 
    inst->enabled = false;
@@ -428,7 +452,7 @@ instance_t * instance_alloc()
    inst->name = NULL;
    inst->params = NULL;
    inst->exec_args = NULL;
-   inst->module = NULL;
+   inst->mod_kind = NULL;
    inst->restarts_cnt = 0;
    inst->max_restarts_minute = 0;
    inst->restart_time = 0;
@@ -574,7 +598,7 @@ int interface_stats_alloc(interface_t *ifc)
 
    return 0;
 }
-
+/*
 void module_groups_free()
 {
    if (mgrps_v.total != 0) {
@@ -599,9 +623,9 @@ void module_free(module_t *module)
    NULLP_TEST_AND_FREE(module->name)
    NULLP_TEST_AND_FREE(module->path)
    NULLP_TEST_AND_FREE(module)
-}
+}*/
 
-void modules_free()
+/*void modules_free()
 {
    if (mods_v.total != 0) {
       module_t *mod = NULL;
@@ -610,20 +634,20 @@ void modules_free()
       }
    }
    vector_free(&mods_v);
-}
+}*/
 
-void instances_free()
+void run_modules_free()
 {
    if (insts_v.total != 0) {
-      instance_t *inst = NULL;
+      run_module_t *inst = NULL;
       FOR_EACH_IN_VEC(insts_v, inst) {
-         instance_free(inst);
+         run_module_free(inst);
       }
    }
    vector_free(&insts_v);
 }
 
-void instance_clear_socks(instance_t *inst)
+void run_module_clear_socks(run_module_t *inst)
 {
    // Clean inst's socket files
    char buffer[DEFAULT_SIZE_OF_BUFFER];
@@ -640,7 +664,7 @@ void instance_clear_socks(instance_t *inst)
       memset(buffer, 0, DEFAULT_SIZE_OF_BUFFER);
       sprintf(buffer, trap_default_socket_path_format,
               ifc->specific_params.nix->socket_name);
-      VERBOSE(V2, "Deleting socket %s of %s", buffer, instance_tree_path(inst))
+      VERBOSE(V2, "Deleting socket %s of %s", buffer, inst->name)
       unlink(buffer);
 
    }
@@ -650,12 +674,19 @@ void instance_clear_socks(instance_t *inst)
       memset(service_sock_spec, 0, 14 * sizeof(char));
       sprintf(service_sock_spec, "service_%d", inst->pid);
       sprintf(buffer, trap_default_socket_path_format, service_sock_spec);
-      VERBOSE(V2, "Deleting socket %s of %s", buffer, instance_tree_path(inst))
+      VERBOSE(V2, "Deleting socket %s of %s", buffer, inst->name)
       unlink(buffer);
    }
 }
 
-void instance_free(instance_t *inst)
+void av_module_free(av_module_t *mod)
+{
+   NULLP_TEST_AND_FREE(mod->path)
+   NULLP_TEST_AND_FREE(mod->name)
+   NULLP_TEST_AND_FREE(mod)
+}
+
+void run_module_free(run_module_t *inst)
 {
 
    // TODO where to release sockets for ifc stats???
@@ -671,7 +702,7 @@ void instance_free(instance_t *inst)
    NULLP_TEST_AND_FREE(inst)
 }
 
-void interfaces_free(instance_t *module)
+void interfaces_free(run_module_t *module)
 {
    interface_t *cur_ifc = NULL;
    vector_t *ifces_vec[2] = { &module->in_ifces, &module->out_ifces};
@@ -705,7 +736,7 @@ void interface_stats_free(interface_t *ifc)
    }
 }
 
-module_group_t * module_group_get_by_name(const char *name, uint32_t *index)
+/*module_group_t * module_group_get_by_name(const char *name, uint32_t *index)
 {
    uint32_t fi; // Index of found group
    module_group_t *group = NULL;
@@ -742,9 +773,9 @@ module_t * module_get_by_name(const char * name, uint32_t *index)
 
    // Module was not found
    return NULL;
-}
+}*/
 
-instance_t * instance_get_by_name(const char *name, uint32_t *index)
+/*instance_t * instance_get_by_name(const char *name, uint32_t *index)
 {
    uint32_t fi; // Index of found instance
    instance_t *inst = NULL;
@@ -762,16 +793,17 @@ instance_t * instance_get_by_name(const char *name, uint32_t *index)
 
    // Instance was not found
    return NULL;
-}
+}*/
 
+/*
 interface_t * interface_get_by_path(const tree_path_t *path)
 {
    interface_t *ifc;
-   instance_t *inst = NULL;
+   run_module_t *inst = NULL;
    FOR_EACH_IN_VEC(insts_v, inst) {
       if (strcmp(inst->name, path->inst) == 0) {
-         if (strcmp(inst->module->name, path->module) == 0) {
-            if (strcmp(inst->module->group->name, path->group) == 0) {
+         if (strcmp(inst->mod_kind->name, path->module) == 0) {
+            if (strcmp(inst->mod_kind->group->name, path->group) == 0) {
                ifc = NULL;
                FOR_EACH_IN_VEC(inst->in_ifces, ifc) {
                   if (strcmp(ifc->name, path->ifc) == 0) {
@@ -792,7 +824,6 @@ interface_t * interface_get_by_path(const tree_path_t *path)
 
    return NULL;
 }
-
 void module_group_clear(module_group_t *group)
 {
    NULLP_TEST_AND_FREE(group->name)
@@ -806,11 +837,11 @@ void module_clear(module_t *module)
    NULLP_TEST_AND_FREE(module->path)
    module->group = NULL;
 
-/*   instance_t *inst = NULL;
+*//*   instance_t *inst = NULL;
    FOR_EACH_IN_VEC(module->insts, inst) {
-      instance_free(inst);
+      run_module_free(inst);
    }
-   vector_free(&module->insts);*/
+   vector_free(&module->insts);*//*
 }
 
 void instance_clear(instance_t *inst)
@@ -838,7 +869,7 @@ void instance_clear(instance_t *inst)
       NULLP_TEST_AND_FREE(inst->exec_args)
    }
    interfaces_free(inst);
-}
+}*/
 
 static inline void free_interface_specific_params(interface_t *ifc)
 {
@@ -879,7 +910,7 @@ static inline void free_interface_specific_params(interface_t *ifc)
  * this is temporar since we want exec_args configuration straight from
  * <param><label>-o<label/><arg>1</arg><arg>33</arg></param>
  */
-int instance_gen_exec_args(instance_t *inst)
+int module_gen_exec_args(run_module_t *inst)
 {
 
    char **cfg_params = NULL; // All configured params but interface params
@@ -888,7 +919,7 @@ int instance_gen_exec_args(instance_t *inst)
    uint32_t module_params_num = 0;
    uint32_t exec_args_cnt = 2; // at least the name of the future process and terminating NULL pointer
    uint32_t exec_args_pos = 0;
-   int rc = 0; // Status of success for module_params_no_ifc_arr function
+   int rc = 0; // Status of success for module_params_to_ifc_arr function
    uint32_t total_ifc_cnt = inst->in_ifces.total + inst->out_ifces.total;
 
    // if the inst has trap interfaces, one argument for "-i" and one for interfaces specifier
@@ -898,7 +929,7 @@ int instance_gen_exec_args(instance_t *inst)
 
    //* if the inst has non-empty params, try to parse them *//*
    if (inst->params != NULL) {
-      cfg_params = module_params_no_ifc_arr(inst, &module_params_num, &rc);
+      cfg_params = module_params_to_ifc_arr(inst, &module_params_num, &rc);
       if (rc == -1) {
          VERBOSE(N_ERR, "Failed to parse inst params")
          return -1;
@@ -921,7 +952,7 @@ int instance_gen_exec_args(instance_t *inst)
    exec_args[exec_args_cnt - 1] = NULL;
    exec_args_pos = 1;
 
-   // copy already allocated inst params strings returned by module_params_no_ifc_arr function
+   // copy already allocated inst params strings returned by module_params_to_ifc_arr function
    if (cfg_params != NULL && module_params_num > 0) {
       for (int i = 0; i < module_params_num; i++) {
          exec_args[exec_args_pos] = cfg_params[i];
@@ -968,6 +999,7 @@ err_cleanup:
    return -1;
 }
 
+/*
 char * instance_tree_path(const instance_t * inst)
 {
 // Size for 3 names and slashes
@@ -983,12 +1015,13 @@ char * instance_tree_path(const instance_t * inst)
 
    return buffer;
 }
+*/
 
 /* --END superglobal fns-- */
 
 /* --BEGIN local fns-- */
 
-static inline char * module_get_ifcs_as_arg(instance_t *module)
+static inline char * module_get_ifcs_as_arg(run_module_t *module)
 {
    char *ifc_spec = NULL;
    char *new_ifc_spec = NULL;
@@ -1157,6 +1190,7 @@ char * strcat_many(uint8_t cnt, ...)
  * There is no need to distinguish IN/OUT type since there are values loaded only for
  * IN or only for OUT type.
  * */
+
 static char * tcp_ifc_to_cli_arg(const interface_t *ifc)
 {
    char *params = strdup("t"); // strdup used so that ifc_param_concat can be used
@@ -1177,7 +1211,6 @@ static char * tcp_ifc_to_cli_arg(const interface_t *ifc)
 
    return params;
 }
-
 static char * tcp_tls_ifc_to_cli_arg(const interface_t *ifc)
 {
 
@@ -1256,7 +1289,8 @@ static char * bh_ifc_to_cli_arg(const interface_t *ifc)
    return params;
 }
 
-static char **module_params_no_ifc_arr(const instance_t *module,
+
+static char **module_params_to_ifc_arr(const run_module_t *module,
                                        uint32_t *params_num,
                                        int *rc)
 {
@@ -1289,7 +1323,7 @@ static char **module_params_no_ifc_arr(const instance_t *module,
 
    for (x = 0; x < params_len; x++) {
       switch(module->params[x]) {
-         /* parameter in apostrophes */
+         // parameter in apostrophes
          case '\'':
          {
             if (act_param_len > 0) { // check whether the ''' character is not in the middle of the word
@@ -1316,7 +1350,7 @@ static char **module_params_no_ifc_arr(const instance_t *module,
             break;
          }
 
-         /* parameter in quotes */
+         // parameter in quotes
          case '\"':
          {
             if (act_param_len > 0) { // check whether the '"' character is not in the middle of the word
@@ -1346,7 +1380,7 @@ static char **module_params_no_ifc_arr(const instance_t *module,
             break;
          }
 
-         /* parameter delimiter */
+         // parameter delimiter
          case ' ':
          {
             if (act_param_len == 0) {
@@ -1368,7 +1402,7 @@ static char **module_params_no_ifc_arr(const instance_t *module,
             break;
          }
 
-         /* adding one character to parameter out of quotes and apostrophes */
+         // adding one character to parameter out of quotes and apostrophes
          default:
          {
             buffer[act_param_len] = module->params[x];

@@ -425,7 +425,7 @@ void terminate_supervisor(bool should_terminate_insts)
    }
 
    VERBOSE(V3, "Freeing instances vector")
-   instances_free();
+   run_modules_free();
    VERBOSE(V3, "Freeing modules vector")
    modules_free();
    VERBOSE(V3, "Freeing groups vector")

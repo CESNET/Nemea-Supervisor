@@ -88,19 +88,19 @@ extern const char * ns_root_sr_path;
  * @param sess Sysrepo session to use
  * @param group Module group structure to load configuration data to
  * @param node First of leaves or nodes of loaded group.
- * */
+ * *//*
 static int module_group_load(sr_session_ctx_t *sess,
                              module_group_t *group,
                              sr_node_t *node);
 
-/**
+*//**
  * TODO
- * */
+ * *//*
 static int module_load(sr_session_ctx_t *sess,
                        module_t *mod,
                        module_group_t *grp,
                        sr_node_t *node);
-/**
+*//**
  * @brief Same thing as load_module_group but for modules.
  * @details On top of the same functionality as load_module_group but for modules,
  *  it links new module to group given by parameter group. Parses module container
@@ -110,9 +110,11 @@ static int module_load(sr_session_ctx_t *sess,
  * @param inst Module structure to load configuration to
  * @param node First of leaves or nodes of loaded module.
  * @param mod Group to which new module will be linked.
- * */
-static int instance_load(sr_session_ctx_t *sess, instance_t *inst, module_t *mod,
-                         sr_node_t *node);
+ * *//*
+static int run_module_load(sr_session_ctx_t *sess, instance_t *inst, module_t *mod,
+                         sr_node_t *node);*/
+
+static int av_module_load(av_module_t *amod, sr_node_t *node);
 
 /**
  * @brief Loads new interface_t and if successful assigns it to given module.
@@ -121,7 +123,7 @@ static int instance_load(sr_session_ctx_t *sess, instance_t *inst, module_t *mod
  * @param node
  * @param inst Module to which the new interface belongs to.
  * */
-static int interface_load(sr_node_t *node, instance_t *inst);
+static int interface_load(sr_node_t *node, run_module_t *inst);
 
 /**
  * TODO
@@ -153,7 +155,7 @@ static inline int interface_file_params_load(sr_node_t *node, interface_t *ifc);
  * @param sess Sysrepo session to use for last_pid node removal
  * */
 static void instance_pid_restore(pid_t last_pid,
-                                 instance_t *inst,
+                                 run_module_t *inst,
                                  sr_session_ctx_t *sess);
 
 /* --END full fns prototypes-- */
@@ -166,8 +168,9 @@ int ns_config_load(sr_session_ctx_t *sess)
    int rc;
    sr_node_t *tree = NULL;
    sr_node_t *node = NULL;
+   char * av_mods_xpath = "/nemea:nemea-supervisor/available-modules";
 
-   rc = sr_get_subtree(sess, ns_root_sr_path, SR_GET_SUBTREE_DEFAULT, &tree);
+   rc = sr_get_subtree(sess, av_mods_xpath, SR_GET_SUBTREE_DEFAULT, &tree);
 
    if (rc != SR_ERR_OK) {
       VERBOSE(N_ERR, "Failed to fetch sysrepo config tree: %s", sr_strerror(rc))
@@ -177,7 +180,6 @@ int ns_config_load(sr_session_ctx_t *sess)
 
    node = tree;
 
-   //init_if_node_loop_iter, not needed this time
    // Root level
    if (node->first_child == NULL) {
       VERBOSE(N_ERR, "Empty nemea config tree")
@@ -185,7 +187,7 @@ int ns_config_load(sr_session_ctx_t *sess)
       return -1;
    }
 
-   // Descend from root to module groups root level
+/*   // Descend from root to module groups root level
    node = node->first_child;
 
    // Module group roots level
@@ -197,14 +199,14 @@ int ns_config_load(sr_session_ctx_t *sess)
          }
       }
       node = node->next;
-   }
+   }*/
 
    sr_free_tree(tree);
 
    return 0;
 }
 
-int module_group_load_by_name(sr_session_ctx_t *sess, const char *name)
+/*int module_group_load_by_name(sr_session_ctx_t *sess, const char *name)
 {
 
    int rc;
@@ -236,9 +238,9 @@ int module_group_load_by_name(sr_session_ctx_t *sess, const char *name)
    }
 
    return SR_ERR_OK;
-}
+}*/
 
-int module_load_by_name(sr_session_ctx_t *sess,
+/*int module_load_by_name(sr_session_ctx_t *sess,
                         const char *group_name,
                         const char *module_name)
 {
@@ -286,9 +288,9 @@ int module_load_by_name(sr_session_ctx_t *sess,
    }
 
    return SR_ERR_OK;
-}
+}*/
 
-int instance_load_by_name(sr_session_ctx_t *sess,
+/*int instance_load_by_name(sr_session_ctx_t *sess,
                         const char *group_name,
                         const char *module_name,
                           const char *inst_name)
@@ -330,7 +332,7 @@ int instance_load_by_name(sr_session_ctx_t *sess,
       return SR_ERR_DATA_MISSING;
    }
 
-   rc = instance_load(sess, NULL, module, node->first_child);
+   rc = run_module_load(sess, NULL, module, node->first_child);
    sr_free_tree(node);
 
    if (rc != 0) {
@@ -341,7 +343,7 @@ int instance_load_by_name(sr_session_ctx_t *sess,
 
    return SR_ERR_OK;
 
-}
+}*/
 /* --END superglobal fns-- */
 
 /* --BEGIN local fns-- */
@@ -411,7 +413,7 @@ err_cleanup:
    return rc;
 }*/
 
-static int module_group_load(sr_session_ctx_t *sess,
+/*static int module_group_load(sr_session_ctx_t *sess,
                              module_group_t *group,
                              sr_node_t *node)
 {
@@ -469,7 +471,7 @@ static int module_load(sr_session_ctx_t *sess,
       if_node_fetch_str(node, "path", mod->path)
 
       if (strcmp(node->name, "instance") == 0 && node->first_child != NULL) {
-         rc = instance_load(sess, NULL, mod, node->first_child);
+         rc = run_module_load(sess, NULL, mod, node->first_child);
          if (rc != 0) {
             module_remove_by_name(mod->name);
             module_free(mod);
@@ -482,21 +484,18 @@ static int module_load(sr_session_ctx_t *sess,
 
    return 0;
 }
-
-static int instance_load(sr_session_ctx_t *sess,
-                         instance_t *inst,
-                         module_t *mod,
-                         sr_node_t *node)
+*/
+static int run_module_load(sr_session_ctx_t *sess, run_module_t *inst, sr_node_t *node)
 {
    int rc;
    pid_t last_pid = 0;
+   char *mod_kind = NULL;
 
    if (inst == NULL) {
-      inst = instance_alloc();
+      inst = run_module_alloc();
       IF_NO_MEM_INT_ERR(inst)
 
-      inst->module = mod;
-      if (instance_add(inst) != 0) {
+      if (vector_add(&modz_v, inst) != 0) {
          NO_MEM_ERR
          return -1;
       }
@@ -504,36 +503,85 @@ static int instance_load(sr_session_ctx_t *sess,
 
    while (node != NULL) {
       if_node_fetch_str(node, "name", inst->name)
-      if_node_fetch_str(node, "params", inst->params)
+      if_node_fetch_str(node, "module-kind", mod_kind)
       if_node_fetch_bool(node, "enabled", inst->enabled)
       if_node_fetch_uint8(node, "max-restarts-per-min", inst->max_restarts_minute)
+      if_node_fetch_str(node, "params", inst->params)
       if_node_fetch_uint32(node, "last-pid", last_pid)
 
+/*
       if (strcmp(node->name, "interface") == 0 && node->first_child != NULL) {
          rc = interface_load(node->first_child, inst);
          // TODO rc error handling
       }
+*/
 
       node = node->next;
    }
 
-   rc = instance_gen_exec_args(inst);
+   rc = module_gen_exec_args(inst);
    if (rc != 0) {
       /* hopefully this would be removed in the future due to sysrepo per
        * module configuration */
       VERBOSE(N_ERR, "Failed to prepare exec_args")
+      NULLP_TEST_AND_FREE(mod_kind)
       return -1;
    }
 
+   if (mod_kind == NULL) {
+      VERBOSE(N_ERR, "Module kind failed to load")
+      NULLP_TEST_AND_FREE(mod_kind)
+      return -1;
+   } else {
+      av_module_t *amod = NULL;
+      FOR_EACH_IN_VEC(avmods_v, amod) {
+         if (strcmp(amod->name, mod_kind) == 0) {
+            inst->mod_kind = amod;
+            NULLP_TEST_AND_FREE(mod_kind)
+            break;
+         }
+      }
+      if (inst->mod_kind == NULL) {
+         VERBOSE(N_ERR, "Specified module kind '%s' was not find in "
+               "loaded available modules", mod_kind)
+         NULLP_TEST_AND_FREE(mod_kind)
+         return -1;
+      }
+   }
+
    if (last_pid > 0) {
-      VERBOSE(V3, "Restoring PID=%d for (%s)", last_pid, instance_tree_path(inst))
-      instance_pid_restore(last_pid, inst, sess);
+      VERBOSE(V3, "Restoring PID=%d for %s", last_pid, inst->name)
+      //instance_pid_restore(last_pid, inst, sess);
    }
 
    return 0;
 }
 
-static int interface_load(sr_node_t *node, instance_t *inst)
+static int av_module_load(av_module_t *amod, sr_node_t *node)
+{
+   if (amod == NULL) {
+      amod = av_module_alloc();
+      IF_NO_MEM_INT_ERR(amod)
+
+      if (vector_add(&avmods_v, amod) != 0) {
+         NO_MEM_ERR
+         return -1;
+      }
+   }
+
+   while (node != NULL) {
+      if_node_fetch_str(node, "name", amod->name)
+      if_node_fetch_str(node, "path", amod->path)
+      if_node_fetch_bool(node, "is-nemea-module", amod->is_nemea)
+      if_node_fetch_bool(node, "is-sysrepo-ready", amod->is_sr_en)
+
+      node = node->next;
+   }
+
+   return 0;
+}
+
+static int interface_load(sr_node_t *node, run_module_t *inst)
 {
    sr_node_t *node_iter;
    interface_t *ifc;
@@ -610,7 +658,7 @@ static int interface_load(sr_node_t *node, instance_t *inst)
       return -1; // TODO cleanup???
    }
 
-   if (instance_interface_add(inst, ifc) != 0) {
+   if (run_module_interface_add(inst, ifc) != 0) {
       NO_MEM_ERR
       return -1;
    }
@@ -668,7 +716,8 @@ static inline int interface_file_params_load(sr_node_t *node, interface_t *ifc)
    return 0;
 }
 
-static void instance_pid_restore(pid_t last_pid, instance_t *inst, sr_session_ctx_t *sess)
+/*static void instance_pid_restore(pid_t last_pid, run_module_t *inst,
+                                 sr_session_ctx_t *sess)
 {
    int rc;
    //pid_t result;
@@ -704,8 +753,8 @@ static void instance_pid_restore(pid_t last_pid, instance_t *inst, sr_session_ct
    goto clean_pid;
 
 clean_pid:
-   /* Try to remove last_pid node from sysrepo but we don't really
-    *  care if it fails */
+   *//* Try to remove last_pid node from sysrepo but we don't really
+    *  care if it fails *//*
    pid_xpath_len = strlen(ns_root_sr_path)
                    + strlen(inst->module->group->name)
                    + strlen(inst->module->name)
@@ -724,5 +773,5 @@ clean_pid:
       }
       NULLP_TEST_AND_FREE(pid_xpath)
    }
-}
+}*/
 /* --END local fns-- */

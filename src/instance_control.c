@@ -159,8 +159,8 @@ void instance_stop_remove_by_name(const char *name)
       kill(inst->pid, SIGKILL);
    }
 
-   instance_remove_at(fi);
-   instance_free(inst);
+   run_module_remove_at(fi);
+   run_module_free(inst);
 }
 
 void insts_terminate()
@@ -249,14 +249,14 @@ static void clean_after_children()
                        instance_tree_path(inst))
                inst->should_die = true;
                //inst->running = false;
-               instance_clear_socks(inst);
+               run_module_clear_socks(inst);
                break;
 
             default: // Module is not running
                VERBOSE(V2, "Instance %s is not running %d", instance_tree_path(inst), result)
                inst->should_die = true;
                //inst->running = false;
-               instance_clear_socks(inst);
+               run_module_clear_socks(inst);
          }
       }
    }

@@ -68,7 +68,7 @@ void test_insts_save_running_pids(void **state)
       mod->group = grp;
    }
    { // Fake loaded instance
-      inst = instance_alloc();
+      inst = run_module_alloc();
       IF_NO_MEM_FAIL(inst)
       inst->name = "inst1";
       inst->running = true;

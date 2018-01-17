@@ -14,10 +14,10 @@
 ///////////////////////////HELPERS
 
 
-static void alloc_module_and_ifc(instance_t **module, interface_t **ifc)
+static void alloc_module_and_ifc(run_module_t **module, interface_t **ifc)
 {
 
-   instance_t *test_module = instance_alloc();
+   run_module_t *test_module = run_module_alloc();
    if (test_module == NULL) { fail_msg("Failed to allocate tests module."); }
    test_module->name = strdup("tests-module");
    if (test_module->name == NULL) { fail_msg("Failed to allocate tests module name."); }
@@ -87,24 +87,24 @@ static interface_t * get_test_ifc(interface_dir_t dir,
 static void test_module_load_exec_args(void **state)
 {
    interface_t *ifc;
-   module_t *mod = module_alloc();
+   av_module_t *mod = av_module_alloc();
    IF_NO_MEM_FAIL_MSG(mod, "fialed to allocate module struct")
 
-   instance_t *inst = instance_alloc();
+   run_module_t *inst = run_module_alloc();
    IF_NO_MEM_FAIL_MSG(inst, "tests module")
-   inst->module = mod;
+   inst->mod_kind = mod;
 
    inst->name = strdup("tests-module");
    IF_NO_MEM_FAIL_MSG(inst->name, "inst->name")
    inst->params = strdup("-p1 -p2 --p3 p4");
    IF_NO_MEM_FAIL_MSG(inst->params, "inst->params")
-   inst->module->path = strdup("./intable_module");
-   IF_NO_MEM_FAIL_MSG(inst->module->path, "inst->module->path")
+   inst->mod_kind->path = strdup("./intable_module");
+   IF_NO_MEM_FAIL_MSG(inst->mod_kind->path, "inst->module->path")
 
    ifc = get_test_ifc(NS_IF_DIR_OUT, NS_IF_TYPE_TCP, 1);
-   instance_interface_add(inst, ifc);
+   run_module_interface_add(inst, ifc);
 
-   assert_int_equal(instance_gen_exec_args(inst), 0);
+   assert_int_equal(module_gen_exec_args(inst), 0);
    assert_non_null(inst->exec_args);
    assert_string_equal(inst->exec_args[0], inst->name);
    assert_string_equal(inst->exec_args[1], "-p1");
@@ -121,8 +121,8 @@ static void test_module_load_exec_args(void **state)
 
 
    ifc = get_test_ifc(NS_IF_DIR_IN, NS_IF_TYPE_UNIX, 2);
-   instance_interface_add(inst, ifc);
-   assert_int_equal(instance_gen_exec_args(inst), 0);
+   run_module_interface_add(inst, ifc);
+   assert_int_equal(module_gen_exec_args(inst), 0);
    assert_non_null(inst->exec_args);
    assert_string_equal(inst->exec_args[0], inst->name);
    assert_string_equal(inst->exec_args[1], "-p1");
@@ -139,15 +139,15 @@ static void test_module_load_exec_args(void **state)
 
 
    NULLP_TEST_AND_FREE(inst->params)
-   assert_int_equal(instance_gen_exec_args(inst), 0);
+   assert_int_equal(module_gen_exec_args(inst), 0);
    assert_non_null(inst->exec_args);
    assert_string_equal(inst->exec_args[0], inst->name);
    assert_string_equal(inst->exec_args[1], "-i");
    assert_string_equal(inst->exec_args[2], "u:sock_2,t:192.168.0.1:1");
    assert_null(inst->exec_args[3]);
 
-   module_free(mod);
-   instance_free(inst);
+   av_module_free(mod);
+   run_module_free(inst);
 }
 
 static void test_module_params_no_ifc_arr(void **state)
@@ -155,19 +155,19 @@ static void test_module_params_no_ifc_arr(void **state)
    int rc;
    uint32_t params_num;
    char **parsed_params;
-   instance_t *m1 = instance_alloc();
+   run_module_t *m1 = run_module_alloc();
    if (m1 == NULL) { fail_msg("Failed to allocate new module."); }
    m1->name = "tests-module";
    m1->params = "-vvv";
 
-   parsed_params = module_params_no_ifc_arr(m1, &params_num, &rc);
+   parsed_params = module_params_to_ifc_arr(m1, &params_num, &rc);
    assert_int_equal(rc, 0);
    assert_int_equal(params_num, 1);
    assert_string_equal(parsed_params[0], m1->params);
    assert_null(parsed_params[params_num]);
 
    m1->params = "-v v xxv tt rr -vv --yyy";
-   parsed_params = module_params_no_ifc_arr(m1, &params_num, &rc);
+   parsed_params = module_params_to_ifc_arr(m1, &params_num, &rc);
    assert_int_equal(rc, 0);
    assert_int_equal(params_num, 7);
    assert_string_equal(parsed_params[0], "-v");
@@ -182,36 +182,36 @@ static void test_module_params_no_ifc_arr(void **state)
 
 static void test_module_get_ifcs_as_arg(void **state)
 {
-   instance_t *mod;
+   run_module_t *mod;
    interface_t *ifc;
    char *params;
 
-   mod = instance_alloc();
+   mod = run_module_alloc();
    IF_NO_MEM_FAIL_MSG(mod, "mod");
 
    ifc = get_test_ifc(NS_IF_DIR_IN, NS_IF_TYPE_TCP, 1);
-   instance_interface_add(mod, ifc);
+   run_module_interface_add(mod, ifc);
    params = module_get_ifcs_as_arg(mod);
    assert_non_null(params);
    assert_string_equal(params, "t:1");
    free(params);
 
    ifc = get_test_ifc(NS_IF_DIR_OUT, NS_IF_TYPE_UNIX, 2);
-   instance_interface_add(mod, ifc);
+   run_module_interface_add(mod, ifc);
    params = module_get_ifcs_as_arg(mod);
    assert_non_null(params);
    assert_string_equal(params, "t:1,u:sock_2:123");
    free(params);
 
    ifc = get_test_ifc(NS_IF_DIR_IN, NS_IF_TYPE_UNIX, 3);
-   instance_interface_add(mod, ifc);
+   run_module_interface_add(mod, ifc);
    params = module_get_ifcs_as_arg(mod);
    assert_non_null(params);
    assert_string_equal(params, "t:1,u:sock_3,u:sock_2:123");
    free(params);
 
    ifc = get_test_ifc(NS_IF_DIR_OUT, NS_IF_TYPE_TCP, 4);
-   instance_interface_add(mod, ifc);
+   run_module_interface_add(mod, ifc);
    params = module_get_ifcs_as_arg(mod);
    assert_non_null(params);
    assert_string_equal(params, "t:1,u:sock_3,u:sock_2:123,t:192.168.0.1:4");
@@ -230,12 +230,12 @@ static void test_module_get_ifcs_as_arg(void **state)
                              "buffer=on:autoflush=off:timeout=HALF_WAIT");
    free(params);
 
-   instance_free(mod);
+   run_module_free(mod);
 }
 
 static void test_tcp_ifc_to_cli_arg(void **state)
 {
-   instance_t *mod;
+   run_module_t *mod;
    interface_t *ifc;
    char * params;
 
@@ -260,14 +260,14 @@ static void test_tcp_ifc_to_cli_arg(void **state)
    assert_non_null(params);
    assert_string_equal(params, "t:192.168.0.1:1111:123");
 
-   instance_free(mod);
+   run_module_free(mod);
    free_interface_specific_params(ifc);
    NULLP_TEST_AND_FREE(ifc);
 }
 
 static void test_tcp_tls_ifc_to_cli_arg(void **state)
 {
-   instance_t *mod;
+   run_module_t *mod;
    interface_t *ifc;
    char * params;
 
@@ -299,13 +299,13 @@ static void test_tcp_tls_ifc_to_cli_arg(void **state)
    assert_non_null(params);
    assert_string_equal(params, "T:host.com:1111:123:/key/path:/cert/path:/ca/path");
 
-   instance_free(mod);
+   run_module_free(mod);
    free_interface_specific_params(ifc);
 }
 
 static void test_unix_ifc_to_cli_arg(void **state)
 {
-   instance_t *mod;
+   run_module_t *mod;
    interface_t *ifc;
    char * params;
 
@@ -324,13 +324,13 @@ static void test_unix_ifc_to_cli_arg(void **state)
    assert_non_null(params);
    assert_string_equal(params, "u:socket_name:123");
 
-   instance_free(mod);
+   run_module_free(mod);
    free_interface_specific_params(ifc);
 }
 
 static void test_file_ifc_to_cli_arg(void **state)
 {
-   instance_t *mod;
+   run_module_t *mod;
    interface_t *ifc;
    char * params;
 
@@ -360,13 +360,13 @@ static void test_file_ifc_to_cli_arg(void **state)
    assert_non_null(params);
    assert_string_equal(params, "f:/file/path:a:223:123");
 
-   instance_free(mod);
+   run_module_free(mod);
    free_interface_specific_params(ifc);
 }
 
 static void test_bh_ifc_to_cli_arg(void **state)
 {
-   instance_t *mod;
+   run_module_t *mod;
    interface_t *ifc;
    alloc_module_and_ifc(&mod, &ifc);
    ifc->type = NS_IF_TYPE_BH;
@@ -376,7 +376,7 @@ static void test_bh_ifc_to_cli_arg(void **state)
    assert_non_null(params);
    assert_string_equal(params, "b");
 
-   instance_free(mod);
+   run_module_free(mod);
    free_interface_specific_params(ifc);
 }
 

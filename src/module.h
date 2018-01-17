@@ -171,6 +171,7 @@ typedef struct interface_s {
                 ///<  this is in/out iface
 } interface_t;
 
+/*
 typedef struct module_group_s {
    char *name; ///< Name of module group
    //uint16_t mods_cnt; ///< Number of owned modules
@@ -208,11 +209,11 @@ typedef struct instance_s {
                      ///<  ["module_name", "-a", "blah", NULL]
 
 
-   //TODO int module_served_by_service_thread; ///< TRUE if module was added to graph struct by sevice thread, FALSE on start.   /*** RELOAD ***/
+   //TODO int module_served_by_service_thread; ///< TRUE if module was added to graph struct by sevice thread, FALSE on start.
    //TODO uint8_t module_modified_by_reload; ///< Variable used during reload_configuration, TRUE if already loaded module is changed by reload, else FALSE
    //TODO uint8_t module_checked_by_reload; ///< Variable used during reload_configuration, TRUE if a new module is added or already loaded module is checked (used for excluding modules_ll with non-unique name)
    module_t *module; ///< Module to which this instance bellongs to
-   //TODO int module_is_my_child;   /*** RELOAD ***/
+   //TODO int module_is_my_child;
    bool root_perm_needed; ///< Does module require root permissions? TODO what for??
    //TODO int remove_module; // resi jestli se ma modul odstranit, protoze neni v novy konfiguraci
    //TODO int init_module;   // resi jestli se ma modul znovu nastavit kvuli novy konfiguraci
@@ -240,14 +241,81 @@ typedef struct instance_s {
                                     ///<  connect each NUM_SERVICE_IFC_PERIOD
    //TODO dunno what for bool has_service_ifc; ///< Indicator of whether module has service interface (socket)
 } instance_t;
+*/
+
+typedef struct av_module_s {
+   char * name;
+   char * path;
+   bool is_sr_en;
+   bool is_nemea;
+} av_module_t;
+
+typedef struct run_module_s {
+   vector_t in_ifces; ///< Vector of IN interfaces
+   vector_t out_ifces; ///< Vector of OUT interfaces
+
+   // These were used as arrays, i'm placing this inside each interface
+   //ifc_in_stats_t *in_ifces_data;  ///< Contains statistics about all input interfaces
+   ///<  the module is running with (size of total_in_ifces_cnt)
+   //ifc_out_stats_t *out_ifces_data;  ///< Contains statistics about all output interfaces
+   ///<  the module is running with (size of total_out_ifces_cnt)
+
+   //uint32_t ifces_cnt;  ///< Number of interfaces loaded from the configuration file.
+   //TODO uint32_t config_ifces_arr_size;  ///< Size of allocated array for interfaces loaded from the configuration file (array "config_ifces").
+
+
+   bool enabled; ///< Specifies whether module is enabled.
+   bool is_my_child; ///< Specifies whether supervisor started this module.
+   char *name; ///< Module name (loaded from config file).
+   char *params; ///< Module parameter (loaded from config file).
+   char **exec_args; ///< Array of arguments to execv function. Module name at first
+                     ///<  place inside the array and NULL at the last, e.g.
+                     ///<  ["module_name", "-a", "blah", NULL]
+
+
+   //TODO int module_served_by_service_thread; ///< TRUE if module was added to graph struct by sevice thread, FALSE on start.
+   //TODO uint8_t module_modified_by_reload; ///< Variable used during reload_configuration, TRUE if already loaded module is changed by reload, else FALSE
+   //TODO uint8_t module_checked_by_reload; ///< Variable used during reload_configuration, TRUE if a new module is added or already loaded module is checked (used for excluding modules_ll with non-unique name)
+   av_module_t *mod_kind; ///< Module executable of this process
+   //TODO int module_is_my_child;
+   bool root_perm_needed; ///< Does module require root permissions? TODO what for??
+   //TODO int remove_module; // resi jestli se ma modul odstranit, protoze neni v novy konfiguraci
+   //TODO int init_module;   // resi jestli se ma modul znovu nastavit kvuli novy konfiguraci
+
+   bool running; ///< Is module running?
+   bool should_die; ///< Whether instance is marked for kill
+   bool sigint_sent; ///< Specifies whether SIGKILL was sent to module.
+   pid_t pid; ///< Module process PID.
+   uint8_t restarts_cnt; ///< Number of attempts at starting the module in last
+                         ///<  minute from restarts_timer
+   uint8_t max_restarts_minute; ///< Maximum number of restarts per minute
+   time_t restart_time; ///< Time used for monitoring max number of restarts/minute.
+
+   uint64_t mem_vms;  ///< Loaded from /proc/PID/stat in B
+   uint64_t mem_rss;  ///< Loaded from /proc/PID/status in kB
+   uint64_t last_cpu_perc_kmode; ///< Percentage of CPU usage in last period in kernel mode.
+   uint64_t last_cpu_kmode; ///< CPU usage in last period in kernel mode.
+   uint64_t last_cpu_perc_umode; ///< Percentage of CPU usage in last period in user mode.
+   uint64_t last_cpu_umode; ///< CPU usage in last period in user mode.
+
+   int service_sd; ///< Socket descriptor of the service connection or -1 if not set
+   bool service_ifc_connected; ///< Is supervisor connected to module?
+   uint64_t service_ifc_conn_timer; ///< Indicator of whether to attempt to connect to service ifc.
+   ///<  Gets incremented once every supervisor_routine loop to
+   ///<  connect each NUM_SERVICE_IFC_PERIOD
+   //TODO dunno what for bool has_service_ifc; ///< Indicator of whether module has service interface (socket)
+} run_module_t;
 /*--END superglobal typedef--*/
 
 /*--BEGIN superglobal vars--*/
 extern pthread_mutex_t config_lock;
-
+/*
 extern vector_t insts_v; ///< Vector of loaded module instances
 extern vector_t mods_v; ///< Vector of loaded modules
-extern vector_t mgrps_v; ///< Vector of loaded module groups
+extern vector_t mgrps_v; ///< Vector of loaded module groups*/
+
+extern vector_t avmods_v;
+extern vector_t modz_v;
 
 /*--END superglobal vars--*/
 
@@ -256,7 +324,7 @@ extern vector_t mgrps_v; ///< Vector of loaded module groups
 /**
  * TODO
  * */
-int module_group_add(module_group_t *group);
+//int module_group_add(module_group_t *group);
 
 /**
  * TODO
@@ -271,7 +339,7 @@ void module_group_remove_by_name(const char * name);
 /**
  * TODO
  * */
-int module_add(module_t *mod);
+//int module_add(module_t *mod);
 
 /**
  * TODO
@@ -286,12 +354,16 @@ void module_remove_by_name(const char * name);
 /**
  * TODO
  * */
-int instance_add(instance_t *inst);
+//int instance_add(instance_t *inst);
 
 /**
  * TODO
  * */
-void instance_remove_at(uint32_t index);
+void av_module_remove_at(uint32_t index);
+/**
+ * TODO
+ * */
+void run_module_remove_at(uint32_t index);
 
 /**
  * TODO
@@ -299,21 +371,21 @@ void instance_remove_at(uint32_t index);
 void instance_remove_by_name(const char * name);
 
 // TODO
-int instance_interface_add(instance_t *inst, interface_t *ifc);
+int run_module_interface_add(run_module_t *mod, interface_t *ifc);
 
 /**
  * TODO
  * */
-extern void print_module_group(const module_group_t *);
+//extern void print_module_group(const module_group_t *);
 
 /**
  * TODO
  * */
-extern void print_module(const module_t *mod);
+//extern void print_module(const module_t *mod);
 /**
  * TODO
  * */
-extern void print_instance(instance_t *);
+//extern void print_instance(instance_t *);
 
 /**
  * TODO
@@ -331,12 +403,12 @@ extern void module_groups_free();
 /**
  * TODO
  * */
-extern void module_group_free(module_group_t *group);
+//extern void module_group_free(module_group_t *group);
 
 /**
  * TODO
  * */
-extern void module_free(module_t *module);
+//extern void module_free(module_t *module);
 
 /**
  * TODO
@@ -349,39 +421,44 @@ extern void modules_free();
  * @param module_ll_head First node from which the rest of the linked list is
  *  going to be freed
  * */
-extern void instances_free();
+extern void run_modules_free();
 
 // TODO
-extern void instance_free(instance_t *inst);
+extern void run_module_free(run_module_t *inst);
+
+// TODO
+extern void av_module_free(av_module_t *mod);
 
 /**
  * @brief Frees and NULLs all interfaces of given module
  * @param module Pointer to module which interfaces are going to be freed.
  * */
-extern void interfaces_free(instance_t *module);
+extern void interfaces_free(run_module_t *module);
 
 /**
  * TODO
  * */
 extern void interface_stats_free(interface_t *ifc);
 
+
+av_module_t * av_module_alloc();
 /**
  * @brief Dynamically allocates new module_t structure and fills it with default values.
  * @return Pointer to newly allocated module or NULL on failure
  * */
-extern instance_t * instance_alloc();
+extern run_module_t * run_module_alloc();
 
 /**
  * TOOD
  * */
-extern module_t * module_alloc();
+//extern module_t * module_alloc();
 
 /**
  * @brief Dynamically allocates new module_group_t structure and fills it with
  *  default values.
  * @return Pointer to newly allocated module group or NULL on failure
  * */
-extern module_group_t * module_group_alloc();
+//extern module_group_t * module_group_alloc();
 
 /**
  * TODO
@@ -403,17 +480,17 @@ extern int interface_specific_params_alloc(interface_t *ifc);
  * @param inst Module for which exec_args should be loaded.
  * @return TODO status
  * */
-extern int instance_gen_exec_args(instance_t *inst);
+extern int module_gen_exec_args(run_module_t *inst);
 
 /**
  * TODO
  * */
-extern module_group_t * module_group_get_by_name(const char *name, uint32_t *index);
+//extern module_group_t * module_group_get_by_name(const char *name, uint32_t *index);
 
 /**
  * TODO
  * */
-extern module_t * module_get_by_name(const char * name, uint32_t *index);
+//extern module_t * module_get_by_name(const char * name, uint32_t *index);
 
 /**
  * @brief Finds module by it's name inside mods_v and fills it's index inside
@@ -422,29 +499,29 @@ extern module_t * module_get_by_name(const char * name, uint32_t *index);
  * @param index Found index inside mods_v vector. It's not filled if module is not found.
  * @return Pointer to found module or NULL if not found.
  * */
-extern instance_t * instance_get_by_name(const char *name, uint32_t *index);
+//extern instance_t * instance_get_by_name(const char *name, uint32_t *index);
 
 /**
  * @brief Frees all allocated memory within group and resets values to
  *  default.
  * @param group Module group to clear.
  * */
-extern void module_group_clear(module_group_t *group);
+//extern void module_group_clear(module_group_t *group);
 
 /**
  * @brief Frees all allocated memory within module and resets values to
  *  default while keeping stats.
  * @param inst Module to clear
  * */
-extern void instance_clear(instance_t *inst);
+//extern void instance_clear(instance_t *inst);
 
 /**
  * @brief Clear UNIX socket files left after killed module.
  * @param inst Module after which the socket files should be cleaned.
  * */
-extern void instance_clear_socks(instance_t *inst);
+extern void run_module_clear_socks(run_module_t *inst);
 
-extern char * instance_tree_path(const instance_t * inst);
+//extern char * instance_tree_path(const instance_t * inst);
 
 /**
  * TODO
