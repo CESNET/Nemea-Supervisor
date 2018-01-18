@@ -1,0 +1,85 @@
+<supervisor xmlns="urn:ietf:params:xml:ns:yang:nemea-test-1">
+  <available-module>
+    <name>module A</name>
+    <path>/a/a</path>
+    <description>aaaaaa</description>
+    <is-nemea-module>true</is-nemea-module>
+    <is-sysrepo-ready>false</is-sysrepo-ready>
+  </available-module>
+
+  <available-module>
+    <name>module B</name>
+    <path>/a/b</path>
+    <description>bbbbbbbbb</description>
+    <is-nemea-module>false</is-nemea-module>
+    <is-sysrepo-ready>false</is-sysrepo-ready>
+  </available-module>
+
+  <module>
+    <name>intable_module</name>
+    <module-kind>module A</module-kind>
+    <enabled>true</enabled>
+    <max-restarts-per-min>4</max-restarts-per-min>
+    <last-pid>123</last-pid>
+    <interface>
+      <name>tcp-out</name>
+      <type>TCP</type>
+      <direction>OUT</direction>
+      <timeout>HALF_WAIT</timeout>
+      <buffer>on</buffer>
+      <autoflush>off</autoflush>
+      <tcp-params>
+        <port>8989</port>
+        <max-clients>2</max-clients>
+      </tcp-params>
+    </interface>
+
+    <interface>
+      <name>tcp-tls-out</name>
+      <type>TCP-TLS</type>
+      <direction>OUT</direction>
+      <timeout>NO_WAIT</timeout>
+      <buffer>off</buffer>
+      <autoflush>123</autoflush>
+      <tcp-tls-params>
+        <port>3332</port>
+        <keyfile>/a/b</keyfile>
+        <certfile>/a/b/c</certfile>
+        <cafile>/a/b/c/d</cafile>
+      </tcp-tls-params>
+    </interface>
+
+    <interface>
+      <name>unix-out</name>
+      <type>UNIXSOCKET</type>
+      <direction>OUT</direction>
+      <timeout>12312</timeout>
+      <autoflush>999</autoflush>
+      <unix-params>
+        <socket-name>socket-name</socket-name>
+        <max-clients>333</max-clients>
+      </unix-params>
+    </interface>
+
+    <interface>
+      <name>file-out</name>
+      <type>FILE</type>
+      <direction>OUT</direction>
+      <file-params>
+        <name>filename</name>
+        <mode>a</mode>
+        <time>444</time>
+        <size>555</size>
+      </file-params>
+    </interface>
+
+    <interface>
+      <name>bh-out</name>
+      <type>BLACKHOLE</type>
+      <direction>OUT</direction>
+      <buffer>off</buffer>
+    </interface>
+  </module>
+
+    <!-- same as intable_module above but without last-pid -->
+</supervisor>

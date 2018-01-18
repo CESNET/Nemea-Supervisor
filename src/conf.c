@@ -10,6 +10,8 @@ extern const char * ns_root_sr_path;
 
 /*--BEGIN local #define--*/
 
+#define FOUND_AND_ERR(rc) ((rc) != SR_ERR_NOT_FOUND && (rc) != SR_ERR_OK)
+
 #define if_node_fetch_str(node, node_name, dest) if (1) { \
    if (strcmp((node)->name, (node_name)) == 0) { \
       (dest) = strdup((node)->data.string_val); \
@@ -114,36 +116,39 @@ static int module_load(sr_session_ctx_t *sess,
 static int run_module_load(sr_session_ctx_t *sess, instance_t *inst, module_t *mod,
                          sr_node_t *node);*/
 
-static int av_module_load(av_module_t *amod, sr_node_t *node);
+static int av_module_load(sr_session_ctx_t *sess, av_module_t *amod, char * xpath);
 
 /**
  * @brief Loads new interface_t and if successful assigns it to given module.
  * @details Parses interface container in YANG schema.
  * @see load_module_group(sr_node_t *group_node)
- * @param node
+ * @param sess
  * @param inst Module to which the new interface belongs to.
  * */
-static int interface_load(sr_node_t *node, run_module_t *inst);
+static int interface_load(sr_session_ctx_t *sess, char *xpath, run_module_t *inst);
+
+
+// TODO
+static inline int interface_tcp_params_load(sr_session_ctx_t *sess, char *base_xpath,
+                                            interface_t *ifc);
 
 /**
  * TODO
  * */
-static inline int interface_tcp_params_load(sr_node_t *node, interface_t *ifc);
+static inline int
+interface_tcp_tls_params_load(sr_session_ctx_t *sess, char *base_xpath, interface_t *ifc);
 
 /**
  * TODO
  * */
-static inline int interface_tcp_tls_params_load(sr_node_t *node, interface_t *ifc);
+static inline int
+interface_unix_params_load(sr_session_ctx_t *sess, char *base_xpath, interface_t *ifc);
 
 /**
  * TODO
  * */
-static inline int interface_unix_params_load(sr_node_t *node, interface_t *ifc);
-
-/**
- * TODO
- * */
-static inline int interface_file_params_load(sr_node_t *node, interface_t *ifc);
+static inline int
+interface_file_params_load(sr_session_ctx_t *sess, char *base_xpath, interface_t *ifc);
 
 /**
  * @brief Restores PID for already running module.
@@ -158,6 +163,11 @@ static void instance_pid_restore(pid_t last_pid,
                                  run_module_t *inst,
                                  sr_session_ctx_t *sess);
 
+
+static int load_sr_str(sr_session_ctx_t *sess, char *base_xpath, char *node_xpath,
+                       char **where);
+static int load_sr_num(sr_session_ctx_t *sess, char *base_xpath, char *node_xpath,
+                       void *where, sr_type_t data_type);
 /* --END full fns prototypes-- */
 
 /* --BEGIN superglobal fns-- */
@@ -485,38 +495,70 @@ static int module_load(sr_session_ctx_t *sess,
    return 0;
 }
 */
-static int run_module_load(sr_session_ctx_t *sess, run_module_t *inst, sr_node_t *node)
+static int run_module_load(sr_session_ctx_t *sess, char *xpath, run_module_t *inst)
 {
    int rc;
    pid_t last_pid = 0;
    char *mod_kind = NULL;
+   char *ifc_xpath = NULL;
+   size_t ifc_cnt = 0;
+   sr_val_t *ifces = NULL;
 
    if (inst == NULL) {
       inst = run_module_alloc();
       IF_NO_MEM_INT_ERR(inst)
 
-      if (vector_add(&modz_v, inst) != 0) {
+      if (vector_add(&rnmods_v, inst) != 0) {
          NO_MEM_ERR
-         return -1;
+         return SR_ERR_NOMEM;
       }
    }
 
-   while (node != NULL) {
-      if_node_fetch_str(node, "name", inst->name)
-      if_node_fetch_str(node, "module-kind", mod_kind)
-      if_node_fetch_bool(node, "enabled", inst->enabled)
-      if_node_fetch_uint8(node, "max-restarts-per-min", inst->max_restarts_minute)
-      if_node_fetch_str(node, "params", inst->params)
-      if_node_fetch_uint32(node, "last-pid", last_pid)
+   rc = load_sr_str(sess, xpath, "/name", &(inst->name));
+   if (FOUND_AND_ERR(rc)) {
+      goto err_cleanup;
+   }
+   rc = load_sr_str(sess, xpath, "/module-kind", &mod_kind);
+   if (FOUND_AND_ERR(rc)) {
+      goto err_cleanup;
+   }
+   rc = load_sr_num(sess, xpath, "/enabled", &(inst->enabled), SR_BOOL_T);
+   if (FOUND_AND_ERR(rc)) {
+      goto err_cleanup;
+   }
 
-/*
-      if (strcmp(node->name, "interface") == 0 && node->first_child != NULL) {
-         rc = interface_load(node->first_child, inst);
-         // TODO rc error handling
+   rc = load_sr_num(sess, xpath, "/max-restarts-per-minute",
+                    &(inst->max_restarts_minute), SR_UINT8_T);
+   if (FOUND_AND_ERR(rc)) {
+      goto err_cleanup;
+   }
+   rc = load_sr_str(sess, xpath, "/params", &(inst->params));
+   if (FOUND_AND_ERR(rc)) {
+      goto err_cleanup;
+   }
+   rc = load_sr_num(sess, xpath, "/last-pid", &last_pid, SR_UINT32_T);
+   if (FOUND_AND_ERR(rc)) {
+      goto err_cleanup;
+   }
+
+   { // load interfaces
+      ifc_xpath = calloc(1, (strlen(xpath) + 11) * sizeof(char));
+      if (ifc_xpath == NULL) {
+         NO_MEM_ERR
+         goto err_cleanup;
       }
-*/
+      sprintf(ifc_xpath, "%s/interface", xpath);
 
-      node = node->next;
+      rc = sr_get_items(sess, ifc_xpath, &ifces, &ifc_cnt);
+      if (rc != SR_ERR_OK) {
+         // TODO msg
+         goto err_cleanup;
+      }
+
+      for (size_t i = 0; i < ifc_cnt; i++) {
+         interface_load(sess, ifces[i].xpath, inst);
+      }
+      sr_free_values(ifces, ifc_cnt);
    }
 
    rc = module_gen_exec_args(inst);
@@ -525,39 +567,29 @@ static int run_module_load(sr_session_ctx_t *sess, run_module_t *inst, sr_node_t
        * module configuration */
       VERBOSE(N_ERR, "Failed to prepare exec_args")
       NULLP_TEST_AND_FREE(mod_kind)
-      return -1;
+      return SR_ERR_NOMEM;
    }
 
-   if (mod_kind == NULL) {
-      VERBOSE(N_ERR, "Module kind failed to load")
-      NULLP_TEST_AND_FREE(mod_kind)
-      return -1;
-   } else {
-      av_module_t *amod = NULL;
-      FOR_EACH_IN_VEC(avmods_v, amod) {
-         if (strcmp(amod->name, mod_kind) == 0) {
-            inst->mod_kind = amod;
-            NULLP_TEST_AND_FREE(mod_kind)
-            break;
-         }
-      }
-      if (inst->mod_kind == NULL) {
-         VERBOSE(N_ERR, "Specified module kind '%s' was not find in "
-               "loaded available modules", mod_kind)
-         NULLP_TEST_AND_FREE(mod_kind)
-         return -1;
-      }
-   }
+
 
    if (last_pid > 0) {
       VERBOSE(V3, "Restoring PID=%d for %s", last_pid, inst->name)
+      // TODO TOD TOTOD
       //instance_pid_restore(last_pid, inst, sess);
    }
 
-   return 0;
+   return SR_ERR_OK;
+
+err_cleanup:
+   // TODO
+   if (ifces != NULL) {
+      sr_free_values(ifces, ifc_cnt);
+   }
+
+   return rc;
 }
 
-static int av_module_load(av_module_t *amod, sr_node_t *node)
+static int av_module_load(sr_session_ctx_t *sess, av_module_t *amod, char * xpath)
 {
    if (amod == NULL) {
       amod = av_module_alloc();
@@ -569,151 +601,365 @@ static int av_module_load(av_module_t *amod, sr_node_t *node)
       }
    }
 
-   while (node != NULL) {
-      if_node_fetch_str(node, "name", amod->name)
-      if_node_fetch_str(node, "path", amod->path)
-      if_node_fetch_bool(node, "is-nemea-module", amod->is_nemea)
-      if_node_fetch_bool(node, "is-sysrepo-ready", amod->is_sr_en)
+   int rc;
 
-      node = node->next;
+   rc = load_sr_str(sess, xpath, "/name", &(amod->name));
+   if (rc != 0) {
+      goto err_cleanup;
+   }
+   rc = load_sr_str(sess, xpath, "/path", &(amod->path));
+   if (rc != 0) {
+      goto err_cleanup;
+   }
+   rc = load_sr_num(sess, xpath, "/is-nemea-module", &(amod->is_nemea), SR_BOOL_T);
+   if (rc != 0) {
+      goto err_cleanup;
+   }
+   rc = load_sr_num(sess, xpath, "/is-sysrepo-ready", &(amod->is_sr_en), SR_BOOL_T);
+   if (rc != 0) {
+      goto err_cleanup;
    }
 
    return 0;
+
+err_cleanup:
+   VERBOSE(N_ERR, "Failed to load module from xpath %s", xpath)
+   return -1;
 }
 
-static int interface_load(sr_node_t *node, run_module_t *inst)
+static int load_sr_num(sr_session_ctx_t *sess, char *base_xpath, char *node_xpath,
+                       void *where, sr_type_t data_type)
 {
-   sr_node_t *node_iter;
+   int rc;
+   char xpath[4096];
+   sr_val_t * val = NULL;
+   memset(xpath, 0, 4096);
+
+   sprintf(xpath, "%s%s", base_xpath, node_xpath);
+   rc = sr_get_item(sess, xpath, &val);
+   if (rc != SR_ERR_OK) {
+      return rc;
+   }
+
+   switch (data_type) {
+      case SR_BOOL_T:
+         *((bool *) where) = val->data.bool_val;
+         break;
+      case SR_UINT8_T:
+         *((uint8_t *) where) = val->data.uint8_val;
+         break;
+      case SR_UINT16_T:
+         *((uint16_t *) where) = val->data.uint16_val;
+         break;
+      case SR_UINT32_T:
+         *((uint32_t *) where) = val->data.uint32_val;
+         break;
+
+      default:
+         // TODO err
+         sr_free_val(val);
+         return -1;
+   }
+   sr_free_val(val);
+
+   return SR_ERR_OK;
+}
+
+static int load_sr_str(sr_session_ctx_t *sess, char *base_xpath, char *node_xpath,
+                       char **where)
+{
+   int rc;
+   char xpath[4096];
+   sr_val_t * val = NULL;
+   memset(xpath, 0, 4096);
+
+   sprintf(xpath, "%s%s", base_xpath, node_xpath);
+   rc = sr_get_item(sess, xpath, &val);
+   if (rc != SR_ERR_OK) {
+      return rc;
+   }
+
+   *where = strdup(val->data.string_val);
+   sr_free_val(val);
+
+   if (*where == NULL) {
+      // TODO err
+      NO_MEM_ERR
+      return SR_ERR_NOMEM;
+   }
+
+   return SR_ERR_OK;
+}
+
+static int interface_load(sr_session_ctx_t *sess, char *xpath, run_module_t *inst)
+{
+   int rc;
    interface_t *ifc;
+   char *ifc_type = NULL;
+   char *ifc_dir = NULL;
 
 
    ifc = interface_alloc();
    IF_NO_MEM_INT_ERR(ifc)
 
-   /*
-    * Determine interface type first before fetching more data to guarantee
-    * knowledge of the interface type.
-    * */
-   node_iter = node;
-   while (node_iter != NULL) {
-      if (strcmp(node_iter->name, "type") == 0) {
-         if (strcmp(node_iter->data.enum_val, "TCP") == 0) {
-            ifc->type = NS_IF_TYPE_TCP;
-            break;
-         } else if (strcmp(node_iter->data.enum_val, "TCP-TLS") == 0) {
-            ifc->type = NS_IF_TYPE_TCP_TLS;
-            break;
-         } else if (strcmp(node_iter->data.enum_val, "UNIXSOCKET") == 0) {
-            ifc->type = NS_IF_TYPE_UNIX;
-            break;
-         } else if (strcmp(node_iter->data.enum_val, "FILE") == 0) {
-            ifc->type = NS_IF_TYPE_FILE;
-            break;
-         } else if (strcmp(node_iter->data.enum_val, "BLACKHOLE") == 0) {
-            ifc->type = NS_IF_TYPE_BH;
-            break;
-         } else {
-            VERBOSE(N_ERR, "Invalid interface type found! Supervisor version is "
-                  "possibly not matching configuration schema version.")
-            return -1;
-         }
-      }
-      node_iter = node_iter->next;
+
+   rc = load_sr_str(sess, xpath, "/name", &(ifc->name));
+   if (FOUND_AND_ERR(rc)) {
+      goto err_cleanup;
    }
 
-   if (interface_specific_params_alloc(ifc) != 0) {
-      return -1;
-   }
-   
-   // Browse nodes by passed node once again
-   node_iter = node;
-   while (node_iter != NULL) {
-      if_node_fetch_str(node_iter, "name", ifc->name)
-      if_node_fetch_str(node_iter, "timeout", ifc->timeout)
-      if_node_fetch_str(node_iter, "buffer", ifc->buffer)
-      if_node_fetch_str(node_iter, "autoflush", ifc->autoflush)
-
-      if_node_dig_down(node_iter, "tcp-params", interface_tcp_params_load, ifc)
-      if_node_dig_down(node_iter, "tcp-tls-params", interface_tcp_tls_params_load, ifc)
-      if_node_dig_down(node_iter, "unix-params", interface_unix_params_load, ifc)
-      if_node_dig_down(node_iter, "file-params", interface_file_params_load, ifc)
-
-      if (strcmp(node_iter->name, "direction") == 0) {
-         if (strcmp(node_iter->data.enum_val, "IN") == 0) {
-            ifc->direction = NS_IF_DIR_IN;
-         } else if (strcmp(node_iter->data.enum_val, "OUT") == 0) {
-            ifc->direction = NS_IF_DIR_OUT;
-         } else {
-            VERBOSE(N_ERR, "Invalid interface direction found! Supervisor version is "
-                  "possibly not matching configuration schema version.")
-            return -1;
-         }
+   { // load interface type and type specific parameters
+      rc = load_sr_str(sess, xpath, "/type", &ifc_type);
+      if (FOUND_AND_ERR(rc)) {
+         goto err_cleanup;
       }
-      node_iter = node_iter->next;
+      if (strcmp(ifc_type, "TCP") == 0) {
+         ifc->type = NS_IF_TYPE_TCP;
+         if (interface_specific_params_alloc(ifc) != 0) {
+            return SR_ERR_NOMEM;
+         }
+         rc = interface_tcp_params_load(sess, xpath, ifc);
+      } else if (strcmp(ifc_type, "TCP-TLS") == 0) {
+         ifc->type = NS_IF_TYPE_TCP_TLS;
+         if (interface_specific_params_alloc(ifc) != 0) {
+            return SR_ERR_NOMEM;
+         }
+         rc = interface_tcp_tls_params_load(sess, xpath, ifc);
+      } else if (strcmp(ifc_type, "UNIXSOCKET") == 0) {
+         ifc->type = NS_IF_TYPE_UNIX;
+         if (interface_specific_params_alloc(ifc) != 0) {
+            return SR_ERR_NOMEM;
+         }
+         rc = interface_unix_params_load(sess, xpath, ifc);
+      } else if (strcmp(ifc_type, "FILE") == 0) {
+         ifc->type = NS_IF_TYPE_FILE;
+         if (interface_specific_params_alloc(ifc) != 0) {
+            return SR_ERR_NOMEM;
+         }
+         rc = interface_file_params_load(sess, xpath, ifc);
+      } else if (strcmp(ifc_type, "BLACKHOLE") == 0) {
+         ifc->type = NS_IF_TYPE_BH;
+         if (interface_specific_params_alloc(ifc) != 0) {
+            return SR_ERR_NOMEM;
+         }
+      } else {
+         VERBOSE(N_ERR, "Invalid interface type found! Supervisor version is "
+               "possibly not matching configuration schema version.")
+         return SR_ERR_VERSION_MISMATCH;
+      }
+      if (rc != SR_ERR_OK) {
+         // TODO
+         goto err_cleanup;
+      }
+      NULLP_TEST_AND_FREE(ifc_type)
+   }
+
+
+   rc = load_sr_str(sess, xpath, "/timeout", &(ifc->timeout));
+   if (FOUND_AND_ERR(rc)) {
+      goto err_cleanup;
+   }
+   rc = load_sr_str(sess, xpath, "/buffer", &(ifc->buffer));
+   if (FOUND_AND_ERR(rc)) {
+      goto err_cleanup;
+   }
+   rc = load_sr_str(sess, xpath, "/autoflush", &(ifc->autoflush));
+   if (FOUND_AND_ERR(rc)) {
+      goto err_cleanup;
+   }
+
+   { // load interface direction
+      rc = load_sr_str(sess, xpath, "/direction", &(ifc_dir));
+      if (FOUND_AND_ERR(rc)) {
+         goto err_cleanup;
+      }
+      if (strcmp(ifc_dir, "IN") == 0) {
+         ifc->direction = NS_IF_DIR_IN;
+      } else if (strcmp(ifc_dir, "OUT") == 0) {
+         ifc->direction = NS_IF_DIR_OUT;
+      } else {
+         VERBOSE(N_ERR, "Invalid interface direction found! Supervisor version is "
+               "possibly not matching configuration schema version.")
+         return SR_ERR_VERSION_MISMATCH;
+      }
+
+      NULLP_TEST_AND_FREE(ifc_dir)
    }
 
    // Direction should be allocated by now, it's safe to allocate stats structs
    if (interface_stats_alloc(ifc) != 0) {
       NO_MEM_ERR
-      return -1; // TODO cleanup???
+      goto err_cleanup;
    }
 
    if (run_module_interface_add(inst, ifc) != 0) {
       NO_MEM_ERR
-      return -1;
+      goto err_cleanup;
    }
 
-   return 0;
+   return SR_ERR_OK;
+
+err_cleanup:
+   NULLP_TEST_AND_FREE(ifc_type)
+   NULLP_TEST_AND_FREE(ifc_dir)
+
+   return rc;
 }
 
-static inline int interface_tcp_params_load(sr_node_t *node, interface_t *ifc)
+static inline int
+interface_tcp_params_load(sr_session_ctx_t *sess, char *base_xpath, interface_t *ifc)
 {
-   while (node != NULL) {
-      if_node_fetch_str(node, "host", ifc->specific_params.tcp->host)
-      if_node_fetch_uint16(node, "port", ifc->specific_params.tcp->port)
-      if_node_fetch_uint16(node, "max-clients", ifc->specific_params.tcp->max_clients)
-      node = node->next;
+   int rc;
+   char * xpath = NULL;
+
+   xpath = calloc(1, (strlen(base_xpath) + 12) * sizeof(char));
+   if (xpath == NULL) {
+      NO_MEM_ERR
+      rc = SR_ERR_NOMEM;
+      goto err_cleanup;
    }
-   return 0;
+   sprintf(xpath, "%s/tcp-params", base_xpath);
+
+   rc = load_sr_str(sess, xpath, "/host", &(ifc->specific_params.tcp->host));
+   if (FOUND_AND_ERR(rc)) {
+      goto err_cleanup;
+   }
+   rc = load_sr_num(sess, xpath, "/port", &(ifc->specific_params.tcp->port), SR_UINT16_T);
+   if (FOUND_AND_ERR(rc)) {
+      goto err_cleanup;
+   }
+   rc = load_sr_num(sess, xpath, "/max-clients",
+                    &(ifc->specific_params.tcp->max_clients), SR_UINT16_T);
+   if (FOUND_AND_ERR(rc)) {
+      goto err_cleanup;
+   }
+
+   return SR_ERR_OK;
+
+err_cleanup:
+   // TODO
+   return rc;
 }
 
-static inline int interface_tcp_tls_params_load(sr_node_t *node, interface_t *ifc)
+static inline int
+interface_tcp_tls_params_load(sr_session_ctx_t *sess, char *base_xpath, interface_t *ifc)
 {
-   while (node != NULL) {
-      if_node_fetch_str(node, "host", ifc->specific_params.tcp_tls->host)
-      if_node_fetch_uint16(node, "port", ifc->specific_params.tcp_tls->port)
-      if_node_fetch_uint16(node, "max-clients", ifc->specific_params.tcp_tls->max_clients)
-      if_node_fetch_str(node, "keyfile", ifc->specific_params.tcp_tls->keyfile)
-      if_node_fetch_str(node, "certfile", ifc->specific_params.tcp_tls->certfile)
-      if_node_fetch_str(node, "cafile", ifc->specific_params.tcp_tls->cafile)
-      node = node->next;
+   int rc;
+   char * xpath = NULL;
+
+   xpath = calloc(1, (strlen(base_xpath) + 16) * sizeof(char));
+   if (xpath == NULL) {
+      NO_MEM_ERR
+      rc = SR_ERR_NOMEM;
+      goto err_cleanup;
+   }
+   sprintf(xpath, "%s/tcp-tls-params", base_xpath);
+
+   rc = load_sr_str(sess, xpath, "/host", &(ifc->specific_params.tcp_tls->host));
+   if (FOUND_AND_ERR(rc)) {
+      goto err_cleanup;
+   }
+   rc = load_sr_str(sess, xpath, "/keyfile", &(ifc->specific_params.tcp_tls->keyfile));
+   if (FOUND_AND_ERR(rc)) {
+      goto err_cleanup;
+   }
+   rc = load_sr_str(sess, xpath, "/certfile", &(ifc->specific_params.tcp_tls->certfile));
+   if (FOUND_AND_ERR(rc)) {
+      goto err_cleanup;
+   }
+   rc = load_sr_str(sess, xpath, "/cafile", &(ifc->specific_params.tcp_tls->cafile));
+   if (FOUND_AND_ERR(rc)) {
+      goto err_cleanup;
+   }
+   rc = load_sr_num(sess, xpath, "/port",
+                    &(ifc->specific_params.tcp_tls->port), SR_UINT16_T);
+   if (FOUND_AND_ERR(rc)) {
+      goto err_cleanup;
+   }
+   rc = load_sr_num(sess, xpath, "/max-clients",
+                    &(ifc->specific_params.tcp_tls->max_clients), SR_UINT16_T);
+   if (FOUND_AND_ERR(rc)) {
+      goto err_cleanup;
    }
 
-   return 0;
+   return SR_ERR_OK;
+
+err_cleanup:
+   // TODO
+   return rc;
 }
 
-static inline int interface_unix_params_load(sr_node_t *node, interface_t *ifc)
+static inline int
+interface_unix_params_load(sr_session_ctx_t *sess, char *base_xpath, interface_t *ifc)
 {
-   while (node != NULL) {
-      if_node_fetch_str(node, "socket-name", ifc->specific_params.nix->socket_name)
-      if_node_fetch_uint16(node, "max-clients", ifc->specific_params.nix->max_clients)
-      node = node->next;
+   int rc;
+   char * xpath = NULL;
+
+   xpath = calloc(1, (strlen(base_xpath) + 13) * sizeof(char));
+   if (xpath == NULL) {
+      NO_MEM_ERR
+      rc = SR_ERR_NOMEM;
+      goto err_cleanup;
+   }
+   sprintf(xpath, "%s/unix-params", base_xpath);
+
+   rc = load_sr_str(sess, xpath, "/socket-name", &(ifc->specific_params.nix->socket_name));
+   if (FOUND_AND_ERR(rc)) {
+      goto err_cleanup;
+   }
+   rc = load_sr_num(sess, xpath, "/max-clients",
+                    &(ifc->specific_params.nix->max_clients), SR_UINT16_T);
+   if (FOUND_AND_ERR(rc)) {
+      goto err_cleanup;
    }
 
-   return 0;
+
+   return SR_ERR_OK;
+
+err_cleanup:
+   // TODO
+   return rc;
 }
 
-static inline int interface_file_params_load(sr_node_t *node, interface_t *ifc)
+static inline int
+interface_file_params_load(sr_session_ctx_t *sess, char *base_xpath, interface_t *ifc)
 {
-   while (node != NULL) {
-      if_node_fetch_str(node, "name", ifc->specific_params.file->name)
-      if_node_fetch_str(node, "mode", ifc->specific_params.file->mode)
-      if_node_fetch_uint16(node, "time", ifc->specific_params.file->time)
-      if_node_fetch_uint16(node, "size", ifc->specific_params.file->size)
-      node = node->next;
+   int rc;
+   char * xpath = NULL;
+
+   xpath = calloc(1, (strlen(base_xpath) + 13) * sizeof(char));
+   if (xpath == NULL) {
+      NO_MEM_ERR
+      rc = SR_ERR_NOMEM;
+      goto err_cleanup;
+   }
+   sprintf(xpath, "%s/file-params", base_xpath);
+
+   rc = load_sr_str(sess, xpath, "/name", &(ifc->specific_params.file->name));
+   if (FOUND_AND_ERR(rc)) {
+      goto err_cleanup;
+   }
+   rc = load_sr_str(sess, xpath, "/mode", &(ifc->specific_params.file->mode));
+   if (FOUND_AND_ERR(rc)) {
+      goto err_cleanup;
+   }
+   rc = load_sr_num(sess, xpath, "/time",
+                    &(ifc->specific_params.file->time), SR_UINT16_T);
+   if (FOUND_AND_ERR(rc)) {
+      goto err_cleanup;
+   }
+   rc = load_sr_num(sess, xpath, "/size",
+                    &(ifc->specific_params.file->size), SR_UINT16_T);
+   if (FOUND_AND_ERR(rc)) {
+      goto err_cleanup;
    }
 
-   return 0;
+
+   return SR_ERR_OK;
+
+err_cleanup:
+   // TODO
+   return rc;
 }
 
 /*static void instance_pid_restore(pid_t last_pid, run_module_t *inst,

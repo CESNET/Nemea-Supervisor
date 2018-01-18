@@ -1,0 +1,153 @@
+module nemea {
+  namespace "urn:ietf:params:xml:ns:yang:nemea";
+  prefix nemea;
+  include trap-interfaces;
+  organization "CESNET, z.s.p.o.";
+  contact "cejkat@cesnet.cz";
+  description "Module specifying configuration of Nemea supervisor.";
+  revision "2018-01-17" { description "First version"; }
+
+  grouping nemea-key-name {
+    leaf name {
+      type string {
+        length "1..255";
+        pattern "[0-9a-zA-Z _-]+";
+      }
+      mandatory true;
+    }
+  } // End grouping nemea-key-name
+
+  grouping nemea-module-stats {
+    /* This grouping is here just to make nemea-supervisor container
+     *  more readable */
+    container stats {
+      config false;
+      description "TODO";
+    
+      leaf running {
+        type boolean;
+        description "Specify whether the module is running.";
+      }
+      leaf restart-counter {
+        type uint8;
+        description "The number of repeated starts of the module.";
+      }
+      leaf cpu-user {
+      	type uint64;
+      	description "TODO";
+      }
+      leaf cpu-kern {
+      	type uint64;
+      	description "TODO";
+      }
+      leaf mem-vms {
+      	type uint64;
+      	description "TODO";
+      }
+      leaf mem-rss {
+      	type uint64;
+      	description "TODO";
+      }
+    }
+  } // End grouping nemea-module-instance-stats
+
+
+  container supervisor {
+    list available-module {
+      key name;
+      uses nemea-key-name {
+        description "Unique module name";
+      }
+      description "TODO";
+
+      leaf path {
+        type string { pattern "^/.+"; }
+        mandatory true;
+        description "Full path to where module binary resides.";
+      }
+      leaf description {
+        type string;
+        mandatory true;
+        description "TODO";
+      }
+      leaf is-nemea-module {
+        type boolean;
+        mandatory true;
+        description "TODO";
+      }
+      leaf is-sysrepo-ready {
+        type boolean;
+        default false;
+        description "Specifies whether module has it's own YANG model derived from Nemea module template and is capable of loading configuration from Sysrepo when passed -sr 'INSTANCE_NAME'. INSTANCE_NAME is TODO";
+      }
+      leaf sysrepo-callbacks-ready {
+        type boolean;
+        default false;
+        description "TODO";
+      }
+
+      // TODO pocty interfacu
+    } // end list available-module
+
+    list module {
+      key name;
+      uses nemea-key-name {
+        description "Unique module process name";
+      }
+      description "TODO";
+
+      leaf module-kind {
+        type leafref { path "../../available-module/name"; }
+        mandatory true;
+        description "TODO";
+      }
+      leaf enabled {
+        type boolean;
+        description "Activation of group of Nemea modules.";
+      }
+      leaf max-restarts-per-min {
+        type uint8;
+        default 3;
+        description "How many times the module will be automatically restarted (in case it terminated) before setting disabled";
+        // TODO review implementation in linux supervisor
+      }
+      leaf last-pid {
+        type uint32 { range "1..max"; }
+        description "In case supervisor was interrupted and shouldn't have stopped the modules, PID of this Nemea module process is stored so that supervisor can reconnect to it once it starts again.";
+      }
+      leaf use-sysrepo {
+        type boolean;
+        default false;
+        description "TODO";
+      }
+      
+      uses trap-ifcs-list;
+      uses nemea-module-stats;
+
+      choice is-using-sysrepo-conf {
+      	case module-using-sysrepo-conf {
+          // TODO jde pridat kontrolu do avail modulu? jakoze jestli je sysrepo-ready tak lze enabel
+          when "use-sysrepo = 'true'";
+          description "TODO";
+
+          leaf xpath {
+            type string;
+            description "TODO path to sysrepo model";
+          }
+          // TODO this part should be modeled in the futur
+      	} // End case module-sysrepo-ready
+      
+      	case module-not-using-sysrepo-conf {
+          when "use-sysrepo = 'false'";
+          description "TODO";
+      
+          leaf params {
+            type string;
+            description "TODO";
+          }
+        } // end case module-not-sysrepo-ready
+      } // end choice is-module-sysrepo-ready
+    } // end of list module
+  } // End container nemea-supervisor
+} // End module nemea
+

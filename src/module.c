@@ -20,7 +20,7 @@ vector_t mods_v = {.total = 0, .capacity = 0, .items = NULL};
 vector_t mgrps_v = {.total = 0, .capacity = 0, .items = NULL};
 
 vector_t avmods_v = {.total = 0, .capacity = 0, .items = NULL};
-vector_t modz_v = {.total = 0, .capacity = 0, .items = NULL};
+vector_t rnmods_v = {.total = 0, .capacity = 0, .items = NULL};
 
 /*--END superglobal vars--*/
 
@@ -283,7 +283,7 @@ void av_module_remove_at(uint32_t index)
 void run_module_remove_at(uint32_t index)
 {/*
    instance_t *inst = insts_v.items[index];*/
-   vector_delete(&insts_v, index);
+   vector_delete(&rnmods_v, index);
    // TODO inst->module->group->insts_cnt--;
 }
 
@@ -708,7 +708,8 @@ void interfaces_free(run_module_t *module)
    vector_t *ifces_vec[2] = { &module->in_ifces, &module->out_ifces};
 
    for (int j = 0; j < 2; j++) {
-      FOR_EACH_IN_VEC_PTR(ifces_vec[j], cur_ifc) {
+      for (int i = 0; i < ifces_vec[j]->total; i++) {
+         cur_ifc = ifces_vec[j]->items[i];
          NULLP_TEST_AND_FREE(cur_ifc->name);
          NULLP_TEST_AND_FREE(cur_ifc->buffer);
          NULLP_TEST_AND_FREE(cur_ifc->autoflush);
@@ -1033,7 +1034,8 @@ static inline char * module_get_ifcs_as_arg(run_module_t *module)
 
    // For loop for both interface directions list
    for (int j = 0; j < 2; j++) {
-      FOR_EACH_IN_VEC_PTR(ifces_vec[j], cur_ifc) {
+      for (int i = 0; i < ifces_vec[j]->total; i++) {
+         cur_ifc = ifces_vec[j]->items[i];
          cur_ifc_params = cur_ifc->ifc_to_cli_arg_fn(cur_ifc);
          if (cur_ifc_params == NULL) {
             NO_MEM_ERR

@@ -315,7 +315,7 @@ extern vector_t mods_v; ///< Vector of loaded modules
 extern vector_t mgrps_v; ///< Vector of loaded module groups*/
 
 extern vector_t avmods_v;
-extern vector_t modz_v;
+extern vector_t rnmods_v;
 
 /*--END superglobal vars--*/
 

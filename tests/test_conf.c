@@ -218,31 +218,24 @@ void test_interface_is_loaded(const interface_t *ifc)
    assert_int_equal(inst->enabled, true);
    assert_int_equal(inst->max_restarts_minute, 4);
 }
-
+*/
 void cleanup_structs_and_vectors()
 {
-   instance_t *inst = NULL;
-   for (uint32_t i = 0; i < insts_v.total; i++) {
-      inst = insts_v.items[i];
-      run_module_free(inst);
+   run_module_t *mod = NULL;
+   for (uint32_t i = 0; i < rnmods_v.total; i++) {
+      mod = rnmods_v.items[i];
+      run_module_free(mod);
    }
-   vector_free(&insts_v);
+   vector_free(&rnmods_v);
 
-   module_t *mod = NULL;
-   for (uint32_t i = 0; i < mods_v.total; i++) {
-      mod = mods_v.items[i];
-      module_free(mod);
+
+   av_module_t *avmod = NULL;
+   for (uint32_t i = 0; i < avmods_v.total; i++) {
+      avmod = avmods_v.items[i];
+      av_module_free(avmod);
    }
-   vector_free(&mods_v);
-
-   module_group_t *grp = NULL;
-   for (uint32_t i = 0; i < mgrps_v.total; i++) {
-      grp = mgrps_v.items[i];
-      module_group_free(grp);
-   }
-   vector_free(&mgrps_v);
-
-}*/
+   vector_free(&avmods_v);
+}
 
 ///////////////////////////TESTS
 ///////////////////////////TESTS
@@ -252,12 +245,11 @@ void cleanup_structs_and_vectors()
 
 void test_interface_file_params_load(void **state)
 {
-   system("helpers/import_conf.sh -s nemea-tests-1-startup-config-2.xml");
+   system("../../tests/helpers/import_conf.sh -s nemea-test-1-startup-2.xml");
    connect_to_sr();
 
    int rc;
    char *xpath = NULL;
-   sr_node_t *node = NULL;
 
    interface_t *ifc = interface_alloc();
    IF_NO_MEM_FAIL(ifc)
@@ -266,17 +258,9 @@ void test_interface_file_params_load(void **state)
    { // tests direction NS_IF_DIR_OUT
       ifc->direction = NS_IF_DIR_OUT;
       assert_int_equal(interface_specific_params_alloc(ifc), 0);
-      xpath = calloc(1, sizeof(char) * (strlen(ns_root_sr_path) + 132));
-      IF_NO_MEM_FAIL(xpath)
-      sprintf(xpath, "%s/module-group[name='Test1']/module[name='intable_module']"
-                    "/instance[name='inst 1']/interface[name='file-out']"
-                    "/file-params",
-              ns_root_sr_path);
-      rc = sr_get_subtree(sr_conn_link.sess, xpath, SR_GET_SUBTREE_DEFAULT, &node);
-      IF_SR_ERR_FAIL(rc)
+      xpath = NS_ROOT_XPATH"/module[name='intable_module']/interface[name='file-out']";
 
-      assert_non_null(node->first_child);
-      rc = interface_file_params_load(node->first_child, ifc);
+      rc = interface_file_params_load(sr_conn_link.sess, xpath, ifc);
       assert_int_equal(rc, 0);
       test_interface_specific_params_are_loaded(ifc);
    }
@@ -287,12 +271,11 @@ void test_interface_file_params_load(void **state)
 
 void test_interface_unix_params_load(void **state)
 {
-   system("helpers/import_conf.sh -s nemea-tests-1-startup-config-2.xml");
+   system("../../tests/helpers/import_conf.sh -s nemea-test-1-startup-2.xml");
    connect_to_sr();
 
    int rc;
    char *xpath = NULL;
-   sr_node_t *node = NULL;
 
    interface_t *ifc = interface_alloc();
    IF_NO_MEM_FAIL(ifc)
@@ -301,17 +284,9 @@ void test_interface_unix_params_load(void **state)
    { // tests direction NS_IF_DIR_OUT
       ifc->direction = NS_IF_DIR_OUT;
       assert_int_equal(interface_specific_params_alloc(ifc), 0);
-      xpath = calloc(1, sizeof(char) * (strlen(ns_root_sr_path) + 132));
-      IF_NO_MEM_FAIL(xpath)
-      sprintf(xpath, "%s/module-group[name='Test1']/module[name='intable_module']"
-                    "/instance[name='inst 1']/interface[name='unix-out']"
-                    "/unix-params",
-              ns_root_sr_path);
-      rc = sr_get_subtree(sr_conn_link.sess, xpath, SR_GET_SUBTREE_DEFAULT, &node);
-      IF_SR_ERR_FAIL(rc)
+      xpath = NS_ROOT_XPATH"/module[name='intable_module']/interface[name='unix-out']";
 
-      assert_non_null(node->first_child);
-      rc = interface_unix_params_load(node->first_child, ifc);
+      rc = interface_unix_params_load(sr_conn_link.sess, xpath, ifc);
       assert_int_equal(rc, 0);
       test_interface_specific_params_are_loaded(ifc);
    }
@@ -322,12 +297,11 @@ void test_interface_unix_params_load(void **state)
 
 void test_interface_tcp_tls_params_load(void **state)
 {
-   system("helpers/import_conf.sh -s nemea-tests-1-startup-config-2.xml");
+   system("../../tests/helpers/import_conf.sh -s nemea-test-1-startup-2.xml");
    connect_to_sr();
 
    int rc;
    char *xpath = NULL;
-   sr_node_t *node = NULL;
 
    interface_t *ifc = interface_alloc();
    IF_NO_MEM_FAIL(ifc)
@@ -336,17 +310,8 @@ void test_interface_tcp_tls_params_load(void **state)
    { // tests direction NS_IF_DIR_OUT
       ifc->direction = NS_IF_DIR_OUT;
       assert_int_equal(interface_specific_params_alloc(ifc), 0);
-      xpath = calloc(1, sizeof(char) * (strlen(ns_root_sr_path) + 138));
-      IF_NO_MEM_FAIL(xpath)
-      sprintf(xpath, "%s/module-group[name='Test1']/module[name='intable_module']"
-                    "/instance[name='inst 1']/interface[name='tcp-tls-out']"
-                    "/tcp-tls-params",
-              ns_root_sr_path);
-      rc = sr_get_subtree(sr_conn_link.sess, xpath, SR_GET_SUBTREE_DEFAULT, &node);
-      IF_SR_ERR_FAIL(rc)
-
-      assert_non_null(node->first_child);
-      rc = interface_tcp_tls_params_load(node->first_child, ifc);
+      xpath = NS_ROOT_XPATH"/module[name='intable_module']/interface[name='tcp-tls-out']";
+      rc = interface_tcp_tls_params_load(sr_conn_link.sess, xpath, ifc);
       assert_int_equal(rc, 0);
       test_interface_specific_params_are_loaded(ifc);
    }
@@ -357,7 +322,7 @@ void test_interface_tcp_tls_params_load(void **state)
 
 void test_interface_tcp_params_load(void **state)
 {
-   system("helpers/import_conf.sh -s nemea-tests-1-startup-config-2.xml");
+   system("../../tests/helpers/import_conf.sh -s nemea-test-1-startup-2.xml");
    connect_to_sr();
 
    int rc;
@@ -371,17 +336,8 @@ void test_interface_tcp_params_load(void **state)
    { // tests direction NS_IF_DIR_OUT
       ifc->direction = NS_IF_DIR_OUT;
       assert_int_equal(interface_specific_params_alloc(ifc), 0);
-      xpath = calloc(1, sizeof(char) * (strlen(ns_root_sr_path) + 130));
-      IF_NO_MEM_FAIL(xpath)
-      sprintf(xpath, "%s/module-group[name='Test1']/module[name='intable_module']"
-                    "/instance[name='inst 1']/interface[name='tcp-out']"
-                    "/tcp-params",
-              ns_root_sr_path);
-      rc = sr_get_subtree(sr_conn_link.sess, xpath, SR_GET_SUBTREE_DEFAULT, &node);
-      IF_SR_ERR_FAIL(rc)
-
-      assert_non_null(node->first_child);
-      rc = interface_tcp_params_load(node->first_child, ifc);
+      xpath = NS_ROOT_XPATH"/module[name='intable_module']/interface[name='tcp-out']";
+      rc = interface_tcp_params_load(sr_conn_link.sess, xpath, ifc);
       assert_int_equal(rc, 0);
       test_interface_specific_params_are_loaded(ifc);
    }
@@ -459,28 +415,20 @@ void test_instance_pid_restore(void **state)
 
 void test_interface_load(void **state)
 {
-   system("helpers/import_conf.sh -s nemea-tests-1-startup-config-2.xml");
+   system("../../tests/helpers/import_conf.sh -s nemea-test-1-startup-2.xml");
    connect_to_sr();
 
    int rc;
    char * xpath = NULL;
-   sr_node_t *node = NULL;
 
    run_module_t *inst = run_module_alloc();
    IF_NO_MEM_FAIL(inst)
 
    {
-      xpath = calloc(1, sizeof(char) * (strlen(ns_root_sr_path) + 108));
-      IF_NO_MEM_FAIL(xpath)
-      sprintf(xpath, "%s/module-group[name='Test1']/module[name='intable_module']"
-                    "/instance[name='inst 1']/interface[name='tcp-out']",
-              ns_root_sr_path);
-      rc = sr_get_subtree(sr_conn_link.sess, xpath, SR_GET_SUBTREE_DEFAULT, &node);
-      IF_SR_ERR_FAIL(rc)
-      assert_non_null(node->first_child);
+      xpath = NS_ROOT_XPATH"/module[name='intable_module']/interface[name='tcp-out']";
 
       assert_int_equal(inst->out_ifces.total, 0);
-      assert_int_equal(interface_load(node->first_child, inst), 0);
+      assert_int_equal(interface_load(sr_conn_link.sess, xpath, inst), 0);
       assert_int_equal(inst->out_ifces.total, 1);
       test_interface_is_loaded(inst->out_ifces.items[0]);
    }
@@ -539,56 +487,91 @@ void test_av_module_load(void **state)
 
    int rc;
    sr_node_t *node = NULL;
-   av_module_t *amod = NULL;
+   av_module_t *amod1 = NULL;
+   av_module_t *amod2 = NULL;
    char xpath[] = NS_ROOT_XPATH"/available-module[name='module A']";
 
 
    { // tests with passed av_module = NULL
-      rc = sr_get_subtree(sr_conn_link.sess, xpath, SR_GET_SUBTREE_DEFAULT, &node);
-      IF_SR_ERR_FAIL(rc)
-      assert_non_null(node->first_child);
+      sr_val_t *av_mods = NULL;
+      size_t av_mods_cnt = 0;
+      rc = sr_get_items(sr_conn_link.sess,
+                   NS_ROOT_XPATH"/available-module",
+                   &av_mods, &av_mods_cnt);
+      assert_int_equal(rc, SR_ERR_OK);
 
-
+      assert_int_equal(av_mods_cnt, 2);
       assert_int_equal(avmods_v.total, 0);
-      rc = av_module_load(NULL, node->first_child);
-      assert_int_equal(rc, 0);
-      assert_int_equal(avmods_v.total, 1);
+      for (int i = 0; i < av_mods_cnt; i++) {
+         assert_int_equal(av_module_load(sr_conn_link.sess, NULL, av_mods[i].xpath),0);
+      }
+      sr_free_values(av_mods, av_mods_cnt);
 
-      amod = avmods_v.items[0];
-      assert_string_equal(amod->name, "module A");
-      assert_string_equal(amod->path, "/a/a");
-      assert_int_equal(amod->is_nemea, true);
-      assert_int_equal(amod->is_sr_en, false);
+      assert_int_equal(avmods_v.total, 2);
+
+      amod1 = avmods_v.items[0];
+      assert_string_equal(amod1->name, "module A");
+      assert_string_equal(amod1->path, "/a/a");
+      assert_int_equal(amod1->is_nemea, true);
+      assert_int_equal(amod1->is_sr_en, false);
+
+      amod1 = avmods_v.items[1];
+      assert_string_equal(amod1->name, "module B");
+      assert_string_equal(amod1->path, "/a/b");
+      assert_int_equal(amod1->is_nemea, false);
+      assert_int_equal(amod1->is_sr_en, false);
 
       sr_free_tree(node);
       av_module_remove_at(0);
-      av_module_free(amod);
+      av_module_remove_at(1);
+      av_module_free(amod1);
    }
 
    { // tests with allocated av_module struct passed
-      amod = av_module_alloc();
-      vector_add(&avmods_v, amod);
-      IF_NO_MEM_FAIL(amod)
+      amod1 = av_module_alloc();
+      vector_add(&avmods_v, amod1);
+      IF_NO_MEM_FAIL(amod1)
+      amod2 = av_module_alloc();
+      vector_add(&avmods_v, amod2);
+      IF_NO_MEM_FAIL(amod2)
 
       rc = sr_get_subtree(sr_conn_link.sess, xpath, SR_GET_SUBTREE_DEFAULT, &node);
       IF_SR_ERR_FAIL(rc)
       assert_non_null(node->first_child);
 
 
-      assert_int_equal(avmods_v.total, 1);
-      rc = av_module_load(amod, node->first_child);
-      assert_int_equal(rc, 0);
-      assert_int_equal(avmods_v.total, 1);
+      sr_val_t *av_mods = NULL;
+      size_t av_mods_cnt = 0;
+      rc = sr_get_items(sr_conn_link.sess,
+                        NS_ROOT_XPATH"/available-module",
+                        &av_mods, &av_mods_cnt);
+      assert_int_equal(rc, SR_ERR_OK);
 
-      amod = avmods_v.items[0];
-      assert_string_equal(amod->name, "module A");
-      assert_string_equal(amod->path, "/a/a");
-      assert_int_equal(amod->is_nemea, true);
-      assert_int_equal(amod->is_sr_en, false);
+      assert_int_equal(av_mods_cnt, 2);
+      assert_int_equal(avmods_v.total, 2);
+      assert_int_equal(av_module_load(sr_conn_link.sess, amod1, av_mods[0].xpath),0);
+      assert_int_equal(av_module_load(sr_conn_link.sess, amod2, av_mods[1].xpath),0);
+      sr_free_values(av_mods, av_mods_cnt);
+
+      assert_int_equal(avmods_v.total, 2);
+
+      amod1 = avmods_v.items[0];
+      assert_string_equal(amod1->name, "module A");
+      assert_string_equal(amod1->path, "/a/a");
+      assert_int_equal(amod1->is_nemea, true);
+      assert_int_equal(amod1->is_sr_en, false);
+
+      amod1 = avmods_v.items[1];
+      assert_string_equal(amod1->name, "module B");
+      assert_string_equal(amod1->path, "/a/b");
+      assert_int_equal(amod1->is_nemea, false);
+      assert_int_equal(amod1->is_sr_en, false);
 
       sr_free_tree(node);
       av_module_remove_at(0);
-      av_module_free(amod);
+      av_module_remove_at(1);
+      av_module_free(amod1);
+
    }
 
    disconnect_sr();
@@ -601,7 +584,6 @@ void test_run_module_load(void **state)
 
    int rc;
    char * xpath = NS_ROOT_XPATH"/module[name='intable_module']";
-   sr_node_t *node = NULL;
    run_module_t *mod = NULL;
 
    av_module_t *avmod = av_module_alloc();
@@ -612,53 +594,45 @@ void test_run_module_load(void **state)
    assert_int_equal(rc, 0);
 
 
-   { // tests with passed module = NULL
-      rc = sr_get_subtree(sr_conn_link.sess, xpath, SR_GET_SUBTREE_DEFAULT, &node);
-      IF_SR_ERR_FAIL(rc)
-      assert_non_null(node->first_child);
+/*   { // tests with passed module = NULL
+      assert_int_equal(rnmods_v.total, 0);
+      rc = run_module_load(sr_conn_link.sess, xpath, NULL);
+      assert_int_equal(rc, SR_ERR_OK);
+      assert_int_equal(rnmods_v.total, 1);
 
-      assert_int_equal(modz_v.total, 0);
-      rc = run_module_load(sr_conn_link.sess, NULL, node->first_child);
-      assert_int_equal(rc, 0);
-      assert_int_equal(modz_v.total, 1);
-
-      mod = modz_v.items[0];
+      mod = rnmods_v.items[0];
       assert_string_equal(mod->name, "intable_module");
       // TODO more
-      //assert_string_equal(mod->path, "/ab");
 
-
-      sr_free_tree(node);
+      assert_int_equal(rnmods_v.total, 1);
       run_module_remove_at(0);
-      //module_free(mod);
-   }
-/*
+      assert_int_equal(rnmods_v.total, 0);
+      run_module_free(mod);
+   }*/
+
    { // tests with allocated module struct passed
-      mod = (module_t *) calloc(1, sizeof(module_t));
+      mod = (run_module_t *) calloc(1, sizeof(run_module_t));
       IF_NO_MEM_FAIL(mod)
 
-      rc = sr_get_subtree(sr_conn_link.sess, xpath, SR_GET_SUBTREE_DEFAULT, &node);
-      IF_SR_ERR_FAIL(rc)
-      assert_non_null(node->first_child);
-
-      assert_int_equal(module_add(mod), 0);
-      assert_int_equal(mods_v.total, 1);
-      rc = module_load(sr_conn_link.sess, mod, grp, node->first_child);
+      assert_int_equal(vector_add(&rnmods_v, mod), 0);
+      assert_int_equal(rnmods_v.total, 1);
+      assert_int_equal(mod->in_ifces.total, 0);
+      assert_int_equal(mod->out_ifces.total, 0);
+      rc = run_module_load(sr_conn_link.sess, xpath, mod);
       assert_int_equal(rc, 0);
-      assert_int_equal(mods_v.total, 1);
+      assert_int_equal(rnmods_v.total, 1);
 
-      assert_ptr_equal(mod, mods_v.items[0]);
-      assert_string_equal(mod->name, "intable_module3");
-      assert_string_equal(mod->path, "/ab");
+      assert_ptr_equal(mod, rnmods_v.items[0]);
+      assert_string_equal(mod->name, "intable_module");
+      assert_int_equal(mod->in_ifces.total, 0);
+      assert_int_equal(mod->out_ifces.total, 5);
+      test_interface_is_loaded(mod->out_ifces.items[0]);
 
-      sr_free_tree(node);
-      module_remove_at(0);
-      module_free(mod);
+      run_module_remove_at(0);
+      run_module_free(mod);
    }
 
-   module_group_free(grp);
-   NULLP_TEST_AND_FREE(xpath)
-   cleanup_structs_and_vectors();*/
+   cleanup_structs_and_vectors();
    disconnect_sr();
 
 }
@@ -814,20 +788,18 @@ void test_module_group_load_by_name(void **state)
 int main(void)
 {
    const struct CMUnitTest tests[] = {
-         cmocka_unit_test(test_av_module_load),
          cmocka_unit_test(test_run_module_load),
-/*         cmocka_unit_test(test_instance_load_by_name),
-         cmocka_unit_test(test_module_load_by_name),
-         cmocka_unit_test(test_module_group_load_by_name),
-         cmocka_unit_test(test_module_group_load),
-         cmocka_unit_test(test_module_load),
-         cmocka_unit_test(test_instance_load),
-         cmocka_unit_test(test_instance_pid_restore),
          cmocka_unit_test(test_interface_load),
          cmocka_unit_test(test_interface_file_params_load),
          cmocka_unit_test(test_interface_unix_params_load),
          cmocka_unit_test(test_interface_tcp_tls_params_load),
-         cmocka_unit_test(test_interface_tcp_params_load),*/
+         cmocka_unit_test(test_interface_tcp_params_load),
+         cmocka_unit_test(test_av_module_load),
+/*         cmocka_unit_test(test_instance_load_by_name),
+         cmocka_unit_test(test_module_load_by_name),
+         cmocka_unit_test(test_module_group_load_by_name),
+         cmocka_unit_test(test_instance_pid_restore),
+*/
    };
 
 
