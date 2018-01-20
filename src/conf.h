@@ -30,7 +30,7 @@
  * @param sess Sysrepo session to use
  *  configugration from sr_get_subtree function.
  * */
-extern int ns_config_load(sr_session_ctx_t *sess);
+extern int ns_startup_config_load(sr_session_ctx_t *sess);
 
 /**
  * @brief Loads module group structure of given name from sysrepo.

@@ -43,7 +43,9 @@
 } while(0);
 
 #define NS_ROOT_XPATH "/nemea-test-1:supervisor"
-#define NS_ROOT_XPATH_LEN 17
+#define NS_ROOT_XPATH_LEN 24
+#define TEST 1
+
 /*--END macros--*/
 
 /*--BEGIN superglobal typedef--*/

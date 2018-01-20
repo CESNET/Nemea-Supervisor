@@ -37,7 +37,7 @@ typedef enum {
    T_MODULE_N, // module nodes: name, path, enabled, params, module-restarts
 } sr_tree_lvl;
 
-int ns_config_load(sr_session_ctx_t *sess)
+int ns_startup_config_load(sr_session_ctx_t *sess)
 {
    // Root level
    if (NULL == node->first_child) {
@@ -221,7 +221,7 @@ main(int argc, char **argv)
      * Missing nodes will get loaded (in bulks) behind the scenes.
      */
     //tree_traversal(tree);
-   ns_config_load(NULL);
+   ns_startup_config_load(NULL);
 
     /* print the fully loaded tree content */
     printf("\nFully loaded tree on xpath: %s =\n", xpath);

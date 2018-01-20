@@ -67,7 +67,7 @@ void load_config()
       fail_msg("Failed to allocate memory for module groups vector");
    }
 
-   if (ns_config_load(sr_conn_link.sess) != 0) {
+   if (ns_startup_config_load(sr_conn_link.sess) != 0) {
       fail_msg("Failed to load configuration");
    }
 

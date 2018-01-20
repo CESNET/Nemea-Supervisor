@@ -77,7 +77,7 @@ static int load_config()
       fail_msg("Failed to allocate memory for module groups vector");
    }
 
-   return ns_config_load(sr_conn_link.sess);
+   return ns_startup_config_load(sr_conn_link.sess);
 }
 
 static void start_intable_module(instance_t *module, char *faked_name)

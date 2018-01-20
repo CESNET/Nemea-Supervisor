@@ -102,7 +102,7 @@ static int module_load(sr_session_ctx_t *sess,
                        module_t *mod,
                        module_group_t *grp,
                        sr_node_t *node);
-*//**
+/**
  * @brief Same thing as load_module_group but for modules.
  * @details On top of the same functionality as load_module_group but for modules,
  *  it links new module to group given by parameter group. Parses module container
@@ -112,11 +112,12 @@ static int module_load(sr_session_ctx_t *sess,
  * @param inst Module structure to load configuration to
  * @param node First of leaves or nodes of loaded module.
  * @param mod Group to which new module will be linked.
- * *//*
-static int run_module_load(sr_session_ctx_t *sess, instance_t *inst, module_t *mod,
-                         sr_node_t *node);*/
+ * */
+static int
+run_module_load(sr_session_ctx_t *sess, char *xpath, run_module_t *inst);
 
-static int av_module_load(sr_session_ctx_t *sess, av_module_t *amod, char * xpath);
+static int
+av_module_load(sr_session_ctx_t *sess, char *xpath, av_module_t *amod);
 
 /**
  * @brief Loads new interface_t and if successful assigns it to given module.
@@ -125,7 +126,8 @@ static int av_module_load(sr_session_ctx_t *sess, av_module_t *amod, char * xpat
  * @param sess
  * @param inst Module to which the new interface belongs to.
  * */
-static int interface_load(sr_session_ctx_t *sess, char *xpath, run_module_t *inst);
+static int
+interface_load(sr_session_ctx_t *sess, char *xpath, run_module_t *inst);
 
 
 // TODO
@@ -173,47 +175,60 @@ static int load_sr_num(sr_session_ctx_t *sess, char *base_xpath, char *node_xpat
 /* --BEGIN superglobal fns-- */
 
 
-int ns_config_load(sr_session_ctx_t *sess)
+int ns_startup_config_load(sr_session_ctx_t *sess)
 {
    int rc;
-   sr_node_t *tree = NULL;
-   sr_node_t *node = NULL;
-   char * av_mods_xpath = "/nemea:nemea-supervisor/available-modules";
+   sr_val_t *vals = NULL;
+   size_t vals_cnt = 0;
+   char av_mods_xpath[] = NS_ROOT_XPATH"/available-module";
+   char run_mods_xpath[] = NS_ROOT_XPATH"/module";
 
-   rc = sr_get_subtree(sess, av_mods_xpath, SR_GET_SUBTREE_DEFAULT, &tree);
+   { // load /available-modules
+      rc = sr_get_items(sess, av_mods_xpath, &vals, &vals_cnt);
+      if (rc != SR_ERR_OK) {
+         VERBOSE(N_ERR, "Failed to load %s. Error: %s", av_mods_xpath, sr_strerror(rc))
+         goto err_cleanup;
+      }
 
-   if (rc != SR_ERR_OK) {
-      VERBOSE(N_ERR, "Failed to fetch sysrepo config tree: %s", sr_strerror(rc))
-      sr_free_tree(tree);
-      return -1;
-   }
-
-   node = tree;
-
-   // Root level
-   if (node->first_child == NULL) {
-      VERBOSE(N_ERR, "Empty nemea config tree")
-      sr_free_tree(tree);
-      return -1;
-   }
-
-/*   // Descend from root to module groups root level
-   node = node->first_child;
-
-   // Module group roots level
-   while (node != NULL) {
-      if (node->first_child != NULL) {
-         if (module_group_load(sess, NULL, node->first_child) != 0) {
-            sr_free_tree(tree);
-            return -1;
+      for (int i = 0; i < vals_cnt; i++) {
+         rc = av_module_load(sess, vals[i].xpath, NULL);
+         if (rc != SR_ERR_OK) {
+            goto err_cleanup;
          }
       }
-      node = node->next;
-   }*/
+      sr_free_values(vals, vals_cnt);
+      vals = NULL;
+      vals_cnt = 0;
+   }
 
-   sr_free_tree(tree);
+
+   { // load /modules
+      rc = sr_get_items(sess, run_mods_xpath, &vals, &vals_cnt);
+      if (rc != SR_ERR_OK) {
+         VERBOSE(N_ERR, "Failed to load %s. Error: %s", av_mods_xpath, sr_strerror(rc))
+         goto err_cleanup;
+      }
+
+      for (int i = 0; i < vals_cnt; i++) {
+         rc = run_module_load(sess, vals[i].xpath, NULL);
+         if (rc != SR_ERR_OK) {
+            goto err_cleanup;
+         }
+      }
+      sr_free_values(vals, vals_cnt);
+      vals = NULL;
+      vals_cnt = 0;
+   }
 
    return 0;
+
+err_cleanup:
+   if (vals != NULL && vals_cnt != 0) {
+      sr_free_values(vals, vals_cnt);
+   }
+   VERBOSE(N_ERR, "Failed to load startup configuration.")
+
+   return rc;
 }
 
 /*int module_group_load_by_name(sr_session_ctx_t *sess, const char *name)
@@ -495,7 +510,8 @@ static int module_load(sr_session_ctx_t *sess,
    return 0;
 }
 */
-static int run_module_load(sr_session_ctx_t *sess, char *xpath, run_module_t *inst)
+static int
+run_module_load(sr_session_ctx_t *sess, char *xpath, run_module_t *inst)
 {
    int rc;
    pid_t last_pid = 0;
@@ -589,7 +605,8 @@ err_cleanup:
    return rc;
 }
 
-static int av_module_load(sr_session_ctx_t *sess, av_module_t *amod, char * xpath)
+static int
+av_module_load(sr_session_ctx_t *sess, char *xpath, av_module_t *amod)
 {
    if (amod == NULL) {
       amod = av_module_alloc();
@@ -627,71 +644,8 @@ err_cleanup:
    return -1;
 }
 
-static int load_sr_num(sr_session_ctx_t *sess, char *base_xpath, char *node_xpath,
-                       void *where, sr_type_t data_type)
-{
-   int rc;
-   char xpath[4096];
-   sr_val_t * val = NULL;
-   memset(xpath, 0, 4096);
-
-   sprintf(xpath, "%s%s", base_xpath, node_xpath);
-   rc = sr_get_item(sess, xpath, &val);
-   if (rc != SR_ERR_OK) {
-      return rc;
-   }
-
-   switch (data_type) {
-      case SR_BOOL_T:
-         *((bool *) where) = val->data.bool_val;
-         break;
-      case SR_UINT8_T:
-         *((uint8_t *) where) = val->data.uint8_val;
-         break;
-      case SR_UINT16_T:
-         *((uint16_t *) where) = val->data.uint16_val;
-         break;
-      case SR_UINT32_T:
-         *((uint32_t *) where) = val->data.uint32_val;
-         break;
-
-      default:
-         // TODO err
-         sr_free_val(val);
-         return -1;
-   }
-   sr_free_val(val);
-
-   return SR_ERR_OK;
-}
-
-static int load_sr_str(sr_session_ctx_t *sess, char *base_xpath, char *node_xpath,
-                       char **where)
-{
-   int rc;
-   char xpath[4096];
-   sr_val_t * val = NULL;
-   memset(xpath, 0, 4096);
-
-   sprintf(xpath, "%s%s", base_xpath, node_xpath);
-   rc = sr_get_item(sess, xpath, &val);
-   if (rc != SR_ERR_OK) {
-      return rc;
-   }
-
-   *where = strdup(val->data.string_val);
-   sr_free_val(val);
-
-   if (*where == NULL) {
-      // TODO err
-      NO_MEM_ERR
-      return SR_ERR_NOMEM;
-   }
-
-   return SR_ERR_OK;
-}
-
-static int interface_load(sr_session_ctx_t *sess, char *xpath, run_module_t *inst)
+static int
+interface_load(sr_session_ctx_t *sess, char *xpath, run_module_t *inst)
 {
    int rc;
    interface_t *ifc;
@@ -962,7 +916,8 @@ err_cleanup:
    return rc;
 }
 
-/*static void instance_pid_restore(pid_t last_pid, run_module_t *inst,
+static void
+instance_pid_restore(pid_t last_pid, run_module_t *inst,
                                  sr_session_ctx_t *sess)
 {
    int rc;
@@ -989,7 +944,7 @@ err_cleanup:
    }
 
 
-   if (strcmp(run_path, inst->module->path) == 0) {
+   if (strcmp(run_path, inst->mod_kind->path) == 0) {
       // Process under PID last_pid is really this inst
       inst->pid = last_pid;
       inst->running = true;
@@ -999,19 +954,14 @@ err_cleanup:
    goto clean_pid;
 
 clean_pid:
-   *//* Try to remove last_pid node from sysrepo but we don't really
-    *  care if it fails *//*
-   pid_xpath_len = strlen(ns_root_sr_path)
-                   + strlen(inst->module->group->name)
-                   + strlen(inst->module->name)
-                   + strlen(inst->name) + 66;
+   /* Try to remove last_pid node from sysrepo but we don't really
+    *  care if it fails */
+   pid_xpath_len = NS_ROOT_XPATH_LEN
+                   + strlen(inst->name) + 26;
    pid_xpath = (char *) calloc(1, sizeof(char) * (pid_xpath_len));
    if (pid_xpath != NULL) {
       sprintf(pid_xpath,
-              "%s/module-group[name='%s']/module[name='%s']/instance[name='%s']/last-pid",
-              ns_root_sr_path,
-              inst->module->group->name,
-              inst->module->name,
+              NS_ROOT_XPATH"/module[name='%s']/last-pid",
               inst->name);
       rc = sr_delete_item(sess, pid_xpath, SR_EDIT_NON_RECURSIVE);
       if (rc == SR_ERR_OK) {
@@ -1019,5 +969,71 @@ clean_pid:
       }
       NULLP_TEST_AND_FREE(pid_xpath)
    }
-}*/
+}
+
+static int
+load_sr_num(sr_session_ctx_t *sess, char *base_xpath, char *node_xpath,
+                       void *where, sr_type_t data_type)
+{
+   int rc;
+   char xpath[4096];
+   sr_val_t * val = NULL;
+   memset(xpath, 0, 4096);
+
+   sprintf(xpath, "%s%s", base_xpath, node_xpath);
+   rc = sr_get_item(sess, xpath, &val);
+   if (rc != SR_ERR_OK) {
+      return rc;
+   }
+
+   switch (data_type) {
+      case SR_BOOL_T:
+         *((bool *) where) = val->data.bool_val;
+         break;
+      case SR_UINT8_T:
+         *((uint8_t *) where) = val->data.uint8_val;
+         break;
+      case SR_UINT16_T:
+         *((uint16_t *) where) = val->data.uint16_val;
+         break;
+      case SR_UINT32_T:
+         *((uint32_t *) where) = val->data.uint32_val;
+         break;
+
+      default:
+         // TODO err
+         sr_free_val(val);
+         return -1;
+   }
+   sr_free_val(val);
+
+   return SR_ERR_OK;
+}
+
+static int
+load_sr_str(sr_session_ctx_t *sess, char *base_xpath, char *node_xpath,
+                       char **where)
+{
+   int rc;
+   char xpath[4096];
+   sr_val_t * val = NULL;
+   memset(xpath, 0, 4096);
+
+   sprintf(xpath, "%s%s", base_xpath, node_xpath);
+   rc = sr_get_item(sess, xpath, &val);
+   if (rc != SR_ERR_OK) {
+      return rc;
+   }
+
+   *where = strdup(val->data.string_val);
+   sr_free_val(val);
+
+   if (*where == NULL) {
+      // TODO err
+      NO_MEM_ERR
+      return SR_ERR_NOMEM;
+   }
+
+   return SR_ERR_OK;
+}
 /* --END local fns-- */

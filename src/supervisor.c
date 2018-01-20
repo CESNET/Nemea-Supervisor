@@ -569,7 +569,7 @@ int load_configuration()
    }
 
    pthread_mutex_lock(&config_lock);
-   rc = ns_config_load(sr_conn_link.sess);
+   rc = ns_startup_config_load(sr_conn_link.sess);
    pthread_mutex_unlock(&config_lock);
    if (rc != 0) {
       VERBOSE(N_ERR, "Failed to load config from sysrepo tree")

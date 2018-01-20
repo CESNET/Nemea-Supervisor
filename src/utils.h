@@ -99,6 +99,12 @@
                                  i < (vec)->total; \
                                 i++)
 
+#ifndef TEST
+
+#define NS_ROOT_XPATH "/nemea:supervisor"
+#define NS_ROOT_XPATH_LEN 17
+
+#endif
  /*--END macros--*/
 
  /*--BEGIN superglobal typedef--*/
