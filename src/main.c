@@ -4,8 +4,6 @@
 #include "supervisor.h"
 
 /*--BEGIN superglobal vars--*/
-bool daemon_flag = false;
-char *logs_path = NULL;
 /*--END superglobal vars--*/
 
 /*--BEGIN local #define--*/

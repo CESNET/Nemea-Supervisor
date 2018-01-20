@@ -1,7 +1,6 @@
 
 #include <libtrap/trap.h>
 #include "instance_control.h"
-#include "main.h"
 
 /*--BEGIN superglobal vars--*/
 /*--END superglobal vars--*/
@@ -31,7 +30,7 @@ static void clean_after_children();
  * @brief Start single instance process
  * @param inst Instance to start
  * */
-static void inst_start(instance_t *inst);
+static void inst_start(run_module_t *inst);
 /* --END full fns prototypes-- */
 
 /* --BEGIN superglobal fns-- */
@@ -39,9 +38,9 @@ static void inst_start(instance_t *inst);
 uint32_t get_running_insts_cnt()
 {
    uint32_t some_instance_running = 0;
-   instance_t *inst = NULL;
+   run_module_t *inst = NULL;
 
-   FOR_EACH_IN_VEC(insts_v, inst) {
+   FOR_EACH_IN_VEC(rnmods_v, inst) {
       if (inst->pid <= 0) {
          continue;
       }
@@ -58,11 +57,9 @@ void insts_stop_sigkill()
    (void) get_running_insts_cnt();
 
    bool should_be_killed;
-   instance_t *inst = NULL;
-   FOR_EACH_IN_VEC(insts_v, inst) {
-      should_be_killed = (inst->module->group->enabled == false
-                    || inst->enabled == false
-                    || inst->should_die);
+   run_module_t *inst = NULL;
+   FOR_EACH_IN_VEC(rnmods_v, inst) {
+      should_be_killed = (inst->enabled == false || inst->should_die);
 
       if (inst->running
           && inst->sigint_sent
@@ -70,7 +67,7 @@ void insts_stop_sigkill()
 
          // Only running instance that is disabled or has group disabled
          VERBOSE(V2, "Stopping inst (%s). Sending SIGKILL",
-                 instance_tree_path(inst))
+                 inst->name)
          kill(inst->pid, SIGKILL);
       }
    }
@@ -80,18 +77,16 @@ void insts_stop_sigkill()
 void insts_stop_sigint()
 {
    bool should_be_killed;
-   instance_t *inst = NULL;
-   FOR_EACH_IN_VEC(insts_v, inst) {
-      should_be_killed = (inst->module->group->enabled == false
-                   || inst->enabled == false
-                   || inst->should_die);
+   run_module_t *inst = NULL;
+   FOR_EACH_IN_VEC(rnmods_v, inst) {
+      should_be_killed = (inst->enabled == false|| inst->should_die);
 
       if (inst->running
           && inst->root_perm_needed == false
           && inst->sigint_sent == false
           && should_be_killed) {
 
-            VERBOSE(V2, "Stopping inst (%s). Sending SIGINT", instance_tree_path(inst))
+            VERBOSE(V2, "Stopping inst (%s). Sending SIGINT", inst->name)
             kill(inst->pid, SIGINT);
             inst->sigint_sent = true;
             inst->restarts_cnt = 0;
@@ -103,7 +98,7 @@ void insts_stop_sigint()
 
 void module_group_stop_remove_by_name(const char *name)
 {
-   uint32_t fi; // Index of found module
+/*   uint32_t fi; // Index of found module
    module_group_t *grp = module_group_get_by_name(name, &fi);
 
    if (grp == NULL) {
@@ -114,39 +109,61 @@ void module_group_stop_remove_by_name(const char *name)
    module_t *mod = NULL;
    FOR_EACH_IN_VEC(mods_v, mod) {
       if (mod->group == grp) {
-         module_stop_remove_by_name(mod->name);
+         av_module_stop_remove_by_name(mod->name);
       }
    }
 
    module_group_remove_at(fi);
-   module_group_free(grp);
+   module_group_free(grp);*/
 }
 
-void module_stop_remove_by_name(const char *name)
+void av_module_stop_remove_by_name(const char *name)
 {
    uint32_t fi; // Index of found module
-   module_t *mod = module_get_by_name(name, &fi);
+   av_module_t *mod = NULL;
 
-   if (mod == NULL) {
-      // Module was not found, no need to do anything
-      return;
-   }
+   { // find module structure by name
+      av_module_t *tmp = NULL;
+      for (uint32_t i = 0; i < avmods_v.total; i++) {
+         tmp = avmods_v.items[i];
+         if (strcmp(mod->name, name) == 0) {
+            fi = i;
+            mod = tmp;
+            break;
+         }
+      }
 
-   instance_t *inst = NULL;
-   FOR_EACH_IN_VEC(insts_v, inst) {
-      if (inst->module == mod) {
-         instance_stop_remove_by_name(inst->name);
+      if (mod == NULL) {
+         // Module was not found, no need to do anything
+         return;
       }
    }
 
-   module_remove_at(fi);
-   module_free(mod);
+   run_module_t *inst = NULL;
+   FOR_EACH_IN_VEC(rnmods_v, inst) {
+      if (strcmp(inst->mod_kind->name, mod->name) == 0) {
+         if (inst->pid > 0) {
+            kill(inst->pid, SIGINT);
+         }
+      }
+   }
+   usleep(WAIT_FOR_INSTS_TO_HANDLE_SIGINT);
+   FOR_EACH_IN_VEC(rnmods_v, inst) {
+      if (strcmp(inst->mod_kind->name, mod->name) == 0) {
+         if (inst->pid > 0) {
+            kill(inst->pid, SIGKILL);
+         }
+      }
+   }
+
+   av_module_remove_at(fi);
+   av_module_free(mod);
 }
 
-void instance_stop_remove_by_name(const char *name)
+void run_module_stop_remove_by_name(const char *name)
 {
    uint32_t fi; // Index of found instance
-   instance_t *inst = instance_get_by_name(name, &fi);
+   run_module_t *inst = run_module_get_by_name(name, &fi);
 
    if (inst == NULL) {
       // Instance was not found, no need to do anything
@@ -165,9 +182,9 @@ void instance_stop_remove_by_name(const char *name)
 
 void insts_terminate()
 {
-   instance_t *inst = NULL;
+   run_module_t *inst = NULL;
    pthread_mutex_lock(&config_lock);
-   FOR_EACH_IN_VEC(insts_v, inst) {
+   FOR_EACH_IN_VEC(rnmods_v, inst) {
       if (inst->enabled) {
          inst->enabled = false;
       }
@@ -184,13 +201,12 @@ void insts_terminate()
 
 void insts_start()
 {
-   instance_t *inst = NULL;
+   run_module_t *inst = NULL;
    time_t time_now;
    VERBOSE(V3, "Updating instances status")
 
-   FOR_EACH_IN_VEC(insts_v, inst) {
-      if (inst->module->group->enabled == false || inst->enabled == false ||
-          inst->running == true) {
+   FOR_EACH_IN_VEC(rnmods_v, inst) {
+      if (inst->enabled == false || inst->running == true) {
          continue;
       }
 
@@ -223,11 +239,11 @@ void insts_start()
 static void clean_after_children()
 {
 
-   instance_t *inst = NULL;
+   run_module_t *inst = NULL;
    pid_t result;
    int status;
 
-   FOR_EACH_IN_VEC(insts_v, inst) {
+   FOR_EACH_IN_VEC(rnmods_v, inst) {
       if (inst->pid > 0 && inst->is_my_child) {
          /* waitpid releases children that failed to execute execv in inst_start.
           * if this would be left out, processes would stay there as zombies */
@@ -236,7 +252,7 @@ static void clean_after_children()
             case 0:
                if (inst->sigint_sent) {
                   VERBOSE(V1, "Instance (%s) is still running after killing",
-                          instance_tree_path(inst))
+                          inst->name)
                }
                break;
 
@@ -246,14 +262,14 @@ static void clean_after_children()
                   inst->is_my_child = false;
                }
                VERBOSE(V2, "Some error occured, but inst %s is not running",
-                       instance_tree_path(inst))
+                       inst->name)
                inst->should_die = true;
                //inst->running = false;
                run_module_clear_socks(inst);
                break;
 
             default: // Module is not running
-               VERBOSE(V2, "Instance %s is not running %d", instance_tree_path(inst), result)
+               VERBOSE(V2, "Instance %s is not running %d", inst->name, result)
                inst->should_die = true;
                //inst->running = false;
                run_module_clear_socks(inst);
@@ -262,7 +278,7 @@ static void clean_after_children()
    }
 }
 
-void instance_set_running_status(instance_t *inst)
+void instance_set_running_status(run_module_t *inst)
 {
    // Send SIGHUP to check whether process exists
    if (inst->pid > 0 && kill(inst->pid, 0) != -1) {
@@ -286,7 +302,7 @@ void instance_set_running_status(instance_t *inst)
             // Error: process doesn't exist
             VERBOSE(V3,
                     "kill -0: %s (PID: %d) is not running!",
-                    instance_tree_path(inst), inst->pid)
+                    inst->name, inst->pid)
             inst->running = false;
 
          default:
@@ -301,12 +317,12 @@ void instance_set_running_status(instance_t *inst)
    }
 }
 
-void inst_start(instance_t *inst)
+void inst_start(run_module_t *inst)
 {
    char log_path_out[PATH_MAX];
    char log_path_err[PATH_MAX];
 
-   VERBOSE(V2, "Starting '%s'", instance_tree_path(inst))
+   VERBOSE(V2, "Starting '%s'", inst->name)
 
    memset(log_path_err, 0, PATH_MAX);
    memset(log_path_out, 0, PATH_MAX);
@@ -356,7 +372,7 @@ void inst_start(instance_t *inst)
 
       // Don't even think about rewriting this to VERBOSE macro
       fprintf(stdout, "[INFO]%s Supervisor executed following command from path=%s: ",
-              get_formatted_time(), inst->module->path);
+              get_formatted_time(), inst->mod_kind->path);
       for(int i = 0; inst->exec_args[i] != NULL; i++) {
          fprintf(stdout, " %s", inst->exec_args[i]);
       }
@@ -367,7 +383,7 @@ void inst_start(instance_t *inst)
       fflush(stdout);
       fflush(stderr);
 
-      execv(inst->module->path, inst->exec_args);
+      execv(inst->mod_kind->path, inst->exec_args);
 
       { // If correctly started, this won't be executed
          VERBOSE(N_ERR,

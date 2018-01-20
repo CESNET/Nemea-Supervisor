@@ -49,7 +49,7 @@ module nemea-test-1 {
       	description "TODO";
       }
     }
-  } // End grouping nemea-module-instance-stats
+  } // end grouping nemea-module-instance-stats
 
 
   container supervisor {
@@ -91,10 +91,10 @@ module nemea-test-1 {
 
     list module {
       key name;
+      description "TODO";
       uses nemea-key-name {
         description "Unique module process name";
       }
-      description "TODO";
 
       leaf module-kind {
         type leafref { path "../../available-module/name"; }
@@ -135,7 +135,7 @@ module nemea-test-1 {
             description "TODO path to sysrepo model";
           }
           // TODO this part should be modeled in the futur
-      	} // End case module-sysrepo-ready
+      	} // end case module-sysrepo-ready
       
       	case module-not-using-sysrepo-conf {
           when "use-sysrepo = 'false'";
@@ -148,6 +148,6 @@ module nemea-test-1 {
         } // end case module-not-sysrepo-ready
       } // end choice is-module-sysrepo-ready
     } // end of list module
-  } // End container nemea-supervisor
-} // End module nemea-test-1
+  } // end container nemea-supervisor
+} // end module nemea-test-1
 

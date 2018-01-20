@@ -23,7 +23,7 @@
 /**
  * @brief Prefixed YANG model tree root for configuration
  * */
-extern const char *ns_root_sr_path;
+//extern const char *ns_root_sr_path;
  /*--END superglobal vars--*/
 
  /*--BEGIN superglobal fn prototypes--*/

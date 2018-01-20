@@ -26,6 +26,7 @@
 /*--END superglobal typedef--*/
 
 /*--BEGIN superglobal vars--*/
+extern char *logs_path; ///< Path to where logs directory should reside
 /*--END superglobal vars--*/
 
 /*--BEGIN superglobal fn prototypes--*/
@@ -39,7 +40,7 @@ extern uint32_t get_running_insts_cnt();
 /**
  * @brief Checks and assigns running status of single instance
  * */
-extern void instance_set_running_status(instance_t *inst);
+extern void instance_set_running_status(run_module_t *inst);
 
 /**
  * @brief Sends SIGINT signal to all modules that TODO ...
@@ -66,7 +67,7 @@ extern void module_group_stop_remove_by_name(const char *name);
 /**
  * TODO
  * */
-extern void module_stop_remove_by_name(const char *name);
+extern void av_module_stop_remove_by_name(const char *name);
 
 /**
  * @brief Stops module of given name
@@ -75,7 +76,7 @@ extern void module_stop_remove_by_name(const char *name);
  * @param name Name of module to stop
  * @param remove Whether to remove module from vector of configured modules
  * */
-extern void instance_stop_remove_by_name(const char *name);
+extern void run_module_stop_remove_by_name(const char *name);
 
 /**
  * @brief Start all instances in insts_v vector

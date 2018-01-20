@@ -5,70 +5,13 @@
 #include "module.h"
 
 /*--BEGIN superglobal vars--*/
-extern const char * ns_root_sr_path;
+bool daemon_flag = false;
+char *logs_path = NULL;
 /*--END superglobal vars--*/
 
 /*--BEGIN local #define--*/
 
 #define FOUND_AND_ERR(rc) ((rc) != SR_ERR_NOT_FOUND && (rc) != SR_ERR_OK)
-
-#define if_node_fetch_str(node, node_name, dest) if (1) { \
-   if (strcmp((node)->name, (node_name)) == 0) { \
-      (dest) = strdup((node)->data.string_val); \
-      if ((dest) == NULL) { \
-         NO_MEM_ERR \
-         return -1; \
-      } \
-      (node) = (node)->next; \
-      continue; \
-   } \
-}
-
-#define if_node_fetch_bool(node, node_name, dest) if (1) { \
-   if (strcmp((node)->name, node_name) == 0) { \
-      (dest) = (node)->data.bool_val ? true : false; \
-      (node) = (node)->next; \
-      continue; \
-   } \
-}
-
-#define if_node_fetch_uint8(node, node_name, dest) if (1) { \
-   if (strcmp((node)->name, node_name) == 0) { \
-      (dest) = (node)->data.uint8_val; \
-      (node) = (node)->next; \
-      continue; \
-   } \
-}
-
-#define if_node_fetch_uint16(node, node_name, dest) if (1) { \
-   if (strcmp((node)->name, node_name) == 0) { \
-      (dest) = (node)->data.uint16_val; \
-      (node) = (node)->next; \
-      continue; \
-   } \
-}
-
-#define if_node_fetch_uint32(node, node_name, dest) if (1) { \
-   if (strcmp((node)->name, node_name) == 0) { \
-      (dest) = (node)->data.uint32_val; \
-      (node) = (node)->next; \
-      continue; \
-   } \
-}
-
-#define if_node_dig_down(node, node_name, fn, stru) if (1) { \
-   if (strcmp((node)->name, (node_name)) == 0 ) { \
-      if ((node)->first_child != NULL) { \
-         if ((fn)((node)->first_child, stru) != 0) { \
-            return -1; \
-         } \
-         (node) = (node)->next; \
-         continue; \
-      } \
-   } \
-}
-
-#define next_sr_node(node) { next_iter = false; (node) = (node)->next; }
 
 /*--END local #define--*/
 
@@ -90,18 +33,18 @@ extern const char * ns_root_sr_path;
  * @param sess Sysrepo session to use
  * @param group Module group structure to load configuration data to
  * @param node First of leaves or nodes of loaded group.
- * *//*
-static int module_group_load(sr_session_ctx_t *sess,
+ * */
+/*static int module_group_load(sr_session_ctx_t *sess,
                              module_group_t *group,
-                             sr_node_t *node);
+                             sr_node_t *node);*/
 
-*//**
+/**
  * TODO
- * *//*
-static int module_load(sr_session_ctx_t *sess,
+ * */
+/*static int module_load(sr_session_ctx_t *sess,
                        module_t *mod,
                        module_group_t *grp,
-                       sr_node_t *node);
+                       sr_node_t *node);*/
 /**
  * @brief Same thing as load_module_group but for modules.
  * @details On top of the same functionality as load_module_group but for modules,
@@ -114,10 +57,10 @@ static int module_load(sr_session_ctx_t *sess,
  * @param mod Group to which new module will be linked.
  * */
 static int
-run_module_load(sr_session_ctx_t *sess, char *xpath, run_module_t *inst);
+run_module_load(sr_session_ctx_t *sess, char *xpath);
 
 static int
-av_module_load(sr_session_ctx_t *sess, char *xpath, av_module_t *amod);
+av_module_load(sr_session_ctx_t *sess, char *xpath);
 
 /**
  * @brief Loads new interface_t and if successful assigns it to given module.
@@ -170,6 +113,8 @@ static int load_sr_str(sr_session_ctx_t *sess, char *base_xpath, char *node_xpat
                        char **where);
 static int load_sr_num(sr_session_ctx_t *sess, char *base_xpath, char *node_xpath,
                        void *where, sr_type_t data_type);
+
+static char * module_name_from_xpath(char *xpath);
 /* --END full fns prototypes-- */
 
 /* --BEGIN superglobal fns-- */
@@ -191,7 +136,7 @@ int ns_startup_config_load(sr_session_ctx_t *sess)
       }
 
       for (int i = 0; i < vals_cnt; i++) {
-         rc = av_module_load(sess, vals[i].xpath, NULL);
+         rc = av_module_load(sess, vals[i].xpath);
          if (rc != SR_ERR_OK) {
             goto err_cleanup;
          }
@@ -210,7 +155,7 @@ int ns_startup_config_load(sr_session_ctx_t *sess)
       }
 
       for (int i = 0; i < vals_cnt; i++) {
-         rc = run_module_load(sess, vals[i].xpath, NULL);
+         rc = run_module_load(sess, vals[i].xpath);
          if (rc != SR_ERR_OK) {
             goto err_cleanup;
          }
@@ -231,212 +176,85 @@ err_cleanup:
    return rc;
 }
 
-/*int module_group_load_by_name(sr_session_ctx_t *sess, const char *name)
+int av_module_load_by_name(sr_session_ctx_t *sess, const char *module_name)
 {
-
    int rc;
-   sr_node_t *node = NULL;
-   char * xpath = NULL;
+   sr_val_t *insts = NULL;
+   size_t insts_cnt = 0;
+   char * inst_name = NULL;
 
-   xpath = (char *) calloc(1, sizeof(char) * (strlen(ns_root_sr_path) + 46));
-   IF_NO_MEM_INT_ERR(xpath)
-   sprintf(xpath, "%s/module-group[name='%s']", ns_root_sr_path, name);
+// 255 is maximum for name key, 37 is format string with reserve
+#define XPATH_LEN (NS_ROOT_XPATH_LEN + 255 + 37)
+   char xpath[XPATH_LEN];
 
-   rc = sr_get_subtree(sess, xpath, SR_GET_SUBTREE_DEFAULT, &node);
+   memset(xpath, 0, XPATH_LEN);
+   sprintf(xpath, NS_ROOT_XPATH"/available-module[name='%s']", module_name);
+
+   rc = av_module_load(sess, xpath);
    if (rc != SR_ERR_OK) {
-      VERBOSE(N_ERR, "Failed to load new module group configuration subtree for "
-            "XPATH '%s'. Sysrepo error: %s", xpath, sr_strerror(rc))
+      VERBOSE(N_ERR, "Failed to load new module configuration")
       return rc;
    }
 
-   if (node == NULL || node->first_child == NULL) {
-      VERBOSE(N_ERR, "Failed to load new module group configuration for "
-            "group '%s'. Node is missing in sysrepo tree.", name)
-      sr_free_tree(node);
-      return SR_ERR_DATA_MISSING;
-   }
 
-   rc = module_group_load(sess, NULL, node->first_child);
-   sr_free_tree(node);
-   if (rc != 0) {
-      return rc;
-   }
+   memset(xpath, 0, XPATH_LEN);
+   sprintf(xpath, NS_ROOT_XPATH"/module/module-kind");
 
-   return SR_ERR_OK;
-}*/
-
-/*int module_load_by_name(sr_session_ctx_t *sess,
-                        const char *group_name,
-                        const char *module_name)
-{
-   int rc;
-   sr_node_t *node = NULL;
-   char * xpath = NULL;
-   uint32_t xpath_len = (uint32_t) (strlen(ns_root_sr_path)
-                                    + strlen(group_name) + strlen(module_name) + 39);
-
-   xpath = (char *) calloc(1,sizeof(char) * (xpath_len));
-   IF_NO_MEM_INT_ERR(xpath)
-   sprintf(xpath, "%s/module-group[name='%s']/module[name='%s']",
-           ns_root_sr_path, group_name, module_name);
-
-   rc = sr_get_subtree(sess, xpath, SR_GET_SUBTREE_DEFAULT, &node);
+   rc = sr_get_items(sess, xpath, &insts, &insts_cnt);
    if (rc != SR_ERR_OK) {
-      VERBOSE(N_ERR, "Failed to load new module configuration subtree for"
-            " XPATH '%s'. Sysrepo error: %s", xpath, sr_strerror(rc))
-      return rc;
+      VERBOSE(N_ERR, "Failed to load xpath %s. Error: %s", xpath, sr_strerror(rc))
+      goto err_cleanup;
    }
 
-   if (node == NULL || node->first_child == NULL) {
-      VERBOSE(N_ERR, "Failed to load new module configuration for"
-            " XPATH '%s'. Node is missing in sysrepo tree.", xpath)
-      if (node != NULL) {
-         sr_free_tree(node);
-      }
-      return SR_ERR_DATA_MISSING;
-   }
-
-   module_group_t *group = module_group_get_by_name(group_name, NULL);
-   if (group == NULL) {
-      // Can't think of case it would happen, but one can not know...
-      VERBOSE(V3, "Failed to load new module configuration for XPATH '%s'."
-            " Module group is not loaded in supervisor.", xpath)
-      return SR_ERR_DATA_MISSING;
-   }
-
-   rc = module_load(sess, NULL, group, node->first_child);
-   sr_free_tree(node);
-   if (rc != 0) {
-      VERBOSE(N_ERR, "Failed to load new module configuration from fetched"
-            " sysrepo subtree")
-      return rc;
-   }
-
-   return SR_ERR_OK;
-}*/
-
-/*int instance_load_by_name(sr_session_ctx_t *sess,
-                        const char *group_name,
-                        const char *module_name,
-                          const char *inst_name)
-{
-   int rc;
-   sr_node_t *node = NULL;
-   char * xpath = NULL;
-   uint32_t xpath_len = (uint32_t) (strlen(ns_root_sr_path)
-                                    + strlen(group_name) + strlen(module_name)
-                                    + strlen(inst_name) + 57);
-
-
-   xpath = (char *) calloc(1, sizeof(char) * (xpath_len));
-   IF_NO_MEM_INT_ERR(xpath)
-   sprintf(xpath, "%s/module-group[name='%s']/module[name='%s']/instance[name='%s']",
-           ns_root_sr_path, group_name, module_name, inst_name);
-
-   rc = sr_get_subtree(sess, xpath, SR_GET_SUBTREE_DEFAULT, &node);
-   if (rc != SR_ERR_OK) {
-      VERBOSE(N_ERR, "Failed to load new instance configuration subtree for"
-            " XPATH '%s'. Sysrepo error: %s", xpath, sr_strerror(rc))
-      return rc;
-   }
-
-   if (node == NULL || node->first_child == NULL) {
-      VERBOSE(N_ERR, "Failed to load new module configuration for"
-            " XPATH '%s'. Node is missing in sysrepo tree.", xpath)
-      if (node != NULL) {
-         sr_free_tree(node);
-      }
-      return SR_ERR_DATA_MISSING;
-   }
-
-   module_t *module = module_get_by_name(module_name, NULL);
-   if (module == NULL) {
-      // Can't think of case it would happen, but one can not know...
-      VERBOSE(V3, "Failed to load new module configuration for XPATH '%s'."
-            " Module group is not loaded in supervisor.", xpath)
-      return SR_ERR_DATA_MISSING;
-   }
-
-   rc = run_module_load(sess, NULL, module, node->first_child);
-   sr_free_tree(node);
-
-   if (rc != 0) {
-      VERBOSE(N_ERR, "Failed to load new module configuration from fetched"
-            " sysrepo subtree")
-      return rc;
-   }
-
-   return SR_ERR_OK;
-
-}*/
-/* --END superglobal fns-- */
-
-/* --BEGIN local fns-- */
-
-/*static int load_module_group2(sr_session_ctx_t *sess, module_group_t *group, char * name)
-{
-   int rc;
-   char * xpath = NULL;
-   sr_val_t *val = NULL;
-   sr_val_iter_t *iter = NULL;
-   char * grp_root_xpath = "%s/module-group[name='%s']/";
-
-   if (group == NULL) {
-      group = module_group_alloc();
-      if (group == NULL) {
+   for (size_t i = 0; i < insts_cnt; i++) {
+      inst_name = module_name_from_xpath(insts[i].xpath);
+      if (inst_name == NULL) {
          NO_MEM_ERR
          rc = SR_ERR_NOMEM;
          goto err_cleanup;
       }
-
-      module_group_add(group);
-   }
-
-   {
-      xpath = calloc(1, sizeof(strlen(ns_root_sr_path) + strlen(name) + 31));
-      sprintf(xpath, "%s/module-group[name='%s']/enabled", name);
-
-      rc = sr_get_item(sess, xpath, &val);
-
-      // TODO macro
+      memset(xpath, 0, XPATH_LEN);
+      sprintf(xpath, NS_ROOT_XPATH"/module[name='%s']", inst_name);
+      rc = run_module_load(sess, xpath);
       if (rc != SR_ERR_OK) {
-         VERBOSE(N_ERR, "Failed to fetch value at xpath=%s", xpath)
+         VERBOSE(N_ERR, "Failed to reload all instances of module '%s'", module_name)
          goto err_cleanup;
       }
-      group->enabled = val->data.bool_val;
-      NULLP_TEST_AND_FREE(xpath)
-      sr_free_val(val);
    }
 
-   {
-      xpath = calloc(1, sizeof(strlen(ns_root_sr_path) + strlen(name) + 34));
-      sprintf(xpath, "%s/module-group[name='%s']/module/name", name);
-
-      rc = sr_get_items_iter(sess, xpath, &iter);
-      while ((rc = sr_get_item(sess, xpath, &val)) == SR_ERR_OK) {
-         VERBOSE(DEBUG, "module=%s", val->data.string_val)
-         // pass to module
-         sr_free_val(val);
-      }
-      VERBOSE(DEBUG, "rc=%d, %s", rc, sr_strerror(rc))
-      // TODO find error type
-      //if (rc != SR_ERR_)
-
-      sr_free_val(val);
-      sr_free_val_iter(val);
-      NULLP_TEST_AND_FREE(xpath)
-   }
-
-   // load module names
+   return SR_ERR_OK;
 
 err_cleanup:
-   NULLP_TEST_AND_FREE(xpath)
-   if (iter != NULL) {
-      sr_free_val_iter(iter);
+   if (insts != NULL && insts_cnt != 0) {
+      sr_free_values(insts, insts_cnt);
    }
 
    return rc;
-}*/
+}
+
+int run_module_load_by_name(sr_session_ctx_t *sess, const char *inst_name)
+{
+   int rc;
+   char * xpath = NULL;
+   uint32_t xpath_len = (uint32_t) (NS_ROOT_XPATH_LEN + strlen(inst_name) + 17);
+
+
+   xpath = (char *) calloc(1, sizeof(char) * (xpath_len));
+   IF_NO_MEM_INT_ERR(xpath)
+   sprintf(xpath, NS_ROOT_XPATH"/module[name='%s']", inst_name);
+
+   rc = run_module_load(sess, xpath);
+   if (rc != 0) {
+      VERBOSE(N_ERR, "Failed to load new module configuration from fetched"
+            " sysrepo subtree")
+      return rc;
+   }
+
+   return SR_ERR_OK;
+}
+/* --END superglobal fns-- */
+
+/* --BEGIN local fns-- */
 
 /*static int module_group_load(sr_session_ctx_t *sess,
                              module_group_t *group,
@@ -511,7 +329,7 @@ static int module_load(sr_session_ctx_t *sess,
 }
 */
 static int
-run_module_load(sr_session_ctx_t *sess, char *xpath, run_module_t *inst)
+run_module_load(sr_session_ctx_t *sess, char *xpath)
 {
    int rc;
    pid_t last_pid = 0;
@@ -520,40 +338,47 @@ run_module_load(sr_session_ctx_t *sess, char *xpath, run_module_t *inst)
    size_t ifc_cnt = 0;
    sr_val_t *ifces = NULL;
 
+   run_module_t *inst = run_module_alloc();
    if (inst == NULL) {
-      inst = run_module_alloc();
-      IF_NO_MEM_INT_ERR(inst)
+      NO_MEM_ERR
+      return SR_ERR_NOMEM;
+   }
+   IF_NO_MEM_INT_ERR(inst)
 
-      if (vector_add(&rnmods_v, inst) != 0) {
-         NO_MEM_ERR
-         return SR_ERR_NOMEM;
-      }
+   if (vector_add(&rnmods_v, inst) != 0) {
+      NO_MEM_ERR
+      return SR_ERR_NOMEM;
    }
 
    rc = load_sr_str(sess, xpath, "/name", &(inst->name));
    if (FOUND_AND_ERR(rc)) {
+      VERBOSE(N_ERR, "Failed to load xpath %s/name", xpath)
       goto err_cleanup;
    }
    rc = load_sr_str(sess, xpath, "/module-kind", &mod_kind);
    if (FOUND_AND_ERR(rc)) {
+      VERBOSE(N_ERR, "Failed to load xpath %s/module-kind", xpath)
       goto err_cleanup;
    }
    rc = load_sr_num(sess, xpath, "/enabled", &(inst->enabled), SR_BOOL_T);
    if (FOUND_AND_ERR(rc)) {
+      VERBOSE(N_ERR, "Failed to load xpath %s/enabled", xpath)
       goto err_cleanup;
    }
-
-   rc = load_sr_num(sess, xpath, "/max-restarts-per-minute",
+   rc = load_sr_num(sess, xpath, "/max-restarts-per-min",
                     &(inst->max_restarts_minute), SR_UINT8_T);
    if (FOUND_AND_ERR(rc)) {
+      VERBOSE(N_ERR, "Failed to load xpath %s/max-restarts-per-min", xpath)
       goto err_cleanup;
    }
    rc = load_sr_str(sess, xpath, "/params", &(inst->params));
    if (FOUND_AND_ERR(rc)) {
+      VERBOSE(N_ERR, "Failed to load xpath %s/params", xpath)
       goto err_cleanup;
    }
    rc = load_sr_num(sess, xpath, "/last-pid", &last_pid, SR_UINT32_T);
    if (FOUND_AND_ERR(rc)) {
+      VERBOSE(N_ERR, "Failed to load xpath %s/last-pid", xpath)
       goto err_cleanup;
    }
 
@@ -566,8 +391,9 @@ run_module_load(sr_session_ctx_t *sess, char *xpath, run_module_t *inst)
       sprintf(ifc_xpath, "%s/interface", xpath);
 
       rc = sr_get_items(sess, ifc_xpath, &ifces, &ifc_cnt);
-      if (rc != SR_ERR_OK) {
-         // TODO msg
+      if (FOUND_AND_ERR(rc)) {
+         VERBOSE(N_ERR, "Failed to get items for xpath=%s/interface. Error: %s",
+                 xpath, sr_strerror(rc))
          goto err_cleanup;
       }
 
@@ -575,6 +401,7 @@ run_module_load(sr_session_ctx_t *sess, char *xpath, run_module_t *inst)
          interface_load(sess, ifces[i].xpath, inst);
       }
       sr_free_values(ifces, ifc_cnt);
+      NULLP_TEST_AND_FREE(ifc_xpath)
    }
 
    rc = module_gen_exec_args(inst);
@@ -582,40 +409,40 @@ run_module_load(sr_session_ctx_t *sess, char *xpath, run_module_t *inst)
       /* hopefully this would be removed in the future due to sysrepo per
        * module configuration */
       VERBOSE(N_ERR, "Failed to prepare exec_args")
-      NULLP_TEST_AND_FREE(mod_kind)
-      return SR_ERR_NOMEM;
+      rc = SR_ERR_NOMEM;
+      goto err_cleanup;
    }
 
 
 
    if (last_pid > 0) {
       VERBOSE(V3, "Restoring PID=%d for %s", last_pid, inst->name)
-      // TODO TOD TOTOD
-      //instance_pid_restore(last_pid, inst, sess);
+      instance_pid_restore(last_pid, inst, sess);
    }
 
    return SR_ERR_OK;
 
 err_cleanup:
-   // TODO
+   VERBOSE(N_ERR, "Failed to load module instance from xpath=%s", xpath)
    if (ifces != NULL) {
       sr_free_values(ifces, ifc_cnt);
    }
+   NULLP_TEST_AND_FREE(ifc_xpath)
+   NULLP_TEST_AND_FREE(mod_kind)
+   run_module_free(inst);
 
    return rc;
 }
 
 static int
-av_module_load(sr_session_ctx_t *sess, char *xpath, av_module_t *amod)
+av_module_load(sr_session_ctx_t *sess, char *xpath)
 {
-   if (amod == NULL) {
-      amod = av_module_alloc();
-      IF_NO_MEM_INT_ERR(amod)
+   av_module_t *amod = av_module_alloc();
+   IF_NO_MEM_INT_ERR(amod)
 
-      if (vector_add(&avmods_v, amod) != 0) {
-         NO_MEM_ERR
-         return -1;
-      }
+   if (vector_add(&avmods_v, amod) != 0) {
+      NO_MEM_ERR
+      return -1;
    }
 
    int rc;
@@ -1035,5 +862,46 @@ load_sr_str(sr_session_ctx_t *sess, char *base_xpath, char *node_xpath,
    }
 
    return SR_ERR_OK;
+}
+
+static char * module_name_from_xpath(char *xpath)
+{
+   char *res = NULL;
+   char *name = NULL;
+   sr_xpath_ctx_t state = {0};
+
+   // /nemea:supervisor
+   res = sr_xpath_next_node(xpath, &state);
+   if (res == NULL) {
+      VERBOSE(N_ERR, "Failed to parse module name from xpath on line %d", __LINE__)
+      goto err_cleanup;
+   }
+   // /module
+   res = sr_xpath_next_node(NULL, &state);
+   if (res == NULL) {
+      VERBOSE(N_ERR, "Failed to parse module name from xpath on line %d", __LINE__)
+      goto err_cleanup;
+   }
+
+   // fetch key 'name'
+   res = sr_xpath_node_key_value_idx(NULL, 0, &state);
+   if (res == NULL) {
+      VERBOSE(N_ERR, "Failed to parse module name from xpath on line %d", __LINE__)
+      goto err_cleanup;
+   }
+
+   name = strdup(res);
+   if (name == NULL) {
+      NO_MEM_ERR
+      goto err_cleanup;
+   }
+
+   sr_xpath_recover(&state);
+
+   return name;
+
+err_cleanup:
+   sr_xpath_recover(&state);
+   return NULL;
 }
 /* --END local fns-- */

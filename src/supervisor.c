@@ -16,9 +16,6 @@
 #include "main.h"
 
  /*--BEGIN superglobal vars--*/
-#ifndef TEST
-const char *ns_root_sr_path = "/nemea:nemea-supervisor";
-#endif
  /*--END superglobal vars--*/
 
  /*--BEGIN local #define--*/

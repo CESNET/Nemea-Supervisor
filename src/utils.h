@@ -86,7 +86,7 @@
 
 
 /**
- * @brief TODO poradny, vsude zkontrolovat jestli je ve vec neco, jinak to spadne
+ * @brief TODO poradny, vsude zkontrolovat jestli je ve vec.capacity > 0, jinak to spadne
  * @details (vec).items[i] gets implicitly type casted to iter type.
  * */
 #define FOR_EACH_IN_VEC(vec, iter) for (uint32_t i = 0; \
@@ -99,7 +99,7 @@
                                  i < (vec)->total; \
                                 i++)
 
-#ifndef TEST
+#ifndef NS_TEST
 
 #define NS_ROOT_XPATH "/nemea:supervisor"
 #define NS_ROOT_XPATH_LEN 17

@@ -2,12 +2,8 @@
 #include <pthread.h>
 
 #include "testing_utils.h"
-#include "../src/conf.h"
 #include "../src/module.h"
-#include "../src/utils.h"
 #include "../src/run_changes.c"
-
-const char *ns_root_sr_path = "/nemea-tests-1:nemea-supervisor";
 
 /**
  * @brief Mocked sr_conn_link_t from sup.c
@@ -32,7 +28,8 @@ static void connect_to_sr()
    int rc;
 
    // Connect to sysrepo
-   rc = sr_connect("conf_test.c", SR_CONN_DEFAULT, &sr_conn_link.conn);
+   output_fd = stdout;
+   rc = sr_connect("test_run_changes.c", SR_CONN_DEFAULT, &sr_conn_link.conn);
    IF_SR_ERR_FAIL(rc)
 
    rc = sr_session_start(sr_conn_link.conn, SR_DS_STARTUP, SR_SESS_CONFIG_ONLY,
@@ -57,30 +54,20 @@ static void disconnect_sr()
 
 static int load_config()
 {
-   int rc;
-   sr_node_t *tree = NULL;
-
    connect_to_sr();
 
-   rc = sr_get_subtree(sr_conn_link.sess, ns_root_sr_path, SR_GET_SUBTREE_DEFAULT, &tree);
-   IF_SR_ERR_FAIL(rc)
-
-   if (vector_init(&insts_v, 10) != 0) {
+   if (vector_init(&rnmods_v, 10) != 0) {
       fail_msg("Failed to allocate memory for instances vector");
    }
 
-   if (vector_init(&mods_v, 10) != 0) {
+   if (vector_init(&avmods_v, 10) != 0) {
       fail_msg("Failed to allocate memory for modules vector");
-   }
-
-   if (vector_init(&mgrps_v, 5) != 0) {
-      fail_msg("Failed to allocate memory for module groups vector");
    }
 
    return ns_startup_config_load(sr_conn_link.sess);
 }
 
-static void start_intable_module(instance_t *module, char *faked_name)
+static void start_intable_module(run_module_t *module, char *faked_name)
 {
    module->pid = fork();
    if (module->pid == -1) {
@@ -111,12 +98,12 @@ int ns_config_change_cb_wrapper(sr_session_ctx_t *sess,
 
 static void load_config_and_subscribe_to_change()
 {
-   int rc = load_config();
-   assert_int_equal(rc, 0);
+   int rc;
+   assert_int_equal(load_config(), 0);
 
-   VERBOSE(DEBUG, "Subscribing")
+   VERBOSE(DEBUG, "Subscribing to %s", NS_ROOT_XPATH)
    rc = sr_subtree_change_subscribe(sr_conn_link.sess,
-                                    ns_root_sr_path,
+                                    NS_ROOT_XPATH,
                                     ns_config_change_cb_wrapper, NULL, 0,
                                     SR_SUBSCR_DEFAULT | SR_SUBSCR_APPLY_ONLY,
                                     &sr_conn_link.subscr_chges);
@@ -130,9 +117,8 @@ static void load_config_and_subscribe_to_change()
 static void disconnect_and_unload_config()
 {
    disconnect_sr();
-   vector_free(&insts_v);
-   vector_free(&mods_v);
-   vector_free(&mgrps_v);
+   vector_free(&avmods_v);
+   vector_free(&rnmods_v);
 }
 
 static void make_async_change(char * change)
@@ -165,15 +151,15 @@ static inline void fake_sv_routine()
 ///////////////////////////TESTS
 ///////////////////////////TESTS
 
-/*
-static void config_change_cb_test_group_with_modules_created(void **state)
+
+/*static void config_change_cb_test_group_with_modules_created(void **state)
 {
    sr_subscription_ctx_t *sub = NULL;
    int rc = load_config();
    assert_int_equal(rc, 0);
 
    VERBOSE(DEBUG, "Subscribing")
-   rc = sr_module_change_subscribe(sr_conn_link.sess, "nemea-tests-1", config_change_cb_wrapper, NULL, 0, SR_SUBSCR_DEFAULT | SR_SUBSCR_APPLY_ONLY, &sub);
+   rc = sr_module_change_subscribe(sr_conn_link.sess, "nemea-tests-1", ns_config_change_cb_wrapper, NULL, 0, SR_SUBSCR_DEFAULT | SR_SUBSCR_APPLY_ONLY, &sub);
    //rc = sr_subtree_change_subscribe(sr_conn_link.sess, SV_TESTING_ROOT_XPATH, config_change_cb_wrapper, &config_lock, 0, SR_SUBSCR_DEFAULT | SR_SUBSCR_APPLY_ONLY, &sub);
    assert_int_equal(rc, SR_ERR_OK);
    VERBOSE(DEBUG, "Subscribed")
@@ -195,36 +181,34 @@ static void config_change_cb_test_group_with_modules_created(void **state)
       pthread_mutex_unlock(&config_lock);
       usleep(15000); // Give time for other threads
    }
-}
-*/
+}*/
+
 
 void test_ns_config_change_cb_with_module_created(void **state)
 {
-   system("helpers/import_conf.sh -s nemea-tests-1-startup-config-3.xml");
+   system("../../tests/helpers/import_conf.sh -s nemea-test-1-startup-4.xml");
    load_config_and_subscribe_to_change();
-   assert_int_equal(insts_v.total, 4);
-   assert_int_equal(mods_v.total, 4);
-   assert_int_equal(mgrps_v.total, 5);
+   assert_int_equal(rnmods_v.total, 4);
+   assert_int_equal(avmods_v.total, 2);
 
-   VERBOSE(DEBUG, "Making async change")
    make_async_change("create_module");
    fake_sv_routine();
 
 
    bool new_found = false;
-   module_t *m_iter = NULL;
-   FOR_EACH_IN_VEC(mods_v, m_iter) {
+   av_module_t *m_iter = NULL;
+   FOR_EACH_IN_VEC(avmods_v, m_iter) {
       if (strcmp(m_iter->name, "m1") == 0) {
          new_found = true;
          assert_string_equal(m_iter->path, "/m1path");
       }
    }
-   // 4 already defined in yang/nemea-tests-1-startup-config-1.xml
-   assert_int_equal(mods_v.total, 5);
+
+   assert_int_equal(avmods_v.total, 5);
    assert_int_equal(new_found, true);
    disconnect_and_unload_config();
 }
-
+/*
 void test_ns_config_change_cb_with_module_group_created(void **state)
 {
    system("helpers/import_conf.sh -s nemea-tests-1-startup-config-3.xml");
@@ -377,87 +361,56 @@ void test_ns_config_change_cb_with_instance_modified_1(void **state)
    assert_int_not_equal(old_pid, inst->pid);
 
    disconnect_and_unload_config();
-}
+}*/
 
 void test_ns_change_load(void **state)
 {
-   ns_change_t *change = NULL;
+   run_change_t *change = NULL;
    sr_val_t val= {0};
 
    {
-      val.xpath = strdup("/nemea:nemea-supervisor/module-group[name='grp1']"
-                               "/module[name='mod1']/instance[name='inst1']/enabled");
+      val.xpath = strdup("/nemea:nemea-supervisor/available-module[name='Module A']"
+                               "/path");
       IF_NO_MEM_FAIL(val.xpath)
 
-      change = ns_change_load(SR_OP_CREATED, NULL, &val);
+      change = run_change_load(SR_OP_CREATED, NULL, &val);
       assert_non_null(change);
-      assert_int_equal(change->type, NS_CHE_T_INST);
-      assert_string_equal(change->inst_name, "inst1");
-      assert_string_equal(change->grp_name, "grp1");
-      assert_string_equal(change->mod_name, "mod1");
-      assert_string_equal(change->node_name, "enabled");
-      NULLP_TEST_AND_FREE(val.xpath)
-   }
-
-   {
-      val.xpath = strdup("/nemea:nemea-supervisor/module-group[name='grp1']"
-                               "/module[name='mod1']/path");
-      IF_NO_MEM_FAIL(val.xpath)
-
-      change = ns_change_load(SR_OP_CREATED, NULL, &val);
-      assert_non_null(change);
-      assert_int_equal(change->type, NS_CHE_T_MOD);
+      assert_int_equal(change->type, RUN_CHE_T_MOD);
       assert_null(change->inst_name);
-      assert_string_equal(change->grp_name, "grp1");
-      assert_string_equal(change->mod_name, "mod1");
+      assert_string_equal(change->mod_name, "Module A");
       assert_string_equal(change->node_name, "path");
       NULLP_TEST_AND_FREE(val.xpath)
    }
 
-
    {
-      val.xpath = strdup("/nemea:nemea-supervisor/module-group[name='grp1']");
+      val.xpath = strdup("/nemea:nemea-supervisor/module[name='test module 1']"
+                               "/interface[name='tcp-out']/type");
       IF_NO_MEM_FAIL(val.xpath)
 
-      change = ns_change_load(SR_OP_CREATED, NULL, &val);
+      change = run_change_load(SR_OP_CREATED, NULL, &val);
       assert_non_null(change);
-      assert_int_equal(change->type, NS_CHE_T_GRP);
-      assert_null(change->inst_name);
+      assert_int_equal(change->type, RUN_CHE_T_INST);
       assert_null(change->mod_name);
-      assert_null(change->node_name);
-      assert_string_equal(change->grp_name, "grp1");
+      assert_string_equal(change->inst_name, "test module 1");
+      assert_string_equal(change->node_name, "interface");
       NULLP_TEST_AND_FREE(val.xpath)
    }
-
-   {
-      val.xpath = strdup("/nemea:nemea-supervisor/module-group[name='grp1']/enabled");
-      IF_NO_MEM_FAIL(val.xpath)
-
-      change = ns_change_load(SR_OP_CREATED, NULL, &val);
-      assert_non_null(change);
-      assert_int_equal(change->type, NS_CHE_T_GRP);
-      assert_null(change->inst_name);
-      assert_null(change->mod_name);
-      assert_string_equal(change->grp_name, "grp1");
-      assert_string_equal(change->node_name, "enabled");
-      NULLP_TEST_AND_FREE(val.xpath)
-   }
-
-
 }
 
 int main(void)
 {
 
    const struct CMUnitTest tests[] = {
-         cmocka_unit_test(test_ns_config_change_cb_with_module_modified_1),
+/*
+ * cmocka_unit_test(test_ns_config_change_cb_with_module_modified_1),
          cmocka_unit_test(test_ns_config_change_cb_with_instance_modified_1),
          cmocka_unit_test(test_ns_config_change_cb_with_group_modified_1),
          cmocka_unit_test(test_ns_config_change_cb_with_module_deleted),
          cmocka_unit_test(test_ns_config_change_cb_with_module_group_deleted),
          cmocka_unit_test(test_ns_config_change_cb_with_module_group_created),
-         cmocka_unit_test(test_ns_config_change_cb_with_module_created),
          cmocka_unit_test(test_ns_change_load),
+         */
+         cmocka_unit_test(test_ns_config_change_cb_with_module_created),
    };
 
    disconnect_sr();

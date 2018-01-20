@@ -211,7 +211,7 @@ int inst_get_stats_cb(const char *xpath,
    }
    VERBOSE(V3, "Stats requested for inst '%s'", tree_path.inst)
 
-   inst = instance_get_by_name(tree_path.inst, NULL);
+   inst = run_module_get_by_name(tree_path.inst, NULL);
    if (inst == NULL) {
       VERBOSE(N_ERR, "Instance '%s' was not found for stats data.", tree_path.inst)
       goto err_cleanup;

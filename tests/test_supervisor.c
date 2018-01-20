@@ -1,8 +1,5 @@
 #include <sysrepo.h>
 #include <pthread.h>
-
-#define TEST 1
-
 #include "testing_utils.h"
 #include "../src/module.h"
 #include "../src/supervisor.c"

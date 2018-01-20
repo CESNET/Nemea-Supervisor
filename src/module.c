@@ -481,7 +481,7 @@ run_module_t * run_module_alloc()
       return NULL;
    }
 
-   VERBOSE(DEBUG, "Allocated new inst")
+   VERBOSE(V3, "Allocated new inst")
 
    return inst;
 }
@@ -499,7 +499,7 @@ interface_t * interface_alloc()
    interface->autoflush = NULL;
    interface->timeout = NULL;
    interface->stats = NULL;
-   VERBOSE(DEBUG, "Allocated new instance interface")
+   VERBOSE(V3, "Allocated new instance interface")
 
    return interface;
 }
@@ -776,10 +776,10 @@ module_t * module_get_by_name(const char * name, uint32_t *index)
    return NULL;
 }*/
 
-/*instance_t * instance_get_by_name(const char *name, uint32_t *index)
+run_module_t * run_module_get_by_name(const char *name, uint32_t *index)
 {
    uint32_t fi; // Index of found instance
-   instance_t *inst = NULL;
+   run_module_t *inst = NULL;
 
    for (fi = 0; fi < insts_v.total; fi++) {
       inst = insts_v.items[fi];
@@ -794,7 +794,7 @@ module_t * module_get_by_name(const char * name, uint32_t *index)
 
    // Instance was not found
    return NULL;
-}*/
+}
 
 /*
 interface_t * interface_get_by_path(const tree_path_t *path)

@@ -1,5 +1,5 @@
-#ifndef TEST_UTILS_H
-#define TEST_UTILS_H
+#ifndef TESTING_UTILS_H
+#define TESTING_UTILS_H
 
 #include <stdarg.h>
 #include <stddef.h>
@@ -22,6 +22,12 @@
    } \
 } while (0);
 
+#define IF_SR_ERR_FAIL(rc) do { \
+   if ((rc) != SR_ERR_OK) { \
+      fail_msg("Sysrepo error - %s\n", sr_strerror((rc))); \
+   } \
+} while(0);
+
 #define PRINT_LASTEST_SR_ERRS(sess) do { \
    { \
       const sr_error_info_t *errs_45454 = NULL; \
@@ -36,15 +42,9 @@
    } \
 } while(0);
 
-#define IF_SR_ERR_FAIL(rc) do { \
-   if ((rc) != SR_ERR_OK) { \
-      fail_msg("Sysrepo error - %s\n", sr_strerror((rc))); \
-   } \
-} while(0);
-
+#define NS_TEST 1
 #define NS_ROOT_XPATH "/nemea-test-1:supervisor"
 #define NS_ROOT_XPATH_LEN 24
-#define TEST 1
 
 /*--END macros--*/
 
@@ -52,8 +52,6 @@
 /*--END superglobal typedef--*/
 
 /*--BEGIN superglobal vars--*/
-// denote with extern
-//extern sr_conn_ctx_t *sr_con = NULL;
 /*--END superglobal vars--*/
 
 /*--BEGIN superglobal fn prototypes--*/

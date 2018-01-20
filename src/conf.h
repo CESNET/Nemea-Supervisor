@@ -18,6 +18,8 @@
  /*--END superglobal typedef--*/
 
  /*--BEGIN superglobal vars--*/
+extern bool daemon_flag; ///< CLI startup option to tell whether to start as daemon
+extern char *logs_path; ///< Path to where logs directory should reside
  /*--END superglobal vars--*/
 
  /*--BEGIN superglobal fn prototypes--*/
@@ -32,14 +34,6 @@
  * */
 extern int ns_startup_config_load(sr_session_ctx_t *sess);
 
-/**
- * @brief Loads module group structure of given name from sysrepo.
- * @details It's a wrapper around load_module_group(sr_node_t *group_node) function.
- * @see load_module_group()
- * @param sess Sysrepo session to use
- * @param name Name of module group to load
- * */
-extern int module_group_load_by_name(sr_session_ctx_t *sess, const char *name);
 
 /**
  * @brief Loads module structure of given name from sysrepo.
@@ -50,16 +44,14 @@ extern int module_group_load_by_name(sr_session_ctx_t *sess, const char *name);
  * @param group_name Name of group to which module belongs to
  * @param module_name Name of module to load
  * */
-extern int module_load_by_name(sr_session_ctx_t *sess, const char *group_name,
-                               const char *module_name);
+extern int
+av_module_load_by_name(sr_session_ctx_t *sess, const char *module_name);
 
 /**
  * TODO
  * */
-int instance_load_by_name(sr_session_ctx_t *sess,
-                          const char *group_name,
-                          const char *module_name,
-                          const char *inst_name);
+extern int
+run_module_load_by_name(sr_session_ctx_t *sess, const char *inst_name);
  /*--END superglobal fn prototypes--*/
 
 #endif

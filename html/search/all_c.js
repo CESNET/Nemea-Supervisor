@@ -7,5 +7,5 @@ var searchData=
   ['next_5fsd_5fifc',['next_sd_ifc',['../structinterface__s.html#a34a910166c744781d4218a8866d38c94',1,'interface_s']]],
   ['nix',['nix',['../unionspecific__ifc__params__u.html#a5e99d445af8b7f749ea683e497dc713c',1,'specific_ifc_params_u']]],
   ['note',['note',['../structinterface__s.html#a96464a503c63613eaf00a8a6e654e904',1,'interface_s']]],
-  ['ns_5fchange_5felem_5fs',['ns_change_s',['../structns__change__elem__s.html',1,'']]]
+  ['ns_5fchange_5felem_5fs',['change_s',['../structns__change__elem__s.html',1,'']]]
 ];

@@ -324,59 +324,14 @@ extern vector_t rnmods_v;
 /**
  * TODO
  * */
-//int module_group_add(module_group_t *group);
-
-/**
- * TODO
- * */
-void module_group_remove_at(uint32_t index);
-
-/**
- * TODO
- * */
-void module_group_remove_by_name(const char * name);
-
-/**
- * TODO
- * */
-//int module_add(module_t *mod);
-
-/**
- * TODO
- * */
-void module_remove_at(uint32_t index);
-
-/**
- * TODO
- * */
-void module_remove_by_name(const char * name);
-
-/**
- * TODO
- * */
-//int instance_add(instance_t *inst);
-
-/**
- * TODO
- * */
 void av_module_remove_at(uint32_t index);
 /**
  * TODO
  * */
 void run_module_remove_at(uint32_t index);
 
-/**
- * TODO
- * */
-void instance_remove_by_name(const char * name);
-
 // TODO
 int run_module_interface_add(run_module_t *mod, interface_t *ifc);
-
-/**
- * TODO
- * */
-//extern void print_module_group(const module_group_t *);
 
 /**
  * TODO
@@ -399,16 +354,6 @@ extern void print_ifc(interface_t *ifc);
  *  going to be freed
  * */
 extern void module_groups_free();
-
-/**
- * TODO
- * */
-//extern void module_group_free(module_group_t *group);
-
-/**
- * TODO
- * */
-//extern void module_free(module_t *module);
 
 /**
  * TODO
@@ -449,18 +394,6 @@ av_module_t * av_module_alloc();
 extern run_module_t * run_module_alloc();
 
 /**
- * TOOD
- * */
-//extern module_t * module_alloc();
-
-/**
- * @brief Dynamically allocates new module_group_t structure and fills it with
- *  default values.
- * @return Pointer to newly allocated module group or NULL on failure
- * */
-//extern module_group_t * module_group_alloc();
-
-/**
  * TODO
  * */
 extern interface_t * interface_alloc();
@@ -483,45 +416,19 @@ extern int interface_specific_params_alloc(interface_t *ifc);
 extern int module_gen_exec_args(run_module_t *inst);
 
 /**
- * TODO
- * */
-//extern module_group_t * module_group_get_by_name(const char *name, uint32_t *index);
-
-/**
- * TODO
- * */
-//extern module_t * module_get_by_name(const char * name, uint32_t *index);
-
-/**
  * @brief Finds module by it's name inside mods_v and fills it's index inside
  *  vector to index parameter.
  * @param name Name of module to find
  * @param index Found index inside mods_v vector. It's not filled if module is not found.
  * @return Pointer to found module or NULL if not found.
  * */
-//extern instance_t * instance_get_by_name(const char *name, uint32_t *index);
-
-/**
- * @brief Frees all allocated memory within group and resets values to
- *  default.
- * @param group Module group to clear.
- * */
-//extern void module_group_clear(module_group_t *group);
-
-/**
- * @brief Frees all allocated memory within module and resets values to
- *  default while keeping stats.
- * @param inst Module to clear
- * */
-//extern void instance_clear(instance_t *inst);
+extern run_module_t * run_module_get_by_name(const char *name, uint32_t *index);
 
 /**
  * @brief Clear UNIX socket files left after killed module.
  * @param inst Module after which the socket files should be cleaned.
  * */
 extern void run_module_clear_socks(run_module_t *inst);
-
-//extern char * instance_tree_path(const instance_t * inst);
 
 /**
  * TODO
