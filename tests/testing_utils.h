@@ -42,9 +42,9 @@
    } \
 } while(0);
 
-#define NS_TEST 1
+/*#define NS_TEST 1
 #define NS_ROOT_XPATH "/nemea-test-1:supervisor"
-#define NS_ROOT_XPATH_LEN 24
+#define NS_ROOT_XPATH_LEN 24*/
 
 /*--END macros--*/
 

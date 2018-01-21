@@ -96,37 +96,18 @@ void insts_stop_sigint()
    clean_after_children();
 }
 
-void module_group_stop_remove_by_name(const char *name)
-{
-/*   uint32_t fi; // Index of found module
-   module_group_t *grp = module_group_get_by_name(name, &fi);
-
-   if (grp == NULL) {
-      // Module group was not found, no need to do anything
-      return;
-   }
-
-   module_t *mod = NULL;
-   FOR_EACH_IN_VEC(mods_v, mod) {
-      if (mod->group == grp) {
-         av_module_stop_remove_by_name(mod->name);
-      }
-   }
-
-   module_group_remove_at(fi);
-   module_group_free(grp);*/
-}
-
 void av_module_stop_remove_by_name(const char *name)
 {
    uint32_t fi; // Index of found module
    av_module_t *mod = NULL;
 
+   VERBOSE(V2, "Stopping module '%s'", name)
+
    { // find module structure by name
       av_module_t *tmp = NULL;
       for (uint32_t i = 0; i < avmods_v.total; i++) {
          tmp = avmods_v.items[i];
-         if (strcmp(mod->name, name) == 0) {
+         if (strcmp(tmp->name, name) == 0) {
             fi = i;
             mod = tmp;
             break;
@@ -141,17 +122,30 @@ void av_module_stop_remove_by_name(const char *name)
 
    run_module_t *inst = NULL;
    FOR_EACH_IN_VEC(rnmods_v, inst) {
-      if (strcmp(inst->mod_kind->name, mod->name) == 0) {
+      VERBOSE(DEBUG, "i=%d ptr=%p total=%d", i, &(*inst), rnmods_v.total)
+      if (strcmp(inst->mod_kind->name, name) == 0) {
          if (inst->pid > 0) {
             kill(inst->pid, SIGINT);
          }
       }
    }
    usleep(WAIT_FOR_INSTS_TO_HANDLE_SIGINT);
-   FOR_EACH_IN_VEC(rnmods_v, inst) {
-      if (strcmp(inst->mod_kind->name, mod->name) == 0) {
+   VERBOSE(DEBUG, "xxxxxxxxxxxxx")
+   for (int i = 0; i < rnmods_v.total; i++) {
+      inst = rnmods_v.items[i];
+      VERBOSE(DEBUG, "i=%d ptr=%p total=%d", i, &(*inst), rnmods_v.total)
+      if (strcmp(inst->mod_kind->name, name) == 0) {
+         VERBOSE(V3, "Stopping instance '%s'", inst->name)
          if (inst->pid > 0) {
             kill(inst->pid, SIGKILL);
+         }
+         VERBOSE(DEBUG, "total=%d", rnmods_v.total)
+         run_module_remove_at(i);
+         run_module_free(inst);
+         i--; // TODO
+         for (int j = 0; j < rnmods_v.total + 1; j++) {
+            inst = rnmods_v.items[j];
+            VERBOSE(DEBUG, "j=%d ptr=%p total=%d", j, &(*inst), rnmods_v.total)
          }
       }
    }
@@ -164,6 +158,8 @@ void run_module_stop_remove_by_name(const char *name)
 {
    uint32_t fi; // Index of found instance
    run_module_t *inst = run_module_get_by_name(name, &fi);
+
+   VERBOSE(V3, "Stopping instance '%s'", inst->name)
 
    if (inst == NULL) {
       // Instance was not found, no need to do anything

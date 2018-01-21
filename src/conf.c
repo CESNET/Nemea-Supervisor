@@ -1,7 +1,6 @@
 #include <string.h>
 #include <sysrepo/xpath.h>
 #include "conf.h"
-#include "utils.h"
 #include "module.h"
 
 /*--BEGIN superglobal vars--*/
@@ -206,19 +205,26 @@ int av_module_load_by_name(sr_session_ctx_t *sess, const char *module_name)
       goto err_cleanup;
    }
 
+   run_module_t * x;
+
    for (size_t i = 0; i < insts_cnt; i++) {
-      inst_name = module_name_from_xpath(insts[i].xpath);
-      if (inst_name == NULL) {
-         NO_MEM_ERR
-         rc = SR_ERR_NOMEM;
-         goto err_cleanup;
-      }
-      memset(xpath, 0, XPATH_LEN);
-      sprintf(xpath, NS_ROOT_XPATH"/module[name='%s']", inst_name);
-      rc = run_module_load(sess, xpath);
-      if (rc != SR_ERR_OK) {
-         VERBOSE(N_ERR, "Failed to reload all instances of module '%s'", module_name)
-         goto err_cleanup;
+      if (strcmp(insts[i].data.string_val, module_name) == 0) {
+         inst_name = module_name_from_xpath(insts[i].xpath);
+         if (inst_name == NULL) {
+            NO_MEM_ERR
+            rc = SR_ERR_NOMEM;
+            goto err_cleanup;
+         }
+         memset(xpath, 0, XPATH_LEN);
+         sprintf(xpath, NS_ROOT_XPATH"/module[name='%s']", inst_name);
+         rc = run_module_load(sess, xpath);
+         if (rc != SR_ERR_OK) {
+            VERBOSE(N_ERR, "Failed to reload all instances of module '%s'."
+                  " Failed at instance '%s'", module_name, inst_name)
+            goto err_cleanup;
+         }
+         x = rnmods_v.items[rnmods_v.total - 1];
+         VERBOSE(DEBUG, "for module %s is pid %d", inst_name, x->pid)
       }
    }
 
@@ -256,78 +262,6 @@ int run_module_load_by_name(sr_session_ctx_t *sess, const char *inst_name)
 
 /* --BEGIN local fns-- */
 
-/*static int module_group_load(sr_session_ctx_t *sess,
-                             module_group_t *group,
-                             sr_node_t *node)
-{
-   int rc;
-
-   if (group == NULL) {
-      group = module_group_alloc();
-      IF_NO_MEM_INT_ERR(group)
-
-      if (module_group_add(group) != 0) {
-         NO_MEM_ERR
-         return -1;
-      }
-   }
-
-   while (node != NULL) {
-      if_node_fetch_str(node, "name", group->name)
-      if_node_fetch_bool(node, "enabled", group->enabled)
-
-      if (strcmp(node->name, "module") == 0 && node->first_child != NULL) {
-         rc = module_load(sess, NULL, group, node->first_child);
-         if (rc != 0) {
-            module_group_remove_by_name(group->name);
-            module_group_free(group);
-            return rc;
-         }
-      }
-
-      node = node->next;
-   }
-
-   return 0;
-}
-
-static int module_load(sr_session_ctx_t *sess,
-                       module_t *mod,
-                       module_group_t *grp,
-                       sr_node_t *node)
-{
-   int rc;
-
-   if (mod == NULL) {
-      mod = module_alloc();
-      IF_NO_MEM_INT_ERR(mod)
-
-      mod->group = grp;
-      if (module_add(mod) != 0) {
-         NO_MEM_ERR
-         return -1;
-      }
-   }
-
-   while(node != NULL) {
-      if_node_fetch_str(node, "name", mod->name)
-      if_node_fetch_str(node, "path", mod->path)
-
-      if (strcmp(node->name, "instance") == 0 && node->first_child != NULL) {
-         rc = run_module_load(sess, NULL, mod, node->first_child);
-         if (rc != 0) {
-            module_remove_by_name(mod->name);
-            module_free(mod);
-            return rc;
-         }
-      }
-
-      node = node->next;
-   }
-
-   return 0;
-}
-*/
 static int
 run_module_load(sr_session_ctx_t *sess, char *xpath)
 {
@@ -382,6 +316,22 @@ run_module_load(sr_session_ctx_t *sess, char *xpath)
       goto err_cleanup;
    }
 
+   { // assign available-module name to pointer
+      av_module_t *mod;
+      for (int i = 0; i < avmods_v.total; i++) {
+         mod = avmods_v.items[i];
+         if (strcmp(mod->name, mod_kind) == 0) {
+            inst->mod_kind = mod;
+            break;
+         }
+      }
+      if (inst->mod_kind == NULL) {
+         VERBOSE(N_ERR, "Failed to load module '%s' since it's available module "
+               "'%s' is not loaded.", inst->name, mod_kind)
+         goto err_cleanup;
+      }
+   }
+
    { // load interfaces
       ifc_xpath = calloc(1, (strlen(xpath) + 11) * sizeof(char));
       if (ifc_xpath == NULL) {
@@ -413,8 +363,6 @@ run_module_load(sr_session_ctx_t *sess, char *xpath)
       goto err_cleanup;
    }
 
-
-
    if (last_pid > 0) {
       VERBOSE(V3, "Restoring PID=%d for %s", last_pid, inst->name)
       instance_pid_restore(last_pid, inst, sess);
@@ -442,25 +390,25 @@ av_module_load(sr_session_ctx_t *sess, char *xpath)
 
    if (vector_add(&avmods_v, amod) != 0) {
       NO_MEM_ERR
-      return -1;
+      return SR_ERR_NOMEM;
    }
 
    int rc;
 
    rc = load_sr_str(sess, xpath, "/name", &(amod->name));
-   if (rc != 0) {
+   if (FOUND_AND_ERR(rc)) {
       goto err_cleanup;
    }
    rc = load_sr_str(sess, xpath, "/path", &(amod->path));
-   if (rc != 0) {
+   if (FOUND_AND_ERR(rc)) {
       goto err_cleanup;
    }
    rc = load_sr_num(sess, xpath, "/is-nemea-module", &(amod->is_nemea), SR_BOOL_T);
-   if (rc != 0) {
+   if (FOUND_AND_ERR(rc)) {
       goto err_cleanup;
    }
    rc = load_sr_num(sess, xpath, "/is-sysrepo-ready", &(amod->is_sr_en), SR_BOOL_T);
-   if (rc != 0) {
+   if (FOUND_AND_ERR(rc)) {
       goto err_cleanup;
    }
 
@@ -468,7 +416,7 @@ av_module_load(sr_session_ctx_t *sess, char *xpath)
 
 err_cleanup:
    VERBOSE(N_ERR, "Failed to load module from xpath %s", xpath)
-   return -1;
+   return rc;
 }
 
 static int

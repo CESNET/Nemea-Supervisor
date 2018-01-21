@@ -463,6 +463,7 @@ void test_run_module_load(void **state)
 
    mod = rnmods_v.items[0];
    assert_string_equal(mod->name, "intable_module");
+   assert_ptr_equal(mod->mod_kind, avmod);
    // TODO more
 
    assert_int_equal(rnmods_v.total, 1);
@@ -518,13 +519,16 @@ void test_av_module_load_by_name(void **state)
       assert_int_equal(rc, 0);
       assert_int_equal(avmods_v.total, 1);
       assert_int_equal(rnmods_v.total, 4);
-/*      mod = mods_v.items[0];
-      assert_string_equal(mod->name, "intable_module3");
-      assert_string_equal(mod->path, "/ab");*/
+      cleanup_structs_and_vectors();
    }
 
    {
-
+      assert_int_equal(avmods_v.total, 0);
+      assert_int_equal(rnmods_v.total, 0);
+      rc = av_module_load_by_name(sr_conn_link.sess, "module B");
+      assert_int_equal(rc, 0);
+      assert_int_equal(avmods_v.total, 1);
+      assert_int_equal(rnmods_v.total, 2);
    }
 
    cleanup_structs_and_vectors();
@@ -580,7 +584,7 @@ void test_module_name_from_xpath(void **state)
 int main(void)
 {
    const struct CMUnitTest tests[] = {
-         cmocka_unit_test(test_interface_file_params_load),
+/*         cmocka_unit_test(test_interface_file_params_load),
          cmocka_unit_test(test_interface_unix_params_load),
          cmocka_unit_test(test_interface_tcp_tls_params_load),
          cmocka_unit_test(test_interface_tcp_params_load),
@@ -590,7 +594,7 @@ int main(void)
          cmocka_unit_test(test_run_module_load),
          cmocka_unit_test(test_ns_startup_config_load),
          cmocka_unit_test(test_run_module_load_by_name),
-         cmocka_unit_test(test_module_name_from_xpath),
+         cmocka_unit_test(test_module_name_from_xpath),*/
          cmocka_unit_test(test_av_module_load_by_name),
 
    };

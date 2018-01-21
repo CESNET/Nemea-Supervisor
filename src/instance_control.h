@@ -55,16 +55,6 @@ extern void insts_stop_sigint();
 extern void insts_stop_sigkill();
 
 /**
- * @brief Stops all modules of given group
- * @details First it's using stop_modules_sigint, then stop_modules_sigkill and
- *  finally it cleans all the structures of modules from given group and the group
- *  itself.
- * @param name Name of module group whose modules should be stopped
- * */
-extern void module_group_stop_remove_by_name(const char *name);
-
-
-/**
  * TODO
  * */
 extern void av_module_stop_remove_by_name(const char *name);

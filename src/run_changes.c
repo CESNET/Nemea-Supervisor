@@ -1,7 +1,8 @@
 
 #include <libtrap/trap.h>
 #include <sysrepo/xpath.h>
-#include "utils.h"
+
+#include "run_changes.h"
 #include "module.h"
 #include "conf.h"
 #include "instance_control.h"
@@ -103,7 +104,9 @@ static inline void
 run_change_add_new_change(vector_t *reg_chgs, run_change_t *n_change);
 
 static char * run_change_type_str(run_change_type_t type);
+/*
 static void run_change_print(run_change_t *change);
+*/
 /* --END full fns prototypes-- */
 
 /* --BEGIN superglobal fns-- */
@@ -363,8 +366,19 @@ static inline int run_change_proc_restart(sr_session_ctx_t *sess, run_change_t *
          rc = run_module_load_by_name(sess, change->inst_name);
          break;
       case RUN_CHE_T_MOD:
-         VERBOSE(V3, "Action restart for module '%s'", change->mod_name)
+         VERBOSE(V3, "Action restart for instances of module '%s'", change->mod_name)
+
+         run_module_t *inst = NULL;
+
+         FOR_EACH_IN_VEC(rnmods_v, inst) {
+            VERBOSE(DEBUG, "ptr=%p", inst)
+            run_module_print(inst);
+         }
          av_module_stop_remove_by_name(change->mod_name);
+         FOR_EACH_IN_VEC(rnmods_v, inst) {
+            VERBOSE(DEBUG, "ptr=%p", inst)
+            run_module_print(inst);
+         }
          rc = av_module_load_by_name(sess, change->mod_name);
          break;
       default:
@@ -544,9 +558,9 @@ static char * run_change_type_str(run_change_type_t type)
    }
 }
 
-static void run_change_print(run_change_t *change)
+/*static void run_change_print(run_change_t *change)
 {
    //VERBOSE(V3, "(%s)grp[%s]/mod[%s]/inst[%s]/%s", run_change_type_str(change->type),
    //        change->grp_name, change->mod_name, change->inst_name, change->node_name)
-}
+}*/
 /* --END local fns-- */

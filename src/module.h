@@ -340,7 +340,7 @@ int run_module_interface_add(run_module_t *mod, interface_t *ifc);
 /**
  * TODO
  * */
-//extern void print_instance(instance_t *);
+extern void run_module_print(run_module_t *inst);
 
 /**
  * TODO

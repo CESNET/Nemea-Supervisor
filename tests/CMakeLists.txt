@@ -1,15 +1,9 @@
 cmake_minimum_required(VERSION 3.8)
 set (CMAKE_C_STANDARD 11)
-#-lpthread -ltrap -lsysrepo
-#-I/home/ioku/school/diplomka/libs_from_git/installed_libs/include
+
 # plus poresit vsechny checky v config.h
 set (CMAKE_C_FLAGS "-Wall -g -O0 ${CMAKE_C_FLAGS}") # debug mode
 
-
-# my debug settings
-#include_directories(../ /home/ioku/school/diplomka/libs_from_git/installed_libs/include/ /home/ioku/school/diplomka/libs_from_git/installed_libs/include/sysrepo/)
-#link_directories(/home/ioku/school/diplomka/libs_from_git/installed_libs/lib64)
-###
 include_directories(../)
 
 
@@ -17,9 +11,13 @@ include_directories(../)
 # TODO compile this alongside with conf_test
 add_executable(intable_module intable_module.c)
 
+# TODO move this to testing_utils.h
+add_definitions(-DNS_TEST=1)
+add_definitions(-DNS_ROOT_XPATH="/nemea-test-1:supervisor")
+add_definitions(-DNS_ROOT_XPATH_LEN=24)
 
 
-set (SRC_FILES_1 ../src/utils.c ../src/instance_control.c ../src/conf.c ../src/module.c)
+set (SRC_FILES_1 ../src/utils.c ../src/module.c ../src/instance_control.c ../src/conf.c)
 add_executable(test_run_changes test_run_changes.c ${SRC_FILES_1})
 target_link_libraries(test_run_changes sysrepo pthread cmocka trap)
 

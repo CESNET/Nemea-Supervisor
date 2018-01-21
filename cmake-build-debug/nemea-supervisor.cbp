@@ -98,6 +98,9 @@
 				<Option type="1"/>
 				<Option compiler="gcc"/>
 				<Compiler>
+					<Add option="-DNS_TEST=1"/>
+					<Add option="-DNS_ROOT_XPATH=&quot;/nemea-test-1:supervisor&quot;"/>
+					<Add option="-DNS_ROOT_XPATH_LEN=24"/>
 					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/SYSREPO_INCLUDE_DIR"/>
 					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/tests/.."/>
 					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7"/>
@@ -121,6 +124,9 @@
 				<Option type="1"/>
 				<Option compiler="gcc"/>
 				<Compiler>
+					<Add option="-DNS_TEST=1"/>
+					<Add option="-DNS_ROOT_XPATH=&quot;/nemea-test-1:supervisor&quot;"/>
+					<Add option="-DNS_ROOT_XPATH_LEN=24"/>
 					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/SYSREPO_INCLUDE_DIR"/>
 					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/tests/.."/>
 					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7"/>
@@ -144,6 +150,9 @@
 				<Option type="1"/>
 				<Option compiler="gcc"/>
 				<Compiler>
+					<Add option="-DNS_TEST=1"/>
+					<Add option="-DNS_ROOT_XPATH=&quot;/nemea-test-1:supervisor&quot;"/>
+					<Add option="-DNS_ROOT_XPATH_LEN=24"/>
 					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/SYSREPO_INCLUDE_DIR"/>
 					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/tests/.."/>
 					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7"/>
@@ -167,6 +176,9 @@
 				<Option type="1"/>
 				<Option compiler="gcc"/>
 				<Compiler>
+					<Add option="-DNS_TEST=1"/>
+					<Add option="-DNS_ROOT_XPATH=&quot;/nemea-test-1:supervisor&quot;"/>
+					<Add option="-DNS_ROOT_XPATH_LEN=24"/>
 					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/SYSREPO_INCLUDE_DIR"/>
 					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/tests/.."/>
 					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7"/>
@@ -190,6 +202,9 @@
 				<Option type="1"/>
 				<Option compiler="gcc"/>
 				<Compiler>
+					<Add option="-DNS_TEST=1"/>
+					<Add option="-DNS_ROOT_XPATH=&quot;/nemea-test-1:supervisor&quot;"/>
+					<Add option="-DNS_ROOT_XPATH_LEN=24"/>
 					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/SYSREPO_INCLUDE_DIR"/>
 					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/tests/.."/>
 					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7"/>
@@ -213,6 +228,9 @@
 				<Option type="1"/>
 				<Option compiler="gcc"/>
 				<Compiler>
+					<Add option="-DNS_TEST=1"/>
+					<Add option="-DNS_ROOT_XPATH=&quot;/nemea-test-1:supervisor&quot;"/>
+					<Add option="-DNS_ROOT_XPATH_LEN=24"/>
 					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/SYSREPO_INCLUDE_DIR"/>
 					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/tests/.."/>
 					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7"/>
@@ -236,6 +254,9 @@
 				<Option type="1"/>
 				<Option compiler="gcc"/>
 				<Compiler>
+					<Add option="-DNS_TEST=1"/>
+					<Add option="-DNS_ROOT_XPATH=&quot;/nemea-test-1:supervisor&quot;"/>
+					<Add option="-DNS_ROOT_XPATH_LEN=24"/>
 					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/SYSREPO_INCLUDE_DIR"/>
 					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/tests/.."/>
 					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7"/>
@@ -259,6 +280,9 @@
 				<Option type="1"/>
 				<Option compiler="gcc"/>
 				<Compiler>
+					<Add option="-DNS_TEST=1"/>
+					<Add option="-DNS_ROOT_XPATH=&quot;/nemea-test-1:supervisor&quot;"/>
+					<Add option="-DNS_ROOT_XPATH_LEN=24"/>
 					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/SYSREPO_INCLUDE_DIR"/>
 					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/tests/.."/>
 					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7"/>
@@ -282,6 +306,9 @@
 				<Option type="1"/>
 				<Option compiler="gcc"/>
 				<Compiler>
+					<Add option="-DNS_TEST=1"/>
+					<Add option="-DNS_ROOT_XPATH=&quot;/nemea-test-1:supervisor&quot;"/>
+					<Add option="-DNS_ROOT_XPATH_LEN=24"/>
 					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/SYSREPO_INCLUDE_DIR"/>
 					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/tests/.."/>
 					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7"/>
@@ -305,6 +332,9 @@
 				<Option type="1"/>
 				<Option compiler="gcc"/>
 				<Compiler>
+					<Add option="-DNS_TEST=1"/>
+					<Add option="-DNS_ROOT_XPATH=&quot;/nemea-test-1:supervisor&quot;"/>
+					<Add option="-DNS_ROOT_XPATH_LEN=24"/>
 					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/SYSREPO_INCLUDE_DIR"/>
 					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/tests/.."/>
 					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7"/>
@@ -328,6 +358,9 @@
 				<Option type="1"/>
 				<Option compiler="gcc"/>
 				<Compiler>
+					<Add option="-DNS_TEST=1"/>
+					<Add option="-DNS_ROOT_XPATH=&quot;/nemea-test-1:supervisor&quot;"/>
+					<Add option="-DNS_ROOT_XPATH_LEN=24"/>
 					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/SYSREPO_INCLUDE_DIR"/>
 					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/tests/.."/>
 					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7"/>
@@ -351,6 +384,9 @@
 				<Option type="1"/>
 				<Option compiler="gcc"/>
 				<Compiler>
+					<Add option="-DNS_TEST=1"/>
+					<Add option="-DNS_ROOT_XPATH=&quot;/nemea-test-1:supervisor&quot;"/>
+					<Add option="-DNS_ROOT_XPATH_LEN=24"/>
 					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/SYSREPO_INCLUDE_DIR"/>
 					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/tests/.."/>
 					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7"/>

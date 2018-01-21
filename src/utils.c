@@ -151,9 +151,15 @@ void * vector_get(vector_t *v, uint32_t index)
 
 void vector_delete(vector_t *v, uint32_t index)
 {
+   VERBOSE(DEBUG, "dest=%p src=%p size=%ld", v + (index * sizeof(void *)), v + ( (index + 1) * sizeof(void *)), (v->total - index) * sizeof(void *))
+   void *p;
+   for (int i =0 ; i < v->total; i++) {
+      VERBOSE(DEBUG, "ptr=%p", v + (i * sizeof(void *)))
+   }
+
    memcpy(v + (index * sizeof(void *)),
           v + ( (index + 1) * sizeof(void *)),
-          v->total - index);
+          (v->total - index) * sizeof(void *));
    v->total--;
 
    /* // Save some memory?

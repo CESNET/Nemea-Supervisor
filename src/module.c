@@ -2,7 +2,6 @@
 #include <libtrap/trap.h>
 #include <sysrepo/xpath.h>
 #include "module.h"
-#include "utils.h"
 
 /*--BEGIN superglobal vars--*/
 pthread_mutex_t config_lock; ///< Mutex for operations on m_groups_ll and modules_ll
@@ -328,12 +327,12 @@ void print_module(const module_t *mod)
    VERBOSE(DEBUG, "Module: %s", mod->name)
    VERBOSE(DEBUG, " path: %s", mod->path)
 }
-
-void print_instance(instance_t *inst)
+*/
+void run_module_print(run_module_t *inst)
 {
-   VERBOSE(DEBUG, "Module instance: %s", inst->name)
-   VERBOSE(DEBUG, " inst=%s", inst->name)
+   VERBOSE(DEBUG, "Module instance: %s of %s", inst->name, inst->mod_kind->name)
    VERBOSE(DEBUG, " params=%s", inst->params)
+   VERBOSE(DEBUG, " pid=%d", inst->pid)
    VERBOSE(DEBUG, " enabled=%s", inst->enabled ? "true" : "false")
    VERBOSE(DEBUG, " running=%s", inst->running ? "true" : "false")
    VERBOSE(DEBUG, " restart_cnt=%d", inst->restarts_cnt)
@@ -343,7 +342,7 @@ void print_instance(instance_t *inst)
    FOR_EACH_IN_VEC(inst->in_ifces, ifc) {
       print_ifc(ifc);
    }
-}*/
+}
 
 void print_ifc_stats()
 {

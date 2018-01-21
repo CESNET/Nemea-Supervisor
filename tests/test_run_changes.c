@@ -1,8 +1,11 @@
 #include <sysrepo.h>
 #include <pthread.h>
+#include <stddef.h>
+#include <setjmp.h>
+#include <stdarg.h>
+#include <cmocka.h>
 
 #include "testing_utils.h"
-#include "../src/module.h"
 #include "../src/run_changes.c"
 
 /**
@@ -67,16 +70,16 @@ static int load_config()
    return ns_startup_config_load(sr_conn_link.sess);
 }
 
-static void start_intable_module(run_module_t *module, char *faked_name)
+void start_intable_module(run_module_t *inst, char *faked_name)
 {
-   module->pid = fork();
-   if (module->pid == -1) {
+   inst->pid = fork();
+   if (inst->pid == -1) {
       fail_msg("Fork: could not fork supervisor process");
    }
 
-   if (module->pid != 0) {
-      module->is_my_child = true;
-      module->running = true;
+   if (inst->pid != 0) {
+      inst->is_my_child = true;
+      inst->running = true;
    } else {
       setsid();
       char *exec_args[2] = {faked_name, NULL};
@@ -186,12 +189,12 @@ static inline void fake_sv_routine()
 
 void test_ns_config_change_cb_with_module_created(void **state)
 {
-   system("../../tests/helpers/import_conf.sh -s nemea-test-1-startup-4.xml");
+   system("helpers/import_conf.sh -s nemea-test-1-startup-4.xml");
    load_config_and_subscribe_to_change();
    assert_int_equal(rnmods_v.total, 4);
    assert_int_equal(avmods_v.total, 2);
 
-   make_async_change("create_module");
+   make_async_change("create_available_module");
    fake_sv_routine();
 
 
@@ -204,138 +207,76 @@ void test_ns_config_change_cb_with_module_created(void **state)
       }
    }
 
-   assert_int_equal(avmods_v.total, 5);
+   assert_int_equal(avmods_v.total, 3);
    assert_int_equal(new_found, true);
-   disconnect_and_unload_config();
-}
-/*
-void test_ns_config_change_cb_with_module_group_created(void **state)
-{
-   system("helpers/import_conf.sh -s nemea-tests-1-startup-config-3.xml");
-   load_config_and_subscribe_to_change();
-   assert_int_equal(insts_v.total, 4);
-   assert_int_equal(mods_v.total, 4);
-   assert_int_equal(mgrps_v.total, 5);
-
-   VERBOSE(DEBUG, "Making async change")
-   make_async_change("create_group_with_modules_and_instances");
-   fake_sv_routine();
-
-   module_group_t *gx = NULL;
-   FOR_EACH_IN_VEC(mgrps_v, gx) {
-      print_module_group(gx);
-   }
-
-   module_group_t *new_group = mgrps_v.items[mgrps_v.total - 1];
-   assert_string_equal(new_group->name, "g1");
-   assert_int_equal(new_group->enabled, 1);
-
-   {
-      assert_int_equal(insts_v.total, 5);
-      instance_t *inst = insts_v.items[4];
-      assert_non_null(inst->module);
-      assert_ptr_equal(inst->module, mods_v.items[5]);
-      assert_string_equal(inst->module->name, "m2");
-      assert_string_equal(inst->module->path, "/m2path");
-      assert_string_equal(inst->name, "i1");
-      assert_int_equal(inst->enabled, true);
-      assert_ptr_equal(inst->module->group, new_group);
-   }
-   {
-      assert_int_equal(mods_v.total, 6);
-      module_t *mod = mods_v.items[4];
-      assert_string_equal(mod->name, "m1");
-      assert_string_equal(mod->path, "/m1path");
-      assert_ptr_equal(mod->group, new_group);
-   }
-
-   disconnect_and_unload_config();
-}
-
-void test_ns_config_change_cb_with_module_group_deleted(void **state)
-{
-   load_config_and_subscribe_to_change();
-   assert_int_equal(insts_v.total, 4);
-   assert_int_equal(mods_v.total, 4);
-   assert_int_equal(mgrps_v.total, 5);
-
-   VERBOSE(DEBUG, "Starting fake module")
-   instance_t * intable_module = insts_v.items[insts_v.total - 1];
-   start_intable_module(intable_module, "intable_module");
-
-   VERBOSE(DEBUG, "Making async change")
-   make_async_change("delete_group_with_module_and_instance");
-   VERBOSE(DEBUG, "Inside supervisor routine")
-   fake_sv_routine();
-
-   assert_int_equal(insts_v.total, 3);
-   assert_int_equal(mods_v.total, 3);
-   assert_int_equal(mgrps_v.total, 4);
    disconnect_and_unload_config();
 }
 
 void test_ns_config_change_cb_with_module_deleted(void **state)
 {
+   system("helpers/import_conf.sh -s nemea-test-1-startup-4.xml");
    load_config_and_subscribe_to_change();
-
-   assert_int_equal(insts_v.total, 4);
-   assert_int_equal(mods_v.total, 4);
-   assert_int_equal(mgrps_v.total, 5);
+   assert_int_equal(rnmods_v.total, 4);
+   assert_int_equal(avmods_v.total, 2);
 
    VERBOSE(DEBUG, "Starting fake module")
-   instance_t * intable_module = insts_v.items[insts_v.total - 1];
+   run_module_t *intable_module = rnmods_v.items[2];
    start_intable_module(intable_module, "intable_module");
 
    VERBOSE(DEBUG, "Making async change")
-   make_async_change("delete_module");
+   make_async_change("delete_available_module");
    VERBOSE(DEBUG, "Inside supervisor routine")
    fake_sv_routine();
 
-   assert_int_equal(insts_v.total, 3);
-   assert_int_equal(mods_v.total, 3);
-   assert_int_equal(mgrps_v.total, 5);
+   assert_int_equal(rnmods_v.total, 3);
+   assert_int_equal(avmods_v.total, 1);
    disconnect_and_unload_config();
 }
 
-void test_ns_config_change_cb_with_group_modified_1(void **state)
-{
-   load_config_and_subscribe_to_change();
-
-   module_group_t * group = mgrps_v.items[mgrps_v.total - 1];
-   assert_int_equal(group->enabled, true);
-
-   VERBOSE(DEBUG, "Making async change")
-   make_async_change("group_modified_1");
-   VERBOSE(DEBUG, "Inside supervisor routine")
-   fake_sv_routine();
-
-   group = mgrps_v.items[mgrps_v.total - 1];
-   assert_int_equal(group->enabled, false);
-
-   disconnect_and_unload_config();
-}
 
 void test_ns_config_change_cb_with_module_modified_1(void **state)
 {
+   system("helpers/import_conf.sh -s nemea-test-1-startup-4.xml");
    load_config_and_subscribe_to_change();
-   module_t *mod = NULL;
+   assert_int_equal(rnmods_v.total, 4);
+   assert_int_equal(avmods_v.total, 2);
+   av_module_t *mod = NULL;
+   run_module_t *inst = NULL;
 
-   assert_int_equal(mods_v.total, 4);
-   mod = mods_v.items[mods_v.total - 1];
-   assert_string_equal(mod->path, "/asdasd");
+   FOR_EACH_IN_VEC(rnmods_v, inst) {
+      run_module_print(inst);
+   }
+
+   mod = avmods_v.items[1];
+   assert_string_equal(mod->path, "/a/b");
+   { // fake pid in instance m3
+      inst = rnmods_v.items[2];
+      assert_string_equal(inst->name, "m3");
+      inst->pid = 123;
+   }
 
    VERBOSE(DEBUG, "Making async change")
-   make_async_change("module_modified_1");
+   make_async_change("available_module_modified_1");
    VERBOSE(DEBUG, "Inside supervisor routine")
    fake_sv_routine();
+   FOR_EACH_IN_VEC(rnmods_v, inst) {
+      run_module_print(inst);
+   }
 
-   assert_int_equal(mods_v.total, 4);
-   mod = mods_v.items[mods_v.total - 1];
+   assert_int_equal(avmods_v.total, 2);
+   mod = avmods_v.items[1];
    assert_string_equal(mod->path, "/a/b/cc");
+   assert_int_equal(rnmods_v.total, 4);
+   // since module instance was reloaded, it should have default PID=0
+   inst = rnmods_v.items[2];
+
+   assert_string_equal(inst->name, "m3");
+   assert_int_equal(inst->pid, 0);
 
    disconnect_and_unload_config();
 }
 
+/*
 void test_ns_config_change_cb_with_instance_modified_1(void **state)
 {
    load_config_and_subscribe_to_change();
@@ -402,15 +343,16 @@ int main(void)
 
    const struct CMUnitTest tests[] = {
 /*
- * cmocka_unit_test(test_ns_config_change_cb_with_module_modified_1),
+ *
          cmocka_unit_test(test_ns_config_change_cb_with_instance_modified_1),
          cmocka_unit_test(test_ns_config_change_cb_with_group_modified_1),
-         cmocka_unit_test(test_ns_config_change_cb_with_module_deleted),
          cmocka_unit_test(test_ns_config_change_cb_with_module_group_deleted),
          cmocka_unit_test(test_ns_config_change_cb_with_module_group_created),
          cmocka_unit_test(test_ns_change_load),
-         */
+         cmocka_unit_test(test_ns_config_change_cb_with_module_deleted),
          cmocka_unit_test(test_ns_config_change_cb_with_module_created),
+         */
+         cmocka_unit_test(test_ns_config_change_cb_with_module_modified_1),
    };
 
    disconnect_sr();
