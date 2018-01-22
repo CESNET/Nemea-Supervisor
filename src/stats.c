@@ -54,13 +54,17 @@ module [{CPU-u, last_period_percent_cpu_usage_user_mode
  */
 
 /*--BEGIN superglobal vars--*/
-//without extern
+
 /*--END superglobal vars--*/
 
 /*--BEGIN local #define--*/
 /*--END local #define--*/
 
 /*--BEGIN local typedef--*/
+typedef struct tree_path_s {
+   char *inst;
+   char *ifc;
+} tree_path_t;
 /*--END local typedef--*/
 
 /* --BEGIN local vars-- */
@@ -75,6 +79,11 @@ static int set_new_sr_val(sr_val_t *new_sr_val,
                           const char *stat_leaf_name,
                           sr_type_t val_type,
                           void *val_data);
+
+static interface_t * interface_get_by_xpath(const char *xpath);
+
+static void tree_path_free(tree_path_t * tpath);
+static tree_path_t * tree_path_load(const char *xpath);
 /* --END full fns prototypes-- */
 
 /* --BEGIN superglobal fns-- */
@@ -85,23 +94,15 @@ int interface_get_stats_cb(const char *xpath,
                            size_t *values_cnt,
                            void *private_ctx)
 {
-   VERBOSE(V3, "Entering interface_get_stats_cb")
-   VERBOSE(V3, "xpath=%s", xpath)
+   VERBOSE(V3, "Entering interface_get_stats_cb xpath=%s", xpath)
 
    int rc;
-   tree_path_t path;
+   //tree_path_t path;
    uint8_t vals_cnt;
    interface_t *ifc = NULL;
    sr_val_t *new_vals = NULL;
 
-   tree_path_init(&path);
-   rc = tree_path_load_from_xpath(&path, xpath);
-   if (rc != 0) {
-      VERBOSE(N_ERR, "") // TODO
-      goto err_cleanup;
-   }
-
-   ifc = interface_get_by_path(&path);
+   ifc = interface_get_by_xpath(xpath);
    if (ifc == NULL) {
       VERBOSE(N_ERR, "Interface at %s is not loaded", xpath)
       goto err_cleanup;
@@ -172,13 +173,10 @@ int interface_get_stats_cb(const char *xpath,
    *values_cnt = vals_cnt;
    *values = new_vals;
 
-   tree_path_free(&path);
-
    VERBOSE(V3, "Successfully leaving inst_get_stats_cb")
    return SR_ERR_OK;
 
 err_cleanup:
-   tree_path_free(&path);
    return rc;
 }
 
@@ -187,17 +185,47 @@ int inst_get_stats_cb(const char *xpath,
                       size_t *values_cnt,
                       void *private_ctx)
 {
-   VERBOSE(V3, "Entering inst_get_stats_cb")
-   VERBOSE(V3, "xpath=%s", xpath)
+   VERBOSE(V3, "Entering inst_get_stats_cb xpath=%s", xpath)
 
    int rc;
    uint8_t vals_cnt = 6;
-   instance_t *inst = NULL;
-   tree_path_t tree_path;
+   tree_path_t *tpath = NULL;
+   run_module_t *inst = NULL;
    sr_val_t *new_vals = NULL;
    time_t time_now;
 
-   tree_path_init(&tree_path);
+
+/*   {
+      if (strcmp("/nemea-test-1:supervisor/module[name='Intable1']/stats", xpath) != 0) {
+         uint64_t i = 123;
+         vals_cnt = 1;
+         rc = sr_new_values(vals_cnt, &new_vals);
+         if (rc != 0) {
+            VERBOSE(N_ERR, "xdasd")
+            goto err_cleanup;
+         }
+         rc = set_new_sr_val(&new_vals[0], xpath, "interface[name='test']/blabla_out", SR_UINT64_T, &i);
+
+         if (rc != 0) {
+            VERBOSE(N_ERR, "Setting node value for /mem-asd failed")
+            goto err_cleanup;
+         }
+
+         *values_cnt = vals_cnt;
+         *values = new_vals;
+
+         return SR_ERR_OK;
+      }
+   }*/
+
+
+
+   tpath = tree_path_load(xpath);
+   if (tpath == NULL) {
+      NO_MEM_ERR
+      rc = SR_ERR_NOMEM;
+      goto err_cleanup;
+   }
 
    rc = sr_new_values(vals_cnt, &new_vals);
    if (rc != SR_ERR_OK) {
@@ -205,23 +233,19 @@ int inst_get_stats_cb(const char *xpath,
       goto err_cleanup;
    }
 
-   rc = tree_path_load_from_xpath(&tree_path, xpath);
-   if (rc != 0) {
-      goto err_cleanup;
-   }
-   VERBOSE(V3, "Stats requested for inst '%s'", tree_path.inst)
+   VERBOSE(V3, "Stats requested for inst '%s'", tpath->inst)
 
-   inst = run_module_get_by_name(tree_path.inst, NULL);
+   inst = run_module_get_by_name(tpath->inst, NULL);
    if (inst == NULL) {
-      VERBOSE(N_ERR, "Instance '%s' was not found for stats data.", tree_path.inst)
+      VERBOSE(N_ERR, "Instance '%s' was not found for stats data.", tpath->inst)
+      rc = SR_ERR_NOT_FOUND;
       goto err_cleanup;
    }
-   tree_path_free(&tree_path);
-
+   tree_path_free(tpath);
 
    rc = set_new_sr_val(&new_vals[0], xpath, "running", SR_BOOL_T, &inst->running);
    if (rc != 0) {
-      VERBOSE(N_ERR, "") // TODO
+      VERBOSE(N_ERR, "Setting node value for /running failed")
       goto err_cleanup;
    }
 
@@ -237,33 +261,33 @@ int inst_get_stats_cb(const char *xpath,
    rc = set_new_sr_val(&new_vals[1], xpath, "restart-counter", SR_UINT8_T,
                        &inst->restarts_cnt);
    if (rc != 0) {
-      VERBOSE(N_ERR, "")
+      VERBOSE(N_ERR, "Setting node value for /restart-counter failed")
       goto err_cleanup;
    }
 
    rc = set_new_sr_val(&new_vals[2], xpath, "cpu-user", SR_UINT64_T,
                        &inst->last_cpu_umode);
    if (rc != 0) {
-      VERBOSE(N_ERR, "")
+      VERBOSE(N_ERR, "Setting node value for /cpu-user failed")
       goto err_cleanup;
    }
 
    rc = set_new_sr_val(&new_vals[3], xpath, "cpu-kern", SR_UINT64_T,
                        &inst->last_cpu_kmode);
    if (rc != 0) {
-      VERBOSE(N_ERR, "")
+      VERBOSE(N_ERR, "Setting node value for /cpu-kern failed")
       goto err_cleanup;
    }
 
    rc = set_new_sr_val(&new_vals[4], xpath, "mem-vms", SR_UINT64_T, &inst->mem_vms);
    if (rc != 0) {
-      VERBOSE(N_ERR, "")
+      VERBOSE(N_ERR, "Setting node value for /mem-vms failed")
       goto err_cleanup;
    }
 
    rc = set_new_sr_val(&new_vals[5], xpath, "mem-rss", SR_UINT64_T, &inst->mem_rss);
    if (rc != 0) {
-      VERBOSE(N_ERR, "")
+      VERBOSE(N_ERR, "Setting node value for /mem-rss failed")
       goto err_cleanup;
    }
 
@@ -273,12 +297,12 @@ int inst_get_stats_cb(const char *xpath,
    return SR_ERR_OK;
 
 err_cleanup:
-
    if (new_vals != NULL) {
       sr_free_values(new_vals, *values_cnt);
    }
+   tree_path_free(tpath);
 
-   tree_path_free(&tree_path);
+   VERBOSE(N_ERR, "Retrieving stats for xpath=%s failed.", xpath)
 
    return rc;
 }
@@ -302,10 +326,9 @@ static int set_new_sr_val(sr_val_t *new_sr_val,
    }
 
    sprintf(stat_leaf_xpath, "%s/%s", stat_xpath, stat_leaf_name);
-   VERBOSE(V3, "stat_leaf_xpath=%s", stat_leaf_xpath)
    rc = sr_val_set_xpath(new_sr_val, stat_leaf_xpath);
    if (rc != 0) {
-      VERBOSE(N_ERR, "") // TODO
+      VERBOSE(N_ERR, "Failed to set output stats value xpath=%s", stat_leaf_xpath)
       goto err_cleanup;
    }
 
@@ -331,8 +354,153 @@ static int set_new_sr_val(sr_val_t *new_sr_val,
 
 err_cleanup:
    NULLP_TEST_AND_FREE(stat_leaf_xpath)
+   VERBOSE(N_ERR, "set_new_sr_val failed")
 
    return -1;
+}
+
+static tree_path_t * tree_path_load(const char *xpath)
+{
+   char * dyn_xpath;
+   char * res;
+   tree_path_t *tpath = NULL;
+   sr_xpath_ctx_t state = {0};
+
+   // sysrepo xpath functions require xpath to be dynamically allocated
+   dyn_xpath = strdup(xpath);
+   if (dyn_xpath == NULL) {
+      NO_MEM_ERR
+      goto err_cleanup;
+   }
+
+   tpath = calloc(1, sizeof(tree_path_t));
+   if (tpath == NULL) {
+      NO_MEM_ERR
+      goto err_cleanup;
+   }
+   tpath->inst = NULL;
+   tpath->ifc = NULL;
+
+   res = sr_xpath_next_node(dyn_xpath, &state);
+   if (res == NULL) {
+      VERBOSE(N_ERR, "Failed to parse tree_path_load on line %d", __LINE__)
+      goto err_cleanup;
+   }
+
+   res = sr_xpath_next_node(NULL, &state);
+   if (res == NULL) {
+      VERBOSE(N_ERR, "Failed to parse tree_path_load on line %d", __LINE__)
+      goto err_cleanup;
+   }
+
+   res = sr_xpath_node_key_value(NULL, "name", &state);
+   if (res == NULL) {
+      VERBOSE(N_ERR, "Failed to parse tree_path_load on line %d", __LINE__)
+      goto err_cleanup;
+      return NULL;
+   }
+   tpath->inst = strdup(res);
+   if (tpath->inst == NULL) {
+      NO_MEM_ERR
+      goto err_cleanup;
+   }
+
+   // /stats OR /interface[name='xxxx']
+   res = sr_xpath_next_node(NULL, &state);
+   if (res == NULL) {
+      VERBOSE(N_ERR, "Failed to parse tree_path_load on line %d", __LINE__)
+      goto err_cleanup;
+   }
+
+   if (strcmp(res, "stats") == 0) {
+      // No /interface node, return
+      sr_xpath_recover(&state);
+      NULLP_TEST_AND_FREE(dyn_xpath)
+      return tpath;
+   }
+
+   res = sr_xpath_node_key_value(NULL, "name", &state);
+   if (res == NULL) {
+      VERBOSE(N_ERR, "Failed to parse tree_path_load on line %d", __LINE__)
+      goto err_cleanup;
+      return NULL;
+   }
+   tpath->ifc = strdup(res);
+   if (tpath->ifc == NULL) {
+      NO_MEM_ERR
+      goto err_cleanup;
+   }
+
+   return tpath;
+
+err_cleanup:
+   sr_xpath_recover(&state);
+   NULLP_TEST_AND_FREE(dyn_xpath)
+   tree_path_free(tpath);
+   VERBOSE(N_ERR, "Failed tree_path_load with XPATH=%s", xpath)
+
+   return NULL;
+}
+
+static void tree_path_free(tree_path_t * tpath)
+{
+   if (tpath != NULL) {
+      NULLP_TEST_AND_FREE(tpath->inst)
+      NULLP_TEST_AND_FREE(tpath->ifc)
+      NULLP_TEST_AND_FREE(tpath)
+   }
+}
+
+static interface_t * interface_get_by_xpath(const char *xpath)
+{
+   tree_path_t *tpath = NULL;
+   run_module_t *inst = NULL;
+   interface_t *ifc = NULL;
+
+   tpath = tree_path_load(xpath);
+   if (tpath == NULL) {
+      VERBOSE(N_ERR, "") // TODO
+      goto err_cleanup;
+   }
+   if (tpath->ifc == NULL) {
+      VERBOSE(N_ERR, "") // TODO
+      goto err_cleanup;
+   }
+
+   inst = run_module_get_by_name(tpath->inst, NULL);
+   if (inst == NULL) {
+      VERBOSE(N_ERR, "") // TODO
+      goto err_cleanup;
+   }
+
+
+   if (inst->in_ifces.total > 0) {
+      ifc = NULL;
+      FOR_EACH_IN_VEC(inst->in_ifces, ifc) {
+         if (strcmp(ifc->name, tpath->ifc) == 0) {
+            tree_path_free(tpath);
+            return ifc;
+         }
+      }
+   }
+   if (inst->out_ifces.total > 0) {
+      ifc = NULL;
+      FOR_EACH_IN_VEC(inst->out_ifces, ifc) {
+         if (strcmp(ifc->name, tpath->ifc) == 0) {
+            tree_path_free(tpath);
+            return ifc;
+         }
+      }
+   }
+
+   return ifc;
+
+err_cleanup:
+   tree_path_free(tpath);
+
+   VERBOSE(N_ERR, "Failed interface_get_by_xpath with XPATH=%s", xpath)
+
+   return NULL;
 }
 
 

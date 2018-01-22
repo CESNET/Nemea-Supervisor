@@ -154,39 +154,6 @@ static inline void fake_sv_routine()
 ///////////////////////////TESTS
 ///////////////////////////TESTS
 
-
-/*static void config_change_cb_test_group_with_modules_created(void **state)
-{
-   sr_subscription_ctx_t *sub = NULL;
-   int rc = load_config();
-   assert_int_equal(rc, 0);
-
-   VERBOSE(DEBUG, "Subscribing")
-   rc = sr_module_change_subscribe(sr_conn_link.sess, "nemea-tests-1", ns_config_change_cb_wrapper, NULL, 0, SR_SUBSCR_DEFAULT | SR_SUBSCR_APPLY_ONLY, &sub);
-   //rc = sr_subtree_change_subscribe(sr_conn_link.sess, SV_TESTING_ROOT_XPATH, config_change_cb_wrapper, &config_lock, 0, SR_SUBSCR_DEFAULT | SR_SUBSCR_APPLY_ONLY, &sub);
-   assert_int_equal(rc, SR_ERR_OK);
-   VERBOSE(DEBUG, "Subscribed")
-
-   pid_t pid = fork();
-   assert_int_not_equal(pid, -1);
-
-   if (pid == 0) {
-      // Child
-      char *params[] = {"async_change.py", "create_group_with_modules", NULL};
-      execv("./create_group_with_modules.py", params);
-      printf("Failed to exec create_group_with_modules.py\n");
-      return;
-   }
-
-   while (sv_thread_running) {
-      pthread_mutex_lock(&config_lock);
-      usleep(15000); // Simulate operations
-      pthread_mutex_unlock(&config_lock);
-      usleep(15000); // Give time for other threads
-   }
-}*/
-
-
 void test_ns_config_change_cb_with_module_created(void **state)
 {
    system("helpers/import_conf.sh -s nemea-test-1-startup-4.xml");
@@ -233,7 +200,6 @@ void test_ns_config_change_cb_with_module_deleted(void **state)
    disconnect_and_unload_config();
 }
 
-
 void test_ns_config_change_cb_with_module_modified_1(void **state)
 {
    system("helpers/import_conf.sh -s nemea-test-1-startup-4.xml");
@@ -242,10 +208,6 @@ void test_ns_config_change_cb_with_module_modified_1(void **state)
    assert_int_equal(avmods_v.total, 2);
    av_module_t *mod = NULL;
    run_module_t *inst = NULL;
-
-   FOR_EACH_IN_VEC(rnmods_v, inst) {
-      run_module_print(inst);
-   }
 
    mod = avmods_v.items[1];
    assert_string_equal(mod->path, "/a/b");
@@ -259,16 +221,14 @@ void test_ns_config_change_cb_with_module_modified_1(void **state)
    make_async_change("available_module_modified_1");
    VERBOSE(DEBUG, "Inside supervisor routine")
    fake_sv_routine();
-   FOR_EACH_IN_VEC(rnmods_v, inst) {
-      run_module_print(inst);
-   }
 
    assert_int_equal(avmods_v.total, 2);
    mod = avmods_v.items[1];
    assert_string_equal(mod->path, "/a/b/cc");
    assert_int_equal(rnmods_v.total, 4);
-   // since module instance was reloaded, it should have default PID=0
-   inst = rnmods_v.items[2];
+   /* since module instance was reloaded, it should have default PID=0
+    *  and be last in the vector */
+   inst = rnmods_v.items[3];
 
    assert_string_equal(inst->name, "m3");
    assert_int_equal(inst->pid, 0);
@@ -276,14 +236,15 @@ void test_ns_config_change_cb_with_module_modified_1(void **state)
    disconnect_and_unload_config();
 }
 
-/*
 void test_ns_config_change_cb_with_instance_modified_1(void **state)
 {
+   system("helpers/import_conf.sh -s nemea-test-1-startup-4.xml");
    load_config_and_subscribe_to_change();
 
-   instance_t * inst = insts_v.items[insts_v.total - 1];
+   run_module_t * inst = rnmods_v.items[rnmods_v.total - 1];
    assert_null(inst->params);
    assert_int_equal(inst->in_ifces.total, 0);
+   assert_int_equal(inst->out_ifces.total, 1);
    start_intable_module(inst, "inst");
    pid_t old_pid = inst->pid;
 
@@ -292,17 +253,19 @@ void test_ns_config_change_cb_with_instance_modified_1(void **state)
    VERBOSE(DEBUG, "Inside supervisor routine")
    fake_sv_routine();
 
-   inst = insts_v.items[insts_v.total - 1];
-   assert_string_equal(inst->name, "intable_module1");
+   inst = rnmods_v.items[rnmods_v.total - 1];
+   assert_string_equal(inst->name, "m4");
+   assert_int_equal(inst->out_ifces.total, 1);
    assert_int_equal(inst->in_ifces.total, 1);
 
    interface_t *ifc = inst->in_ifces.items[0];
    assert_int_equal(ifc->type, NS_IF_TYPE_UNIX);
-   // Module should be restarted and therefore have new PID
+   assert_string_equal(ifc->name, "tcp-in-4-1");
+   // Module should be stopped by the configuration and therefore have default PID 0
    assert_int_not_equal(old_pid, inst->pid);
 
    disconnect_and_unload_config();
-}*/
+}
 
 void test_ns_change_load(void **state)
 {
@@ -342,16 +305,10 @@ int main(void)
 {
 
    const struct CMUnitTest tests[] = {
-/*
- *
          cmocka_unit_test(test_ns_config_change_cb_with_instance_modified_1),
-         cmocka_unit_test(test_ns_config_change_cb_with_group_modified_1),
-         cmocka_unit_test(test_ns_config_change_cb_with_module_group_deleted),
-         cmocka_unit_test(test_ns_config_change_cb_with_module_group_created),
          cmocka_unit_test(test_ns_change_load),
          cmocka_unit_test(test_ns_config_change_cb_with_module_deleted),
          cmocka_unit_test(test_ns_config_change_cb_with_module_created),
-         */
          cmocka_unit_test(test_ns_config_change_cb_with_module_modified_1),
    };
 

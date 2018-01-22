@@ -51,6 +51,7 @@ static inline void free_interface_specific_params(interface_t *ifc);
 
 /* --BEGIN superglobal fns-- */
 
+/*
 void tree_path_init(tree_path_t *path)
 {
    path->ifc = NULL;
@@ -207,6 +208,7 @@ err_cleanup:
    NULLP_TEST_AND_FREE(node->ifc)
    return -1;
 }
+*/
 
 /*int module_group_add(module_group_t *group)
 {
@@ -298,14 +300,14 @@ void run_module_remove_at(uint32_t index)
    }
 }*/
 
-int run_module_interface_add(run_module_t *mod, interface_t *ifc)
+int run_module_interface_add(run_module_t *inst, interface_t *ifc)
 {
    int rc;
 
    if (ifc->direction == NS_IF_DIR_IN) {
-      rc = vector_add(&mod->in_ifces, ifc);
+      rc = vector_add(&inst->in_ifces, ifc);
    } else {
-      rc = vector_add(&mod->out_ifces, ifc);
+      rc = vector_add(&inst->out_ifces, ifc);
    }
 
    if (rc != 0) {
@@ -780,8 +782,8 @@ run_module_t * run_module_get_by_name(const char *name, uint32_t *index)
    uint32_t fi; // Index of found instance
    run_module_t *inst = NULL;
 
-   for (fi = 0; fi < insts_v.total; fi++) {
-      inst = insts_v.items[fi];
+   for (fi = 0; fi < rnmods_v.total; fi++) {
+      inst = rnmods_v.items[fi];
       if (strcmp(inst->name, name) == 0) {
          // Instance was found
          if (index != NULL) {

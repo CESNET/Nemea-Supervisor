@@ -104,9 +104,6 @@ static inline void
 run_change_add_new_change(vector_t *reg_chgs, run_change_t *n_change);
 
 static char * run_change_type_str(run_change_type_t type);
-/*
-static void run_change_print(run_change_t *change);
-*/
 /* --END full fns prototypes-- */
 
 /* --BEGIN superglobal fns-- */
@@ -162,19 +159,19 @@ run_config_change_cb(sr_session_ctx_t *sess,
 
       switch (op) {
          case SR_OP_CREATED:
-            VERBOSE(V3, " -SR_OP_CREATED %s", run_change_type_str(change->type));
+            VERBOSE(V3, " CREATED %s", run_change_type_str(change->type));
             run_change_handle_create(change);
             break;
          case SR_OP_MODIFIED:
-            VERBOSE(V3, " -SR_OP_MODIFIED %s", run_change_type_str(change->type));
+            VERBOSE(V3, " MODIFIED %s", run_change_type_str(change->type));
             run_change_handle_modify(change);
             break;
          case SR_OP_DELETED:
-            VERBOSE(V3, " -SR_OP_DELETED %s", run_change_type_str(change->type));
+            VERBOSE(V3, " DELETED %s", run_change_type_str(change->type));
             run_change_handle_delete(change);
             break;
          case SR_OP_MOVED:
-            VERBOSE(V3, " -SR_OP_MOVED %s", run_change_type_str(change->type));
+            VERBOSE(V3, " MOVED %s", run_change_type_str(change->type));
             /* This operation is intentionally omitted, since it's quite
              * complex and not really required to be handled. */
             break;
@@ -314,7 +311,7 @@ static inline void run_change_add_new_change(vector_t *reg_chgs, run_change_t *n
 
 static inline void run_change_handle_modify(run_change_t *change)
 {
-   VERBOSE(V3, "-SR_OP_MODIFIED")
+   VERBOSE(V3, "MODIFIED")
    if (change->type == RUN_CHE_T_MOD) {
       change->action = RUN_CHE_ACTION_RESTART;
    } else if (change->type == RUN_CHE_T_INST) {
@@ -328,7 +325,7 @@ static inline void run_change_handle_modify(run_change_t *change)
 
 static inline void run_change_handle_delete(run_change_t *change)
 {
-   VERBOSE(V3, "-SR_OP_DELETED")
+   VERBOSE(V3, "DELETED")
    change->action = RUN_CHE_ACTION_DELETE;
    if (change->type == RUN_CHE_T_MOD) {
       change->action = RUN_CHE_ACTION_DELETE;
@@ -343,7 +340,7 @@ static inline void run_change_handle_delete(run_change_t *change)
 
 static inline void run_change_handle_create(run_change_t *change)
 {
-   VERBOSE(V3, "-SR_OP_CREATED")
+   VERBOSE(V3, "CREATED")
    if (change->type == RUN_CHE_T_MOD) {
       change->action = RUN_CHE_ACTION_RESTART;
    } else if (change->type == RUN_CHE_T_INST) {
@@ -368,17 +365,7 @@ static inline int run_change_proc_restart(sr_session_ctx_t *sess, run_change_t *
       case RUN_CHE_T_MOD:
          VERBOSE(V3, "Action restart for instances of module '%s'", change->mod_name)
 
-         run_module_t *inst = NULL;
-
-         FOR_EACH_IN_VEC(rnmods_v, inst) {
-            VERBOSE(DEBUG, "ptr=%p", inst)
-            run_module_print(inst);
-         }
          av_module_stop_remove_by_name(change->mod_name);
-         FOR_EACH_IN_VEC(rnmods_v, inst) {
-            VERBOSE(DEBUG, "ptr=%p", inst)
-            run_module_print(inst);
-         }
          rc = av_module_load_by_name(sess, change->mod_name);
          break;
       default:
@@ -533,7 +520,7 @@ run_change_load(sr_change_oper_t op, sr_val_t *old_val, sr_val_t *new_val)
 err_cleanup:
    run_change_free(&change);
    sr_xpath_recover(&state);
-   VERBOSE(N_ERR, "Failed while parsing XPATH=%s", xpath)
+   VERBOSE(N_ERR, "Failed run_change_load with XPATH=%s", xpath)
 
    return NULL;
 }
@@ -558,9 +545,4 @@ static char * run_change_type_str(run_change_type_t type)
    }
 }
 
-/*static void run_change_print(run_change_t *change)
-{
-   //VERBOSE(V3, "(%s)grp[%s]/mod[%s]/inst[%s]/%s", run_change_type_str(change->type),
-   //        change->grp_name, change->mod_name, change->inst_name, change->node_name)
-}*/
 /* --END local fns-- */

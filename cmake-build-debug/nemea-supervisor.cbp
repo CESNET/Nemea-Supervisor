@@ -91,8 +91,8 @@
 					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/src/Makefile&quot;  VERBOSE=1 clean"/>
 				</MakeCommands>
 			</Target>
-			<Target title="test_supervisor">
-				<Option output="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/test_supervisor" prefix_auto="0" extension_auto="0"/>
+			<Target title="intable_module">
+				<Option output="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/intable_module" prefix_auto="0" extension_auto="0"/>
 				<Option working_dir="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests"/>
 				<Option object_output="./"/>
 				<Option type="1"/>
@@ -111,14 +111,14 @@
 					<Add directory="/usr/include"/>
 				</Compiler>
 				<MakeCommands>
-					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_supervisor"/>
+					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 intable_module"/>
 					<CompileFile command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
 					<Clean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
 					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
 				</MakeCommands>
 			</Target>
-			<Target title="test_supervisor/fast">
-				<Option output="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/test_supervisor" prefix_auto="0" extension_auto="0"/>
+			<Target title="intable_module/fast">
+				<Option output="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/intable_module" prefix_auto="0" extension_auto="0"/>
 				<Option working_dir="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests"/>
 				<Option object_output="./"/>
 				<Option type="1"/>
@@ -137,163 +137,7 @@
 					<Add directory="/usr/include"/>
 				</Compiler>
 				<MakeCommands>
-					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_supervisor/fast"/>
-					<CompileFile command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
-					<Clean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
-					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
-				</MakeCommands>
-			</Target>
-			<Target title="test_stats">
-				<Option output="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/test_stats" prefix_auto="0" extension_auto="0"/>
-				<Option working_dir="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests"/>
-				<Option object_output="./"/>
-				<Option type="1"/>
-				<Option compiler="gcc"/>
-				<Compiler>
-					<Add option="-DNS_TEST=1"/>
-					<Add option="-DNS_ROOT_XPATH=&quot;/nemea-test-1:supervisor&quot;"/>
-					<Add option="-DNS_ROOT_XPATH_LEN=24"/>
-					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/SYSREPO_INCLUDE_DIR"/>
-					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/tests/.."/>
-					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7"/>
-					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7/x86_64-redhat-linux"/>
-					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7/backward"/>
-					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/include"/>
-					<Add directory="/usr/local/include"/>
-					<Add directory="/usr/include"/>
-				</Compiler>
-				<MakeCommands>
-					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_stats"/>
-					<CompileFile command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
-					<Clean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
-					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
-				</MakeCommands>
-			</Target>
-			<Target title="test_stats/fast">
-				<Option output="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/test_stats" prefix_auto="0" extension_auto="0"/>
-				<Option working_dir="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests"/>
-				<Option object_output="./"/>
-				<Option type="1"/>
-				<Option compiler="gcc"/>
-				<Compiler>
-					<Add option="-DNS_TEST=1"/>
-					<Add option="-DNS_ROOT_XPATH=&quot;/nemea-test-1:supervisor&quot;"/>
-					<Add option="-DNS_ROOT_XPATH_LEN=24"/>
-					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/SYSREPO_INCLUDE_DIR"/>
-					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/tests/.."/>
-					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7"/>
-					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7/x86_64-redhat-linux"/>
-					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7/backward"/>
-					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/include"/>
-					<Add directory="/usr/local/include"/>
-					<Add directory="/usr/include"/>
-				</Compiler>
-				<MakeCommands>
-					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_stats/fast"/>
-					<CompileFile command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
-					<Clean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
-					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
-				</MakeCommands>
-			</Target>
-			<Target title="test_conf">
-				<Option output="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/test_conf" prefix_auto="0" extension_auto="0"/>
-				<Option working_dir="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests"/>
-				<Option object_output="./"/>
-				<Option type="1"/>
-				<Option compiler="gcc"/>
-				<Compiler>
-					<Add option="-DNS_TEST=1"/>
-					<Add option="-DNS_ROOT_XPATH=&quot;/nemea-test-1:supervisor&quot;"/>
-					<Add option="-DNS_ROOT_XPATH_LEN=24"/>
-					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/SYSREPO_INCLUDE_DIR"/>
-					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/tests/.."/>
-					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7"/>
-					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7/x86_64-redhat-linux"/>
-					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7/backward"/>
-					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/include"/>
-					<Add directory="/usr/local/include"/>
-					<Add directory="/usr/include"/>
-				</Compiler>
-				<MakeCommands>
-					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_conf"/>
-					<CompileFile command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
-					<Clean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
-					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
-				</MakeCommands>
-			</Target>
-			<Target title="test_conf/fast">
-				<Option output="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/test_conf" prefix_auto="0" extension_auto="0"/>
-				<Option working_dir="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests"/>
-				<Option object_output="./"/>
-				<Option type="1"/>
-				<Option compiler="gcc"/>
-				<Compiler>
-					<Add option="-DNS_TEST=1"/>
-					<Add option="-DNS_ROOT_XPATH=&quot;/nemea-test-1:supervisor&quot;"/>
-					<Add option="-DNS_ROOT_XPATH_LEN=24"/>
-					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/SYSREPO_INCLUDE_DIR"/>
-					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/tests/.."/>
-					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7"/>
-					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7/x86_64-redhat-linux"/>
-					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7/backward"/>
-					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/include"/>
-					<Add directory="/usr/local/include"/>
-					<Add directory="/usr/include"/>
-				</Compiler>
-				<MakeCommands>
-					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_conf/fast"/>
-					<CompileFile command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
-					<Clean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
-					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
-				</MakeCommands>
-			</Target>
-			<Target title="test_module">
-				<Option output="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/test_module" prefix_auto="0" extension_auto="0"/>
-				<Option working_dir="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests"/>
-				<Option object_output="./"/>
-				<Option type="1"/>
-				<Option compiler="gcc"/>
-				<Compiler>
-					<Add option="-DNS_TEST=1"/>
-					<Add option="-DNS_ROOT_XPATH=&quot;/nemea-test-1:supervisor&quot;"/>
-					<Add option="-DNS_ROOT_XPATH_LEN=24"/>
-					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/SYSREPO_INCLUDE_DIR"/>
-					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/tests/.."/>
-					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7"/>
-					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7/x86_64-redhat-linux"/>
-					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7/backward"/>
-					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/include"/>
-					<Add directory="/usr/local/include"/>
-					<Add directory="/usr/include"/>
-				</Compiler>
-				<MakeCommands>
-					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_module"/>
-					<CompileFile command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
-					<Clean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
-					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
-				</MakeCommands>
-			</Target>
-			<Target title="test_module/fast">
-				<Option output="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/test_module" prefix_auto="0" extension_auto="0"/>
-				<Option working_dir="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests"/>
-				<Option object_output="./"/>
-				<Option type="1"/>
-				<Option compiler="gcc"/>
-				<Compiler>
-					<Add option="-DNS_TEST=1"/>
-					<Add option="-DNS_ROOT_XPATH=&quot;/nemea-test-1:supervisor&quot;"/>
-					<Add option="-DNS_ROOT_XPATH_LEN=24"/>
-					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/SYSREPO_INCLUDE_DIR"/>
-					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/tests/.."/>
-					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7"/>
-					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7/x86_64-redhat-linux"/>
-					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7/backward"/>
-					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/include"/>
-					<Add directory="/usr/local/include"/>
-					<Add directory="/usr/include"/>
-				</Compiler>
-				<MakeCommands>
-					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_module/fast"/>
+					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 intable_module/fast"/>
 					<CompileFile command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
 					<Clean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
 					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
@@ -351,8 +195,8 @@
 					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
 				</MakeCommands>
 			</Target>
-			<Target title="intable_module">
-				<Option output="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/intable_module" prefix_auto="0" extension_auto="0"/>
+			<Target title="test_module">
+				<Option output="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/test_module" prefix_auto="0" extension_auto="0"/>
 				<Option working_dir="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests"/>
 				<Option object_output="./"/>
 				<Option type="1"/>
@@ -371,14 +215,14 @@
 					<Add directory="/usr/include"/>
 				</Compiler>
 				<MakeCommands>
-					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 intable_module"/>
+					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_module"/>
 					<CompileFile command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
 					<Clean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
 					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
 				</MakeCommands>
 			</Target>
-			<Target title="intable_module/fast">
-				<Option output="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/intable_module" prefix_auto="0" extension_auto="0"/>
+			<Target title="test_module/fast">
+				<Option output="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/test_module" prefix_auto="0" extension_auto="0"/>
 				<Option working_dir="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests"/>
 				<Option object_output="./"/>
 				<Option type="1"/>
@@ -397,7 +241,267 @@
 					<Add directory="/usr/include"/>
 				</Compiler>
 				<MakeCommands>
-					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 intable_module/fast"/>
+					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_module/fast"/>
+					<CompileFile command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="test_conf">
+				<Option output="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/test_conf" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DNS_TEST=1"/>
+					<Add option="-DNS_ROOT_XPATH=&quot;/nemea-test-1:supervisor&quot;"/>
+					<Add option="-DNS_ROOT_XPATH_LEN=24"/>
+					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/SYSREPO_INCLUDE_DIR"/>
+					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/tests/.."/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7/x86_64-redhat-linux"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_conf"/>
+					<CompileFile command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="test_conf/fast">
+				<Option output="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/test_conf" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DNS_TEST=1"/>
+					<Add option="-DNS_ROOT_XPATH=&quot;/nemea-test-1:supervisor&quot;"/>
+					<Add option="-DNS_ROOT_XPATH_LEN=24"/>
+					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/SYSREPO_INCLUDE_DIR"/>
+					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/tests/.."/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7/x86_64-redhat-linux"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_conf/fast"/>
+					<CompileFile command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="test_stats">
+				<Option output="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/test_stats" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DNS_TEST=1"/>
+					<Add option="-DNS_ROOT_XPATH=&quot;/nemea-test-1:supervisor&quot;"/>
+					<Add option="-DNS_ROOT_XPATH_LEN=24"/>
+					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/SYSREPO_INCLUDE_DIR"/>
+					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/tests/.."/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7/x86_64-redhat-linux"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_stats"/>
+					<CompileFile command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="test_stats/fast">
+				<Option output="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/test_stats" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DNS_TEST=1"/>
+					<Add option="-DNS_ROOT_XPATH=&quot;/nemea-test-1:supervisor&quot;"/>
+					<Add option="-DNS_ROOT_XPATH_LEN=24"/>
+					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/SYSREPO_INCLUDE_DIR"/>
+					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/tests/.."/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7/x86_64-redhat-linux"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_stats/fast"/>
+					<CompileFile command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="test_supervisor">
+				<Option output="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/test_supervisor" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DNS_TEST=1"/>
+					<Add option="-DNS_ROOT_XPATH=&quot;/nemea-test-1:supervisor&quot;"/>
+					<Add option="-DNS_ROOT_XPATH_LEN=24"/>
+					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/SYSREPO_INCLUDE_DIR"/>
+					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/tests/.."/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7/x86_64-redhat-linux"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_supervisor"/>
+					<CompileFile command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="test_supervisor/fast">
+				<Option output="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/test_supervisor" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DNS_TEST=1"/>
+					<Add option="-DNS_ROOT_XPATH=&quot;/nemea-test-1:supervisor&quot;"/>
+					<Add option="-DNS_ROOT_XPATH_LEN=24"/>
+					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/SYSREPO_INCLUDE_DIR"/>
+					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/tests/.."/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7/x86_64-redhat-linux"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_supervisor/fast"/>
+					<CompileFile command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="test_instance_control">
+				<Option output="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/test_instance_control" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DNS_TEST=1"/>
+					<Add option="-DNS_ROOT_XPATH=&quot;/nemea-test-1:supervisor&quot;"/>
+					<Add option="-DNS_ROOT_XPATH_LEN=24"/>
+					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/SYSREPO_INCLUDE_DIR"/>
+					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/tests/.."/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7/x86_64-redhat-linux"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_instance_control"/>
+					<CompileFile command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="test_instance_control/fast">
+				<Option output="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/test_instance_control" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DNS_TEST=1"/>
+					<Add option="-DNS_ROOT_XPATH=&quot;/nemea-test-1:supervisor&quot;"/>
+					<Add option="-DNS_ROOT_XPATH_LEN=24"/>
+					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/SYSREPO_INCLUDE_DIR"/>
+					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/tests/.."/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7/x86_64-redhat-linux"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_instance_control/fast"/>
+					<CompileFile command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="test_utils">
+				<Option output="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/test_utils" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DNS_TEST=1"/>
+					<Add option="-DNS_ROOT_XPATH=&quot;/nemea-test-1:supervisor&quot;"/>
+					<Add option="-DNS_ROOT_XPATH_LEN=24"/>
+					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/SYSREPO_INCLUDE_DIR"/>
+					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/tests/.."/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7/x86_64-redhat-linux"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_utils"/>
+					<CompileFile command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="test_utils/fast">
+				<Option output="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/test_utils" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add option="-DNS_TEST=1"/>
+					<Add option="-DNS_ROOT_XPATH=&quot;/nemea-test-1:supervisor&quot;"/>
+					<Add option="-DNS_ROOT_XPATH_LEN=24"/>
+					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/SYSREPO_INCLUDE_DIR"/>
+					<Add directory="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/tests/.."/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7/x86_64-redhat-linux"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/../../../../include/c++/7/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-redhat-linux/7/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_utils/fast"/>
 					<CompileFile command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
 					<Clean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
 					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
@@ -406,25 +510,27 @@
 		</Build>
 		<Unit filename="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/src/conf.c">
 			<Option target="nemea-supervisor"/>
-			<Option target="test_supervisor"/>
-			<Option target="test_stats"/>
 			<Option target="test_run_changes"/>
+			<Option target="test_stats"/>
+			<Option target="test_supervisor"/>
+			<Option target="test_instance_control"/>
 		</Unit>
 		<Unit filename="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/src/conf.h">
 			<Option target="nemea-supervisor"/>
-			<Option target="test_supervisor"/>
-			<Option target="test_stats"/>
 			<Option target="test_run_changes"/>
+			<Option target="test_stats"/>
+			<Option target="test_supervisor"/>
+			<Option target="test_instance_control"/>
 		</Unit>
 		<Unit filename="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/src/instance_control.c">
 			<Option target="nemea-supervisor"/>
-			<Option target="test_supervisor"/>
 			<Option target="test_run_changes"/>
+			<Option target="test_supervisor"/>
 		</Unit>
 		<Unit filename="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/src/instance_control.h">
 			<Option target="nemea-supervisor"/>
-			<Option target="test_supervisor"/>
 			<Option target="test_run_changes"/>
+			<Option target="test_supervisor"/>
 		</Unit>
 		<Unit filename="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/src/main.c">
 			<Option target="nemea-supervisor"/>
@@ -436,17 +542,19 @@
 		</Unit>
 		<Unit filename="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/src/module.c">
 			<Option target="nemea-supervisor"/>
-			<Option target="test_supervisor"/>
-			<Option target="test_stats"/>
-			<Option target="test_conf"/>
 			<Option target="test_run_changes"/>
+			<Option target="test_conf"/>
+			<Option target="test_stats"/>
+			<Option target="test_supervisor"/>
+			<Option target="test_instance_control"/>
 		</Unit>
 		<Unit filename="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/src/module.h">
 			<Option target="nemea-supervisor"/>
-			<Option target="test_supervisor"/>
-			<Option target="test_stats"/>
-			<Option target="test_conf"/>
 			<Option target="test_run_changes"/>
+			<Option target="test_conf"/>
+			<Option target="test_stats"/>
+			<Option target="test_supervisor"/>
+			<Option target="test_instance_control"/>
 		</Unit>
 		<Unit filename="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/src/run_changes.c">
 			<Option target="nemea-supervisor"/>
@@ -472,25 +580,30 @@
 		</Unit>
 		<Unit filename="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/src/utils.c">
 			<Option target="nemea-supervisor"/>
-			<Option target="test_supervisor"/>
-			<Option target="test_stats"/>
-			<Option target="test_conf"/>
-			<Option target="test_module"/>
 			<Option target="test_run_changes"/>
+			<Option target="test_module"/>
+			<Option target="test_conf"/>
+			<Option target="test_stats"/>
+			<Option target="test_supervisor"/>
+			<Option target="test_instance_control"/>
 		</Unit>
 		<Unit filename="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/src/utils.h">
 			<Option target="nemea-supervisor"/>
-			<Option target="test_supervisor"/>
-			<Option target="test_stats"/>
-			<Option target="test_conf"/>
-			<Option target="test_module"/>
 			<Option target="test_run_changes"/>
+			<Option target="test_module"/>
+			<Option target="test_conf"/>
+			<Option target="test_stats"/>
+			<Option target="test_supervisor"/>
+			<Option target="test_instance_control"/>
 		</Unit>
 		<Unit filename="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/tests/intable_module.c">
 			<Option target="intable_module"/>
 		</Unit>
 		<Unit filename="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/tests/test_conf.c">
 			<Option target="test_conf"/>
+		</Unit>
+		<Unit filename="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/tests/test_instance_control.c">
+			<Option target="test_instance_control"/>
 		</Unit>
 		<Unit filename="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/tests/test_module.c">
 			<Option target="test_module"/>
@@ -503,6 +616,9 @@
 		</Unit>
 		<Unit filename="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/tests/test_supervisor.c">
 			<Option target="test_supervisor"/>
+		</Unit>
+		<Unit filename="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/tests/test_utils.c">
+			<Option target="test_utils"/>
 		</Unit>
 		<Unit filename="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/CMakeLists.txt">
 			<Option virtualFolder="CMake Files\"/>

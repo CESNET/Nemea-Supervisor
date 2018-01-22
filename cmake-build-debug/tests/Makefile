@@ -56,17 +56,6 @@ CMAKE_BINARY_DIR = /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-bu
 #=============================================================================
 # Targets provided globally by CMake.
 
-# Special rule for the target edit_cache
-edit_cache:
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "No interactive CMake dialog available..."
-	/opt/clion/bin/cmake/bin/cmake -E echo No\ interactive\ CMake\ dialog\ available.
-.PHONY : edit_cache
-
-# Special rule for the target edit_cache
-edit_cache/fast: edit_cache
-
-.PHONY : edit_cache/fast
-
 # Special rule for the target rebuild_cache
 rebuild_cache:
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake to regenerate build system..."
@@ -88,6 +77,17 @@ test:
 test/fast: test
 
 .PHONY : test/fast
+
+# Special rule for the target edit_cache
+edit_cache:
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "No interactive CMake dialog available..."
+	/opt/clion/bin/cmake/bin/cmake -E echo No\ interactive\ CMake\ dialog\ available.
+.PHONY : edit_cache
+
+# Special rule for the target edit_cache
+edit_cache/fast: edit_cache
+
+.PHONY : edit_cache/fast
 
 # The main all target
 all: cmake_check_build_system
@@ -122,64 +122,19 @@ depend:
 .PHONY : depend
 
 # Convenience name for target.
-tests/CMakeFiles/test_supervisor.dir/rule:
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f CMakeFiles/Makefile2 tests/CMakeFiles/test_supervisor.dir/rule
-.PHONY : tests/CMakeFiles/test_supervisor.dir/rule
+tests/CMakeFiles/intable_module.dir/rule:
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f CMakeFiles/Makefile2 tests/CMakeFiles/intable_module.dir/rule
+.PHONY : tests/CMakeFiles/intable_module.dir/rule
 
 # Convenience name for target.
-test_supervisor: tests/CMakeFiles/test_supervisor.dir/rule
+intable_module: tests/CMakeFiles/intable_module.dir/rule
 
-.PHONY : test_supervisor
+.PHONY : intable_module
 
 # fast build rule for target.
-test_supervisor/fast:
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_supervisor.dir/build.make tests/CMakeFiles/test_supervisor.dir/build
-.PHONY : test_supervisor/fast
-
-# Convenience name for target.
-tests/CMakeFiles/test_stats.dir/rule:
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f CMakeFiles/Makefile2 tests/CMakeFiles/test_stats.dir/rule
-.PHONY : tests/CMakeFiles/test_stats.dir/rule
-
-# Convenience name for target.
-test_stats: tests/CMakeFiles/test_stats.dir/rule
-
-.PHONY : test_stats
-
-# fast build rule for target.
-test_stats/fast:
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_stats.dir/build.make tests/CMakeFiles/test_stats.dir/build
-.PHONY : test_stats/fast
-
-# Convenience name for target.
-tests/CMakeFiles/test_conf.dir/rule:
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f CMakeFiles/Makefile2 tests/CMakeFiles/test_conf.dir/rule
-.PHONY : tests/CMakeFiles/test_conf.dir/rule
-
-# Convenience name for target.
-test_conf: tests/CMakeFiles/test_conf.dir/rule
-
-.PHONY : test_conf
-
-# fast build rule for target.
-test_conf/fast:
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_conf.dir/build.make tests/CMakeFiles/test_conf.dir/build
-.PHONY : test_conf/fast
-
-# Convenience name for target.
-tests/CMakeFiles/test_module.dir/rule:
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f CMakeFiles/Makefile2 tests/CMakeFiles/test_module.dir/rule
-.PHONY : tests/CMakeFiles/test_module.dir/rule
-
-# Convenience name for target.
-test_module: tests/CMakeFiles/test_module.dir/rule
-
-.PHONY : test_module
-
-# fast build rule for target.
-test_module/fast:
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_module.dir/build.make tests/CMakeFiles/test_module.dir/build
-.PHONY : test_module/fast
+intable_module/fast:
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/intable_module.dir/build.make tests/CMakeFiles/intable_module.dir/build
+.PHONY : intable_module/fast
 
 # Convenience name for target.
 tests/CMakeFiles/test_run_changes.dir/rule:
@@ -197,19 +152,94 @@ test_run_changes/fast:
 .PHONY : test_run_changes/fast
 
 # Convenience name for target.
-tests/CMakeFiles/intable_module.dir/rule:
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f CMakeFiles/Makefile2 tests/CMakeFiles/intable_module.dir/rule
-.PHONY : tests/CMakeFiles/intable_module.dir/rule
+tests/CMakeFiles/test_module.dir/rule:
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f CMakeFiles/Makefile2 tests/CMakeFiles/test_module.dir/rule
+.PHONY : tests/CMakeFiles/test_module.dir/rule
 
 # Convenience name for target.
-intable_module: tests/CMakeFiles/intable_module.dir/rule
+test_module: tests/CMakeFiles/test_module.dir/rule
 
-.PHONY : intable_module
+.PHONY : test_module
 
 # fast build rule for target.
-intable_module/fast:
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/intable_module.dir/build.make tests/CMakeFiles/intable_module.dir/build
-.PHONY : intable_module/fast
+test_module/fast:
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_module.dir/build.make tests/CMakeFiles/test_module.dir/build
+.PHONY : test_module/fast
+
+# Convenience name for target.
+tests/CMakeFiles/test_conf.dir/rule:
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f CMakeFiles/Makefile2 tests/CMakeFiles/test_conf.dir/rule
+.PHONY : tests/CMakeFiles/test_conf.dir/rule
+
+# Convenience name for target.
+test_conf: tests/CMakeFiles/test_conf.dir/rule
+
+.PHONY : test_conf
+
+# fast build rule for target.
+test_conf/fast:
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_conf.dir/build.make tests/CMakeFiles/test_conf.dir/build
+.PHONY : test_conf/fast
+
+# Convenience name for target.
+tests/CMakeFiles/test_stats.dir/rule:
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f CMakeFiles/Makefile2 tests/CMakeFiles/test_stats.dir/rule
+.PHONY : tests/CMakeFiles/test_stats.dir/rule
+
+# Convenience name for target.
+test_stats: tests/CMakeFiles/test_stats.dir/rule
+
+.PHONY : test_stats
+
+# fast build rule for target.
+test_stats/fast:
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_stats.dir/build.make tests/CMakeFiles/test_stats.dir/build
+.PHONY : test_stats/fast
+
+# Convenience name for target.
+tests/CMakeFiles/test_supervisor.dir/rule:
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f CMakeFiles/Makefile2 tests/CMakeFiles/test_supervisor.dir/rule
+.PHONY : tests/CMakeFiles/test_supervisor.dir/rule
+
+# Convenience name for target.
+test_supervisor: tests/CMakeFiles/test_supervisor.dir/rule
+
+.PHONY : test_supervisor
+
+# fast build rule for target.
+test_supervisor/fast:
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_supervisor.dir/build.make tests/CMakeFiles/test_supervisor.dir/build
+.PHONY : test_supervisor/fast
+
+# Convenience name for target.
+tests/CMakeFiles/test_instance_control.dir/rule:
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f CMakeFiles/Makefile2 tests/CMakeFiles/test_instance_control.dir/rule
+.PHONY : tests/CMakeFiles/test_instance_control.dir/rule
+
+# Convenience name for target.
+test_instance_control: tests/CMakeFiles/test_instance_control.dir/rule
+
+.PHONY : test_instance_control
+
+# fast build rule for target.
+test_instance_control/fast:
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_instance_control.dir/build.make tests/CMakeFiles/test_instance_control.dir/build
+.PHONY : test_instance_control/fast
+
+# Convenience name for target.
+tests/CMakeFiles/test_utils.dir/rule:
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f CMakeFiles/Makefile2 tests/CMakeFiles/test_utils.dir/rule
+.PHONY : tests/CMakeFiles/test_utils.dir/rule
+
+# Convenience name for target.
+test_utils: tests/CMakeFiles/test_utils.dir/rule
+
+.PHONY : test_utils
+
+# fast build rule for target.
+test_utils/fast:
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_utils.dir/build.make tests/CMakeFiles/test_utils.dir/build
+.PHONY : test_utils/fast
 
 __/src/conf.o: __/src/conf.c.o
 
@@ -217,9 +247,10 @@ __/src/conf.o: __/src/conf.c.o
 
 # target to build an object file
 __/src/conf.c.o:
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_supervisor.dir/build.make tests/CMakeFiles/test_supervisor.dir/__/src/conf.c.o
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_stats.dir/build.make tests/CMakeFiles/test_stats.dir/__/src/conf.c.o
 	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_run_changes.dir/build.make tests/CMakeFiles/test_run_changes.dir/__/src/conf.c.o
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_stats.dir/build.make tests/CMakeFiles/test_stats.dir/__/src/conf.c.o
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_supervisor.dir/build.make tests/CMakeFiles/test_supervisor.dir/__/src/conf.c.o
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_instance_control.dir/build.make tests/CMakeFiles/test_instance_control.dir/__/src/conf.c.o
 .PHONY : __/src/conf.c.o
 
 __/src/conf.i: __/src/conf.c.i
@@ -228,9 +259,10 @@ __/src/conf.i: __/src/conf.c.i
 
 # target to preprocess a source file
 __/src/conf.c.i:
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_supervisor.dir/build.make tests/CMakeFiles/test_supervisor.dir/__/src/conf.c.i
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_stats.dir/build.make tests/CMakeFiles/test_stats.dir/__/src/conf.c.i
 	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_run_changes.dir/build.make tests/CMakeFiles/test_run_changes.dir/__/src/conf.c.i
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_stats.dir/build.make tests/CMakeFiles/test_stats.dir/__/src/conf.c.i
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_supervisor.dir/build.make tests/CMakeFiles/test_supervisor.dir/__/src/conf.c.i
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_instance_control.dir/build.make tests/CMakeFiles/test_instance_control.dir/__/src/conf.c.i
 .PHONY : __/src/conf.c.i
 
 __/src/conf.s: __/src/conf.c.s
@@ -239,9 +271,10 @@ __/src/conf.s: __/src/conf.c.s
 
 # target to generate assembly for a file
 __/src/conf.c.s:
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_supervisor.dir/build.make tests/CMakeFiles/test_supervisor.dir/__/src/conf.c.s
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_stats.dir/build.make tests/CMakeFiles/test_stats.dir/__/src/conf.c.s
 	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_run_changes.dir/build.make tests/CMakeFiles/test_run_changes.dir/__/src/conf.c.s
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_stats.dir/build.make tests/CMakeFiles/test_stats.dir/__/src/conf.c.s
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_supervisor.dir/build.make tests/CMakeFiles/test_supervisor.dir/__/src/conf.c.s
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_instance_control.dir/build.make tests/CMakeFiles/test_instance_control.dir/__/src/conf.c.s
 .PHONY : __/src/conf.c.s
 
 __/src/instance_control.o: __/src/instance_control.c.o
@@ -250,8 +283,8 @@ __/src/instance_control.o: __/src/instance_control.c.o
 
 # target to build an object file
 __/src/instance_control.c.o:
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_supervisor.dir/build.make tests/CMakeFiles/test_supervisor.dir/__/src/instance_control.c.o
 	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_run_changes.dir/build.make tests/CMakeFiles/test_run_changes.dir/__/src/instance_control.c.o
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_supervisor.dir/build.make tests/CMakeFiles/test_supervisor.dir/__/src/instance_control.c.o
 .PHONY : __/src/instance_control.c.o
 
 __/src/instance_control.i: __/src/instance_control.c.i
@@ -260,8 +293,8 @@ __/src/instance_control.i: __/src/instance_control.c.i
 
 # target to preprocess a source file
 __/src/instance_control.c.i:
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_supervisor.dir/build.make tests/CMakeFiles/test_supervisor.dir/__/src/instance_control.c.i
 	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_run_changes.dir/build.make tests/CMakeFiles/test_run_changes.dir/__/src/instance_control.c.i
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_supervisor.dir/build.make tests/CMakeFiles/test_supervisor.dir/__/src/instance_control.c.i
 .PHONY : __/src/instance_control.c.i
 
 __/src/instance_control.s: __/src/instance_control.c.s
@@ -270,8 +303,8 @@ __/src/instance_control.s: __/src/instance_control.c.s
 
 # target to generate assembly for a file
 __/src/instance_control.c.s:
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_supervisor.dir/build.make tests/CMakeFiles/test_supervisor.dir/__/src/instance_control.c.s
 	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_run_changes.dir/build.make tests/CMakeFiles/test_run_changes.dir/__/src/instance_control.c.s
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_supervisor.dir/build.make tests/CMakeFiles/test_supervisor.dir/__/src/instance_control.c.s
 .PHONY : __/src/instance_control.c.s
 
 __/src/main.o: __/src/main.c.o
@@ -307,10 +340,11 @@ __/src/module.o: __/src/module.c.o
 
 # target to build an object file
 __/src/module.c.o:
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_supervisor.dir/build.make tests/CMakeFiles/test_supervisor.dir/__/src/module.c.o
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_stats.dir/build.make tests/CMakeFiles/test_stats.dir/__/src/module.c.o
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_conf.dir/build.make tests/CMakeFiles/test_conf.dir/__/src/module.c.o
 	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_run_changes.dir/build.make tests/CMakeFiles/test_run_changes.dir/__/src/module.c.o
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_conf.dir/build.make tests/CMakeFiles/test_conf.dir/__/src/module.c.o
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_stats.dir/build.make tests/CMakeFiles/test_stats.dir/__/src/module.c.o
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_supervisor.dir/build.make tests/CMakeFiles/test_supervisor.dir/__/src/module.c.o
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_instance_control.dir/build.make tests/CMakeFiles/test_instance_control.dir/__/src/module.c.o
 .PHONY : __/src/module.c.o
 
 __/src/module.i: __/src/module.c.i
@@ -319,10 +353,11 @@ __/src/module.i: __/src/module.c.i
 
 # target to preprocess a source file
 __/src/module.c.i:
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_supervisor.dir/build.make tests/CMakeFiles/test_supervisor.dir/__/src/module.c.i
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_stats.dir/build.make tests/CMakeFiles/test_stats.dir/__/src/module.c.i
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_conf.dir/build.make tests/CMakeFiles/test_conf.dir/__/src/module.c.i
 	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_run_changes.dir/build.make tests/CMakeFiles/test_run_changes.dir/__/src/module.c.i
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_conf.dir/build.make tests/CMakeFiles/test_conf.dir/__/src/module.c.i
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_stats.dir/build.make tests/CMakeFiles/test_stats.dir/__/src/module.c.i
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_supervisor.dir/build.make tests/CMakeFiles/test_supervisor.dir/__/src/module.c.i
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_instance_control.dir/build.make tests/CMakeFiles/test_instance_control.dir/__/src/module.c.i
 .PHONY : __/src/module.c.i
 
 __/src/module.s: __/src/module.c.s
@@ -331,10 +366,11 @@ __/src/module.s: __/src/module.c.s
 
 # target to generate assembly for a file
 __/src/module.c.s:
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_supervisor.dir/build.make tests/CMakeFiles/test_supervisor.dir/__/src/module.c.s
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_stats.dir/build.make tests/CMakeFiles/test_stats.dir/__/src/module.c.s
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_conf.dir/build.make tests/CMakeFiles/test_conf.dir/__/src/module.c.s
 	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_run_changes.dir/build.make tests/CMakeFiles/test_run_changes.dir/__/src/module.c.s
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_conf.dir/build.make tests/CMakeFiles/test_conf.dir/__/src/module.c.s
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_stats.dir/build.make tests/CMakeFiles/test_stats.dir/__/src/module.c.s
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_supervisor.dir/build.make tests/CMakeFiles/test_supervisor.dir/__/src/module.c.s
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_instance_control.dir/build.make tests/CMakeFiles/test_instance_control.dir/__/src/module.c.s
 .PHONY : __/src/module.c.s
 
 __/src/run_changes.o: __/src/run_changes.c.o
@@ -397,11 +433,12 @@ __/src/utils.o: __/src/utils.c.o
 
 # target to build an object file
 __/src/utils.c.o:
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_supervisor.dir/build.make tests/CMakeFiles/test_supervisor.dir/__/src/utils.c.o
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_stats.dir/build.make tests/CMakeFiles/test_stats.dir/__/src/utils.c.o
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_conf.dir/build.make tests/CMakeFiles/test_conf.dir/__/src/utils.c.o
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_module.dir/build.make tests/CMakeFiles/test_module.dir/__/src/utils.c.o
 	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_run_changes.dir/build.make tests/CMakeFiles/test_run_changes.dir/__/src/utils.c.o
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_module.dir/build.make tests/CMakeFiles/test_module.dir/__/src/utils.c.o
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_conf.dir/build.make tests/CMakeFiles/test_conf.dir/__/src/utils.c.o
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_stats.dir/build.make tests/CMakeFiles/test_stats.dir/__/src/utils.c.o
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_supervisor.dir/build.make tests/CMakeFiles/test_supervisor.dir/__/src/utils.c.o
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_instance_control.dir/build.make tests/CMakeFiles/test_instance_control.dir/__/src/utils.c.o
 .PHONY : __/src/utils.c.o
 
 __/src/utils.i: __/src/utils.c.i
@@ -410,11 +447,12 @@ __/src/utils.i: __/src/utils.c.i
 
 # target to preprocess a source file
 __/src/utils.c.i:
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_supervisor.dir/build.make tests/CMakeFiles/test_supervisor.dir/__/src/utils.c.i
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_stats.dir/build.make tests/CMakeFiles/test_stats.dir/__/src/utils.c.i
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_conf.dir/build.make tests/CMakeFiles/test_conf.dir/__/src/utils.c.i
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_module.dir/build.make tests/CMakeFiles/test_module.dir/__/src/utils.c.i
 	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_run_changes.dir/build.make tests/CMakeFiles/test_run_changes.dir/__/src/utils.c.i
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_module.dir/build.make tests/CMakeFiles/test_module.dir/__/src/utils.c.i
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_conf.dir/build.make tests/CMakeFiles/test_conf.dir/__/src/utils.c.i
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_stats.dir/build.make tests/CMakeFiles/test_stats.dir/__/src/utils.c.i
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_supervisor.dir/build.make tests/CMakeFiles/test_supervisor.dir/__/src/utils.c.i
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_instance_control.dir/build.make tests/CMakeFiles/test_instance_control.dir/__/src/utils.c.i
 .PHONY : __/src/utils.c.i
 
 __/src/utils.s: __/src/utils.c.s
@@ -423,11 +461,12 @@ __/src/utils.s: __/src/utils.c.s
 
 # target to generate assembly for a file
 __/src/utils.c.s:
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_supervisor.dir/build.make tests/CMakeFiles/test_supervisor.dir/__/src/utils.c.s
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_stats.dir/build.make tests/CMakeFiles/test_stats.dir/__/src/utils.c.s
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_conf.dir/build.make tests/CMakeFiles/test_conf.dir/__/src/utils.c.s
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_module.dir/build.make tests/CMakeFiles/test_module.dir/__/src/utils.c.s
 	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_run_changes.dir/build.make tests/CMakeFiles/test_run_changes.dir/__/src/utils.c.s
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_module.dir/build.make tests/CMakeFiles/test_module.dir/__/src/utils.c.s
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_conf.dir/build.make tests/CMakeFiles/test_conf.dir/__/src/utils.c.s
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_stats.dir/build.make tests/CMakeFiles/test_stats.dir/__/src/utils.c.s
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_supervisor.dir/build.make tests/CMakeFiles/test_supervisor.dir/__/src/utils.c.s
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_instance_control.dir/build.make tests/CMakeFiles/test_instance_control.dir/__/src/utils.c.s
 .PHONY : __/src/utils.c.s
 
 intable_module.o: intable_module.c.o
@@ -483,6 +522,33 @@ test_conf.s: test_conf.c.s
 test_conf.c.s:
 	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_conf.dir/build.make tests/CMakeFiles/test_conf.dir/test_conf.c.s
 .PHONY : test_conf.c.s
+
+test_instance_control.o: test_instance_control.c.o
+
+.PHONY : test_instance_control.o
+
+# target to build an object file
+test_instance_control.c.o:
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_instance_control.dir/build.make tests/CMakeFiles/test_instance_control.dir/test_instance_control.c.o
+.PHONY : test_instance_control.c.o
+
+test_instance_control.i: test_instance_control.c.i
+
+.PHONY : test_instance_control.i
+
+# target to preprocess a source file
+test_instance_control.c.i:
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_instance_control.dir/build.make tests/CMakeFiles/test_instance_control.dir/test_instance_control.c.i
+.PHONY : test_instance_control.c.i
+
+test_instance_control.s: test_instance_control.c.s
+
+.PHONY : test_instance_control.s
+
+# target to generate assembly for a file
+test_instance_control.c.s:
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_instance_control.dir/build.make tests/CMakeFiles/test_instance_control.dir/test_instance_control.c.s
+.PHONY : test_instance_control.c.s
 
 test_module.o: test_module.c.o
 
@@ -592,21 +658,50 @@ test_supervisor.c.s:
 	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_supervisor.dir/build.make tests/CMakeFiles/test_supervisor.dir/test_supervisor.c.s
 .PHONY : test_supervisor.c.s
 
+test_utils.o: test_utils.c.o
+
+.PHONY : test_utils.o
+
+# target to build an object file
+test_utils.c.o:
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_utils.dir/build.make tests/CMakeFiles/test_utils.dir/test_utils.c.o
+.PHONY : test_utils.c.o
+
+test_utils.i: test_utils.c.i
+
+.PHONY : test_utils.i
+
+# target to preprocess a source file
+test_utils.c.i:
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_utils.dir/build.make tests/CMakeFiles/test_utils.dir/test_utils.c.i
+.PHONY : test_utils.c.i
+
+test_utils.s: test_utils.c.s
+
+.PHONY : test_utils.s
+
+# target to generate assembly for a file
+test_utils.c.s:
+	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_utils.dir/build.make tests/CMakeFiles/test_utils.dir/test_utils.c.s
+.PHONY : test_utils.c.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
 	@echo "... all (the default if no target is provided)"
 	@echo "... clean"
 	@echo "... depend"
-	@echo "... edit_cache"
 	@echo "... rebuild_cache"
-	@echo "... test_supervisor"
-	@echo "... test"
-	@echo "... test_stats"
-	@echo "... test_conf"
-	@echo "... test_module"
-	@echo "... test_run_changes"
 	@echo "... intable_module"
+	@echo "... test_run_changes"
+	@echo "... test_module"
+	@echo "... test_conf"
+	@echo "... test_stats"
+	@echo "... test"
+	@echo "... test_supervisor"
+	@echo "... test_instance_control"
+	@echo "... test_utils"
+	@echo "... edit_cache"
 	@echo "... __/src/conf.o"
 	@echo "... __/src/conf.i"
 	@echo "... __/src/conf.s"
@@ -634,6 +729,9 @@ help:
 	@echo "... test_conf.o"
 	@echo "... test_conf.i"
 	@echo "... test_conf.s"
+	@echo "... test_instance_control.o"
+	@echo "... test_instance_control.i"
+	@echo "... test_instance_control.s"
 	@echo "... test_module.o"
 	@echo "... test_module.i"
 	@echo "... test_module.s"
@@ -646,6 +744,9 @@ help:
 	@echo "... test_supervisor.o"
 	@echo "... test_supervisor.i"
 	@echo "... test_supervisor.s"
+	@echo "... test_utils.o"
+	@echo "... test_utils.i"
+	@echo "... test_utils.s"
 .PHONY : help
 
 

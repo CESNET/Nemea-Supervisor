@@ -6,6 +6,8 @@
 #include "../src/conf.h"
 #include "../src/stats.c"
 
+#define TESTS_DIR "../../tests"
+
 const char *ns_root_sr_path = "/nemea-tests-1:nemea-supervisor";
 bool sv_thread_running = false;
 int stats_callback_cnt = 0;
@@ -38,38 +40,29 @@ void disconnect_sr()
 {
    if (sr_conn_link.subscr != NULL) {
       sr_unsubscribe(sr_conn_link.sess, sr_conn_link.subscr);
+      sr_conn_link.subscr = NULL;
    }
 
    if (sr_conn_link.sess != NULL) {
       sr_session_stop(sr_conn_link.sess);
+      sr_conn_link.sess = NULL;
    }
 
    if (sr_conn_link.conn != NULL) {
       sr_disconnect(sr_conn_link.conn);
+      sr_conn_link.conn = NULL;
    }
 }
 
 void load_config()
 {
    int rc;
-   sr_node_t *tree = NULL;
 
    connect_to_sr();
 
-   rc = sr_get_subtree(sr_conn_link.sess, ns_root_sr_path, SR_GET_SUBTREE_DEFAULT, &tree);
-   IF_SR_ERR_FAIL(rc)
+   assert_int_equal(vector_init(&rnmods_v, 10), 0);
 
-   if (vector_init(&insts_v, 10) != 0) {
-      fail_msg("Failed to allocate memory for modules vector");
-   }
-
-   if (vector_init(&mgrps_v, 5) != 0) {
-      fail_msg("Failed to allocate memory for module groups vector");
-   }
-
-   if (ns_startup_config_load(sr_conn_link.sess) != 0) {
-      fail_msg("Failed to load configuration");
-   }
+   IF_SR_ERR_FAIL(ns_startup_config_load(sr_conn_link.sess))
 
    rc = sr_session_switch_ds(sr_conn_link.sess, SR_DS_RUNNING);
    IF_SR_ERR_FAIL(rc)
@@ -122,7 +115,7 @@ void * request_stats_async(void * stats_type)
 
    char *cmd = (char *) calloc(1, sizeof(char) * (strlen(stats_type) + 16));
    IF_NO_MEM_FAIL(cmd)
-   sprintf(cmd, "./async_stats.py %s", (char *)stats_type);
+   sprintf(cmd, TESTS_DIR"/async_stats.py %s", (char *)stats_type);
 
    *rc = WEXITSTATUS(system(cmd));
    if (*rc != 0) {
@@ -184,17 +177,15 @@ void run_async_caller_and_sv_routine(char * async_option)
 
 void test_get_intable_interface_stats_cb(void **state)
 {
-   system("helpers/import_conf.sh -s nemea-tests-1-startup-config-stats-1.xml");
+   system(TESTS_DIR"/helpers/import_conf.sh -s nemea-test-1-startup-for-stats-1.xml");
    connect_to_sr();
    load_config();
-   subscribe_xpath_stats("/nemea-tests-1:nemea-supervisor/module-group/module"
-                               "/instance/interface/stats",
+   subscribe_xpath_stats(NS_ROOT_XPATH"/module/interface/stats",
                          get_interface_stats_cb_wrapper,
-                         SR_SUBSCR_CTX_REUSE);
+                         SR_SUBSCR_DEFAULT);
 
-   {
-      // Load dummy out_stats
-      instance_t *inst = insts_v.items[0];
+   { // Load dummy out_stats
+      run_module_t *inst = rnmods_v.items[0];
       interface_t *ifc = inst->out_ifces.items[0];
       ifc_out_stats_t *out_stats = ifc->stats;
       out_stats->sent_msg_cnt = 11111;
@@ -212,18 +203,18 @@ void test_get_intable_interface_stats_cb(void **state)
    disconnect_sr();
 }
 
-void test_get_intable_module_stats(void **state)
+void test_get_instance_stats(void **state)
 {
-   system("helpers/import_conf.sh -s nemea-tests-1-startup-config-stats-1.xml");
+   system(TESTS_DIR"/helpers/import_conf.sh -s nemea-test-1-startup-for-stats-1.xml");
    connect_to_sr();
    load_config();
-   subscribe_xpath_stats("/nemea-tests-1:nemea-supervisor/module-group/module/instance",
+   subscribe_xpath_stats(NS_ROOT_XPATH"/module",
                          inst_get_stats_cb_wrapper,
-                         SR_SUBSCR_CTX_REUSE);
+                         SR_SUBSCR_DEFAULT);
 
    {
       // Load dummy stats
-      instance_t *inst = insts_v.items[0];
+      run_module_t *inst = rnmods_v.items[0];
       inst->running = false;
       time(&inst->restart_time);
       inst->restarts_cnt = 2;
@@ -239,27 +230,126 @@ void test_get_intable_module_stats(void **state)
 
 void test_get_intable_inst_stats_including_ifc_stats(void **state)
 {
-   system("helpers/import_conf.sh -s nemea-tests-1-startup-config-stats-1.xml");
+   system(TESTS_DIR"/helpers/import_conf.sh -s nemea-test-1-startup-for-stats-1.xml");
    connect_to_sr();
    load_config();
-   subscribe_xpath_stats("/nemea-tests-1:nemea-supervisor/module-group/module"
-                               "/instance/interface/stats",
+   subscribe_xpath_stats(NS_ROOT_XPATH"/module/interface/stats",
                          get_interface_stats_cb_wrapper,
                          SR_SUBSCR_CTX_REUSE);
-   subscribe_xpath_stats("/nemea-tests-1:nemea-supervisor/module-group/module/instance",
+   subscribe_xpath_stats(NS_ROOT_XPATH"/module/stats",
                          inst_get_stats_cb_wrapper,
                          SR_SUBSCR_CTX_REUSE);
+
+   { // load dummy data
+      run_module_t *inst = rnmods_v.items[0];
+      inst->running = false;
+      time(&inst->restart_time);
+      inst->restarts_cnt = 2;
+      inst->last_cpu_umode = 9999;
+      inst->last_cpu_kmode = 8888;
+      inst->mem_vms = 7777;
+      inst->mem_rss = 6666;
+
+
+      interface_t *ifc = inst->out_ifces.items[0];
+      ifc_out_stats_t *out_stats = ifc->stats;
+      out_stats->sent_msg_cnt = 11111;
+      out_stats->sent_buff_cnt = 11112;
+      out_stats->dropped_msg_cnt = 11113;
+      out_stats->autoflush_cnt = 11114;
+
+      ifc = inst->in_ifces.items[0];
+      ifc_in_stats_t *in_stats = ifc->stats;
+      in_stats->recv_msg_cnt = 12333;
+      in_stats->recv_buff_cnt = 12334;
+   }
+
+   run_async_caller_and_sv_routine("intable_inst_stats_including_ifc_stats");
+   disconnect_sr();
+}
+
+void test_tree_path_load(void **state)
+{
+   char * xpath;
+   tree_path_t *tpath;
+
+   {
+      xpath = strdup("/nemea-test-1:supervisor/module[name='Intable1']/stats");
+      IF_NO_MEM_FAIL(xpath)
+      tpath = tree_path_load(xpath);
+      assert_non_null(tpath);
+      assert_string_equal(tpath->inst, "Intable1");
+      assert_null(tpath->ifc);
+
+      NULLP_TEST_AND_FREE(xpath)
+      tree_path_free(tpath);
+   }
+
+   {
+      xpath = strdup("/nemea-test-1:supervisor/module[name='Intable1']"
+                           "/interface[name='ifc1']/stats");
+      IF_NO_MEM_FAIL(xpath)
+      tpath = tree_path_load(xpath);
+      assert_non_null(tpath);
+      assert_string_equal(tpath->inst, "Intable1");
+      assert_string_equal(tpath->ifc, "ifc1");
+
+      NULLP_TEST_AND_FREE(xpath)
+      tree_path_free(tpath);
+   }
+}
+
+void test_interface_get_by_tree_path(void **state)
+{
+   char * xpath;
+   run_module_t * inst;
+   interface_t * ifc;
+   interface_t * stored_ifc;
+
+   inst = run_module_alloc();
+   IF_NO_MEM_FAIL(inst)
+   inst->name = strdup("Intable1");
+   IF_NO_MEM_FAIL(inst->name)
+   assert_int_equal(vector_add(&rnmods_v, inst), 0);
+
+   stored_ifc = interface_alloc();
+   IF_NO_MEM_FAIL(stored_ifc)
+   stored_ifc->direction = NS_IF_DIR_IN;
+   stored_ifc->type = NS_IF_TYPE_UNIX;
+   stored_ifc->name = strdup("ifc1");
+   IF_NO_MEM_FAIL(stored_ifc->name)
+   assert_int_equal(run_module_interface_add(inst, stored_ifc), 0);
+
+   {
+      xpath = strdup("/nemea-test-1:supervisor/module[name='Intable1']"
+                           "/interface[name='ifc1']/stats");
+      ifc = interface_get_by_xpath(xpath);
+      assert_non_null(ifc);
+      stored_ifc = inst->in_ifces.items[0];
+      assert_ptr_equal(ifc, stored_ifc);
+   }
+
+   {
+      xpath = strdup("/nemea-test-1:supervisor/module[name='Intable1']"
+                           "/stats");
+      ifc = interface_get_by_xpath(xpath);
+      assert_null(ifc);
+   }
+
+   vector_delete(&rnmods_v, 0);
+   NULLP_TEST_AND_FREE(inst)
+   NULLP_TEST_AND_FREE(stored_ifc)
 }
 
 int main(void)
 {
 
    const struct CMUnitTest tests[] = {
-         cmocka_unit_test(test_get_intable_inst_stats_including_ifc_stats),
-/*
+         cmocka_unit_test(test_interface_get_by_tree_path),
+         cmocka_unit_test(test_tree_path_load),
+         cmocka_unit_test(test_get_instance_stats),
          cmocka_unit_test(test_get_intable_interface_stats_cb),
-         cmocka_unit_test(test_get_intable_module_stats),
-*/
+         cmocka_unit_test(test_get_intable_inst_stats_including_ifc_stats),
    };
 
    disconnect_sr();

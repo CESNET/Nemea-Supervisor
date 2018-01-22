@@ -135,56 +135,17 @@ nemea-supervisor/fast:
 .PHONY : nemea-supervisor/fast
 
 #=============================================================================
-# Target rules for targets named test_supervisor
+# Target rules for targets named intable_module
 
 # Build rule for target.
-test_supervisor: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 test_supervisor
-.PHONY : test_supervisor
+intable_module: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 intable_module
+.PHONY : intable_module
 
 # fast build rule for target.
-test_supervisor/fast:
-	$(MAKE) -f tests/CMakeFiles/test_supervisor.dir/build.make tests/CMakeFiles/test_supervisor.dir/build
-.PHONY : test_supervisor/fast
-
-#=============================================================================
-# Target rules for targets named test_stats
-
-# Build rule for target.
-test_stats: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 test_stats
-.PHONY : test_stats
-
-# fast build rule for target.
-test_stats/fast:
-	$(MAKE) -f tests/CMakeFiles/test_stats.dir/build.make tests/CMakeFiles/test_stats.dir/build
-.PHONY : test_stats/fast
-
-#=============================================================================
-# Target rules for targets named test_conf
-
-# Build rule for target.
-test_conf: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 test_conf
-.PHONY : test_conf
-
-# fast build rule for target.
-test_conf/fast:
-	$(MAKE) -f tests/CMakeFiles/test_conf.dir/build.make tests/CMakeFiles/test_conf.dir/build
-.PHONY : test_conf/fast
-
-#=============================================================================
-# Target rules for targets named test_module
-
-# Build rule for target.
-test_module: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 test_module
-.PHONY : test_module
-
-# fast build rule for target.
-test_module/fast:
-	$(MAKE) -f tests/CMakeFiles/test_module.dir/build.make tests/CMakeFiles/test_module.dir/build
-.PHONY : test_module/fast
+intable_module/fast:
+	$(MAKE) -f tests/CMakeFiles/intable_module.dir/build.make tests/CMakeFiles/intable_module.dir/build
+.PHONY : intable_module/fast
 
 #=============================================================================
 # Target rules for targets named test_run_changes
@@ -200,17 +161,82 @@ test_run_changes/fast:
 .PHONY : test_run_changes/fast
 
 #=============================================================================
-# Target rules for targets named intable_module
+# Target rules for targets named test_module
 
 # Build rule for target.
-intable_module: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 intable_module
-.PHONY : intable_module
+test_module: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 test_module
+.PHONY : test_module
 
 # fast build rule for target.
-intable_module/fast:
-	$(MAKE) -f tests/CMakeFiles/intable_module.dir/build.make tests/CMakeFiles/intable_module.dir/build
-.PHONY : intable_module/fast
+test_module/fast:
+	$(MAKE) -f tests/CMakeFiles/test_module.dir/build.make tests/CMakeFiles/test_module.dir/build
+.PHONY : test_module/fast
+
+#=============================================================================
+# Target rules for targets named test_conf
+
+# Build rule for target.
+test_conf: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 test_conf
+.PHONY : test_conf
+
+# fast build rule for target.
+test_conf/fast:
+	$(MAKE) -f tests/CMakeFiles/test_conf.dir/build.make tests/CMakeFiles/test_conf.dir/build
+.PHONY : test_conf/fast
+
+#=============================================================================
+# Target rules for targets named test_stats
+
+# Build rule for target.
+test_stats: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 test_stats
+.PHONY : test_stats
+
+# fast build rule for target.
+test_stats/fast:
+	$(MAKE) -f tests/CMakeFiles/test_stats.dir/build.make tests/CMakeFiles/test_stats.dir/build
+.PHONY : test_stats/fast
+
+#=============================================================================
+# Target rules for targets named test_supervisor
+
+# Build rule for target.
+test_supervisor: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 test_supervisor
+.PHONY : test_supervisor
+
+# fast build rule for target.
+test_supervisor/fast:
+	$(MAKE) -f tests/CMakeFiles/test_supervisor.dir/build.make tests/CMakeFiles/test_supervisor.dir/build
+.PHONY : test_supervisor/fast
+
+#=============================================================================
+# Target rules for targets named test_instance_control
+
+# Build rule for target.
+test_instance_control: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 test_instance_control
+.PHONY : test_instance_control
+
+# fast build rule for target.
+test_instance_control/fast:
+	$(MAKE) -f tests/CMakeFiles/test_instance_control.dir/build.make tests/CMakeFiles/test_instance_control.dir/build
+.PHONY : test_instance_control/fast
+
+#=============================================================================
+# Target rules for targets named test_utils
+
+# Build rule for target.
+test_utils: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 test_utils
+.PHONY : test_utils
+
+# fast build rule for target.
+test_utils/fast:
+	$(MAKE) -f tests/CMakeFiles/test_utils.dir/build.make tests/CMakeFiles/test_utils.dir/build
+.PHONY : test_utils/fast
 
 # Help Target
 help:
@@ -222,12 +248,14 @@ help:
 	@echo "... edit_cache"
 	@echo "... test"
 	@echo "... nemea-supervisor"
-	@echo "... test_supervisor"
-	@echo "... test_stats"
-	@echo "... test_conf"
-	@echo "... test_module"
-	@echo "... test_run_changes"
 	@echo "... intable_module"
+	@echo "... test_run_changes"
+	@echo "... test_module"
+	@echo "... test_conf"
+	@echo "... test_stats"
+	@echo "... test_supervisor"
+	@echo "... test_instance_control"
+	@echo "... test_utils"
 .PHONY : help
 
 

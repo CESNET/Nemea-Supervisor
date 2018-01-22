@@ -36,3 +36,10 @@ target_link_libraries(test_conf cmocka sysrepo trap pthread)
 set (SRC_FILES_5 ../src/utils.c ../src/module.c ../src/conf.c ../src/instance_control.c ../src/run_changes.c ../src/stats.c ../src/main.c)
 add_executable(test_supervisor test_supervisor.c ${SRC_FILES_5})
 target_link_libraries(test_supervisor cmocka sysrepo trap pthread)
+
+set (SRC_FILES_6 ../src/utils.c ../src/module.c ../src/conf.c)
+add_executable(test_instance_control test_instance_control.c ${SRC_FILES_6})
+target_link_libraries(test_instance_control cmocka sysrepo trap pthread)
+
+add_executable(test_utils test_utils.c)
+target_link_libraries(test_utils cmocka)

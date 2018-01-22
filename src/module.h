@@ -25,12 +25,12 @@
 /*--BEGIN superglobal typedef--*/
 
 
-typedef struct tree_path_s {
+/*typedef struct tree_path_s {
    char *group;
    char *module;
    char *inst;
    char *ifc;
-} tree_path_t;
+} tree_path_t;*/
 
 typedef enum ns_fn_success_e {
    NS_ERR = -1,
@@ -331,7 +331,7 @@ void av_module_remove_at(uint32_t index);
 void run_module_remove_at(uint32_t index);
 
 // TODO
-int run_module_interface_add(run_module_t *mod, interface_t *ifc);
+int run_module_interface_add(run_module_t *inst, interface_t *ifc);
 
 /**
  * TODO
@@ -432,19 +432,19 @@ extern void run_module_clear_socks(run_module_t *inst);
 
 /**
  * TODO
- * */
+ * *//*
 extern void tree_path_init(tree_path_t *path);
-/**
+*//**
  * TODO
- * */
+ * *//*
 extern void tree_path_free(tree_path_t *node);
-/**
+*//**
  * TODO
- * */
-extern int tree_path_load_from_xpath(tree_path_t *node, const char *xpath);
+ * *//*
+extern int tree_path_load_from_xpath(tree_path_t *node, const char *xpath);*/
 
 
-extern interface_t * interface_get_by_path(const tree_path_t *path);
+//extern interface_t * interface_get_by_path(const tree_path_t *path);
 /*--END superglobal fn prototypes--*/
 
 #endif //NEMEA_SUPERVISOR_MODULE_H
