@@ -42,40 +42,28 @@ static void disconnect_sr()
 
 void test_insts_save_running_pids(void **state)
 {
-   system("helpers/import_conf.sh -s nemea-tests-1-startup-config-4.xml");
+   system("../../tests/helpers/import_conf.sh -s nemea-test-1-startup-6.xml");
    connect_to_sr();
 
    int rc;
-   char xpath[4096];
-   pid_t fetched_pid;
-   instance_t *inst = NULL;
-   module_group_t *grp = NULL;
-   module_t *mod = NULL;
+   run_module_t *inst = NULL;
+   av_module_t *mod = NULL;
    sr_val_t *value = NULL;
+   char xpath[] = NS_ROOT_XPATH"/module[name='inst1']/last-pid";
 
-   { // Fake loaded group
-      grp = module_group_alloc();
-      IF_NO_MEM_FAIL(grp)
-      grp->name = "Detectors";
-   }
    { // Fake loaded module
-      mod = module_alloc();
+      mod = av_module_alloc();
       IF_NO_MEM_FAIL(mod)
-      mod->name = "mod1";
-      mod->group = grp;
+      mod->name = "module A";
    }
    { // Fake loaded instance
       inst = run_module_alloc();
       IF_NO_MEM_FAIL(inst)
       inst->name = "inst1";
       inst->running = true;
-      inst->module = mod;
+      inst->mod_kind = mod;
       inst->pid = 12312;
-      memset(xpath, 0, 4096);
-      sprintf(xpath, "%s/module-group[name='Detectors']/module[name='mod1']"
-                    "/instance[name='inst1']/last-pid",
-              ns_root_sr_path);
-      instance_add(inst);
+      vector_add(&rnmods_v, inst);
    }
 
    { // tests PID is not in sysrepo
@@ -95,8 +83,7 @@ void test_insts_save_running_pids(void **state)
 
    NULLP_TEST_AND_FREE(inst)
    NULLP_TEST_AND_FREE(mod)
-   NULLP_TEST_AND_FREE(grp)
-   vector_free(&insts_v);
+   vector_free(&rnmods_v);
    disconnect_sr();
 }
 

@@ -1,7 +1,6 @@
 
 #include "stats.h"
 #include "module.h"
-#include "utils.h"
 #include <sysrepo/values.h>
 #include <sysrepo/xpath.h>
 
@@ -104,7 +103,8 @@ int interface_get_stats_cb(const char *xpath,
 
    ifc = interface_get_by_xpath(xpath);
    if (ifc == NULL) {
-      VERBOSE(N_ERR, "Interface at %s is not loaded", xpath)
+      VERBOSE(N_ERR, "Interface at '%s' is not loaded", xpath)
+      rc = SR_ERR_NOT_FOUND;
       goto err_cleanup;
    }
 
@@ -121,14 +121,14 @@ int interface_get_stats_cb(const char *xpath,
       rc = set_new_sr_val(&new_vals[0], xpath, "recv-msg-cnt", SR_UINT64_T,
                           &stats->recv_msg_cnt);
       if (rc != 0) {
-         VERBOSE(N_ERR, "") // TODO
+         VERBOSE(N_ERR, "Setting node value for /recv-msg-cnt failed")
          goto err_cleanup;
       }
 
       rc = set_new_sr_val(&new_vals[1], xpath, "recv-buff-cnt", SR_UINT64_T,
                           &stats->recv_buff_cnt);
       if (rc != 0) {
-         VERBOSE(N_ERR, "") // TODO
+         VERBOSE(N_ERR, "Setting node value for /recv-buff-cnt failed")
          goto err_cleanup;
       }
    } else { // ifc->direction == NS_IF_DIR_OUT
@@ -144,28 +144,28 @@ int interface_get_stats_cb(const char *xpath,
       rc = set_new_sr_val(&new_vals[0], xpath, "sent-msg-cnt", SR_UINT64_T,
                           &stats->sent_msg_cnt);
       if (rc != 0) {
-         VERBOSE(N_ERR, "") // TODO
+         VERBOSE(N_ERR, "Setting node value for /sent-msg-cnt failed")
          goto err_cleanup;
       }
 
       rc = set_new_sr_val(&new_vals[1], xpath, "sent-buff-cnt", SR_UINT64_T,
                           &stats->sent_buff_cnt);
       if (rc != 0) {
-         VERBOSE(N_ERR, "") // TODO
+         VERBOSE(N_ERR, "Setting node value for /sent-buff-cnt failed")
          goto err_cleanup;
       }
 
       rc = set_new_sr_val(&new_vals[2], xpath, "dropped-msg-cnt", SR_UINT64_T,
                           &stats->dropped_msg_cnt);
       if (rc != 0) {
-         VERBOSE(N_ERR, "") // TODO
+         VERBOSE(N_ERR, "Setting node value for /dropped-msg-cnt failed")
          goto err_cleanup;
       }
 
       rc = set_new_sr_val(&new_vals[3], xpath, "autoflush-cnt", SR_UINT64_T,
                           &stats->autoflush_cnt);
       if (rc != 0) {
-         VERBOSE(N_ERR, "") // TODO
+         VERBOSE(N_ERR, "Setting node value for /autoflush-cnt failed")
          goto err_cleanup;
       }
    }
@@ -177,6 +177,11 @@ int interface_get_stats_cb(const char *xpath,
    return SR_ERR_OK;
 
 err_cleanup:
+   if (new_vals != NULL) {
+      sr_free_values(new_vals, *values_cnt);
+   }
+
+   VERBOSE(N_ERR, "Retrieving stats for xpath=%s failed.", xpath)
    return rc;
 }
 
@@ -193,32 +198,6 @@ int inst_get_stats_cb(const char *xpath,
    run_module_t *inst = NULL;
    sr_val_t *new_vals = NULL;
    time_t time_now;
-
-
-/*   {
-      if (strcmp("/nemea-test-1:supervisor/module[name='Intable1']/stats", xpath) != 0) {
-         uint64_t i = 123;
-         vals_cnt = 1;
-         rc = sr_new_values(vals_cnt, &new_vals);
-         if (rc != 0) {
-            VERBOSE(N_ERR, "xdasd")
-            goto err_cleanup;
-         }
-         rc = set_new_sr_val(&new_vals[0], xpath, "interface[name='test']/blabla_out", SR_UINT64_T, &i);
-
-         if (rc != 0) {
-            VERBOSE(N_ERR, "Setting node value for /mem-asd failed")
-            goto err_cleanup;
-         }
-
-         *values_cnt = vals_cnt;
-         *values = new_vals;
-
-         return SR_ERR_OK;
-      }
-   }*/
-
-
 
    tpath = tree_path_load(xpath);
    if (tpath == NULL) {
@@ -473,19 +452,12 @@ static interface_t * interface_get_by_xpath(const char *xpath)
       goto err_cleanup;
    }
 
+   vector_t *ifces_vec[2] = { &(inst->in_ifces), &(inst->out_ifces) };
 
-   if (inst->in_ifces.total > 0) {
-      ifc = NULL;
-      FOR_EACH_IN_VEC(inst->in_ifces, ifc) {
-         if (strcmp(ifc->name, tpath->ifc) == 0) {
-            tree_path_free(tpath);
-            return ifc;
-         }
-      }
-   }
-   if (inst->out_ifces.total > 0) {
-      ifc = NULL;
-      FOR_EACH_IN_VEC(inst->out_ifces, ifc) {
+   for (uint32_t j = 0; j < 2; j++) {
+      for (uint32_t i = 0; i < inst->in_ifces.total; i++) {
+         ifc = ifces_vec[j]->items[i];
+
          if (strcmp(ifc->name, tpath->ifc) == 0) {
             tree_path_free(tpath);
             return ifc;

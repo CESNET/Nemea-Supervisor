@@ -433,8 +433,8 @@ void test_av_module_load(void **state)
    assert_int_equal(amod1->is_sr_en, false);
 
    sr_free_tree(node);
-   av_module_remove_at(0);
-   av_module_remove_at(1);
+   vector_delete(&avmods_v, 0);
+   vector_delete(&avmods_v, 0);
    av_module_free(amod1);
 
    disconnect_sr();
@@ -467,7 +467,7 @@ void test_run_module_load(void **state)
    // TODO more
 
    assert_int_equal(rnmods_v.total, 1);
-   run_module_remove_at(0);
+   vector_delete(&rnmods_v, 0);
    assert_int_equal(rnmods_v.total, 0);
    run_module_free(mod);
 
@@ -584,7 +584,7 @@ void test_module_name_from_xpath(void **state)
 int main(void)
 {
    const struct CMUnitTest tests[] = {
-/*         cmocka_unit_test(test_interface_file_params_load),
+         cmocka_unit_test(test_interface_file_params_load),
          cmocka_unit_test(test_interface_unix_params_load),
          cmocka_unit_test(test_interface_tcp_tls_params_load),
          cmocka_unit_test(test_interface_tcp_params_load),
@@ -594,7 +594,7 @@ int main(void)
          cmocka_unit_test(test_run_module_load),
          cmocka_unit_test(test_ns_startup_config_load),
          cmocka_unit_test(test_run_module_load_by_name),
-         cmocka_unit_test(test_module_name_from_xpath),*/
+         cmocka_unit_test(test_module_name_from_xpath),
          cmocka_unit_test(test_av_module_load_by_name),
 
    };

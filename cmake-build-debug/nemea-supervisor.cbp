@@ -534,11 +534,9 @@
 		</Unit>
 		<Unit filename="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/src/main.c">
 			<Option target="nemea-supervisor"/>
-			<Option target="test_supervisor"/>
 		</Unit>
 		<Unit filename="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/src/main.h">
 			<Option target="nemea-supervisor"/>
-			<Option target="test_supervisor"/>
 		</Unit>
 		<Unit filename="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/src/module.c">
 			<Option target="nemea-supervisor"/>

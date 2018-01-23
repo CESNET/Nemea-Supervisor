@@ -34,12 +34,12 @@
  * @param[in] argv Argument values passed from the main function.
  * @return DAEMON_MODE_CODE or INTERACTIVE_MODE_CODE in case of success, otherwise -1.
  * */
-int parse_prog_args(int *argc, char **argv);
+int parse_prog_args(int argc, char **argv);
 /* --END full fns prototypes-- */
 
 
 /* --BEGIN local fns-- */
-int parse_prog_args(int *argc, char **argv)
+int parse_prog_args(int argc, char **argv)
 {
    static struct option long_options[] = {
       {"daemon", no_argument, 0, 'd'},
@@ -50,20 +50,20 @@ int parse_prog_args(int *argc, char **argv)
       {0, 0, 0, 0}
    };
 
-   char c = 0;
+   int c = 0;
 
    while (1) {
-      c = SUP_GETOPT(*argc, argv, "dC:T:hs:L:", long_options);
+      c = getopt_long(argc, argv, "dC:T:hs:L:", long_options, NULL);
       if (c == -1) {
          break;
       }
 
       switch (c) {
          case ':':
-            PRINT_ERR("Wrong arguments, use \"supervisor -h\" for help.")
+            PRINT_ERR("Wrong arguments, use 'supervisor -h' for help.")
             return -1;
          case '?':
-            PRINT_ERR("Unknown option, use \"supervisor -h\" for help.")
+            PRINT_ERR("Unknown option, use 'supervisor -h' for help.")
             return -1;
          case 'h':
             printf(USAGE_MSG);
@@ -73,9 +73,13 @@ int parse_prog_args(int *argc, char **argv)
             break;
          case 'L':
             logs_path = strdup(optarg);
-            // TODO memcheck
+            IF_NO_MEM_INT_ERR(logs_path)
             break;
-         }
+         default:
+            PRINT_ERR("Invalid option '%c'.", c)
+            return -1;
+
+      }
    }
 
    if (logs_path == NULL) {
@@ -93,7 +97,7 @@ int parse_prog_args(int *argc, char **argv)
 
 int main (int argc, char *argv [])
 {
-   if (parse_prog_args(&argc, argv) == -1) {
+   if (parse_prog_args(argc, argv) == -1) {
       NULLP_TEST_AND_FREE(logs_path);
       exit(EXIT_FAILURE);
    }
@@ -131,7 +135,7 @@ VERBOSE(DEBUG, "daemon mode: %d", daemon_flag);
    }
 
    // TODO revisit
-   // Kill all modules_ll and cleanup all structures
+   // Kill all instances and cleanup all structures
    terminate_supervisor(true);
 
    exit(EXIT_SUCCESS);

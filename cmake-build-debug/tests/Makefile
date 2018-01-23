@@ -307,33 +307,6 @@ __/src/instance_control.c.s:
 	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_supervisor.dir/build.make tests/CMakeFiles/test_supervisor.dir/__/src/instance_control.c.s
 .PHONY : __/src/instance_control.c.s
 
-__/src/main.o: __/src/main.c.o
-
-.PHONY : __/src/main.o
-
-# target to build an object file
-__/src/main.c.o:
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_supervisor.dir/build.make tests/CMakeFiles/test_supervisor.dir/__/src/main.c.o
-.PHONY : __/src/main.c.o
-
-__/src/main.i: __/src/main.c.i
-
-.PHONY : __/src/main.i
-
-# target to preprocess a source file
-__/src/main.c.i:
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_supervisor.dir/build.make tests/CMakeFiles/test_supervisor.dir/__/src/main.c.i
-.PHONY : __/src/main.c.i
-
-__/src/main.s: __/src/main.c.s
-
-.PHONY : __/src/main.s
-
-# target to generate assembly for a file
-__/src/main.c.s:
-	cd /home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug && $(MAKE) -f tests/CMakeFiles/test_supervisor.dir/build.make tests/CMakeFiles/test_supervisor.dir/__/src/main.c.s
-.PHONY : __/src/main.c.s
-
 __/src/module.o: __/src/module.c.o
 
 .PHONY : __/src/module.o
@@ -708,9 +681,6 @@ help:
 	@echo "... __/src/instance_control.o"
 	@echo "... __/src/instance_control.i"
 	@echo "... __/src/instance_control.s"
-	@echo "... __/src/main.o"
-	@echo "... __/src/main.i"
-	@echo "... __/src/main.s"
 	@echo "... __/src/module.o"
 	@echo "... __/src/module.i"
 	@echo "... __/src/module.s"

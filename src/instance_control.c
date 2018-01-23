@@ -1,5 +1,6 @@
 
 #include <libtrap/trap.h>
+#include "utils.h"
 #include "instance_control.h"
 
 /*--BEGIN superglobal vars--*/
@@ -38,9 +39,11 @@ static void inst_start(run_module_t *inst);
 uint32_t get_running_insts_cnt()
 {
    uint32_t some_instance_running = 0;
-   run_module_t *inst = NULL;
 
-   FOR_EACH_IN_VEC(rnmods_v, inst) {
+   run_module_t *inst;
+   for (uint32_t i = 0; i < rnmods_v.total; i++) {
+      inst = rnmods_v.items[i];
+
       if (inst->pid <= 0) {
          continue;
       }
@@ -57,8 +60,9 @@ void insts_stop_sigkill()
    (void) get_running_insts_cnt();
 
    bool should_be_killed;
-   run_module_t *inst = NULL;
-   FOR_EACH_IN_VEC(rnmods_v, inst) {
+   run_module_t *inst;
+   for (uint32_t i = 0; i < rnmods_v.total; i++) {
+      inst = rnmods_v.items[i];
       should_be_killed = (inst->enabled == false || inst->should_die);
 
       if (inst->running
@@ -77,8 +81,10 @@ void insts_stop_sigkill()
 void insts_stop_sigint()
 {
    bool should_be_killed;
-   run_module_t *inst = NULL;
-   FOR_EACH_IN_VEC(rnmods_v, inst) {
+   run_module_t *inst;
+   for (uint32_t i = 0; i < rnmods_v.total; i++) {
+      inst = rnmods_v.items[i];
+
       should_be_killed = (inst->enabled == false|| inst->should_die);
 
       if (inst->running
@@ -120,8 +126,9 @@ void av_module_stop_remove_by_name(const char *name)
       }
    }
 
-   run_module_t *inst = NULL;
-   FOR_EACH_IN_VEC(rnmods_v, inst) {
+   run_module_t *inst;
+   for (uint32_t i = 0; i < rnmods_v.total; i++) {
+      inst = rnmods_v.items[i];
       if (strcmp(inst->mod_kind->name, name) == 0) {
          if (inst->pid > 0) {
             kill(inst->pid, SIGINT);
@@ -129,20 +136,21 @@ void av_module_stop_remove_by_name(const char *name)
       }
    }
    usleep(WAIT_FOR_INSTS_TO_HANDLE_SIGINT);
-   for (int i = 0; i < rnmods_v.total; i++) {
+   for (uint32_t i = 0; i < rnmods_v.total; i++) {
       inst = rnmods_v.items[i];
       if (strcmp(inst->mod_kind->name, name) == 0) {
          VERBOSE(V3, "Stopping instance '%s'", inst->name)
          if (inst->pid > 0) {
             kill(inst->pid, SIGKILL);
          }
-         run_module_remove_at(i);
+         vector_delete(&rnmods_v, i);
          run_module_free(inst);
          i--; // TODO
       }
    }
 
-   av_module_remove_at(fi);
+
+   vector_delete(&avmods_v, fi);
    av_module_free(mod);
 }
 
@@ -163,7 +171,7 @@ void run_module_stop_remove_by_name(const char *name)
       kill(inst->pid, SIGKILL);
    }
 
-   run_module_remove_at(fi);
+   vector_delete(&rnmods_v, fi);
    run_module_free(inst);
 }
 
@@ -171,7 +179,9 @@ void insts_terminate()
 {
    run_module_t *inst = NULL;
    pthread_mutex_lock(&config_lock);
-   FOR_EACH_IN_VEC(rnmods_v, inst) {
+   for (uint32_t i = 0; i < rnmods_v.total; i++) {
+      inst = rnmods_v.items[i];
+
       if (inst->enabled) {
          inst->enabled = false;
       }
@@ -188,11 +198,13 @@ void insts_terminate()
 
 void insts_start()
 {
-   run_module_t *inst = NULL;
    time_t time_now;
    VERBOSE(V3, "Updating instances status")
 
-   FOR_EACH_IN_VEC(rnmods_v, inst) {
+   run_module_t *inst;
+   for (uint32_t i = 0; i < rnmods_v.total; i++) {
+      inst = rnmods_v.items[i];
+
       if (inst->enabled == false || inst->running == true) {
          continue;
       }
@@ -225,12 +237,13 @@ void insts_start()
 /* --BEGIN local fns-- */
 static void clean_after_children()
 {
-
-   run_module_t *inst = NULL;
    pid_t result;
    int status;
 
-   FOR_EACH_IN_VEC(rnmods_v, inst) {
+   run_module_t *inst;
+   for (uint32_t i = 0; i < rnmods_v.total; i++) {
+      inst = rnmods_v.items[i];
+
       if (inst->pid > 0 && inst->is_my_child) {
          /* waitpid releases children that failed to execute execv in inst_start.
           * if this would be left out, processes would stay there as zombies */
@@ -309,7 +322,7 @@ void inst_start(run_module_t *inst)
    char log_path_out[PATH_MAX];
    char log_path_err[PATH_MAX];
 
-   VERBOSE(V2, "Starting '%s'", inst->name)
+   VERBOSE(V2, "Starting '%s' from %s", inst->name, inst->mod_kind->path)
 
    memset(log_path_err, 0, PATH_MAX);
    memset(log_path_out, 0, PATH_MAX);

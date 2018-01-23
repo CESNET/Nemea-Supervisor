@@ -110,9 +110,9 @@ static char * run_change_type_str(run_change_type_t type);
 
 int
 run_config_change_cb(sr_session_ctx_t *sess,
-                         const char *sr_module_name,
-                         sr_notif_event_t evnt,
-                         void *priv_ctx)
+                     const char *smn,
+                     sr_notif_event_t evnt,
+                     void *priv_ctx)
 {
 
 #define NULLP_TEST_AND_FREE_SR_VAL(val) do { \
@@ -291,7 +291,10 @@ static inline void run_change_add_new_change(vector_t *reg_chgs, run_change_t *n
 {
    run_change_t *r_change = NULL; // Already registered change
 
-   FOR_EACH_IN_VEC_PTR(reg_chgs, r_change) {
+
+   for (uint32_t i = 0; i < reg_chgs->total; i++) {
+      r_change = reg_chgs->items[i];
+
       if (run_change_replace_same_registered(n_change, r_change) == 0) {
             return;
       }
@@ -441,7 +444,6 @@ run_change_load(sr_change_oper_t op, sr_val_t *old_val, sr_val_t *new_val)
          break;
       case SR_OP_MOVED:
          return NULL;
-         break;
       default:
          xpath = NULL;
    }

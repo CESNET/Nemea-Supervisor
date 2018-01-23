@@ -47,9 +47,9 @@
  * @brief Macro for NULL pointer testing, freeing and setting pointer to NULL
  */
 #define NULLP_TEST_AND_FREE(pointer) do { \
-   if (pointer != NULL) { \
-      free(pointer); \
-      pointer = NULL; \
+   if ((pointer) != NULL) { \
+      free((pointer)); \
+      (pointer) = NULL; \
    } \
 } while (0);
 
@@ -83,21 +83,6 @@
       return -1; \
    } \
 } while (0);
-
-
-/**
- * @brief TODO poradny, vsude zkontrolovat jestli je ve vec.capacity > 0, jinak to spadne
- * @details (vec).items[i] gets implicitly type casted to iter type.
- * */
-#define FOR_EACH_IN_VEC(vec, iter) for (uint32_t i = 0; \
-                                 (iter) = (vec).items[i], \
-                                 i < (vec).total; \
-                                i++)
-
-#define FOR_EACH_IN_VEC_PTR(vec, iter) for (uint32_t i = 0; \
-                                 (iter) = (vec)->items[i], \
-                                 i < (vec)->total; \
-                                i++)
 
 #ifndef NS_TEST
 

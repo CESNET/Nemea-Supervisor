@@ -354,7 +354,7 @@ run_module_load(sr_session_ctx_t *sess, char *xpath)
       NULLP_TEST_AND_FREE(ifc_xpath)
    }
 
-   rc = module_gen_exec_args(inst);
+   rc = run_module_gen_exec_args(inst);
    if (rc != 0) {
       /* hopefully this would be removed in the future due to sysrepo per
        * module configuration */

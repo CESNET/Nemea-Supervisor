@@ -33,7 +33,7 @@ set (SRC_FILES_4 ../src/utils.c ../src/module.c)
 add_executable(test_conf test_conf.c ${SRC_FILES_4})
 target_link_libraries(test_conf cmocka sysrepo trap pthread)
 
-set (SRC_FILES_5 ../src/utils.c ../src/module.c ../src/conf.c ../src/instance_control.c ../src/run_changes.c ../src/stats.c ../src/main.c)
+set (SRC_FILES_5 ../src/utils.c ../src/module.c ../src/conf.c ../src/instance_control.c ../src/run_changes.c ../src/stats.c)
 add_executable(test_supervisor test_supervisor.c ${SRC_FILES_5})
 target_link_libraries(test_supervisor cmocka sysrepo trap pthread)
 

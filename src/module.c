@@ -5,18 +5,13 @@
 
 /*--BEGIN superglobal vars--*/
 pthread_mutex_t config_lock; ///< Mutex for operations on m_groups_ll and modules_ll
+
 /* Module groups variables */
-//module_group_t *m_groups_ll = NULL; ///< Linled list of module groups loaded from sysrepo
 //uint32_t loaded_profile_cnt = 0;
 /* Modules variables */
-//instance_t *modules_ll = NULL;  ///< Linked list of modules loaded from sysrepo configuration
 //uint32_t running_modules_cnt = 0;  ///< Current size of running_modules array.
 //uint32_t loaded_modules_cnt = 0; ///< Current number of loaded modules.
 //uint32_t loaded_module_groups_cnt = 0;
-
-vector_t insts_v = {.total = 0, .capacity = 0, .items = NULL};
-vector_t mods_v = {.total = 0, .capacity = 0, .items = NULL};
-vector_t mgrps_v = {.total = 0, .capacity = 0, .items = NULL};
 
 vector_t avmods_v = {.total = 0, .capacity = 0, .items = NULL};
 vector_t rnmods_v = {.total = 0, .capacity = 0, .items = NULL};
@@ -39,7 +34,7 @@ static char * tcp_tls_ifc_to_cli_arg(const interface_t *ifc);
 static char * unix_ifc_to_cli_arg(const interface_t *ifc);
 static char * file_ifc_to_cli_arg(const interface_t *ifc);
 static char * bh_ifc_to_cli_arg(const interface_t *ifc);
-static inline char * module_get_ifcs_as_arg(run_module_t *module);
+static inline char * module_get_ifcs_as_arg(run_module_t *inst);
 
 char * strcat_many(uint8_t cnt, ...);
 
@@ -50,255 +45,6 @@ static inline void free_interface_specific_params(interface_t *ifc);
 /* --END full fns prototypes-- */
 
 /* --BEGIN superglobal fns-- */
-
-/*
-void tree_path_init(tree_path_t *path)
-{
-   path->ifc = NULL;
-   path->inst = NULL;
-   path->module = NULL;
-   path->group = NULL;
-}
-
-void tree_path_free(tree_path_t *node)
-{
-   NULLP_TEST_AND_FREE(node->ifc)
-   NULLP_TEST_AND_FREE(node->inst)
-   NULLP_TEST_AND_FREE(node->module)
-   NULLP_TEST_AND_FREE(node->group)
-}
-
-int tree_path_load_from_xpath(tree_path_t *node, const char *xpath)
-{
-
-   char *res;
-   sr_xpath_ctx_t state = {0};
-   node->group = NULL;
-   node->module = NULL;
-   node->inst = NULL;
-   node->ifc = NULL;
-
-   // sr_xpath_* functions require dynamically allocated char * argument
-   char *xpath_d = strdup(xpath);
-   IF_NO_MEM_INT_ERR(xpath_d)
-
-   // Move to next XPATH node (YANG module name)
-   res = sr_xpath_next_node(xpath_d, &state);
-   if (res == NULL) {
-      VERBOSE(N_ERR, "Failed to get next node from xpath=%s at line: %d",
-              xpath, __LINE__)
-      goto err_cleanup;
-   }
-
-   // Move to next XPATH node (module-group list)
-   res = sr_xpath_next_node(NULL, &state);
-   if (res == NULL) {
-      VERBOSE(N_ERR, "Failed to get next node from xpath=%s at line: %d",
-              xpath, __LINE__)
-      goto err_cleanup;
-   }
-
-   // Fetch module group name from module-group list key
-   res = sr_xpath_node_key_value(NULL, "name", &state);
-   if (res == NULL) {
-      VERBOSE(N_ERR, "Failed to get next node from xpath=%s at line: %d",
-              xpath, __LINE__)
-      goto err_cleanup;
-   }
-   node->group = strdup(res);
-   if (node->group == NULL) {
-      NO_MEM_ERR
-      goto err_cleanup;
-   }
-
-   // Move to next XPATH node (module list)
-   res = sr_xpath_next_node(NULL, &state);
-   if (res == NULL) {
-      sr_xpath_recover(&state);
-      VERBOSE(N_ERR, "Failed to get next node from xpath=%s at line: %d",
-              xpath, __LINE__)
-      goto err_cleanup;
-   }
-
-   // Test whether this mode is module list node
-   if (strcmp(res, "module") != 0) {
-      node->module = NULL;
-      node->ifc = NULL;
-      sr_xpath_recover(&state);
-      return 0;
-   }
-
-   // Get module name from module list key
-   res = sr_xpath_node_key_value(NULL, "name", &state);
-   if (res == NULL) {
-      sr_xpath_recover(&state);
-      goto err_cleanup;
-   }
-   node->module = strdup(res);
-   if (node->module == NULL) {
-      NO_MEM_ERR
-      goto err_cleanup;
-   }
-
-   // Move to next XPATH node (instance list)
-   res = sr_xpath_next_node(NULL, &state);
-   if (res == NULL) {
-      VERBOSE(N_ERR, "Failed to get next node from xpath=%s at line: %d",
-              xpath, __LINE__)
-      goto err_cleanup;
-   }
-
-   // Test whether this mode is instance list node
-   if (strcmp(res, "instance") != 0) {
-      node->inst = NULL;
-      sr_xpath_recover(&state);
-      return 0;
-   }
-
-   // Get interface name from interface list key
-   res = sr_xpath_node_key_value(NULL, "name", &state);
-   if (res == NULL) {
-      sr_xpath_recover(&state);
-      goto err_cleanup;
-   }
-   node->inst = strdup(res);
-   if (node->inst == NULL) {
-      NO_MEM_ERR
-      goto err_cleanup;
-   }
-
-   // Move to next XPATH node (interface list)
-   res = sr_xpath_next_node(NULL, &state);
-   if (res == NULL) {
-      sr_xpath_recover(&state);
-      VERBOSE(N_ERR, "Failed to get next node from xpath=%s at line: %d",
-              xpath, __LINE__)
-      goto err_cleanup;
-   }
-
-   // Test whether this mode is interface list node
-   if (strcmp(res, "interface") != 0) {
-      node->ifc = NULL;
-      sr_xpath_recover(&state);
-      return 0;
-   }
-
-   // Get interface name from interface list key
-   res = sr_xpath_node_key_value(NULL, "name", &state);
-   if (res == NULL) {
-      sr_xpath_recover(&state);
-      goto err_cleanup;
-   }
-   node->ifc = strdup(res);
-   if (node->ifc == NULL) {
-      NO_MEM_ERR
-      goto err_cleanup;
-   }
-
-   sr_xpath_recover(&state);
-   NULLP_TEST_AND_FREE(xpath_d)
-
-   return 0;
-
-err_cleanup:
-   sr_xpath_recover(&state);
-   NULLP_TEST_AND_FREE(xpath_d)
-   NULLP_TEST_AND_FREE(node->group)
-   NULLP_TEST_AND_FREE(node->module)
-   NULLP_TEST_AND_FREE(node->ifc)
-   return -1;
-}
-*/
-
-/*int module_group_add(module_group_t *group)
-{
-   return vector_add(&mgrps_v, group);
-}
-
-void module_group_remove_at(uint32_t index)
-{
-   vector_delete(&mgrps_v, index);
-}
-
-void module_group_remove_by_name(const char * name)
-{
-   module_group_t *grp = NULL;
-   for (uint32_t i = 0; i < mods_v.total; i++) {
-      grp = mods_v.items[i];
-      if (strcmp(grp->name, name) == 0) {
-         module_group_remove_at(i);
-         return;
-      }
-   }
-}
-
-int module_add(module_t *mod)
-{
-   return vector_add(&mods_v, mod);
-}
-
-void module_remove_at(uint32_t index)
-{
-   vector_delete(&mods_v, index);
-}
-
-void module_remove_by_name(const char * name)
-{
-   module_t *mod = NULL;
-   for (uint32_t i = 0; i < mods_v.total; i++) {
-      mod = mods_v.items[i];
-      if (strcmp(mod->name, name) == 0) {
-         module_remove_at(i);
-         return;
-      }
-   }
-}
-
-int instance_add(instance_t *inst)
-{
-   int rc;
-
-*//*   rc = vector_add(&inst->module->insts, inst);
-   if (rc != 0) {
-      return rc;
-   }*//*
-
-   rc = vector_add(&insts_v, inst);
-   if (rc != 0) {
-      return rc;
-   }
-
-   // TODO inst->module->group->insts_cnt++;
-
-   return 0;
-}*/
-
-
-void av_module_remove_at(uint32_t index)
-{/*
-   instance_t *inst = insts_v.items[index];*/
-   vector_delete(&avmods_v, index);
-   // TODO inst->modle->group->insts_cnt--;
-}
-
-void run_module_remove_at(uint32_t index)
-{/*
-   instance_t *inst = insts_v.items[index];*/
-   vector_delete(&rnmods_v, index);
-   // TODO inst->module->group->insts_cnt--;
-}
-
-/*void instance_remove_by_name(const char * name)
-{
-   instance_t *inst = NULL;
-   for (uint32_t i = 0; i < insts_v.total; i++) {
-      inst = insts_v.items[i];
-      if (strcmp(inst->name, name) == 0) {
-         run_module_remove_at(i);
-         return;
-      }
-   }
-}*/
 
 int run_module_interface_add(run_module_t *inst, interface_t *ifc)
 {
@@ -317,19 +63,11 @@ int run_module_interface_add(run_module_t *inst, interface_t *ifc)
 
    return 0;
 }
-/*
-void print_module_group(const module_group_t *group)
-{
-   VERBOSE(DEBUG, "Group: %s", group->name)
-   VERBOSE(DEBUG, " enabled: %d", group->enabled)
-}
 
-void print_module(const module_t *mod)
+void av_module_print(const av_module_t *mod)
 {
-   VERBOSE(DEBUG, "Module: %s", mod->name)
-   VERBOSE(DEBUG, " path: %s", mod->path)
+   VERBOSE(DEBUG, "Module: %s (path=%s)", mod->name, mod->path)
 }
-*/
 void run_module_print(run_module_t *inst)
 {
    VERBOSE(DEBUG, "Module instance: %s of %s", inst->name, inst->mod_kind->name)
@@ -340,15 +78,9 @@ void run_module_print(run_module_t *inst)
    VERBOSE(DEBUG, " restart_cnt=%d", inst->restarts_cnt)
    VERBOSE(DEBUG, " max_restarts_minute=%d", inst->max_restarts_minute)
 
-   interface_t *ifc;
-   FOR_EACH_IN_VEC(inst->in_ifces, ifc) {
-      print_ifc(ifc);
+   for (uint32_t i = 0; i < inst->in_ifces.total; i++) {
+      print_ifc(inst->in_ifces.items[i]);
    }
-}
-
-void print_ifc_stats()
-{
-
 }
 
 void print_ifc(interface_t *ifc)
@@ -388,42 +120,6 @@ void print_ifc(interface_t *ifc)
    }
 
 }
-
-/*module_group_t * module_group_alloc()
-{
-   module_group_t * group = (module_group_t *) calloc(1, sizeof(module_group_t));
-   if (NULL == group) {
-      VERBOSE(N_ERR, "Failed to callocate new module module group")
-      return NULL;
-   }
-
-   group->name = NULL;
-   group->enabled = false;
-   // TODO group->insts_cnt = 0;
-   VERBOSE(DEBUG, "Allocated new module group")
-
-   return group;
-}
-
-module_t * module_alloc()
-{
-   module_t * mod = (module_t *) calloc(1, sizeof(module_t));
-   IF_NO_MEM_NULL_ERR(mod)
-
-   mod->name = NULL;
-   mod->path = NULL;
-   mod->group = NULL;
-
-*//*   int rc;
-   rc = vector_init(&mod->insts, 1);
-   if (rc != 0) {
-      NO_MEM_ERR
-      free(mod);
-      return NULL;
-   }*//*
-
-   return mod;
-}*/
 
 av_module_t * av_module_alloc()
 {
@@ -599,53 +295,21 @@ int interface_stats_alloc(interface_t *ifc)
 
    return 0;
 }
-/*
-void module_groups_free()
+
+void av_modules_free()
 {
-   if (mgrps_v.total != 0) {
-      module_group_t *group;
-      FOR_EACH_IN_VEC(mgrps_v, group) {
-         module_group_free(group);
-      }
+   for (uint32_t i = 0; i < avmods_v.total; i++) {
+      av_module_free(avmods_v.items[i]);
    }
-   vector_free(&mgrps_v);
+   vector_free(&avmods_v);
 }
-
-void module_group_free(module_group_t *group)
-{
-   VERBOSE(DEBUG, "Freeing of group '%s'", group->name)
-   NULLP_TEST_AND_FREE(group->name)
-   NULLP_TEST_AND_FREE(group)
-}
-
-void module_free(module_t *module)
-{
-   VERBOSE(DEBUG, "Freeing of module '%s'", module->name)
-   NULLP_TEST_AND_FREE(module->name)
-   NULLP_TEST_AND_FREE(module->path)
-   NULLP_TEST_AND_FREE(module)
-}*/
-
-/*void modules_free()
-{
-   if (mods_v.total != 0) {
-      module_t *mod = NULL;
-      FOR_EACH_IN_VEC(mods_v, mod) {
-         module_free(mod);
-      }
-   }
-   vector_free(&mods_v);
-}*/
 
 void run_modules_free()
 {
-   if (insts_v.total != 0) {
-      run_module_t *inst = NULL;
-      FOR_EACH_IN_VEC(insts_v, inst) {
-         run_module_free(inst);
-      }
+   for (uint32_t i = 0; i < rnmods_v.total; i++) {
+      run_module_free(rnmods_v.items[i]);
    }
-   vector_free(&insts_v);
+   vector_free(&rnmods_v);
 }
 
 void run_module_clear_socks(run_module_t *inst)
@@ -655,7 +319,9 @@ void run_module_clear_socks(run_module_t *inst)
    char service_sock_spec[14];
    interface_t *ifc = NULL;
 
-   FOR_EACH_IN_VEC(inst->out_ifces, ifc) {
+   for (uint32_t i = 0; i < inst->out_ifces.total; i++) {
+      ifc = inst->out_ifces.items[i];
+
       // Remove all UNIX socket files
       if (ifc->type != NS_IF_TYPE_UNIX ||
           ifc->specific_params.nix->socket_name == NULL) {
@@ -738,45 +404,6 @@ void interface_stats_free(interface_t *ifc)
    }
 }
 
-/*module_group_t * module_group_get_by_name(const char *name, uint32_t *index)
-{
-   uint32_t fi; // Index of found group
-   module_group_t *group = NULL;
-   for (fi = 0; fi < mgrps_v.total; fi++) {
-      group = mgrps_v.items[fi];
-      if (strcmp(group->name, name) == 0) {
-         // Group was found
-         if (index != NULL) {
-            *index = fi;
-         }
-         return group;
-      }
-   }
-
-   // Group not found
-   return NULL;
-}
-
-module_t * module_get_by_name(const char * name, uint32_t *index)
-{
-   uint32_t fi; // Index of found module
-   module_t *mod = NULL;
-
-   for (fi = 0; fi < mods_v.total; fi++) {
-      mod = mods_v.items[fi];
-      if (strcmp(mod->name, name) == 0) {
-         // Module was found
-         if (index != NULL) {
-            *index = fi;
-         }
-         return mod;
-      }
-   }
-
-   // Module was not found
-   return NULL;
-}*/
-
 run_module_t * run_module_get_by_name(const char *name, uint32_t *index)
 {
    uint32_t fi; // Index of found instance
@@ -796,82 +423,6 @@ run_module_t * run_module_get_by_name(const char *name, uint32_t *index)
    // Instance was not found
    return NULL;
 }
-
-/*
-interface_t * interface_get_by_path(const tree_path_t *path)
-{
-   interface_t *ifc;
-   run_module_t *inst = NULL;
-   FOR_EACH_IN_VEC(insts_v, inst) {
-      if (strcmp(inst->name, path->inst) == 0) {
-         if (strcmp(inst->mod_kind->name, path->module) == 0) {
-            if (strcmp(inst->mod_kind->group->name, path->group) == 0) {
-               ifc = NULL;
-               FOR_EACH_IN_VEC(inst->in_ifces, ifc) {
-                  if (strcmp(ifc->name, path->ifc) == 0) {
-                     return ifc;
-                  }
-               }
-               ifc = NULL;
-               FOR_EACH_IN_VEC(inst->out_ifces, ifc) {
-                  if (strcmp(ifc->name, path->ifc) == 0) {
-                     return ifc;
-                  }
-               }
-               return NULL;
-            }
-         }
-      }
-   }
-
-   return NULL;
-}
-void module_group_clear(module_group_t *group)
-{
-   NULLP_TEST_AND_FREE(group->name)
-   group->enabled = false;
-   //TODO group->insts_cnt = 0;
-}
-
-void module_clear(module_t *module)
-{
-   NULLP_TEST_AND_FREE(module->name)
-   NULLP_TEST_AND_FREE(module->path)
-   module->group = NULL;
-
-*//*   instance_t *inst = NULL;
-   FOR_EACH_IN_VEC(module->insts, inst) {
-      run_module_free(inst);
-   }
-   vector_free(&module->insts);*//*
-}
-
-void instance_clear(instance_t *inst)
-{
-   inst->running = false;
-   inst->should_die = false;
-   inst->root_perm_needed = false;
-   inst->is_my_child = false;
-   inst->sigint_sent = false;
-   inst->service_ifc_connected = false;
-   inst->restarts_cnt = 0;
-   inst->max_restarts_minute = 0;
-   inst->restart_time = 0;
-   inst->pid = 0;
-   inst->service_ifc_conn_timer = 0;
-   inst->service_sd = -1;
-   inst->module = NULL;
-
-   NULLP_TEST_AND_FREE(inst->name)
-   NULLP_TEST_AND_FREE(inst->params)
-   if (inst->exec_args != NULL) {
-      for (int i = 0; inst->exec_args[i] != NULL; i++) {
-         NULLP_TEST_AND_FREE(inst->exec_args[i])
-      }
-      NULLP_TEST_AND_FREE(inst->exec_args)
-   }
-   interfaces_free(inst);
-}*/
 
 static inline void free_interface_specific_params(interface_t *ifc)
 {
@@ -912,7 +463,7 @@ static inline void free_interface_specific_params(interface_t *ifc)
  * this is temporar since we want exec_args configuration straight from
  * <param><label>-o<label/><arg>1</arg><arg>33</arg></param>
  */
-int module_gen_exec_args(run_module_t *inst)
+int run_module_gen_exec_args(run_module_t *inst)
 {
 
    char **cfg_params = NULL; // All configured params but interface params
@@ -1023,7 +574,7 @@ char * instance_tree_path(const instance_t * inst)
 
 /* --BEGIN local fns-- */
 
-static inline char * module_get_ifcs_as_arg(run_module_t *module)
+static inline char * module_get_ifcs_as_arg(run_module_t *inst)
 {
    char *ifc_spec = NULL;
    char *new_ifc_spec = NULL;
@@ -1031,7 +582,7 @@ static inline char * module_get_ifcs_as_arg(run_module_t *module)
    char *tmp = NULL;
    interface_t *cur_ifc;
 
-   vector_t *ifces_vec[2] = { &(module->in_ifces), &(module->out_ifces) };
+   vector_t *ifces_vec[2] = { &(inst->in_ifces), &(inst->out_ifces) };
 
    // For loop for both interface directions list
    for (int j = 0; j < 2; j++) {
@@ -1118,8 +669,8 @@ err_cleanup:
 // Only one param shoul be passed, base is cleaned
 static char * ifc_param_concat(char *base, char *param_s, uint16_t param_u)
 {
-   char *result;
-   char *param; // Converted parameter to be concatenated
+   char *result = NULL;
+   char *param = NULL; // Converted parameter to be concatenated
    uint16_t len;
    bool integer_passed = (param_s == NULL);
 

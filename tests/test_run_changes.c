@@ -167,7 +167,10 @@ void test_ns_config_change_cb_with_module_created(void **state)
 
    bool new_found = false;
    av_module_t *m_iter = NULL;
-   FOR_EACH_IN_VEC(avmods_v, m_iter) {
+
+   for (uint32_t i = 0; i < avmods_v.total; i++) {
+      m_iter = avmods_v.items[i];
+
       if (strcmp(m_iter->name, "m1") == 0) {
          new_found = true;
          assert_string_equal(m_iter->path, "/m1path");

@@ -309,11 +309,6 @@ typedef struct run_module_s {
 
 /*--BEGIN superglobal vars--*/
 extern pthread_mutex_t config_lock;
-/*
-extern vector_t insts_v; ///< Vector of loaded module instances
-extern vector_t mods_v; ///< Vector of loaded modules
-extern vector_t mgrps_v; ///< Vector of loaded module groups*/
-
 extern vector_t avmods_v;
 extern vector_t rnmods_v;
 
@@ -321,22 +316,12 @@ extern vector_t rnmods_v;
 
 /*--BEGIN superglobal fn prototypes--*/
 
-/**
- * TODO
- * */
-void av_module_remove_at(uint32_t index);
-/**
- * TODO
- * */
-void run_module_remove_at(uint32_t index);
 
-// TODO
-int run_module_interface_add(run_module_t *inst, interface_t *ifc);
-
+extern int run_module_interface_add(run_module_t *inst, interface_t *ifc);
 /**
  * TODO
  * */
-//extern void print_module(const module_t *mod);
+extern void av_module_print(const av_module_t *mod);
 /**
  * TODO
  * */
@@ -348,17 +333,10 @@ extern void run_module_print(run_module_t *inst);
 extern void print_ifc(interface_t *ifc);
 
 /**
- * @brief TODO Frees module_group_t linked list from given parameter and
- *  sets given *group_ll_head to NULL
- * @param group_ll_head First node from which the rest of the linked list is
- *  going to be freed
- * */
-extern void module_groups_free();
-
-/**
  * TODO
  * */
-extern void modules_free();
+extern void av_modules_free();
+
 /**
  * @brief Frees module_t linked list from given parameter and
  *  sets given *module_ll_head to NULL
@@ -413,7 +391,7 @@ extern int interface_specific_params_alloc(interface_t *ifc);
  * @param inst Module for which exec_args should be loaded.
  * @return TODO status
  * */
-extern int module_gen_exec_args(run_module_t *inst);
+extern int run_module_gen_exec_args(run_module_t *inst);
 
 /**
  * @brief Finds module by it's name inside mods_v and fills it's index inside
@@ -430,21 +408,6 @@ extern run_module_t * run_module_get_by_name(const char *name, uint32_t *index);
  * */
 extern void run_module_clear_socks(run_module_t *inst);
 
-/**
- * TODO
- * *//*
-extern void tree_path_init(tree_path_t *path);
-*//**
- * TODO
- * *//*
-extern void tree_path_free(tree_path_t *node);
-*//**
- * TODO
- * *//*
-extern int tree_path_load_from_xpath(tree_path_t *node, const char *xpath);*/
-
-
-//extern interface_t * interface_get_by_path(const tree_path_t *path);
 /*--END superglobal fn prototypes--*/
 
 #endif //NEMEA_SUPERVISOR_MODULE_H

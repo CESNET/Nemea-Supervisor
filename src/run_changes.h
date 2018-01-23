@@ -31,14 +31,14 @@
  * @details Though it acts simiralily as module_group_config_change_cb(), I
  *  recommend you not to merge those two. Separation is done for sake of readibility.
  * @param sess Used sysrepo sessing
- * @param sr_module_name Name of sysrepo module that was changed
+ * @param smn Name of sysrepo module that was changed
  * @param evnt Type of sysrepo event for this change. This function is cabable of
  *  parsing only SR_EV_APPLY.
  * @param priv_ctx Context pointer passed when the subscription was made.
  * @see module_group_config_change_cb()
  * @return Sysrepo error code of sr_error_t enum.
  * */
-extern int run_config_change_cb(sr_session_ctx_t *sess, const char *sr_module_name,
+extern int run_config_change_cb(sr_session_ctx_t *sess, const char *smn,
                                 sr_notif_event_t evnt, void *priv_ctx);
 /*--END superglobal fn prototypes--*/
 

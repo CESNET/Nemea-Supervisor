@@ -82,17 +82,16 @@ typedef struct sr_conn_link_s {
  * */
 typedef enum service_msg_header_type_e {
    SERVICE_GET_COM = 10,
-   SERVICE_SET_COM = 11,
    SERVICE_OK_REPLY = 12
 } service_msg_header_type_t;
 
 /**
  * @brief TODO
  * */
-typedef union tcpip_socket_addr_u {
+/*typedef union tcpip_socket_addr_u {
    struct addrinfo tcpip_sa; ///< used for TCPIP socket
    struct sockaddr_un unix_sa; ///< used for path of UNIX socket
-} tcpip_socket_addr_t;
+} tcpip_socket_addr_t;*/
 
 /**
  * @brief TODO
@@ -141,16 +140,16 @@ static int get_total_cpu_usage(uint64_t *total_cpu_usage);
 
 
 // fetching stats + communication
-static inline void inst_get_stats(instance_t *inst);
-static inline void inst_get_vmrss(instance_t *inst);
+static inline void inst_get_stats(run_module_t *inst);
+static inline void inst_get_vmrss(run_module_t *inst);
 static inline void check_insts_connections();
-static inline void connect_to_inst(instance_t *inst);
-static inline void disconnect_from_inst(instance_t *inst);
+static inline void connect_to_inst(run_module_t *inst);
+static inline void disconnect_from_inst(run_module_t *inst);
 static inline void get_service_ifces_stats();
-static int send_ifc_stats_request(const instance_t *inst);
-inline static int recv_ifc_stats(instance_t *inst);
-static int service_recv_data(instance_t *inst, uint32_t size, void *data);
-static int service_decode_inst_stats(char *data, instance_t *inst);
+static int send_ifc_stats_request(const run_module_t *inst);
+inline static int recv_ifc_stats(run_module_t *inst);
+static int service_recv_data(run_module_t *inst, uint32_t size, void *data);
+static int service_decode_inst_stats(char *data, run_module_t *inst);
 
 /**
  * @brief Saves PIDs of running instances to sysrepo so that they can be
@@ -159,7 +158,6 @@ static int service_decode_inst_stats(char *data, instance_t *inst);
 static void insts_save_running_pids();
 
 // TODO debug, really needed? nope
-static char *make_formated_statistics(uint8_t stats_mask);
 static inline void print_statistics();
 // END TO.DO above
  /* --END full fns prototypes-- */
@@ -316,7 +314,7 @@ int supervisor_initialization()
 
    // Subscribe only to changes that are going to be applied, not attempts
    rc = sr_subtree_change_subscribe(sr_conn_link.sess,
-                                    ns_root_sr_path,
+                                    NS_ROOT_XPATH,
                                     run_config_change_cb,
                                     NULL,
                                     0,
@@ -328,17 +326,9 @@ int supervisor_initialization()
       return -1;
    }
 
-   {
-      char *xpath = (char *) calloc(1, sizeof(char) * (strlen(ns_root_sr_path) + 36));
-      if (xpath == NULL) {
-         NO_MEM_ERR
-         terminate_supervisor(false);
-         return -1;
-      }
-
-      sprintf(xpath, "%s/module-group/module/instance/stats", ns_root_sr_path);
+   { // subscribe to requests for stats
       rc = sr_dp_get_items_subscribe(sr_conn_link.sess,
-                                     xpath,
+                                     NS_ROOT_XPATH"/module/stats",
                                      inst_get_stats_cb,
                                      NULL,
                                      SR_SUBSCR_CTX_REUSE,
@@ -346,21 +336,12 @@ int supervisor_initialization()
       if (rc != SR_ERR_OK) {
          VERBOSE(N_ERR, "Failed to subscribe sysrepo instance stats callback: %s",
                  sr_strerror(rc))
-         NULLP_TEST_AND_FREE(xpath)
          terminate_supervisor(false);
          return -1;
       }
-
-      xpath = realloc(xpath, sizeof(char) * (strlen(ns_root_sr_path)) + 46);
-      if (xpath == NULL) {
-         NO_MEM_ERR
-         terminate_supervisor(false);
-         return -1;
-      }
-      sprintf(xpath, "%s/module-group/module/instance/interface/stats", ns_root_sr_path);
 
       rc = sr_dp_get_items_subscribe(sr_conn_link.sess,
-                                     xpath,
+                                     NS_ROOT_XPATH"/module/interface/stats",
                                      interface_get_stats_cb,
                                      NULL,
                                      SR_SUBSCR_CTX_REUSE,
@@ -368,12 +349,9 @@ int supervisor_initialization()
       if (rc != SR_ERR_OK) {
          VERBOSE(N_ERR, "Failed to subscribe sysrepo interface stats callback: %s",
                  sr_strerror(rc))
-         NULLP_TEST_AND_FREE(xpath)
          terminate_supervisor(false);
          return -1;
       }
-
-      NULLP_TEST_AND_FREE(xpath)
    }
 
    // Signal handling
@@ -400,6 +378,7 @@ int supervisor_initialization()
 
    supervisor_initialized = true;
    VERBOSE(DEBUG, "Supervisor successfuly initialized")
+
    return 0;
 }
 
@@ -424,9 +403,7 @@ void terminate_supervisor(bool should_terminate_insts)
    VERBOSE(V3, "Freeing instances vector")
    run_modules_free();
    VERBOSE(V3, "Freeing modules vector")
-   modules_free();
-   VERBOSE(V3, "Freeing groups vector")
-   module_groups_free();
+   av_modules_free();
    VERBOSE(V3, "Freeing output strigns and streams")
    free_output_file_strings_and_streams();
 
@@ -547,21 +524,15 @@ int load_configuration()
 
    VERBOSE(N_INFO,"Loading sysrepo configuration");
 
-   rc = vector_init(&insts_v, 10);
+   rc = vector_init(&rnmods_v, 10);
    if (rc != 0) {
       VERBOSE(N_ERR, "Failed to allocate memory for module instances")
       return -1;
    }
 
-   rc = vector_init(&mods_v, 10);
+   rc = vector_init(&avmods_v, 10);
    if (rc != 0) {
-      VERBOSE(N_ERR, "Failed to allocate memory for modules")
-      return -1;
-   }
-
-   rc = vector_init(&mgrps_v, 5);
-   if (rc != 0) {
-      VERBOSE(N_ERR, "Failed to allocate memory for module groups vector")
+      VERBOSE(N_ERR, "Failed to allocate memory for available modules")
       return -1;
    }
 
@@ -573,28 +544,19 @@ int load_configuration()
       return rc;
    }
 
-   module_group_t *tmp2 = NULL;
-   VERBOSE(DEBUG, "Printing module groups:")
-   FOR_EACH_IN_VEC(mgrps_v, tmp2) {
-      print_module_group(tmp2);
-   }
-
-   module_t *tmp3 = NULL;
-   VERBOSE(DEBUG, "Printing modules:")
-   FOR_EACH_IN_VEC(mods_v, tmp3) {
-      print_module(tmp3);
+   VERBOSE(DEBUG, "Printing available modules:")
+   for (uint32_t i = 0; i < avmods_v.total; i++) {
+      av_module_print(avmods_v.items[i]);
    }
 
 
-   instance_t *tmp;
    VERBOSE(DEBUG, "Printing instances:")
-   FOR_EACH_IN_VEC(insts_v, tmp) {
-      print_instance(tmp);
+   for (uint32_t i = 0; i < rnmods_v.total; i++) {
+      run_module_print(rnmods_v.items[i]);
    }
 
-   VERBOSE(N_INFO, "Loaded %d module groups", mgrps_v.total)
-   VERBOSE(N_INFO, "Loaded %d modules", insts_v.total)
-   VERBOSE(N_INFO, "Loaded %d instances", insts_v.total)
+   VERBOSE(N_INFO, "Loaded %d modules", rnmods_v.total)
+   VERBOSE(N_INFO, "Loaded %d instances", rnmods_v.total)
 
    return 0;
 }
@@ -630,6 +592,8 @@ void sig_handler(int catched_signal)
          VERBOSE(N_WARN,"Ouch, SIGSEGV catched -> I'm going to terminate myself!")
          terminate_supervisor(false);
          exit(EXIT_FAILURE);
+      default:
+         break;
    }
    // Falls back to normal execution
 }
@@ -637,7 +601,7 @@ void sig_handler(int catched_signal)
 void supervisor_routine()
 {
    uint32_t running_insts_cnt = 0;
-   uint64_t period_cnt = 0;
+   //uint64_t period_cnt = 0;
 
    VERBOSE(DEBUG, "Starting supervisor routine")
    while (supervisor_stopped == false) {
@@ -694,9 +658,10 @@ void supervisor_routine()
    { // Disconnect from running instances
       VERBOSE(DEBUG, "Disconnecting from running instances")
       pthread_mutex_lock(&config_lock);
-      instance_t *inst = NULL;
-      FOR_EACH_IN_VEC(insts_v, inst) {
-         disconnect_from_inst(inst);
+      {
+         for (uint32_t i = 0; i < rnmods_v.total; i++) {
+            disconnect_from_inst(rnmods_v.items[i]);
+         }
       }
       pthread_mutex_unlock(&config_lock);
    }
@@ -707,7 +672,7 @@ void supervisor_routine()
 
 static inline void print_statistics()
 {
-   time_t t = 0;
+/*   time_t t = 0;
    time(&t);
    char *stats_buffer = make_formated_statistics((uint8_t) 1);
 
@@ -717,103 +682,16 @@ static inline void print_statistics()
    VERBOSE(STATISTICS, "------> %s", ctime(&t));
    VERBOSE(STATISTICS, "%s", stats_buffer);
 
-   NULLP_TEST_AND_FREE(stats_buffer);
-}
-
-static char *make_formated_statistics(uint8_t stats_mask)
-{
-   unsigned int size_of_buffer = 5 * DEFAULT_SIZE_OF_BUFFER;
-   char *buffer = (char *) calloc(size_of_buffer, sizeof(char));
-/*
-   uint8_t print_ifc_stats = FALSE, print_cpu_stats = FALSE, print_memory_stats = FALSE;
-   unsigned int x, y;
-   int ptr = 0;
-
-   // Decide which stats should be printed according to the stats mask
-   if ((stats_mask & (uint8_t) 1) == (uint8_t) 1) {
-      print_ifc_stats = TRUE;
-   }
-   if ((stats_mask & (uint8_t) 2) == (uint8_t) 2) {
-      print_cpu_stats = TRUE;
-   }
-   if ((stats_mask & (uint8_t) 4) == (uint8_t) 4) {
-      print_memory_stats = TRUE;
-   }
-
-   if (print_ifc_stats == TRUE) {
-      for (x = 0; x < loaded_modules_cnt; x++) {
-         if (modules[x].module_status == TRUE && modules[x].module_service_ifc_isconnected == TRUE) {
-            if (modules[x].in_ifces_data != NULL) {
-               for (y = 0; y < modules[x].total_in_ifces_cnt; y++) {
-                  ptr += sprintf(buffer + ptr, "%s,in,%c,%s,%"PRIu64",%"PRIu64"\n", modules[x].mod_name,
-                                 modules[x].in_ifces_data[y].type,
-                                 (modules[x].in_ifces_data[y].id != NULL ? modules[x].in_ifces_data[y].id : "none"),
-                                 modules[x].in_ifces_data[y].recv_msg_cnt,
-                                 modules[x].in_ifces_data[y].recv_buff_cnt);
-                  if (strlen(buffer) >= (3 * size_of_buffer) / 5) {
-                     size_of_buffer += size_of_buffer / 2;
-                     buffer = (char *) realloc (buffer, size_of_buffer * sizeof(char));
-                     memset(buffer + ptr, 0, size_of_buffer - ptr);
-                  }
-               }
-            }
-            if (modules[x].out_ifces_data != NULL) {
-               for (y = 0; y < modules[x].total_out_ifces_cnt; y++) {
-                  ptr += sprintf(buffer + ptr, "%s,out,%c,%s,%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64"\n", modules[x].mod_name,
-                                 modules[x].out_ifces_data[y].type,
-                                 (modules[x].out_ifces_data[y].id != NULL ? modules[x].out_ifces_data[y].id : "none"),
-                                 modules[x].out_ifces_data[y].sent_msg_cnt,
-                                 modules[x].out_ifces_data[y].dropped_msg_cnt,
-                                 modules[x].out_ifces_data[y].sent_buff_cnt,
-                                 modules[x].out_ifces_data[y].autoflush_cnt);
-                  if (strlen(buffer) >= (3 * size_of_buffer) / 5) {
-                     size_of_buffer += size_of_buffer / 2;
-                     buffer = (char *) realloc (buffer, size_of_buffer * sizeof(char));
-                     memset(buffer + ptr, 0, size_of_buffer - ptr);
-                  }
-               }
-            }
-         }
-      }
-   }
-
-   if (print_cpu_stats == TRUE) {
-      for (x=0; x<loaded_modules_cnt; x++) {
-         if (modules[x].module_status == TRUE) {
-            ptr += sprintf(buffer + ptr, "%s,cpu,%lu,%lu\n", modules[x].mod_name,
-                           modules[x].last_period_percent_cpu_usage_kernel_mode,
-                           modules[x].last_period_percent_cpu_usage_user_mode);
-            if (strlen(buffer) >= (3*size_of_buffer)/5) {
-               size_of_buffer += size_of_buffer/2;
-               buffer = (char *) realloc (buffer, size_of_buffer * sizeof(char));
-               memset(buffer + ptr, 0, size_of_buffer - ptr);
-            }
-         }
-      }
-   }
-
-   if (print_memory_stats == TRUE) {
-      for (x=0; x<loaded_modules_cnt; x++) {
-         if (modules[x].module_status == TRUE) {
-            ptr += sprintf(buffer + ptr, "%s,mem,%lu\n", modules[x].mod_name,
-                           modules[x].mem_vms / (1024*1024)); // to convert B to MB, divide by 1024*1024
-            if (strlen(buffer) >= (3*size_of_buffer)/5) {
-               size_of_buffer += size_of_buffer/2;
-               buffer = (char *) realloc (buffer, size_of_buffer * sizeof(char));
-               memset(buffer + ptr, 0, size_of_buffer - ptr);
-            }
-         }
-      }
-   }*/
-
-   return buffer;
+   NULLP_TEST_AND_FREE(stats_buffer);*/
 }
 
 static inline void get_service_ifces_stats()
 {
-   instance_t *inst = NULL;
+   run_module_t *inst = NULL;
 
-   FOR_EACH_IN_VEC(insts_v, inst) {
+   for (uint32_t i = 0; i < rnmods_v.total; i++) {
+      inst = rnmods_v.items[i];
+
       if (inst->service_ifc_connected == false) {
          continue;
       }
@@ -826,7 +704,9 @@ static inline void get_service_ifces_stats()
    }
 
    // Loops are separated so that there is some time for clients to respond
-   FOR_EACH_IN_VEC(insts_v, inst) {
+   for (uint32_t i = 0; i < rnmods_v.total; i++) {
+      inst = rnmods_v.items[i];
+
       instance_set_running_status(inst);
       if (inst->running == false) {
          continue;
@@ -835,7 +715,7 @@ static inline void get_service_ifces_stats()
    }
 }
 
-inline static int recv_ifc_stats(instance_t *inst)
+inline static int recv_ifc_stats(run_module_t *inst)
 {
    char *buffer = NULL;
    int rc;
@@ -850,18 +730,18 @@ inline static int recv_ifc_stats(instance_t *inst)
       return -1;
    }
 
-   VERBOSE(V3, "Receiving reply from inst (%s)", instance_tree_path(inst))
+   VERBOSE(V3, "Receiving reply from inst '%s'", inst->name)
    // Receive reply header
    rc = service_recv_data(inst, sizeof(service_msg_header_t), (void *) &resp_header);
    if (rc == -1) {
-      VERBOSE(N_ERR, "Error while receiving reply header from inst (%s).",
-              instance_tree_path(inst))
+      VERBOSE(N_ERR, "Error while receiving reply header from inst '%s'.",
+              inst->name)
       goto error_label;
    }
 
    // Check if the reply is OK
    if (resp_header.com != SERVICE_OK_REPLY) {
-      VERBOSE(N_ERR, "Wrong reply from inst (%s).", instance_tree_path(inst))
+      VERBOSE(N_ERR, "Wrong reply from inst '%s'.", inst->name)
       goto error_label;
    }
 
@@ -871,7 +751,7 @@ inline static int recv_ifc_stats(instance_t *inst)
       buffer = (char *) calloc(1, buffer_size * sizeof(char));
    }
 
-   VERBOSE(V3, "Receiving stats from inst (%s)", instance_tree_path(inst))
+   VERBOSE(V3, "Receiving stats from inst '%s'", inst->name)
    // Receive inst stats in json format
    if (service_recv_data(inst, resp_header.data_size, (void *) buffer) == -1) {
       VERBOSE(N_ERR, "Error while receiving stats from inst %s.", inst->name)
@@ -881,7 +761,7 @@ inline static int recv_ifc_stats(instance_t *inst)
    // Decode json and save stats into inst structure
    VERBOSE(DEBUG, "%s", buffer)
    if (service_decode_inst_stats(buffer, inst) == -1) {
-      VERBOSE(N_ERR, "Error while receiving stats from inst %s.", inst->name);
+      VERBOSE(N_ERR, "Error while receiving stats from inst '%s'.", inst->name);
       goto error_label;
    }
 
@@ -895,7 +775,7 @@ error_label:
    return -1;
 }
 
-static int service_decode_inst_stats(char *data, instance_t *inst)
+static int service_decode_inst_stats(char *data, run_module_t *inst)
 {
    size_t arr_idx = 0;
 
@@ -1066,7 +946,7 @@ err_cleanup:
    return -1;
 }
 
-static int service_recv_data(instance_t *inst, uint32_t size, void *data)
+static int service_recv_data(run_module_t *inst, uint32_t size, void *data)
 {
    int num_of_timeouts = 0;
    int total_received = 0;
@@ -1082,14 +962,14 @@ static int service_recv_data(instance_t *inst, uint32_t size, void *data)
          if (errno == EAGAIN || errno == EWOULDBLOCK) {
             num_of_timeouts++;
             if (num_of_timeouts >= 3) {
-               VERBOSE(N_ERR, "Timeout while receiving from inst %s!", inst->name)
+               VERBOSE(N_ERR, "Timeout while receiving from inst '%s'!", inst->name)
                return -1;
             } else {
                usleep(SERVICE_WAIT_BEFORE_TIMEOUT);
                continue;
             }
          }
-         VERBOSE(N_ERR, "Error while receiving from inst %s! (errno=%d)",
+         VERBOSE(N_ERR, "Error while receiving from inst '%s'! (errno=%d)",
                  inst->name, errno)
          return -1;
       }
@@ -1098,7 +978,7 @@ static int service_recv_data(instance_t *inst, uint32_t size, void *data)
    return 0;
 }
 
-static int send_ifc_stats_request(const instance_t *inst)
+static int send_ifc_stats_request(const run_module_t *inst)
 {
    service_msg_header_t req_header;
    req_header.com = SERVICE_GET_COM;
@@ -1123,7 +1003,7 @@ static int send_ifc_stats_request(const instance_t *inst)
                continue;
             }
          }
-         VERBOSE(N_ERR, "Error while sending to inst %s !", inst->name);
+         VERBOSE(N_ERR, "Error while sending to inst '%s'!", inst->name);
          return -1;
       }
       total_sent += sent;
@@ -1132,7 +1012,7 @@ static int send_ifc_stats_request(const instance_t *inst)
 
 }
 
-static inline void disconnect_from_inst(instance_t *inst)
+static inline void disconnect_from_inst(run_module_t *inst)
 {
    if (inst->service_ifc_connected) {
       VERBOSE(V3,"Disconnecting from inst '%s'", inst->name);
@@ -1148,11 +1028,17 @@ static inline void disconnect_from_inst(instance_t *inst)
 
 static inline void check_insts_connections()
 {
-   instance_t * inst = NULL;
+   run_module_t * inst = NULL;
    bool instance_not_connected;
    bool has_ifc_stats;
 
-   FOR_EACH_IN_VEC(insts_v, inst) {
+   for (uint32_t i = 0; i < rnmods_v.total; i++) {
+      inst = rnmods_v.items[i];
+
+      if (inst->mod_kind->is_nemea == false) {
+         continue;
+      }
+
       instance_not_connected = (inst->service_ifc_connected == false);
       has_ifc_stats = ((inst->in_ifces.total + inst->out_ifces.total) > 0);
       // Check connection between instance and supervisor
@@ -1165,34 +1051,34 @@ static inline void check_insts_connections()
                close(inst->service_sd);
                inst->service_sd = -1;
             }
-            VERBOSE(DEBUG, "Trying to connect to inst %s", inst->name)
+            VERBOSE(DEBUG, "Trying to connect to inst '%s'", inst->name)
             connect_to_inst(inst);
          }
       }
    }
 }
 
-static void connect_to_inst(instance_t *inst)
+static void connect_to_inst(run_module_t *inst)
 {
    /* sock_name size is length of "service_PID" where PID is
     *  max 5 chars (8 + 5 + 1 zero terminating) */
    char sock_name[14];
    int sockfd;
-   tcpip_socket_addr_t addr;
+   //tcpip_socket_addr_t addr;
+   struct sockaddr_un unix_sa;
 
    memset(sock_name, 0, 14 * sizeof(char));
    sprintf(sock_name, "service_%d", inst->pid);
 
-   memset(&addr, 0, sizeof(addr));
+   memset(&unix_sa, 0, sizeof(unix_sa));
 
-   addr.unix_sa.sun_family = AF_UNIX;
-   snprintf(addr.unix_sa.sun_path,
-            sizeof(addr.unix_sa.sun_path) - 1,
+   unix_sa.sun_family = AF_UNIX;
+   snprintf(unix_sa.sun_path,
+            sizeof(unix_sa.sun_path) - 1,
             trap_default_socket_path_format,
             sock_name);
 
-   VERBOSE(V3, "Instance (%s) has socket %s", instance_tree_path(inst),
-           addr.unix_sa.sun_path)
+   VERBOSE(V3, "Instance '%s' has socket %s", inst->name, unix_sa.sun_path)
 
    sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
    if (sockfd == -1) {
@@ -1201,11 +1087,11 @@ static void connect_to_inst(instance_t *inst)
       inst->service_ifc_connected = false;
       return;
    }
-   if (connect(sockfd, (struct sockaddr *) &addr.unix_sa, sizeof(addr.unix_sa)) == -1) {
+   if (connect(sockfd, (struct sockaddr *) &unix_sa, sizeof(unix_sa)) == -1) {
       VERBOSE(N_ERR,
-              "Error while connecting to inst %s with socket '%s'",
+              "Error while connecting to inst '%s' with socket '%s'",
               inst->name,
-              addr.unix_sa.sun_path)
+              unix_sa.sun_path)
 
       inst->service_ifc_connected = false;
       close(sockfd);
@@ -1219,16 +1105,18 @@ static void connect_to_inst(instance_t *inst)
 
 static void insts_update_resources_usage()
 {
-   instance_t *inst = NULL;
+   run_module_t *inst = NULL;
 
-   FOR_EACH_IN_VEC(insts_v, inst) {
+   for (uint32_t i = 0; i < rnmods_v.total; i++) {
+      inst = rnmods_v.items[i];
+
       if (inst->running) {
          inst_get_stats(inst);
          inst_get_vmrss(inst);
       }
    }
 }
-static inline void inst_get_vmrss(instance_t *inst)
+static inline void inst_get_vmrss(run_module_t *inst)
 {
    const char delim[2] = " ";
    char *line = NULL,
@@ -1244,8 +1132,8 @@ static inline void inst_get_vmrss(instance_t *inst)
 
    fd = fopen(path, "r");
    if (fd == NULL) {
-      VERBOSE(DEBUG, "Failed to open stats file of %s (PID=%d)",
-              instance_tree_path(inst), inst->pid)
+      VERBOSE(DEBUG, "Failed to open stats file of '%s' (PID=%d)",
+              inst->name, inst->pid)
       goto cleanup;
    }
 
@@ -1270,7 +1158,7 @@ cleanup:
    NULLP_TEST_AND_FREE(line)
 }
 
-static inline void inst_get_stats(instance_t *inst)
+static inline void inst_get_stats(run_module_t *inst)
 {
 
    const char delim[2] = " ";
@@ -1409,15 +1297,21 @@ cleanup:
    return ret_val;
 }
 
-static void insts_save_running_pids()
-{
-   VERBOSE(V3, "Saving PIDs of all modules")
-   /* Module group + inst max by YANG 2x255 + static part of 47 chars,
-    * that leaves quite enough space for ns_root_sr_path */
-   instance_t *inst = NULL;
-   static char xpath[4096];
+static void insts_save_running_pids() {
+   /* Inst name max by YANG 255 + static part of 25 chars */
+   run_module_t *inst = NULL;
+   static char xpath[NS_ROOT_XPATH_LEN + 255 + 25 + 1];
    int rc;
    sr_val_t *val;
+
+   VERBOSE(DEBUG, "==%d", rnmods_v.total)
+
+   if (rnmods_v.total == 0) {
+      // No PIDs to save
+      return;
+   }
+
+   VERBOSE(V3, "Saving PIDs of all modules")
 
    // Make sure we are in STARTUP datastore
    rc = sr_session_switch_ds(sr_conn_link.sess, SR_DS_STARTUP);
@@ -1436,25 +1330,21 @@ static void insts_save_running_pids()
    val->type = SR_UINT32_T;
    val->xpath = xpath;
 
-   FOR_EACH_IN_VEC(insts_v, inst) {
+   for (uint32_t i = 0; i < rnmods_v.total; i++) {
+      inst = rnmods_v.items[i];
       if (inst->running == false) {
          continue;
       }
 
       memset(xpath, 0, 4096);
-      sprintf(xpath, "%s/module-group[name='%s']/module[name='%s']"
-                    "/instance[name='%s']/last-pid",
-              ns_root_sr_path,
-              inst->module->group->name,
-              inst->module->name,
-              inst->name);
+      sprintf(xpath, NS_ROOT_XPATH"/module[name='%s']/last-pid", inst->name);
 
       val->data.uint32_val = (uint32_t) inst->pid;
       rc = sr_set_item(sr_conn_link.sess, xpath, val,
                        SR_EDIT_DEFAULT | SR_EDIT_NON_RECURSIVE);
       if (rc != SR_ERR_OK) {
-         VERBOSE(N_ERR, "Failed to save PID for %s (err: %s)",
-                 instance_tree_path(inst),
+         VERBOSE(N_ERR, "Failed to save PID for '%s' (err: %s)",
+                 inst->name,
                  sr_strerror(rc))
       }
    }

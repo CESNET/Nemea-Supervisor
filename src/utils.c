@@ -21,7 +21,7 @@ FILE *inst_event_fd = NULL;
  /* --END local vars-- */
  
  /* --BEGIN full fns prototypes-- */
-static int vector_resize(vector_t *v, uint32_t size);
+static int vector_resize(vector_t *v, uint32_t capacity);
  /* --END full fns prototypes-- */
  
  /* --BEGIN superglobal fns-- */
