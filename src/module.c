@@ -675,7 +675,7 @@ static char * ifc_param_concat(char *base, char *param_s, uint16_t param_u)
    bool integer_passed = (param_s == NULL);
 
    if (integer_passed) {
-      len = (uint16_t) ((param_u % 10) + 1);
+      len = (uint16_t) snprintf(NULL, 0, "%d", param_u);
       param = (char *) calloc(len, sizeof(char));
       if (param == NULL) {
          NO_MEM_ERR

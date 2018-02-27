@@ -70,7 +70,12 @@ module nemea {
         mandatory true;
         description "TODO";
       }
-      leaf is-nemea-module {
+      leaf trap-monitorable {
+        type boolean;
+        mandatory true;
+        description "TODO";
+      }
+      leaf uses-trap-ifces {
         type boolean;
         mandatory true;
         description "TODO";
@@ -84,6 +89,28 @@ module nemea {
         type boolean;
         default false;
         description "TODO";
+      }
+      
+      choice if-uses-trap-ifces {
+        case yes {
+          when "uses-trap-ifces=true";
+          leaf in-ifces-cnt {
+            type string {
+              length "1..2";
+              pattern "(\*|0|[1-9][0-9]?)"
+            }
+            mandatory true;
+            description "exact cnt of ifces";
+          }
+          leaf out-ifces-cnt {
+            type string {
+              length "1..2";
+              pattern "(\*|0|[1-9][0-9]?)"
+            }
+            mandatory true;
+            description "";
+          }
+        }
       }
 
       // TODO pocty interfacu
@@ -121,7 +148,14 @@ module nemea {
         description "TODO";
       }
       
-      uses trap-ifcs-list;
+      choice if-uses-trap-ifces {
+        case yes {
+          when "../available-module[name=current()/module-kind]/uses-trap-ifces";
+          uses trap-ifcs-list;
+
+          // TODO pridat kontrolu poctu ifcu
+        }
+      }
       uses nemea-module-stats;
 
       choice is-using-sysrepo-conf {
@@ -134,7 +168,6 @@ module nemea {
             type string;
             description "TODO path to sysrepo model";
           }
-          // TODO this part should be modeled in the futur
       	} // end case module-sysrepo-ready
       
       	case module-not-using-sysrepo-conf {

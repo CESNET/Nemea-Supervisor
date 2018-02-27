@@ -23,6 +23,8 @@
     <is-nemea-module>true</is-nemea-module>
     <is-sysrepo-ready>false</is-sysrepo-ready>
     <sysrepo-callbacks-ready>false</sysrepo-callbacks-ready>
+    <in-ifc-cnt>1</in-ifc-cnt>
+    <out-ifc-cnt>0</out-ifc-cnt>
   </available-module>
 
 
@@ -43,6 +45,7 @@
     <module-kind>vportscan_detector</module-kind>
     <enabled>true</enabled>
     <params>-vvv</params>
+
     <interface>
       <name>if1</name>
       <type>UNIXSOCKET</type>
