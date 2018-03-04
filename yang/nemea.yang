@@ -90,10 +90,25 @@ module nemea {
         default false;
         description "TODO";
       }
+
+      choice if-is-sysrepo-ready {
+      	case module-using-sysrepo-conf {
+          when "is-sysrepo-ready = 'true'";
+          description "TODO";
+
+          leaf sr-model-prefix {
+            type string;
+            description "Prefix of Sysrepo module to use for NEMEA module specific configuration";
+          }
+      	} // end case module-sysrepo-ready
+      }
+ 
       
       choice if-uses-trap-ifces {
         case yes {
-          when "uses-trap-ifces=true";
+          when "uses-trap-ifces = 'true'";
+          description "TODO";
+
           leaf in-ifces-cnt {
             type string {
               length "1..2";
@@ -156,20 +171,10 @@ module nemea {
           // TODO pridat kontrolu poctu ifcu
         }
       }
+
       uses nemea-module-stats;
 
       choice is-using-sysrepo-conf {
-      	case module-using-sysrepo-conf {
-          // TODO jde pridat kontrolu do avail modulu? jakoze jestli je sysrepo-ready tak lze enabel
-          when "use-sysrepo = 'true'";
-          description "TODO";
-
-          leaf xpath {
-            type string;
-            description "TODO path to sysrepo model";
-          }
-      	} // end case module-sysrepo-ready
-      
       	case module-not-using-sysrepo-conf {
           when "use-sysrepo = 'false'";
           description "TODO";
