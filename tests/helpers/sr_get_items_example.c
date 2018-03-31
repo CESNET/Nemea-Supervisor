@@ -47,7 +47,7 @@ main(int argc, char **argv)
     }
 
     /* get all list instances */
-    rc = sr_get_items(sess, "/nemea-tests-1:nemea-supervisor/module-group/module/instance/stats//*", &values, &count);
+    rc = sr_get_items(sess, "/nemea-test-1:supervisor/instance/*", &values, &count);
     if (SR_ERR_OK != rc) {
 			printf("errrrr:%s\n", sr_strerror(rc));
         goto cleanup;

@@ -1,4 +1,5 @@
 module nemea {
+  yang-version 1.1;
   namespace "urn:ietf:params:xml:ns:yang:nemea";
   prefix nemea;
   include trap-interfaces;
@@ -75,44 +76,46 @@ module nemea {
         mandatory true;
         description "TODO";
       }
-      leaf uses-trap-ifces {
+      leaf use-trap-ifces {
         type boolean;
         mandatory true;
         description "TODO";
       }
       leaf is-sysrepo-ready {
         type boolean;
-        default false;
-        description "Specifies whether module has it's own YANG model derived from Nemea module template and is capable of loading configuration from Sysrepo when passed -sr 'INSTANCE_NAME'. INSTANCE_NAME is TODO";
-      }
-      leaf sysrepo-callbacks-ready {
-        type boolean;
-        default false;
+        mandatory true;
         description "TODO";
       }
 
+
       choice if-is-sysrepo-ready {
-      	case module-using-sysrepo-conf {
+        case yes {
           when "is-sysrepo-ready = 'true'";
           description "TODO";
 
           leaf sr-model-prefix {
             type string;
+            mandatory true;
             description "Prefix of Sysrepo module to use for NEMEA module specific configuration";
           }
-      	} // end case module-sysrepo-ready
+          leaf sr-callbacks-ready {
+            type boolean;
+            default false;
+            description "Sysrepo callbacks ready";
+          }
+        }
       }
  
       
-      choice if-uses-trap-ifces {
+      choice if-using-trap-ifces {
         case yes {
-          when "uses-trap-ifces = 'true'";
+          when "use-trap-ifces = 'true'";
           description "TODO";
 
           leaf in-ifces-cnt {
             type string {
               length "1..2";
-              pattern "(\*|0|[1-9][0-9]?)"
+              pattern "(\\*|0|[1-9][0-9]?)";
             }
             mandatory true;
             description "exact cnt of ifces";
@@ -120,15 +123,13 @@ module nemea {
           leaf out-ifces-cnt {
             type string {
               length "1..2";
-              pattern "(\*|0|[1-9][0-9]?)"
+              pattern "(\\*|0|[1-9][0-9]?)";
             }
             mandatory true;
             description "";
           }
         }
       }
-
-      // TODO pocty interfacu
     } // end list available-module
 
     list module {
@@ -151,39 +152,39 @@ module nemea {
         type uint8;
         default 3;
         description "How many times the module will be automatically restarted (in case it terminated) before setting disabled";
-        // TODO review implementation in linux supervisor
       }
       leaf last-pid {
         type uint32 { range "1..max"; }
         description "In case supervisor was interrupted and shouldn't have stopped the modules, PID of this Nemea module process is stored so that supervisor can reconnect to it once it starts again.";
       }
-      leaf use-sysrepo {
-        type boolean;
-        default false;
-        description "TODO";
-      }
       
-      choice if-uses-trap-ifces {
-        case yes {
-          when "../available-module[name=current()/module-kind]/uses-trap-ifces";
-          uses trap-ifcs-list;
+      /**
+       * It would be nice to specify that we want to use trap-ifcs-list only if use-trap-ifces is true, but then the subscription for runtime statistics to /nemea:supervisor/module/instance/stats would unfortunately not work. 
+       */
+      uses trap-ifcs-list;
+      uses nemea-module-stats;
 
-          // TODO pridat kontrolu poctu ifcu
+      choice if-is-sysrepo-ready {
+        when "deref(.)/../is-sysrepo-ready = true";
+        // this is old: when "../available-module[name=current()/module-kind]/use-sysrepo";
+        description "TODO";
+
+        leaf use-sysrepo {
+          type boolean;
+          default false;
+          description "Specifies whether module has it's own YANG model derived from Nemea module template and is capable of loading configuration from Sysrepo when passed -sr 'INSTANCE_NAME'. INSTANCE_NAME is TODO";
         }
       }
 
-      uses nemea-module-stats;
-
-      choice is-using-sysrepo-conf {
-      	case module-not-using-sysrepo-conf {
-          when "use-sysrepo = 'false'";
-          description "TODO";
+      choice if-isnt-sysrepo-ready-or-doesnt-use-sysrepo {
+        when "deref(.)/../is-sysrepo-ready = false or use-sysrepo = false";
+        // this is old: when "../available-module[name=current()/module-kind]/is-sysrepo-ready = 'false' or use-sysrepo = 'false'";
+        description "TODO";
       
-          leaf params {
-            type string;
-            description "TODO";
-          }
-        } // end case module-not-sysrepo-ready
+        leaf params {
+          type string;
+          description "TODO";
+        }
       } // end choice is-module-sysrepo-ready
     } // end of list module
   } // end container nemea-supervisor

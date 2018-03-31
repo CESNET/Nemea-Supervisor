@@ -25,7 +25,7 @@ msg "Installing testing yang scheme"
 sysrepoctl --install --yang "${THIS_DIR}/yang/${SR_MODULE}.yang" \
 	--owner $(whoami):$(whoami) --permissions 644 || exit 1
 msg "Schema installed"
-
+exit 0
 
 for config in ${STARTUP_CONFIGS[@]}; do
 	msg "Importing config: ${config}"
