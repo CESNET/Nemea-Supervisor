@@ -290,7 +290,7 @@ void test_ns_change_load(void **state)
    }
 
    {
-      val.xpath = strdup("/nemea:nemea-supervisor/module[name='test module 1']"
+      val.xpath = strdup("/nemea:nemea-supervisor/instance[name='test module 1']"
                                "/interface[name='tcp-out']/type");
       IF_NO_MEM_FAIL(val.xpath)
 

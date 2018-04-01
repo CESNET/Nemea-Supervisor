@@ -132,14 +132,14 @@ module nemea-test-1 {
       }
     } // end list available-module
 
-    list module {
+    list instance {
       key name;
       description "TODO";
       uses nemea-key-name {
         description "Unique module process name";
       }
 
-      leaf module-kind {
+      leaf module-ref {
         type leafref { path "../../available-module/name"; }
         mandatory true;
         description "TODO";
@@ -158,20 +158,15 @@ module nemea-test-1 {
         description "In case supervisor was interrupted and shouldn't have stopped the modules, PID of this Nemea module process is stored so that supervisor can reconnect to it once it starts again.";
       }
       
-      //choice if-use-trap-ifces {
-      //  case yes {
-          // This when condition evaluates to available-module[name='this-module-kind']/use-trap-ifces
-      //    when "deref(.)/../use-trap-ifces = true";
-          // this is old: when "../available-module[name=current()/module-kind]/use-trap-ifces";
-          uses trap-ifcs-list;
-      //  }
-      //}
-
+      /**
+       * It would be nice to specify that we want to use trap-ifcs-list only if use-trap-ifces is true, but then the subscription for runtime statistics to /nemea:supervisor/module/interface/stats would unfortunately not work. 
+       */
+      uses trap-ifcs-list;
       uses nemea-module-stats;
 
       choice if-is-sysrepo-ready {
         when "deref(.)/../is-sysrepo-ready = true";
-        // this is old: when "../available-module[name=current()/module-kind]/use-sysrepo";
+        // this is old: when "../available-module[name=current()/module-ref]/use-sysrepo";
         description "TODO";
 
         leaf use-sysrepo {
@@ -183,7 +178,7 @@ module nemea-test-1 {
 
       choice if-isnt-sysrepo-ready-or-doesnt-use-sysrepo {
         when "deref(.)/../is-sysrepo-ready = false or use-sysrepo = false";
-        // this is old: when "../available-module[name=current()/module-kind]/is-sysrepo-ready = 'false' or use-sysrepo = 'false'";
+        // this is old: when "../available-module[name=current()/module-ref]/is-sysrepo-ready = 'false' or use-sysrepo = 'false'";
         description "TODO";
       
         leaf params {

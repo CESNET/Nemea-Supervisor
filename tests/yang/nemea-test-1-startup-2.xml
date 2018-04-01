@@ -15,9 +15,9 @@
     <is-sysrepo-ready>false</is-sysrepo-ready>
   </available-module>
 
-  <module>
+  <instance>
     <name>intable_module</name>
-    <module-kind>module A</module-kind>
+    <module-ref>module A</module-ref>
     <enabled>true</enabled>
     <max-restarts-per-min>4</max-restarts-per-min>
     <last-pid>123</last-pid>
@@ -79,7 +79,7 @@
       <direction>OUT</direction>
       <buffer>off</buffer>
     </interface>
-  </module>
+  </instance>
 
     <!-- same as intable_module above but without last-pid -->
 </supervisor>

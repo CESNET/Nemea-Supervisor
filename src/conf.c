@@ -125,7 +125,7 @@ int ns_startup_config_load(sr_session_ctx_t *sess)
    sr_val_t *vals = NULL;
    size_t vals_cnt = 0;
    char av_mods_xpath[] = NS_ROOT_XPATH"/available-module";
-   char run_mods_xpath[] = NS_ROOT_XPATH"/module";
+   char run_mods_xpath[] = NS_ROOT_XPATH"/instance";
 
    { // load /available-modules
       rc = sr_get_items(sess, av_mods_xpath, &vals, &vals_cnt);
@@ -197,7 +197,7 @@ int av_module_load_by_name(sr_session_ctx_t *sess, const char *module_name)
 
 
    memset(xpath, 0, XPATH_LEN);
-   sprintf(xpath, NS_ROOT_XPATH"/module/module-kind");
+   sprintf(xpath, NS_ROOT_XPATH"/instance/module-ref");
 
    rc = sr_get_items(sess, xpath, &insts, &insts_cnt);
    if (rc != SR_ERR_OK) {
@@ -216,7 +216,7 @@ int av_module_load_by_name(sr_session_ctx_t *sess, const char *module_name)
             goto err_cleanup;
          }
          memset(xpath, 0, XPATH_LEN);
-         sprintf(xpath, NS_ROOT_XPATH"/module[name='%s']", inst_name);
+         sprintf(xpath, NS_ROOT_XPATH"/instance[name='%s']", inst_name);
          rc = run_module_load(sess, xpath);
          if (rc != SR_ERR_OK) {
             VERBOSE(N_ERR, "Failed to reload all instances of module '%s'."
@@ -289,9 +289,9 @@ run_module_load(sr_session_ctx_t *sess, char *xpath)
       VERBOSE(N_ERR, "Failed to load xpath %s/name", xpath)
       goto err_cleanup;
    }
-   rc = load_sr_str(sess, xpath, "/module-kind", &mod_kind);
+   rc = load_sr_str(sess, xpath, "/module-ref", &mod_kind);
    if (FOUND_AND_ERR(rc)) {
-      VERBOSE(N_ERR, "Failed to load xpath %s/module-kind", xpath)
+      VERBOSE(N_ERR, "Failed to load xpath %s/module-ref", xpath)
       goto err_cleanup;
    }
    rc = load_sr_num(sess, xpath, "/enabled", &(inst->enabled), SR_BOOL_T);
@@ -736,7 +736,7 @@ clean_pid:
    pid_xpath = (char *) calloc(1, sizeof(char) * (pid_xpath_len));
    if (pid_xpath != NULL) {
       sprintf(pid_xpath,
-              NS_ROOT_XPATH"/module[name='%s']/last-pid",
+              NS_ROOT_XPATH"/instance[name='%s']/last-pid",
               inst->name);
       rc = sr_delete_item(sess, pid_xpath, SR_EDIT_NON_RECURSIVE);
       if (rc == SR_ERR_OK) {

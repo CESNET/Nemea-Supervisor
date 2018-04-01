@@ -328,7 +328,7 @@ int supervisor_initialization()
 
    { // subscribe to requests for stats
       rc = sr_dp_get_items_subscribe(sr_conn_link.sess,
-                                     NS_ROOT_XPATH"/module/stats",
+                                     NS_ROOT_XPATH"/instance/stats",
                                      inst_get_stats_cb,
                                      NULL,
                                      SR_SUBSCR_CTX_REUSE,
@@ -341,7 +341,7 @@ int supervisor_initialization()
       }
 
       rc = sr_dp_get_items_subscribe(sr_conn_link.sess,
-                                     NS_ROOT_XPATH"/module/interface/stats",
+                                     NS_ROOT_XPATH"/instance/interface/stats",
                                      interface_get_stats_cb,
                                      NULL,
                                      SR_SUBSCR_CTX_REUSE,
@@ -1337,7 +1337,7 @@ static void insts_save_running_pids() {
       }
 
       memset(xpath, 0, 4096);
-      sprintf(xpath, NS_ROOT_XPATH"/module[name='%s']/last-pid", inst->name);
+      sprintf(xpath, NS_ROOT_XPATH"/instance[name='%s']/last-pid", inst->name);
 
       val->data.uint32_val = (uint32_t) inst->pid;
       rc = sr_set_item(sr_conn_link.sess, xpath, val,

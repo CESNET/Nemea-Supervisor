@@ -12,7 +12,7 @@ sess = sr.Session(conn, sr.SR_DS_RUNNING)
 action = sys.argv[1]
 
 if action == "intable_module_stats":
-  xpath_base = "/nemea-test-1:supervisor/module[name='Intable1']/stats/"
+  xpath_base = "/nemea-test-1:supervisor/instance[name='Intable1']/stats/"
   try:
     s = sess.get_items(xpath_base + "*")
     if s.val_cnt() != 6:
@@ -52,9 +52,9 @@ if action == "intable_module_stats":
     exit(250)
 ##########################33
 elif action == "intable_interfaces_stats":
-  xpath_base = "/nemea-test-1:supervisor/module[name='Intable1']/interface/stats/"
-  xpath_if1 =  "/nemea-test-1:supervisor/module[name='Intable1']/interface[name='if1']/stats/"
-  xpath_if2 =  "/nemea-test-1:supervisor/module[name='Intable1']/interface[name='if2']/stats/"
+  xpath_base = "/nemea-test-1:supervisor/instance[name='Intable1']/interface/stats/"
+  xpath_if1 =  "/nemea-test-1:supervisor/instance[name='Intable1']/interface[name='if1']/stats/"
+  xpath_if2 =  "/nemea-test-1:supervisor/instance[name='Intable1']/interface[name='if2']/stats/"
   try:
   # tohle musi bejt!
     s = sess.get_items(xpath_base + '*')
@@ -102,7 +102,7 @@ elif action == "intable_interfaces_stats":
 ##########################33
 elif action == "intable_inst_stats_including_ifc_stats":
   req_xpath = "/nemea-test-1:supervisor//*/stats/*"
-  xpath_base = "/nemea-test-1:supervisor/module[name='Intable1']/"
+  xpath_base = "/nemea-test-1:supervisor/instance[name='Intable1']/"
   try:
     s = sess.get_items(req_xpath)
     if s.val_cnt() != 12:

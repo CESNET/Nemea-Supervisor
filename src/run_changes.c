@@ -482,7 +482,7 @@ run_change_load(sr_change_oper_t op, sr_val_t *old_val, sr_val_t *new_val)
             NO_MEM_ERR
             goto err_cleanup;
          }
-      } else if (strcmp(res, "module") == 0) {
+      } else if (strcmp(res, "instance") == 0) {
          res = sr_xpath_node_key_value(NULL, "name", &state);
          if (res == NULL) {
             VERBOSE(N_ERR, "Failed to parse run_change on line %d", __LINE__)

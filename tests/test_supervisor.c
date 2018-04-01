@@ -49,7 +49,7 @@ void test_insts_save_running_pids(void **state)
    run_module_t *inst = NULL;
    av_module_t *mod = NULL;
    sr_val_t *value = NULL;
-   char xpath[] = NS_ROOT_XPATH"/module[name='inst1']/last-pid";
+   char xpath[] = NS_ROOT_XPATH"/instance[name='inst1']/last-pid";
 
    { // Fake loaded module
       mod = av_module_alloc();

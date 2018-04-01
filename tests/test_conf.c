@@ -85,7 +85,7 @@ static void insert_intable_pid_to_sr(pid_t pid)
 {
    int rc;
    sr_val_t *val = NULL;
-   char xpath[] = NS_ROOT_XPATH"/module[name='intable_module']/last-pid";
+   char xpath[] = NS_ROOT_XPATH"/instance[name='intable_module']/last-pid";
 
    rc = sr_new_val(NULL, &val);
    if (rc != SR_ERR_OK) { fail_msg("SR error:%s", sr_strerror(rc)); }
@@ -107,7 +107,7 @@ static int get_intable_pid_from_sr(pid_t *pid)
 {
    int rc;
    sr_val_t *val = NULL;
-   char xpath[] = NS_ROOT_XPATH"/module[name='intable_module']/last-pid";
+   char xpath[] = NS_ROOT_XPATH"/instance[name='intable_module']/last-pid";
 
    rc = sr_get_item(sr_conn_link.sess, xpath, &val);
    if (rc == SR_ERR_OK) {
@@ -228,7 +228,7 @@ void test_interface_file_params_load(void **state)
    { // tests direction NS_IF_DIR_OUT
       ifc->direction = NS_IF_DIR_OUT;
       assert_int_equal(interface_specific_params_alloc(ifc), 0);
-      xpath = NS_ROOT_XPATH"/module[name='intable_module']/interface[name='file-out']";
+      xpath = NS_ROOT_XPATH"/instance[name='intable_module']/interface[name='file-out']";
 
       rc = interface_file_params_load(sr_conn_link.sess, xpath, ifc);
       assert_int_equal(rc, 0);
@@ -254,7 +254,7 @@ void test_interface_unix_params_load(void **state)
    { // tests direction NS_IF_DIR_OUT
       ifc->direction = NS_IF_DIR_OUT;
       assert_int_equal(interface_specific_params_alloc(ifc), 0);
-      xpath = NS_ROOT_XPATH"/module[name='intable_module']/interface[name='unix-out']";
+      xpath = NS_ROOT_XPATH"/instance[name='intable_module']/interface[name='unix-out']";
 
       rc = interface_unix_params_load(sr_conn_link.sess, xpath, ifc);
       assert_int_equal(rc, 0);
@@ -280,7 +280,7 @@ void test_interface_tcp_tls_params_load(void **state)
    { // tests direction NS_IF_DIR_OUT
       ifc->direction = NS_IF_DIR_OUT;
       assert_int_equal(interface_specific_params_alloc(ifc), 0);
-      xpath = NS_ROOT_XPATH"/module[name='intable_module']/interface[name='tcp-tls-out']";
+      xpath = NS_ROOT_XPATH"/instance[name='intable_module']/interface[name='tcp-tls-out']";
       rc = interface_tcp_tls_params_load(sr_conn_link.sess, xpath, ifc);
       assert_int_equal(rc, 0);
       test_interface_specific_params_are_loaded(ifc);
@@ -305,7 +305,7 @@ void test_interface_tcp_params_load(void **state)
    { // tests direction NS_IF_DIR_OUT
       ifc->direction = NS_IF_DIR_OUT;
       assert_int_equal(interface_specific_params_alloc(ifc), 0);
-      xpath = NS_ROOT_XPATH"/module[name='intable_module']/interface[name='tcp-out']";
+      xpath = NS_ROOT_XPATH"/instance[name='intable_module']/interface[name='tcp-out']";
       rc = interface_tcp_params_load(sr_conn_link.sess, xpath, ifc);
       assert_int_equal(rc, 0);
       test_interface_specific_params_are_loaded(ifc);
@@ -383,7 +383,7 @@ void test_interface_load(void **state)
    IF_NO_MEM_FAIL(inst)
 
    {
-      xpath = NS_ROOT_XPATH"/module[name='intable_module']/interface[name='tcp-out']";
+      xpath = NS_ROOT_XPATH"/instance[name='intable_module']/interface[name='tcp-out']";
 
       assert_int_equal(inst->out_ifces.total, 0);
       assert_int_equal(interface_load(sr_conn_link.sess, xpath, inst), 0);
@@ -446,7 +446,7 @@ void test_run_module_load(void **state)
    connect_to_sr();
 
    int rc;
-   char * xpath = NS_ROOT_XPATH"/module[name='intable_module']";
+   char * xpath = NS_ROOT_XPATH"/instance[name='intable_module']";
    run_module_t *mod = NULL;
 
    av_module_t *avmod = av_module_alloc();
@@ -557,7 +557,7 @@ void test_module_name_from_xpath(void **state)
    char *module_name;
 
    {
-      xpath = strdup("/nemea:supervisor/module[name='yy'][module-kind='xx']/enabled");
+      xpath = strdup("/nemea:supervisor/module[name='yy'][module-ref='xx']/enabled");
       IF_NO_MEM_FAIL(xpath)
       module_name = module_name_from_xpath(xpath);
       assert_string_equal("yy", module_name);

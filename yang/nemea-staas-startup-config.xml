@@ -30,19 +30,19 @@
 
   <module>
     <name>ipfixcol1</name>
-    <module-kind>ipfixcol</module-kind>
+    <module-ref>ipfixcol</module-ref>
     <enabled>true</enabled>
     <params>-c /data/ipfixcol-files/ipfixcol-startup.xml -p /tmp/ipfixcol.pid</params>
   </module>
   <module>
     <name>ipfixsend1</name>
-    <module-kind>ipfixsend</module-kind>
+    <module-ref>ipfixsend</module-ref>
     <enabled>true</enabled>
     <params>-i /data/ipfixcol-files/data.ipfix -R 0.5</params>
   </module>
   <module>
     <name>vportscan_detector1</name>
-    <module-kind>vportscan_detector</module-kind>
+    <module-ref>vportscan_detector</module-ref>
     <enabled>true</enabled>
     <params>-vvv</params>
 

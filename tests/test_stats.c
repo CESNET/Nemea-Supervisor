@@ -180,7 +180,7 @@ void test_get_intable_interface_stats_cb(void **state)
    system(TESTS_DIR"/helpers/import_conf.sh -s nemea-test-1-startup-for-stats-1.xml");
    connect_to_sr();
    load_config();
-   subscribe_xpath_stats(NS_ROOT_XPATH"/module/interface/stats",
+   subscribe_xpath_stats(NS_ROOT_XPATH"/instance/interface/stats",
                          get_interface_stats_cb_wrapper,
                          SR_SUBSCR_DEFAULT);
 
@@ -208,7 +208,7 @@ void test_get_instance_stats(void **state)
    system(TESTS_DIR"/helpers/import_conf.sh -s nemea-test-1-startup-for-stats-1.xml");
    connect_to_sr();
    load_config();
-   subscribe_xpath_stats(NS_ROOT_XPATH"/module",
+   subscribe_xpath_stats(NS_ROOT_XPATH"/instance",
                          inst_get_stats_cb_wrapper,
                          SR_SUBSCR_DEFAULT);
 
@@ -233,10 +233,10 @@ void test_get_intable_inst_stats_including_ifc_stats(void **state)
    system(TESTS_DIR"/helpers/import_conf.sh -s nemea-test-1-startup-for-stats-1.xml");
    connect_to_sr();
    load_config();
-   subscribe_xpath_stats(NS_ROOT_XPATH"/module/interface/stats",
+   subscribe_xpath_stats(NS_ROOT_XPATH"/instance/interface/stats",
                          get_interface_stats_cb_wrapper,
                          SR_SUBSCR_CTX_REUSE);
-   subscribe_xpath_stats(NS_ROOT_XPATH"/module/stats",
+   subscribe_xpath_stats(NS_ROOT_XPATH"/instance/stats",
                          inst_get_stats_cb_wrapper,
                          SR_SUBSCR_CTX_REUSE);
 
@@ -274,7 +274,7 @@ void test_tree_path_load(void **state)
    tree_path_t *tpath;
 
    {
-      xpath = strdup("/nemea-test-1:supervisor/module[name='Intable1']/stats");
+      xpath = strdup("/nemea-test-1:supervisor/instance[name='Intable1']/stats");
       IF_NO_MEM_FAIL(xpath)
       tpath = tree_path_load(xpath);
       assert_non_null(tpath);
@@ -286,7 +286,7 @@ void test_tree_path_load(void **state)
    }
 
    {
-      xpath = strdup("/nemea-test-1:supervisor/module[name='Intable1']"
+      xpath = strdup("/nemea-test-1:supervisor/instance[name='Intable1']"
                            "/interface[name='ifc1']/stats");
       IF_NO_MEM_FAIL(xpath)
       tpath = tree_path_load(xpath);
@@ -321,7 +321,7 @@ void test_interface_get_by_tree_path(void **state)
    assert_int_equal(run_module_interface_add(inst, stored_ifc), 0);
 
    {
-      xpath = strdup("/nemea-test-1:supervisor/module[name='Intable1']"
+      xpath = strdup("/nemea-test-1:supervisor/instance[name='Intable1']"
                            "/interface[name='ifc1']/stats");
       ifc = interface_get_by_xpath(xpath);
       assert_non_null(ifc);
@@ -330,7 +330,7 @@ void test_interface_get_by_tree_path(void **state)
    }
 
    {
-      xpath = strdup("/nemea-test-1:supervisor/module[name='Intable1']"
+      xpath = strdup("/nemea-test-1:supervisor/instance[name='Intable1']"
                            "/stats");
       ifc = interface_get_by_xpath(xpath);
       assert_null(ifc);
