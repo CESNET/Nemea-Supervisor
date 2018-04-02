@@ -1,0 +1,89 @@
+{
+  "nemea-test-1:supervisor": {
+    "available-module": [
+      {
+        "name": "module A",
+        "path": "/a/a",
+        "description": "aaaaaa",
+        "trap-monitorable": true,
+        "use-trap-ifces": true,
+        "is-sysrepo-ready": false,
+        "in-ifces-cnt": "0",
+        "out-ifces-cnt": "5"
+      },
+      {
+        "name": "module B",
+        "path": "/a/b",
+        "description": "bbbbbbbbb",
+        "trap-monitorable": false,
+        "use-trap-ifces": false,
+        "is-sysrepo-ready": false
+      }
+    ],
+    "instance": [
+      {
+        "name": "intable_module",
+        "module-ref": "module A",
+        "enabled": true,
+        "max-restarts-per-min": 4,
+        "last-pid": 123,
+        "interface": [
+          {
+            "name": "tcp-out",
+            "type": "TCP",
+            "direction": "OUT",
+            "timeout": "HALF_WAIT",
+            "buffer": "on",
+            "autoflush": "off",
+            "tcp-params": {
+              "port": 8989,
+              "max-clients": 2
+            }
+          },
+          {
+            "name": "tcp-tls-out",
+            "type": "TCP-TLS",
+            "direction": "OUT",
+            "timeout": "NO_WAIT",
+            "buffer": "off",
+            "autoflush": "123",
+            "tcp-tls-params": {
+              "port": 3332,
+              "keyfile": "/a/b",
+              "certfile": "/a/b/c",
+              "cafile": "/a/b/c/d"
+            }
+          },
+          {
+            "name": "unix-out",
+            "type": "UNIXSOCKET",
+            "direction": "OUT",
+            "timeout": "12312",
+            "autoflush": "999",
+            "unix-params": {
+              "socket-name": "socket-name",
+              "max-clients": 333
+            }
+          },
+          {
+            "name": "file-out",
+            "type": "FILE",
+            "direction": "OUT",
+            "file-params": {
+              "name": "filename",
+              "mode": "a",
+              "time": 444,
+              "size": 555
+            }
+          },
+          {
+            "name": "bh-out",
+            "type": "BLACKHOLE",
+            "direction": "OUT",
+            "buffer": "off"
+          }
+        ]
+      }
+    ]
+  }
+}

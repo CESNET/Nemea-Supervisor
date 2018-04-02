@@ -20,6 +20,24 @@ typedef struct sr_conn_link_s {
 sr_conn_link_t sr_conn_link;
 bool sv_thread_running = true;
 
+void cleanup_structs_and_vectors()
+{
+   inst_t *inst = NULL;
+   for (uint32_t i = 0; i < insts_v.total; i++) {
+      inst = insts_v.items[i];
+      inst_free(inst);
+   }
+   vector_free(&insts_v);
+
+
+   av_module_t *avmod = NULL;
+   for (uint32_t i = 0; i < avmods_v.total; i++) {
+      avmod = avmods_v.items[i];
+      av_module_free(avmod);
+   }
+   vector_free(&avmods_v);
+}
+
 
 ///////////////////////////HELPERS
 ///////////////////////////HELPERS
@@ -120,8 +138,7 @@ static void load_config_and_subscribe_to_change()
 static void disconnect_and_unload_config()
 {
    disconnect_sr();
-   vector_free(&avmods_v);
-   vector_free(&insts_v);
+   cleanup_structs_and_vectors();
 }
 
 static void make_async_change(char * change)
@@ -156,7 +173,7 @@ static inline void fake_sv_routine()
 
 void test_ns_config_change_cb_with_module_created(void **state)
 {
-   system("helpers/import_conf.sh -s nemea-test-1-startup-4.json");
+   system("helpers/import_conf.sh -s nemea-test-1-startup-4.data.json");
    load_config_and_subscribe_to_change();
    assert_int_equal(insts_v.total, 4);
    assert_int_equal(avmods_v.total, 2);
@@ -184,7 +201,7 @@ void test_ns_config_change_cb_with_module_created(void **state)
 
 void test_ns_config_change_cb_with_module_deleted(void **state)
 {
-   system("helpers/import_conf.sh -s nemea-test-1-startup-4.json");
+   system("helpers/import_conf.sh -s nemea-test-1-startup-4.data.json");
    load_config_and_subscribe_to_change();
    assert_int_equal(insts_v.total, 4);
    assert_int_equal(avmods_v.total, 2);
@@ -205,7 +222,7 @@ void test_ns_config_change_cb_with_module_deleted(void **state)
 
 void test_ns_config_change_cb_with_module_modified_1(void **state)
 {
-   system("helpers/import_conf.sh -s nemea-test-1-startup-4.json");
+   system("helpers/import_conf.sh -s nemea-test-1-startup-4.data.json");
    load_config_and_subscribe_to_change();
    assert_int_equal(insts_v.total, 4);
    assert_int_equal(avmods_v.total, 2);
@@ -241,7 +258,7 @@ void test_ns_config_change_cb_with_module_modified_1(void **state)
 
 void test_ns_config_change_cb_with_inst_modified_1(void **state)
 {
-   system("helpers/import_conf.sh -s nemea-test-1-startup-4.json");
+   system("helpers/import_conf.sh -s nemea-test-1-startup-4.data.json");
    load_config_and_subscribe_to_change();
 
    inst_t * inst = insts_v.items[insts_v.total - 1];
@@ -276,7 +293,7 @@ void test_ns_change_load(void **state)
    sr_val_t val= {0};
 
    {
-      val.xpath = strdup("/nemea:nemea-supervisor/available-module[name='Module A']"
+      val.xpath = strdup(NS_ROOT_XPATH"/available-module[name='Module A']"
                                "/path");
       IF_NO_MEM_FAIL(val.xpath)
 
@@ -290,7 +307,7 @@ void test_ns_change_load(void **state)
    }
 
    {
-      val.xpath = strdup("/nemea:nemea-supervisor/instance[name='test module 1']"
+      val.xpath = strdup(NS_ROOT_XPATH"/instance[name='test module 1']"
                                "/interface[name='tcp-out']/type");
       IF_NO_MEM_FAIL(val.xpath)
 
@@ -309,8 +326,8 @@ int main(void)
 
    const struct CMUnitTest tests[] = {
          cmocka_unit_test(test_ns_config_change_cb_with_inst_modified_1),
-         cmocka_unit_test(test_ns_change_load),
          cmocka_unit_test(test_ns_config_change_cb_with_module_deleted),
+         cmocka_unit_test(test_ns_change_load),
          cmocka_unit_test(test_ns_config_change_cb_with_module_created),
          cmocka_unit_test(test_ns_config_change_cb_with_module_modified_1),
    };

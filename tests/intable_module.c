@@ -7,7 +7,7 @@
 
 int main()
 {
-   while(1) {
-		 usleep(5000);
-	 }
+  while(1) {
+    usleep(5000);
+  }
 }

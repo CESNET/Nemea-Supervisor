@@ -128,16 +128,6 @@ int main(void)
 {
 
    const struct CMUnitTest tests[] = {
-/*
- *
-         cmocka_unit_test(test_ns_config_change_cb_with_inst_modified_1),
-         cmocka_unit_test(test_ns_config_change_cb_with_group_modified_1),
-         cmocka_unit_test(test_ns_config_change_cb_with_module_group_deleted),
-         cmocka_unit_test(test_ns_config_change_cb_with_module_group_created),
-         cmocka_unit_test(test_ns_change_load),
-         cmocka_unit_test(test_ns_config_change_cb_with_module_deleted),
-         cmocka_unit_test(test_ns_config_change_cb_with_module_created),
-         */
          cmocka_unit_test(test_av_module_stop_remove_by_name),
    };
 

@@ -19,9 +19,9 @@ if action == "create_group_with_modules_and_instances":
 elif action == "create_available_module":
     sess.set_item("/nemea-test-1:supervisor/available-module[name='m1']/path", sr.Val("/m1path"))
     sess.set_item("/nemea-test-1:supervisor/available-module[name='m1']/description", sr.Val("lorem ipsum"))
-    sess.set_item("/nemea-test-1:supervisor/available-module[name='m1']/is-nemea-module", sr.Val(True))
+    sess.set_item("/nemea-test-1:supervisor/available-module[name='m1']/trap-monitorable", sr.Val(True))
     sess.set_item("/nemea-test-1:supervisor/available-module[name='m1']/is-sysrepo-ready", sr.Val(False))
-    sess.set_item("/nemea-test-1:supervisor/available-module[name='m1']/sysrepo-callbacks-ready", sr.Val(True))
+    sess.set_item("/nemea-test-1:supervisor/available-module[name='m1']/use-trap-ifces", sr.Val(False))
     sess.commit()
 ##################
 elif action == "delete_group_with_module_and_instance":

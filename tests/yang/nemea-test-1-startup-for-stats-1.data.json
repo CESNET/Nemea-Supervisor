@@ -1,0 +1,48 @@
+{
+  "nemea-test-1:supervisor": {
+    "available-module": [
+      {
+        "name": "module A",
+        "path": "/a/a",
+        "description": "aaaaaa",
+        "trap-monitorable": true,
+        "use-trap-ifces": true,
+        "is-sysrepo-ready": false,
+        "in-ifces-cnt": "1",
+        "out-ifces-cnt": "1"
+      }
+    ],
+    "instance": [
+      {
+        "name": "Intable1",
+        "module-ref": "module A",
+        "enabled": true,
+        "max-restarts-per-min": 4,
+        "last-pid": 123,
+        "interface": [
+          {
+            "name": "if2",
+            "type": "TCP",
+            "direction": "IN",
+            "tcp-params": {
+              "port": 8989,
+              "host": "somehost"
+            }
+          },
+          {
+            "name": "if1",
+            "type": "TCP",
+            "direction": "OUT",
+            "timeout": "HALF_WAIT",
+            "buffer": "on",
+            "autoflush": "off",
+            "tcp-params": {
+              "port": 8989,
+              "max-clients": 2
+            }
+          } 
+        ]
+      }
+    ]
+  }
+}

@@ -6,10 +6,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-/*--BEGIN superglobal symbolic const--*/
-/*--END superglobal symbolic const--*/
 
-/*--BEGIN macros--*/
 #define IF_NO_MEM_FAIL_MSG(ptr, msg) do { \
    if ((ptr) == NULL) { \
    fail_msg("no memory to allocate %s", (msg)); \
@@ -41,21 +38,5 @@
       } \
    } \
 } while(0);
-
-/*#define NS_TEST 1
-#define NS_ROOT_XPATH "/nemea-test-1:supervisor"
-#define NS_ROOT_XPATH_LEN 24*/
-
-/*--END macros--*/
-
-/*--BEGIN superglobal typedef--*/
-/*--END superglobal typedef--*/
-
-/*--BEGIN superglobal vars--*/
-/*--END superglobal vars--*/
-
-/*--BEGIN superglobal fn prototypes--*/
-// denote with extern
-/*--END superglobal fn prototypes--*/
 
 #endif

@@ -6,6 +6,7 @@ tests/CMakeFiles/
 logs/
 build/
 tests/build/
+cmake-build-debug
 
 .valgrind-suppressions.txt
 old_src/

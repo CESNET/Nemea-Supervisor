@@ -1,0 +1,56 @@
+{
+  "nemea-test-1:supervisor": {
+    "available-module": [
+      {
+        "name": "module A",
+        "path": "/a/a",
+        "description": "aaaaaa",
+        "trap-monitorable": true,
+        "use-trap-ifces": true,
+        "is-sysrepo-ready": false,
+        "in-ifces-cnt": "0",
+        "out-ifces-cnt": "5"
+      },
+      {
+        "name": "module B",
+        "path": "/a/b",
+        "description": "bbbbbbbbb",
+        "trap-monitorable": false,
+        "use-trap-ifces": false,
+        "is-sysrepo-ready": false
+      }
+    ],
+    "instance": [
+      {
+        "name":"inst1",
+        "module-ref": "module A",
+        "enabled":false
+      },
+      {
+        "name":"inst2",
+        "module-ref": "module A",
+        "enabled":false
+      },
+      {
+        "name":"inst3",
+        "module-ref": "module A",
+        "enabled":false
+      },
+      {
+        "name":"inst4",
+        "module-ref": "module A",
+        "enabled":false
+      },
+      {
+        "name":"inst5",
+        "module-ref": "module B",
+        "enabled":false
+      },
+      {
+        "name":"inst6",
+        "module-ref": "module B",
+        "enabled":false
+      }
+    ]
+  }
+}

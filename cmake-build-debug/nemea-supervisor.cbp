@@ -403,8 +403,8 @@
 					<DistClean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
 				</MakeCommands>
 			</Target>
-			<Target title="test_instance_control">
-				<Option output="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/test_instance_control" prefix_auto="0" extension_auto="0"/>
+			<Target title="test_inst_control">
+				<Option output="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/test_inst_control" prefix_auto="0" extension_auto="0"/>
 				<Option working_dir="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests"/>
 				<Option object_output="./"/>
 				<Option type="1"/>
@@ -423,14 +423,14 @@
 					<Add directory="/usr/include"/>
 				</Compiler>
 				<MakeCommands>
-					<Build command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_instance_control"/>
+					<Build command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_inst_control"/>
 					<CompileFile command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
 					<Clean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
 					<DistClean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
 				</MakeCommands>
 			</Target>
-			<Target title="test_instance_control/fast">
-				<Option output="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/test_instance_control" prefix_auto="0" extension_auto="0"/>
+			<Target title="test_inst_control/fast">
+				<Option output="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/test_inst_control" prefix_auto="0" extension_auto="0"/>
 				<Option working_dir="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests"/>
 				<Option object_output="./"/>
 				<Option type="1"/>
@@ -449,7 +449,7 @@
 					<Add directory="/usr/include"/>
 				</Compiler>
 				<MakeCommands>
-					<Build command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_instance_control/fast"/>
+					<Build command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_inst_control/fast"/>
 					<CompileFile command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
 					<Clean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
 					<DistClean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
@@ -513,14 +513,14 @@
 			<Option target="test_run_changes"/>
 			<Option target="test_stats"/>
 			<Option target="test_supervisor"/>
-			<Option target="test_instance_control"/>
+			<Option target="test_inst_control"/>
 		</Unit>
 		<Unit filename="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/src/conf.h">
 			<Option target="nemea-supervisor"/>
 			<Option target="test_run_changes"/>
 			<Option target="test_stats"/>
 			<Option target="test_supervisor"/>
-			<Option target="test_instance_control"/>
+			<Option target="test_inst_control"/>
 		</Unit>
 		<Unit filename="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/src/inst_control.c">
 			<Option target="nemea-supervisor"/>
@@ -544,7 +544,7 @@
 			<Option target="test_conf"/>
 			<Option target="test_stats"/>
 			<Option target="test_supervisor"/>
-			<Option target="test_instance_control"/>
+			<Option target="test_inst_control"/>
 		</Unit>
 		<Unit filename="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/src/module.h">
 			<Option target="nemea-supervisor"/>
@@ -552,7 +552,7 @@
 			<Option target="test_conf"/>
 			<Option target="test_stats"/>
 			<Option target="test_supervisor"/>
-			<Option target="test_instance_control"/>
+			<Option target="test_inst_control"/>
 		</Unit>
 		<Unit filename="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/src/run_changes.c">
 			<Option target="nemea-supervisor"/>
@@ -564,9 +564,11 @@
 		</Unit>
 		<Unit filename="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/src/service.c">
 			<Option target="nemea-supervisor"/>
+			<Option target="test_supervisor"/>
 		</Unit>
 		<Unit filename="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/src/service.h">
 			<Option target="nemea-supervisor"/>
+			<Option target="test_supervisor"/>
 		</Unit>
 		<Unit filename="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/src/stats.c">
 			<Option target="nemea-supervisor"/>
@@ -589,7 +591,7 @@
 			<Option target="test_conf"/>
 			<Option target="test_stats"/>
 			<Option target="test_supervisor"/>
-			<Option target="test_instance_control"/>
+			<Option target="test_inst_control"/>
 		</Unit>
 		<Unit filename="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/src/utils.h">
 			<Option target="nemea-supervisor"/>
@@ -598,7 +600,7 @@
 			<Option target="test_conf"/>
 			<Option target="test_stats"/>
 			<Option target="test_supervisor"/>
-			<Option target="test_instance_control"/>
+			<Option target="test_inst_control"/>
 		</Unit>
 		<Unit filename="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/tests/intable_module.c">
 			<Option target="intable_module"/>
@@ -607,7 +609,7 @@
 			<Option target="test_conf"/>
 		</Unit>
 		<Unit filename="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/tests/test_inst_control.c">
-			<Option target="test_instance_control"/>
+			<Option target="test_inst_control"/>
 		</Unit>
 		<Unit filename="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/tests/test_module.c">
 			<Option target="test_module"/>

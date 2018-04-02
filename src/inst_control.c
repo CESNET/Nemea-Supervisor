@@ -107,7 +107,7 @@ void av_module_stop_remove_by_name(const char *name)
    uint32_t fi; // Index of found module
    av_module_t *mod = NULL;
 
-   VERBOSE(V2, "Stopping module '%s'", name)
+   VERBOSE(V2, "Stopping instances of module '%s'", name)
 
    { // find module structure by name
       av_module_t *tmp = NULL;

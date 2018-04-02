@@ -213,17 +213,17 @@ test_supervisor/fast:
 .PHONY : test_supervisor/fast
 
 #=============================================================================
-# Target rules for targets named test_instance_control
+# Target rules for targets named test_inst_control
 
 # Build rule for target.
-test_instance_control: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 test_instance_control
-.PHONY : test_instance_control
+test_inst_control: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 test_inst_control
+.PHONY : test_inst_control
 
 # fast build rule for target.
-test_instance_control/fast:
-	$(MAKE) -f tests/CMakeFiles/test_instance_control.dir/build.make tests/CMakeFiles/test_instance_control.dir/build
-.PHONY : test_instance_control/fast
+test_inst_control/fast:
+	$(MAKE) -f tests/CMakeFiles/test_inst_control.dir/build.make tests/CMakeFiles/test_inst_control.dir/build
+.PHONY : test_inst_control/fast
 
 #=============================================================================
 # Target rules for targets named test_utils
@@ -254,7 +254,7 @@ help:
 	@echo "... test_conf"
 	@echo "... test_stats"
 	@echo "... test_supervisor"
-	@echo "... test_instance_control"
+	@echo "... test_inst_control"
 	@echo "... test_utils"
 .PHONY : help
 
