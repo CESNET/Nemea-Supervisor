@@ -11,40 +11,40 @@
 				<Option working_dir="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug"/>
 				<Option type="4"/>
 				<MakeCommands>
-					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/Makefile&quot;  VERBOSE=1 all"/>
-					<CompileFile command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
-					<Clean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
-					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<Build command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/Makefile&quot;  VERBOSE=1 all"/>
+					<CompileFile command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
 				</MakeCommands>
 			</Target>
 			<Target title="rebuild_cache">
 				<Option working_dir="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug"/>
 				<Option type="4"/>
 				<MakeCommands>
-					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/Makefile&quot;  VERBOSE=1 rebuild_cache"/>
-					<CompileFile command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
-					<Clean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
-					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<Build command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/Makefile&quot;  VERBOSE=1 rebuild_cache"/>
+					<CompileFile command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
 				</MakeCommands>
 			</Target>
 			<Target title="edit_cache">
 				<Option working_dir="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug"/>
 				<Option type="4"/>
 				<MakeCommands>
-					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/Makefile&quot;  VERBOSE=1 edit_cache"/>
-					<CompileFile command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
-					<Clean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
-					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<Build command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/Makefile&quot;  VERBOSE=1 edit_cache"/>
+					<CompileFile command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
 				</MakeCommands>
 			</Target>
 			<Target title="test">
 				<Option working_dir="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug"/>
 				<Option type="4"/>
 				<MakeCommands>
-					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/Makefile&quot;  VERBOSE=1 test"/>
-					<CompileFile command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
-					<Clean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
-					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<Build command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/Makefile&quot;  VERBOSE=1 test"/>
+					<CompileFile command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
 				</MakeCommands>
 			</Target>
 			<Target title="nemea-supervisor">
@@ -63,10 +63,10 @@
 					<Add directory="/usr/include"/>
 				</Compiler>
 				<MakeCommands>
-					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/src/Makefile&quot;  VERBOSE=1 nemea-supervisor"/>
-					<CompileFile command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/src/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
-					<Clean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/src/Makefile&quot;  VERBOSE=1 clean"/>
-					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/src/Makefile&quot;  VERBOSE=1 clean"/>
+					<Build command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/src/Makefile&quot;  VERBOSE=1 nemea-supervisor"/>
+					<CompileFile command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/src/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/src/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/src/Makefile&quot;  VERBOSE=1 clean"/>
 				</MakeCommands>
 			</Target>
 			<Target title="nemea-supervisor/fast">
@@ -85,10 +85,10 @@
 					<Add directory="/usr/include"/>
 				</Compiler>
 				<MakeCommands>
-					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/src/Makefile&quot;  VERBOSE=1 nemea-supervisor/fast"/>
-					<CompileFile command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/src/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
-					<Clean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/src/Makefile&quot;  VERBOSE=1 clean"/>
-					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/src/Makefile&quot;  VERBOSE=1 clean"/>
+					<Build command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/src/Makefile&quot;  VERBOSE=1 nemea-supervisor/fast"/>
+					<CompileFile command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/src/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/src/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/src/Makefile&quot;  VERBOSE=1 clean"/>
 				</MakeCommands>
 			</Target>
 			<Target title="intable_module">
@@ -111,10 +111,10 @@
 					<Add directory="/usr/include"/>
 				</Compiler>
 				<MakeCommands>
-					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 intable_module"/>
-					<CompileFile command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
-					<Clean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
-					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+					<Build command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 intable_module"/>
+					<CompileFile command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
 				</MakeCommands>
 			</Target>
 			<Target title="intable_module/fast">
@@ -137,10 +137,10 @@
 					<Add directory="/usr/include"/>
 				</Compiler>
 				<MakeCommands>
-					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 intable_module/fast"/>
-					<CompileFile command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
-					<Clean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
-					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+					<Build command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 intable_module/fast"/>
+					<CompileFile command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
 				</MakeCommands>
 			</Target>
 			<Target title="test_run_changes">
@@ -163,10 +163,10 @@
 					<Add directory="/usr/include"/>
 				</Compiler>
 				<MakeCommands>
-					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_run_changes"/>
-					<CompileFile command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
-					<Clean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
-					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+					<Build command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_run_changes"/>
+					<CompileFile command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
 				</MakeCommands>
 			</Target>
 			<Target title="test_run_changes/fast">
@@ -189,10 +189,10 @@
 					<Add directory="/usr/include"/>
 				</Compiler>
 				<MakeCommands>
-					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_run_changes/fast"/>
-					<CompileFile command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
-					<Clean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
-					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+					<Build command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_run_changes/fast"/>
+					<CompileFile command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
 				</MakeCommands>
 			</Target>
 			<Target title="test_module">
@@ -215,10 +215,10 @@
 					<Add directory="/usr/include"/>
 				</Compiler>
 				<MakeCommands>
-					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_module"/>
-					<CompileFile command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
-					<Clean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
-					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+					<Build command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_module"/>
+					<CompileFile command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
 				</MakeCommands>
 			</Target>
 			<Target title="test_module/fast">
@@ -241,10 +241,10 @@
 					<Add directory="/usr/include"/>
 				</Compiler>
 				<MakeCommands>
-					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_module/fast"/>
-					<CompileFile command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
-					<Clean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
-					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+					<Build command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_module/fast"/>
+					<CompileFile command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
 				</MakeCommands>
 			</Target>
 			<Target title="test_conf">
@@ -267,10 +267,10 @@
 					<Add directory="/usr/include"/>
 				</Compiler>
 				<MakeCommands>
-					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_conf"/>
-					<CompileFile command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
-					<Clean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
-					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+					<Build command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_conf"/>
+					<CompileFile command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
 				</MakeCommands>
 			</Target>
 			<Target title="test_conf/fast">
@@ -293,10 +293,10 @@
 					<Add directory="/usr/include"/>
 				</Compiler>
 				<MakeCommands>
-					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_conf/fast"/>
-					<CompileFile command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
-					<Clean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
-					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+					<Build command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_conf/fast"/>
+					<CompileFile command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
 				</MakeCommands>
 			</Target>
 			<Target title="test_stats">
@@ -319,10 +319,10 @@
 					<Add directory="/usr/include"/>
 				</Compiler>
 				<MakeCommands>
-					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_stats"/>
-					<CompileFile command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
-					<Clean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
-					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+					<Build command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_stats"/>
+					<CompileFile command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
 				</MakeCommands>
 			</Target>
 			<Target title="test_stats/fast">
@@ -345,10 +345,10 @@
 					<Add directory="/usr/include"/>
 				</Compiler>
 				<MakeCommands>
-					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_stats/fast"/>
-					<CompileFile command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
-					<Clean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
-					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+					<Build command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_stats/fast"/>
+					<CompileFile command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
 				</MakeCommands>
 			</Target>
 			<Target title="test_supervisor">
@@ -371,10 +371,10 @@
 					<Add directory="/usr/include"/>
 				</Compiler>
 				<MakeCommands>
-					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_supervisor"/>
-					<CompileFile command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
-					<Clean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
-					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+					<Build command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_supervisor"/>
+					<CompileFile command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
 				</MakeCommands>
 			</Target>
 			<Target title="test_supervisor/fast">
@@ -397,10 +397,10 @@
 					<Add directory="/usr/include"/>
 				</Compiler>
 				<MakeCommands>
-					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_supervisor/fast"/>
-					<CompileFile command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
-					<Clean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
-					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+					<Build command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_supervisor/fast"/>
+					<CompileFile command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
 				</MakeCommands>
 			</Target>
 			<Target title="test_instance_control">
@@ -423,10 +423,10 @@
 					<Add directory="/usr/include"/>
 				</Compiler>
 				<MakeCommands>
-					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_instance_control"/>
-					<CompileFile command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
-					<Clean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
-					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+					<Build command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_instance_control"/>
+					<CompileFile command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
 				</MakeCommands>
 			</Target>
 			<Target title="test_instance_control/fast">
@@ -449,10 +449,10 @@
 					<Add directory="/usr/include"/>
 				</Compiler>
 				<MakeCommands>
-					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_instance_control/fast"/>
-					<CompileFile command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
-					<Clean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
-					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+					<Build command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_instance_control/fast"/>
+					<CompileFile command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
 				</MakeCommands>
 			</Target>
 			<Target title="test_utils">
@@ -475,10 +475,10 @@
 					<Add directory="/usr/include"/>
 				</Compiler>
 				<MakeCommands>
-					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_utils"/>
-					<CompileFile command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
-					<Clean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
-					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+					<Build command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_utils"/>
+					<CompileFile command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
 				</MakeCommands>
 			</Target>
 			<Target title="test_utils/fast">
@@ -501,10 +501,10 @@
 					<Add directory="/usr/include"/>
 				</Compiler>
 				<MakeCommands>
-					<Build command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_utils/fast"/>
-					<CompileFile command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
-					<Clean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
-					<DistClean command="/bin/gmake -j2 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+					<Build command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 test_utils/fast"/>
+					<CompileFile command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/bin/gmake -j3 -f &quot;/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/cmake-build-debug/tests/Makefile&quot;  VERBOSE=1 clean"/>
 				</MakeCommands>
 			</Target>
 		</Build>
@@ -522,12 +522,12 @@
 			<Option target="test_supervisor"/>
 			<Option target="test_instance_control"/>
 		</Unit>
-		<Unit filename="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/src/instance_control.c">
+		<Unit filename="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/src/inst_control.c">
 			<Option target="nemea-supervisor"/>
 			<Option target="test_run_changes"/>
 			<Option target="test_supervisor"/>
 		</Unit>
-		<Unit filename="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/src/instance_control.h">
+		<Unit filename="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/src/inst_control.h">
 			<Option target="nemea-supervisor"/>
 			<Option target="test_run_changes"/>
 			<Option target="test_supervisor"/>
@@ -561,6 +561,12 @@
 		<Unit filename="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/src/run_changes.h">
 			<Option target="nemea-supervisor"/>
 			<Option target="test_supervisor"/>
+		</Unit>
+		<Unit filename="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/src/service.c">
+			<Option target="nemea-supervisor"/>
+		</Unit>
+		<Unit filename="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/src/service.h">
+			<Option target="nemea-supervisor"/>
 		</Unit>
 		<Unit filename="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/src/stats.c">
 			<Option target="nemea-supervisor"/>
@@ -600,7 +606,7 @@
 		<Unit filename="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/tests/test_conf.c">
 			<Option target="test_conf"/>
 		</Unit>
-		<Unit filename="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/tests/test_instance_control.c">
+		<Unit filename="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/tests/test_inst_control.c">
 			<Option target="test_instance_control"/>
 		</Unit>
 		<Unit filename="/home/jelen/Desktop/nemea-supervisor-sysrepo-edition/tests/test_module.c">

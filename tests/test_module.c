@@ -14,10 +14,10 @@
 ///////////////////////////HELPERS
 
 
-static void alloc_module_and_ifc(run_module_t **module, interface_t **ifc)
+static void alloc_module_and_ifc(inst_t **module, interface_t **ifc)
 {
 
-   run_module_t *test_module = run_module_alloc();
+   inst_t *test_module = inst_alloc();
    if (test_module == NULL) { fail_msg("Failed to allocate tests module."); }
    test_module->name = strdup("tests-module");
    if (test_module->name == NULL) { fail_msg("Failed to allocate tests module name."); }
@@ -90,21 +90,21 @@ static void test_module_load_exec_args(void **state)
    av_module_t *mod = av_module_alloc();
    IF_NO_MEM_FAIL_MSG(mod, "fialed to allocate module struct")
 
-   run_module_t *inst = run_module_alloc();
+   inst_t *inst = inst_alloc();
    IF_NO_MEM_FAIL_MSG(inst, "tests module")
-   inst->mod_kind = mod;
+   inst->mod_ref = mod;
 
    inst->name = strdup("tests-module");
    IF_NO_MEM_FAIL_MSG(inst->name, "inst->name")
    inst->params = strdup("-p1 -p2 --p3 p4");
    IF_NO_MEM_FAIL_MSG(inst->params, "inst->params")
-   inst->mod_kind->path = strdup("./intable_module");
-   IF_NO_MEM_FAIL_MSG(inst->mod_kind->path, "inst->module->path")
+   inst->mod_ref->path = strdup("./intable_module");
+   IF_NO_MEM_FAIL_MSG(inst->mod_ref->path, "inst->module->path")
 
    ifc = get_test_ifc(NS_IF_DIR_OUT, NS_IF_TYPE_TCP, 1);
-   run_module_interface_add(inst, ifc);
+   inst_interface_add(inst, ifc);
 
-   assert_int_equal(run_module_gen_exec_args(inst), 0);
+   assert_int_equal(inst_gen_exec_args(inst), 0);
    assert_non_null(inst->exec_args);
    assert_string_equal(inst->exec_args[0], inst->name);
    assert_string_equal(inst->exec_args[1], "-p1");
@@ -121,8 +121,8 @@ static void test_module_load_exec_args(void **state)
 
 
    ifc = get_test_ifc(NS_IF_DIR_IN, NS_IF_TYPE_UNIX, 2);
-   run_module_interface_add(inst, ifc);
-   assert_int_equal(run_module_gen_exec_args(inst), 0);
+   inst_interface_add(inst, ifc);
+   assert_int_equal(inst_gen_exec_args(inst), 0);
    assert_non_null(inst->exec_args);
    assert_string_equal(inst->exec_args[0], inst->name);
    assert_string_equal(inst->exec_args[1], "-p1");
@@ -139,7 +139,7 @@ static void test_module_load_exec_args(void **state)
 
 
    NULLP_TEST_AND_FREE(inst->params)
-   assert_int_equal(run_module_gen_exec_args(inst), 0);
+   assert_int_equal(inst_gen_exec_args(inst), 0);
    assert_non_null(inst->exec_args);
    assert_string_equal(inst->exec_args[0], inst->name);
    assert_string_equal(inst->exec_args[1], "-i");
@@ -147,7 +147,7 @@ static void test_module_load_exec_args(void **state)
    assert_null(inst->exec_args[3]);
 
    av_module_free(mod);
-   run_module_free(inst);
+   inst_free(inst);
 }
 
 static void test_module_params_no_ifc_arr(void **state)
@@ -155,7 +155,7 @@ static void test_module_params_no_ifc_arr(void **state)
    int rc;
    uint32_t params_num;
    char **parsed_params;
-   run_module_t *m1 = run_module_alloc();
+   inst_t *m1 = inst_alloc();
    if (m1 == NULL) { fail_msg("Failed to allocate new module."); }
    m1->name = "tests-module";
    m1->params = "-vvv";
@@ -182,36 +182,36 @@ static void test_module_params_no_ifc_arr(void **state)
 
 static void test_module_get_ifcs_as_arg(void **state)
 {
-   run_module_t *mod;
+   inst_t *mod;
    interface_t *ifc;
    char *params;
 
-   mod = run_module_alloc();
+   mod = inst_alloc();
    IF_NO_MEM_FAIL_MSG(mod, "mod");
 
    ifc = get_test_ifc(NS_IF_DIR_IN, NS_IF_TYPE_TCP, 1);
-   run_module_interface_add(mod, ifc);
+   inst_interface_add(mod, ifc);
    params = module_get_ifcs_as_arg(mod);
    assert_non_null(params);
    assert_string_equal(params, "t:1");
    free(params);
 
    ifc = get_test_ifc(NS_IF_DIR_OUT, NS_IF_TYPE_UNIX, 2);
-   run_module_interface_add(mod, ifc);
+   inst_interface_add(mod, ifc);
    params = module_get_ifcs_as_arg(mod);
    assert_non_null(params);
    assert_string_equal(params, "t:1,u:sock_2:123");
    free(params);
 
    ifc = get_test_ifc(NS_IF_DIR_IN, NS_IF_TYPE_UNIX, 3);
-   run_module_interface_add(mod, ifc);
+   inst_interface_add(mod, ifc);
    params = module_get_ifcs_as_arg(mod);
    assert_non_null(params);
    assert_string_equal(params, "t:1,u:sock_3,u:sock_2:123");
    free(params);
 
    ifc = get_test_ifc(NS_IF_DIR_OUT, NS_IF_TYPE_TCP, 4);
-   run_module_interface_add(mod, ifc);
+   inst_interface_add(mod, ifc);
    params = module_get_ifcs_as_arg(mod);
    assert_non_null(params);
    assert_string_equal(params, "t:1,u:sock_3,u:sock_2:123,t:192.168.0.1:4");
@@ -230,12 +230,12 @@ static void test_module_get_ifcs_as_arg(void **state)
                              "buffer=on:autoflush=off:timeout=HALF_WAIT");
    free(params);
 
-   run_module_free(mod);
+   inst_free(mod);
 }
 
 static void test_tcp_ifc_to_cli_arg(void **state)
 {
-   run_module_t *mod;
+   inst_t *mod;
    interface_t *ifc;
    char * params;
 
@@ -260,14 +260,14 @@ static void test_tcp_ifc_to_cli_arg(void **state)
    assert_non_null(params);
    assert_string_equal(params, "t:192.168.0.1:1111:123");
 
-   run_module_free(mod);
+   inst_free(mod);
    free_interface_specific_params(ifc);
    NULLP_TEST_AND_FREE(ifc);
 }
 
 static void test_tcp_tls_ifc_to_cli_arg(void **state)
 {
-   run_module_t *mod;
+   inst_t *mod;
    interface_t *ifc;
    char * params;
 
@@ -299,13 +299,13 @@ static void test_tcp_tls_ifc_to_cli_arg(void **state)
    assert_non_null(params);
    assert_string_equal(params, "T:host.com:1111:123:/key/path:/cert/path:/ca/path");
 
-   run_module_free(mod);
+   inst_free(mod);
    free_interface_specific_params(ifc);
 }
 
 static void test_unix_ifc_to_cli_arg(void **state)
 {
-   run_module_t *mod;
+   inst_t *mod;
    interface_t *ifc;
    char * params;
 
@@ -324,13 +324,13 @@ static void test_unix_ifc_to_cli_arg(void **state)
    assert_non_null(params);
    assert_string_equal(params, "u:socket_name:123");
 
-   run_module_free(mod);
+   inst_free(mod);
    free_interface_specific_params(ifc);
 }
 
 static void test_file_ifc_to_cli_arg(void **state)
 {
-   run_module_t *mod;
+   inst_t *mod;
    interface_t *ifc;
    char * params;
 
@@ -360,13 +360,13 @@ static void test_file_ifc_to_cli_arg(void **state)
    assert_non_null(params);
    assert_string_equal(params, "f:/file/path:a:223:123");
 
-   run_module_free(mod);
+   inst_free(mod);
    free_interface_specific_params(ifc);
 }
 
 static void test_bh_ifc_to_cli_arg(void **state)
 {
-   run_module_t *mod;
+   inst_t *mod;
    interface_t *ifc;
    alloc_module_and_ifc(&mod, &ifc);
    ifc->type = NS_IF_TYPE_BH;
@@ -376,58 +376,9 @@ static void test_bh_ifc_to_cli_arg(void **state)
    assert_non_null(params);
    assert_string_equal(params, "b");
 
-   run_module_free(mod);
+   inst_free(mod);
    free_interface_specific_params(ifc);
 }
-
-/*void test_ns_sr_node_load_from_xpath(void **state)
-{
-   tree_path_t node;
-   {
-      const char *xpath = "/nemea-tests-1:nemea-supervisor/module-group[name='Group 1']"
-            "/module[name='Module 1']/instance[name='i3']/interface[name='Interface 1']/type";
-      tree_path_load_from_xpath(&node, xpath);
-      assert_string_equal(node.group, "Group 1");
-      assert_string_equal(node.module, "Module 1");
-      assert_string_equal(node.inst, "i3");
-      assert_string_equal(node.ifc, "Interface 1");
-      tree_path_free(&node);
-   }
-
-   {
-      const char *xpath = "/nemea-tests-1:nemea-supervisor/module-group[name='Group 1']"
-            "/module[name='Module 1']/instance[name='i3']/enabled";
-      tree_path_load_from_xpath(&node, xpath);
-      assert_string_equal(node.group, "Group 1");
-      assert_string_equal(node.module, "Module 1");
-      assert_string_equal(node.inst, "i3");
-      assert_null(node.ifc);
-      tree_path_free(&node);
-   }
-
-   {
-      const char *xpath = "/nemea-tests-1:nemea-supervisor/module-group[name='Group 1']"
-            "/module[name='Module 1']/path";
-      tree_path_load_from_xpath(&node, xpath);
-      assert_string_equal(node.group, "Group 1");
-      assert_string_equal(node.module, "Module 1");
-      assert_null(node.inst);
-      assert_null(node.ifc);
-      tree_path_free(&node);
-   }
-
-   {
-      const char *xpath = "/nemea-tests-1:nemea-supervisor/module-group[name='Group 1']"
-            "/enabled";
-      tree_path_load_from_xpath(&node, xpath);
-      assert_string_equal(node.group, "Group 1");
-      assert_null(node.module);
-      assert_null(node.inst);
-      assert_null(node.ifc);
-      tree_path_free(&node);
-   }
-
-}*/
 
 int main(void)
 {
@@ -440,9 +391,6 @@ int main(void)
          cmocka_unit_test(test_unix_ifc_to_cli_arg),
          cmocka_unit_test(test_file_ifc_to_cli_arg),
          cmocka_unit_test(test_bh_ifc_to_cli_arg),
-/*
-         cmocka_unit_test(test_ns_sr_node_load_from_xpath),
-*/
    };
 
    return cmocka_run_group_tests(tests, NULL, NULL);

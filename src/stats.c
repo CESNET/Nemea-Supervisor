@@ -96,7 +96,6 @@ int interface_get_stats_cb(const char *xpath,
    VERBOSE(V3, "Entering interface_get_stats_cb xpath=%s", xpath)
 
    int rc;
-   //tree_path_t path;
    uint8_t vals_cnt;
    interface_t *ifc = NULL;
    sr_val_t *new_vals = NULL;
@@ -195,7 +194,7 @@ int inst_get_stats_cb(const char *xpath,
    int rc;
    uint8_t vals_cnt = 6;
    tree_path_t *tpath = NULL;
-   run_module_t *inst = NULL;
+   inst_t *inst = NULL;
    sr_val_t *new_vals = NULL;
    time_t time_now;
 
@@ -214,7 +213,7 @@ int inst_get_stats_cb(const char *xpath,
 
    VERBOSE(V3, "Stats requested for inst '%s'", tpath->inst)
 
-   inst = run_module_get_by_name(tpath->inst, NULL);
+   inst = inst_get_by_name(tpath->inst, NULL);
    if (inst == NULL) {
       VERBOSE(N_ERR, "Instance '%s' was not found for stats data.", tpath->inst)
       rc = SR_ERR_NOT_FOUND;
@@ -433,7 +432,7 @@ static void tree_path_free(tree_path_t * tpath)
 static interface_t * interface_get_by_xpath(const char *xpath)
 {
    tree_path_t *tpath = NULL;
-   run_module_t *inst = NULL;
+   inst_t *inst = NULL;
    interface_t *ifc = NULL;
 
    tpath = tree_path_load(xpath);
@@ -446,7 +445,7 @@ static interface_t * interface_get_by_xpath(const char *xpath)
       goto err_cleanup;
    }
 
-   inst = run_module_get_by_name(tpath->inst, NULL);
+   inst = inst_get_by_name(tpath->inst, NULL);
    if (inst == NULL) {
       VERBOSE(N_ERR, "") // TODO
       goto err_cleanup;

@@ -56,7 +56,6 @@ elif action == "intable_interfaces_stats":
   xpath_if1 =  "/nemea-test-1:supervisor/instance[name='Intable1']/interface[name='if1']/stats/"
   xpath_if2 =  "/nemea-test-1:supervisor/instance[name='Intable1']/interface[name='if2']/stats/"
   try:
-  # tohle musi bejt!
     s = sess.get_items(xpath_base + '*')
     if s.val_cnt() != 6:
       exit(111)

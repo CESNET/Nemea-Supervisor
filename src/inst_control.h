@@ -40,7 +40,7 @@ extern uint32_t get_running_insts_cnt();
 /**
  * @brief Checks and assigns running status of single instance
  * */
-extern void instance_set_running_status(run_module_t *inst);
+extern void inst_set_running_status(inst_t *inst);
 
 /**
  * @brief Sends SIGINT signal to all modules that TODO ...
@@ -66,7 +66,7 @@ extern void av_module_stop_remove_by_name(const char *name);
  * @param name Name of module to stop
  * @param remove Whether to remove module from vector of configured modules
  * */
-extern void run_module_stop_remove_by_name(const char *name);
+extern void inst_stop_remove_by_name(const char *name);
 
 /**
  * @brief Start all instances in insts_v vector

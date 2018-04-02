@@ -1,7 +1,7 @@
 
 #include <libtrap/trap.h>
 #include "utils.h"
-#include "instance_control.h"
+#include "inst_control.h"
 
 /*--BEGIN superglobal vars--*/
 /*--END superglobal vars--*/
@@ -31,27 +31,27 @@ static void clean_after_children();
  * @brief Start single instance process
  * @param inst Instance to start
  * */
-static void inst_start(run_module_t *inst);
+static void inst_start(inst_t *inst);
 /* --END full fns prototypes-- */
 
 /* --BEGIN superglobal fns-- */
 
 uint32_t get_running_insts_cnt()
 {
-   uint32_t some_instance_running = 0;
+   uint32_t some_inst_running = 0;
 
-   run_module_t *inst;
-   for (uint32_t i = 0; i < rnmods_v.total; i++) {
-      inst = rnmods_v.items[i];
+   inst_t *inst;
+   for (uint32_t i = 0; i < insts_v.total; i++) {
+      inst = insts_v.items[i];
 
       if (inst->pid <= 0) {
          continue;
       }
-      instance_set_running_status(inst);
-      some_instance_running += inst->running ? 1 : 0;
+      inst_set_running_status(inst);
+      some_inst_running += inst->running ? 1 : 0;
    }
 
-   return some_instance_running;
+   return some_inst_running;
 }
 
 void insts_stop_sigkill()
@@ -60,9 +60,9 @@ void insts_stop_sigkill()
    (void) get_running_insts_cnt();
 
    bool should_be_killed;
-   run_module_t *inst;
-   for (uint32_t i = 0; i < rnmods_v.total; i++) {
-      inst = rnmods_v.items[i];
+   inst_t *inst;
+   for (uint32_t i = 0; i < insts_v.total; i++) {
+      inst = insts_v.items[i];
       should_be_killed = (inst->enabled == false || inst->should_die);
 
       if (inst->running
@@ -81,9 +81,9 @@ void insts_stop_sigkill()
 void insts_stop_sigint()
 {
    bool should_be_killed;
-   run_module_t *inst;
-   for (uint32_t i = 0; i < rnmods_v.total; i++) {
-      inst = rnmods_v.items[i];
+   inst_t *inst;
+   for (uint32_t i = 0; i < insts_v.total; i++) {
+      inst = insts_v.items[i];
 
       should_be_killed = (inst->enabled == false|| inst->should_die);
 
@@ -126,25 +126,25 @@ void av_module_stop_remove_by_name(const char *name)
       }
    }
 
-   run_module_t *inst;
-   for (uint32_t i = 0; i < rnmods_v.total; i++) {
-      inst = rnmods_v.items[i];
-      if (strcmp(inst->mod_kind->name, name) == 0) {
+   inst_t *inst;
+   for (uint32_t i = 0; i < insts_v.total; i++) {
+      inst = insts_v.items[i];
+      if (strcmp(inst->mod_ref->name, name) == 0) {
          if (inst->pid > 0) {
             kill(inst->pid, SIGINT);
          }
       }
    }
    usleep(WAIT_FOR_INSTS_TO_HANDLE_SIGINT);
-   for (uint32_t i = 0; i < rnmods_v.total; i++) {
-      inst = rnmods_v.items[i];
-      if (strcmp(inst->mod_kind->name, name) == 0) {
+   for (uint32_t i = 0; i < insts_v.total; i++) {
+      inst = insts_v.items[i];
+      if (strcmp(inst->mod_ref->name, name) == 0) {
          VERBOSE(V3, "Stopping instance '%s'", inst->name)
          if (inst->pid > 0) {
             kill(inst->pid, SIGKILL);
          }
-         vector_delete(&rnmods_v, i);
-         run_module_free(inst);
+         vector_delete(&insts_v, i);
+         inst_free(inst);
          i--; // TODO
       }
    }
@@ -154,10 +154,10 @@ void av_module_stop_remove_by_name(const char *name)
    av_module_free(mod);
 }
 
-void run_module_stop_remove_by_name(const char *name)
+void inst_stop_remove_by_name(const char *name)
 {
    uint32_t fi; // Index of found instance
-   run_module_t *inst = run_module_get_by_name(name, &fi);
+   inst_t *inst = inst_get_by_name(name, &fi);
 
    if (inst == NULL) {
       // Instance was not found, no need to do anything
@@ -171,16 +171,16 @@ void run_module_stop_remove_by_name(const char *name)
       kill(inst->pid, SIGKILL);
    }
 
-   vector_delete(&rnmods_v, fi);
-   run_module_free(inst);
+   vector_delete(&insts_v, fi);
+   inst_free(inst);
 }
 
 void insts_terminate()
 {
-   run_module_t *inst = NULL;
+   inst_t *inst = NULL;
    pthread_mutex_lock(&config_lock);
-   for (uint32_t i = 0; i < rnmods_v.total; i++) {
-      inst = rnmods_v.items[i];
+   for (uint32_t i = 0; i < insts_v.total; i++) {
+      inst = insts_v.items[i];
 
       if (inst->enabled) {
          inst->enabled = false;
@@ -201,9 +201,9 @@ void insts_start()
    time_t time_now;
    VERBOSE(V3, "Updating instances status")
 
-   run_module_t *inst;
-   for (uint32_t i = 0; i < rnmods_v.total; i++) {
-      inst = rnmods_v.items[i];
+   inst_t *inst;
+   for (uint32_t i = 0; i < insts_v.total; i++) {
+      inst = insts_v.items[i];
 
       if (inst->enabled == false || inst->running == true) {
          continue;
@@ -240,9 +240,9 @@ static void clean_after_children()
    pid_t result;
    int status;
 
-   run_module_t *inst;
-   for (uint32_t i = 0; i < rnmods_v.total; i++) {
-      inst = rnmods_v.items[i];
+   inst_t *inst;
+   for (uint32_t i = 0; i < insts_v.total; i++) {
+      inst = insts_v.items[i];
 
       if (inst->pid > 0 && inst->is_my_child) {
          /* waitpid releases children that failed to execute execv in inst_start.
@@ -265,20 +265,20 @@ static void clean_after_children()
                        inst->name)
                inst->should_die = true;
                //inst->running = false;
-               run_module_clear_socks(inst);
+               inst_clear_socks(inst);
                break;
 
             default: // Module is not running
                VERBOSE(V2, "Instance %s is not running %d", inst->name, result)
                inst->should_die = true;
                //inst->running = false;
-               run_module_clear_socks(inst);
+               inst_clear_socks(inst);
          }
       }
    }
 }
 
-void instance_set_running_status(run_module_t *inst)
+void inst_set_running_status(inst_t *inst)
 {
    // Send SIGHUP to check whether process exists
    if (inst->pid > 0 && kill(inst->pid, 0) != -1) {
@@ -317,12 +317,12 @@ void instance_set_running_status(run_module_t *inst)
    }
 }
 
-void inst_start(run_module_t *inst)
+void inst_start(inst_t *inst)
 {
    char log_path_out[PATH_MAX];
    char log_path_err[PATH_MAX];
 
-   VERBOSE(V2, "Starting '%s' from %s", inst->name, inst->mod_kind->path)
+   VERBOSE(V2, "Starting '%s' from %s", inst->name, inst->mod_ref->path)
 
    memset(log_path_err, 0, PATH_MAX);
    memset(log_path_out, 0, PATH_MAX);
@@ -364,15 +364,13 @@ void inst_start(run_module_t *inst)
       }
 
       /*
-       * TODO rewrite. why? just comment?
        * Important for sending SIGINT to supervisor.
-       * Modules can't receive the signal too !!!
        * */
       setsid();
 
       // Don't even think about rewriting this to VERBOSE macro
       fprintf(stdout, "[INFO]%s Supervisor executed following command from path=%s: ",
-              get_formatted_time(), inst->mod_kind->path);
+              get_formatted_time(), inst->mod_ref->path);
       for(int i = 0; inst->exec_args[i] != NULL; i++) {
          fprintf(stdout, " %s", inst->exec_args[i]);
       }
@@ -383,7 +381,7 @@ void inst_start(run_module_t *inst)
       fflush(stdout);
       fflush(stderr);
 
-      execv(inst->mod_kind->path, inst->exec_args);
+      execv(inst->mod_ref->path, inst->exec_args);
 
       { // If correctly started, this won't be executed
          VERBOSE(N_ERR,

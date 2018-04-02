@@ -56,7 +56,7 @@ char *logs_path = NULL;
  * @param mod Group to which new module will be linked.
  * */
 static int
-run_module_load(sr_session_ctx_t *sess, char *xpath);
+inst_load(sr_session_ctx_t *sess, char *xpath);
 
 static int
 av_module_load(sr_session_ctx_t *sess, char *xpath);
@@ -69,7 +69,7 @@ av_module_load(sr_session_ctx_t *sess, char *xpath);
  * @param inst Module to which the new interface belongs to.
  * */
 static int
-interface_load(sr_session_ctx_t *sess, char *xpath, run_module_t *inst);
+interface_load(sr_session_ctx_t *sess, char *xpath, inst_t *inst);
 
 
 // TODO
@@ -103,9 +103,9 @@ interface_file_params_load(sr_session_ctx_t *sess, char *base_xpath, interface_t
  * @param inst Module for which last_pid should be reassigned
  * @param sess Sysrepo session to use for last_pid node removal
  * */
-static void instance_pid_restore(pid_t last_pid,
-                                 run_module_t *inst,
-                                 sr_session_ctx_t *sess);
+static void ins_pid_restore(pid_t last_pid,
+                            inst_t *inst,
+                            sr_session_ctx_t *sess);
 
 
 static int load_sr_str(sr_session_ctx_t *sess, char *base_xpath, char *node_xpath,
@@ -125,7 +125,7 @@ int ns_startup_config_load(sr_session_ctx_t *sess)
    sr_val_t *vals = NULL;
    size_t vals_cnt = 0;
    char av_mods_xpath[] = NS_ROOT_XPATH"/available-module";
-   char run_mods_xpath[] = NS_ROOT_XPATH"/instance";
+   char insts_xpath[] = NS_ROOT_XPATH"/instance";
 
    { // load /available-modules
       rc = sr_get_items(sess, av_mods_xpath, &vals, &vals_cnt);
@@ -147,14 +147,14 @@ int ns_startup_config_load(sr_session_ctx_t *sess)
 
 
    { // load /modules
-      rc = sr_get_items(sess, run_mods_xpath, &vals, &vals_cnt);
+      rc = sr_get_items(sess, insts_xpath, &vals, &vals_cnt);
       if (rc != SR_ERR_OK) {
          VERBOSE(N_ERR, "Failed to load %s. Error: %s", av_mods_xpath, sr_strerror(rc))
          goto err_cleanup;
       }
 
       for (int i = 0; i < vals_cnt; i++) {
-         rc = run_module_load(sess, vals[i].xpath);
+         rc = inst_load(sess, vals[i].xpath);
          if (rc != SR_ERR_OK) {
             goto err_cleanup;
          }
@@ -205,7 +205,7 @@ int av_module_load_by_name(sr_session_ctx_t *sess, const char *module_name)
       goto err_cleanup;
    }
 
-   run_module_t * x;
+   inst_t * x;
 
    for (size_t i = 0; i < insts_cnt; i++) {
       if (strcmp(insts[i].data.string_val, module_name) == 0) {
@@ -217,13 +217,13 @@ int av_module_load_by_name(sr_session_ctx_t *sess, const char *module_name)
          }
          memset(xpath, 0, XPATH_LEN);
          sprintf(xpath, NS_ROOT_XPATH"/instance[name='%s']", inst_name);
-         rc = run_module_load(sess, xpath);
+         rc = inst_load(sess, xpath);
          if (rc != SR_ERR_OK) {
             VERBOSE(N_ERR, "Failed to reload all instances of module '%s'."
                   " Failed at instance '%s'", module_name, inst_name)
             goto err_cleanup;
          }
-         x = rnmods_v.items[rnmods_v.total - 1];
+         x = insts_v.items[insts_v.total - 1];
          VERBOSE(DEBUG, "for module %s is pid %d", inst_name, x->pid)
       }
    }
@@ -238,18 +238,18 @@ err_cleanup:
    return rc;
 }
 
-int run_module_load_by_name(sr_session_ctx_t *sess, const char *inst_name)
+int inst_load_by_name(sr_session_ctx_t *sess, const char *inst_name)
 {
    int rc;
    char * xpath = NULL;
-   uint32_t xpath_len = (uint32_t) (NS_ROOT_XPATH_LEN + strlen(inst_name) + 17);
+   uint32_t xpath_len = (uint32_t) (NS_ROOT_XPATH_LEN + strlen(inst_name) + 19);
 
 
    xpath = (char *) calloc(1, sizeof(char) * (xpath_len));
    IF_NO_MEM_INT_ERR(xpath)
-   sprintf(xpath, NS_ROOT_XPATH"/module[name='%s']", inst_name);
+   sprintf(xpath, NS_ROOT_XPATH"/instance[name='%s']", inst_name);
 
-   rc = run_module_load(sess, xpath);
+   rc = inst_load(sess, xpath);
    if (rc != 0) {
       VERBOSE(N_ERR, "Failed to load new module configuration from fetched"
             " sysrepo subtree")
@@ -263,23 +263,23 @@ int run_module_load_by_name(sr_session_ctx_t *sess, const char *inst_name)
 /* --BEGIN local fns-- */
 
 static int
-run_module_load(sr_session_ctx_t *sess, char *xpath)
+inst_load(sr_session_ctx_t *sess, char *xpath)
 {
    int rc;
    pid_t last_pid = 0;
-   char *mod_kind = NULL;
+   char *mod_ref = NULL;
    char *ifc_xpath = NULL;
    size_t ifc_cnt = 0;
    sr_val_t *ifces = NULL;
 
-   run_module_t *inst = run_module_alloc();
+   inst_t *inst = inst_alloc();
    if (inst == NULL) {
       NO_MEM_ERR
       return SR_ERR_NOMEM;
    }
    IF_NO_MEM_INT_ERR(inst)
 
-   if (vector_add(&rnmods_v, inst) != 0) {
+   if (vector_add(&insts_v, inst) != 0) {
       NO_MEM_ERR
       return SR_ERR_NOMEM;
    }
@@ -289,7 +289,7 @@ run_module_load(sr_session_ctx_t *sess, char *xpath)
       VERBOSE(N_ERR, "Failed to load xpath %s/name", xpath)
       goto err_cleanup;
    }
-   rc = load_sr_str(sess, xpath, "/module-ref", &mod_kind);
+   rc = load_sr_str(sess, xpath, "/module-ref", &mod_ref);
    if (FOUND_AND_ERR(rc)) {
       VERBOSE(N_ERR, "Failed to load xpath %s/module-ref", xpath)
       goto err_cleanup;
@@ -320,14 +320,14 @@ run_module_load(sr_session_ctx_t *sess, char *xpath)
       av_module_t *mod;
       for (int i = 0; i < avmods_v.total; i++) {
          mod = avmods_v.items[i];
-         if (strcmp(mod->name, mod_kind) == 0) {
-            inst->mod_kind = mod;
+         if (strcmp(mod->name, mod_ref) == 0) {
+            inst->mod_ref = mod;
             break;
          }
       }
-      if (inst->mod_kind == NULL) {
+      if (inst->mod_ref == NULL) {
          VERBOSE(N_ERR, "Failed to load module '%s' since it's available module "
-               "'%s' is not loaded.", inst->name, mod_kind)
+               "'%s' is not loaded.", inst->name, mod_ref)
          goto err_cleanup;
       }
    }
@@ -354,7 +354,7 @@ run_module_load(sr_session_ctx_t *sess, char *xpath)
       NULLP_TEST_AND_FREE(ifc_xpath)
    }
 
-   rc = run_module_gen_exec_args(inst);
+   rc = inst_gen_exec_args(inst);
    if (rc != 0) {
       /* hopefully this would be removed in the future due to sysrepo per
        * module configuration */
@@ -365,7 +365,7 @@ run_module_load(sr_session_ctx_t *sess, char *xpath)
 
    if (last_pid > 0) {
       VERBOSE(V3, "Restoring PID=%d for %s", last_pid, inst->name)
-      instance_pid_restore(last_pid, inst, sess);
+      ins_pid_restore(last_pid, inst, sess);
    }
 
    return SR_ERR_OK;
@@ -376,8 +376,8 @@ err_cleanup:
       sr_free_values(ifces, ifc_cnt);
    }
    NULLP_TEST_AND_FREE(ifc_xpath)
-   NULLP_TEST_AND_FREE(mod_kind)
-   run_module_free(inst);
+   NULLP_TEST_AND_FREE(mod_ref)
+   inst_free(inst);
 
    return rc;
 }
@@ -403,11 +403,11 @@ av_module_load(sr_session_ctx_t *sess, char *xpath)
    if (FOUND_AND_ERR(rc)) {
       goto err_cleanup;
    }
-   rc = load_sr_num(sess, xpath, "/is-nemea-module", &(amod->is_nemea), SR_BOOL_T);
+   rc = load_sr_num(sess, xpath, "/trap-monitorable", &(amod->trap_mon), SR_BOOL_T);
    if (FOUND_AND_ERR(rc)) {
       goto err_cleanup;
    }
-   rc = load_sr_num(sess, xpath, "/is-sysrepo-ready", &(amod->is_sr_en), SR_BOOL_T);
+   rc = load_sr_num(sess, xpath, "/is-sysrepo-ready", &(amod->sr_rdy), SR_BOOL_T);
    if (FOUND_AND_ERR(rc)) {
       goto err_cleanup;
    }
@@ -420,7 +420,7 @@ err_cleanup:
 }
 
 static int
-interface_load(sr_session_ctx_t *sess, char *xpath, run_module_t *inst)
+interface_load(sr_session_ctx_t *sess, char *xpath, inst_t *inst)
 {
    int rc;
    interface_t *ifc;
@@ -521,7 +521,7 @@ interface_load(sr_session_ctx_t *sess, char *xpath, run_module_t *inst)
       goto err_cleanup;
    }
 
-   if (run_module_interface_add(inst, ifc) != 0) {
+   if (inst_interface_add(inst, ifc) != 0) {
       NO_MEM_ERR
       goto err_cleanup;
    }
@@ -692,8 +692,8 @@ err_cleanup:
 }
 
 static void
-instance_pid_restore(pid_t last_pid, run_module_t *inst,
-                                 sr_session_ctx_t *sess)
+ins_pid_restore(pid_t last_pid, inst_t *inst,
+                sr_session_ctx_t *sess)
 {
    int rc;
    //pid_t result;
@@ -719,7 +719,7 @@ instance_pid_restore(pid_t last_pid, run_module_t *inst,
    }
 
 
-   if (strcmp(run_path, inst->mod_kind->path) == 0) {
+   if (strcmp(run_path, inst->mod_ref->path) == 0) {
       // Process under PID last_pid is really this inst
       inst->pid = last_pid;
       inst->running = true;

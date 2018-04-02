@@ -14,7 +14,7 @@ pthread_mutex_t config_lock; ///< Mutex for operations on m_groups_ll and module
 //uint32_t loaded_module_groups_cnt = 0;
 
 vector_t avmods_v = {.total = 0, .capacity = 0, .items = NULL};
-vector_t rnmods_v = {.total = 0, .capacity = 0, .items = NULL};
+vector_t insts_v = {.total = 0, .capacity = 0, .items = NULL};
 
 /*--END superglobal vars--*/
 
@@ -34,11 +34,11 @@ static char * tcp_tls_ifc_to_cli_arg(const interface_t *ifc);
 static char * unix_ifc_to_cli_arg(const interface_t *ifc);
 static char * file_ifc_to_cli_arg(const interface_t *ifc);
 static char * bh_ifc_to_cli_arg(const interface_t *ifc);
-static inline char * module_get_ifcs_as_arg(run_module_t *inst);
+static inline char * module_get_ifcs_as_arg(inst_t *inst);
 
 char * strcat_many(uint8_t cnt, ...);
 
-static char **module_params_to_ifc_arr(const run_module_t *module, uint32_t *params_num,
+static char **module_params_to_ifc_arr(const inst_t *module, uint32_t *params_num,
                                        int *rc);
 static char *ifc_param_concat(char *base, char *param_s, uint16_t param_u);
 static inline void free_interface_specific_params(interface_t *ifc);
@@ -46,7 +46,7 @@ static inline void free_interface_specific_params(interface_t *ifc);
 
 /* --BEGIN superglobal fns-- */
 
-int run_module_interface_add(run_module_t *inst, interface_t *ifc)
+int inst_interface_add(inst_t *inst, interface_t *ifc)
 {
    int rc;
 
@@ -68,9 +68,9 @@ void av_module_print(const av_module_t *mod)
 {
    VERBOSE(DEBUG, "Module: %s (path=%s)", mod->name, mod->path)
 }
-void run_module_print(run_module_t *inst)
+void inst_print(inst_t *inst)
 {
-   VERBOSE(DEBUG, "Module instance: %s of %s", inst->name, inst->mod_kind->name)
+   VERBOSE(DEBUG, "Module instance: %s of %s", inst->name, inst->mod_ref->name)
    VERBOSE(DEBUG, " params=%s", inst->params)
    VERBOSE(DEBUG, " pid=%d", inst->pid)
    VERBOSE(DEBUG, " enabled=%s", inst->enabled ? "true" : "false")
@@ -128,15 +128,15 @@ av_module_t * av_module_alloc()
 
    mod->name = NULL;
    mod->path = NULL;
-   mod->is_sr_en = false;
-   mod->is_nemea = false;
+   mod->sr_rdy = false;
+   mod->trap_mon = false;
 
    return mod;
 }
 
-run_module_t * run_module_alloc()
+inst_t * inst_alloc()
 {
-   run_module_t * inst = (run_module_t *) calloc(1, sizeof(run_module_t));
+   inst_t * inst = (inst_t *) calloc(1, sizeof(inst_t));
    IF_NO_MEM_NULL_ERR(inst)
 
    inst->enabled = false;
@@ -149,7 +149,7 @@ run_module_t * run_module_alloc()
    inst->name = NULL;
    inst->params = NULL;
    inst->exec_args = NULL;
-   inst->mod_kind = NULL;
+   inst->mod_ref = NULL;
    inst->restarts_cnt = 0;
    inst->max_restarts_minute = 0;
    inst->restart_time = 0;
@@ -304,15 +304,15 @@ void av_modules_free()
    vector_free(&avmods_v);
 }
 
-void run_modules_free()
+void insts_free()
 {
-   for (uint32_t i = 0; i < rnmods_v.total; i++) {
-      run_module_free(rnmods_v.items[i]);
+   for (uint32_t i = 0; i < insts_v.total; i++) {
+      inst_free(insts_v.items[i]);
    }
-   vector_free(&rnmods_v);
+   vector_free(&insts_v);
 }
 
-void run_module_clear_socks(run_module_t *inst)
+void inst_clear_socks(inst_t *inst)
 {
    // Clean inst's socket files
    char buffer[DEFAULT_SIZE_OF_BUFFER];
@@ -353,7 +353,7 @@ void av_module_free(av_module_t *mod)
    NULLP_TEST_AND_FREE(mod)
 }
 
-void run_module_free(run_module_t *inst)
+void inst_free(inst_t *inst)
 {
 
    // TODO where to release sockets for ifc stats???
@@ -369,7 +369,7 @@ void run_module_free(run_module_t *inst)
    NULLP_TEST_AND_FREE(inst)
 }
 
-void interfaces_free(run_module_t *module)
+void interfaces_free(inst_t *module)
 {
    interface_t *cur_ifc = NULL;
    vector_t *ifces_vec[2] = { &module->in_ifces, &module->out_ifces};
@@ -404,13 +404,13 @@ void interface_stats_free(interface_t *ifc)
    }
 }
 
-run_module_t * run_module_get_by_name(const char *name, uint32_t *index)
+inst_t * inst_get_by_name(const char *name, uint32_t *index)
 {
    uint32_t fi; // Index of found instance
-   run_module_t *inst = NULL;
+   inst_t *inst = NULL;
 
-   for (fi = 0; fi < rnmods_v.total; fi++) {
-      inst = rnmods_v.items[fi];
+   for (fi = 0; fi < insts_v.total; fi++) {
+      inst = insts_v.items[fi];
       if (strcmp(inst->name, name) == 0) {
          // Instance was found
          if (index != NULL) {
@@ -463,7 +463,7 @@ static inline void free_interface_specific_params(interface_t *ifc)
  * this is temporar since we want exec_args configuration straight from
  * <param><label>-o<label/><arg>1</arg><arg>33</arg></param>
  */
-int run_module_gen_exec_args(run_module_t *inst)
+int inst_gen_exec_args(inst_t *inst)
 {
 
    char **cfg_params = NULL; // All configured params but interface params
@@ -551,30 +551,11 @@ err_cleanup:
 
    return -1;
 }
-
-/*
-char * instance_tree_path(const instance_t * inst)
-{
-// Size for 3 names and slashes
-#define TREE_BUFF_LEN (255 * 3 + 3)
-   static char buffer[TREE_BUFF_LEN];
-   bool module_group_not_null = inst->module != NULL && inst->module->group != NULL;
-   memset(buffer, 0, TREE_BUFF_LEN);
-   sprintf(buffer, "%s/%s/%s",
-           (module_group_not_null) ? inst->module->group->name : "null",
-           (inst->module != NULL) ? inst->module->name : "null",
-           inst->name);
-#undef TREE_BUFF_LEN
-
-   return buffer;
-}
-*/
-
 /* --END superglobal fns-- */
 
 /* --BEGIN local fns-- */
 
-static inline char * module_get_ifcs_as_arg(run_module_t *inst)
+static inline char * module_get_ifcs_as_arg(inst_t *inst)
 {
    char *ifc_spec = NULL;
    char *new_ifc_spec = NULL;
@@ -844,7 +825,7 @@ static char * bh_ifc_to_cli_arg(const interface_t *ifc)
 }
 
 
-static char **module_params_to_ifc_arr(const run_module_t *module,
+static char **module_params_to_ifc_arr(const inst_t *module,
                                        uint32_t *params_num,
                                        int *rc)
 {

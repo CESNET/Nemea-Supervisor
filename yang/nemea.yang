@@ -3,8 +3,7 @@ module nemea {
   namespace "urn:ietf:params:xml:ns:yang:nemea";
   prefix nemea;
   include trap-interfaces;
-  organization "CESNET, z.s.p.o.";
-  contact "cejkat@cesnet.cz";
+  contact "zidekmat@fit.cvut.cz";
   description "Module specifying configuration of Nemea supervisor.";
   revision "2018-01-17" { description "First version"; }
 

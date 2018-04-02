@@ -51,7 +51,7 @@ av_module_load_by_name(sr_session_ctx_t *sess, const char *module_name);
  * TODO
  * */
 extern int
-run_module_load_by_name(sr_session_ctx_t *sess, const char *inst_name);
+inst_load_by_name(sr_session_ctx_t *sess, const char *inst_name);
  /*--END superglobal fn prototypes--*/
 
 #endif

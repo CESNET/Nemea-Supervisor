@@ -17,7 +17,7 @@ add_definitions(-DNS_ROOT_XPATH="/nemea-test-1:supervisor")
 add_definitions(-DNS_ROOT_XPATH_LEN=24)
 
 
-set (SRC_FILES_1 ../src/utils.c ../src/module.c ../src/instance_control.c ../src/conf.c)
+set (SRC_FILES_1 ../src/utils.c ../src/module.c ../src/inst_control.c ../src/conf.c)
 add_executable(test_run_changes test_run_changes.c ${SRC_FILES_1})
 target_link_libraries(test_run_changes sysrepo pthread cmocka trap)
 
@@ -33,12 +33,12 @@ set (SRC_FILES_4 ../src/utils.c ../src/module.c)
 add_executable(test_conf test_conf.c ${SRC_FILES_4})
 target_link_libraries(test_conf cmocka sysrepo trap pthread)
 
-set (SRC_FILES_5 ../src/utils.c ../src/module.c ../src/conf.c ../src/instance_control.c ../src/run_changes.c ../src/stats.c)
+set (SRC_FILES_5 ../src/utils.c ../src/module.c ../src/conf.c ../src/inst_control.c ../src/run_changes.c ../src/stats.c)
 add_executable(test_supervisor test_supervisor.c ${SRC_FILES_5})
 target_link_libraries(test_supervisor cmocka sysrepo trap pthread)
 
 set (SRC_FILES_6 ../src/utils.c ../src/module.c ../src/conf.c)
-add_executable(test_instance_control test_instance_control.c ${SRC_FILES_6})
+add_executable(test_instance_control test_inst_control.c ${SRC_FILES_6})
 target_link_libraries(test_instance_control cmocka sysrepo trap pthread)
 
 add_executable(test_utils test_utils.c)

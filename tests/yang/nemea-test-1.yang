@@ -3,8 +3,7 @@ module nemea-test-1 {
   namespace "urn:ietf:params:xml:ns:yang:nemea-test-1";
   prefix "nemea-test-1";
   include trap-interfaces-test-1;
-  organization "CESNET, z.s.p.o.";
-  contact "cejkat@cesnet.cz";
+  contact "zidekmat@fit.cvut.cz";
   description "Module specifying configuration of Nemea supervisor.";
   revision "2018-01-17" { description "First version"; }
 

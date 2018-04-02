@@ -42,11 +42,11 @@ static void disconnect_sr()
 
 void test_insts_save_running_pids(void **state)
 {
-   system("../../tests/helpers/import_conf.sh -s nemea-test-1-startup-6.xml");
+   system("../../tests/helpers/import_conf.sh -s nemea-test-1-startup-6.json");
    connect_to_sr();
 
    int rc;
-   run_module_t *inst = NULL;
+   inst_t *inst = NULL;
    av_module_t *mod = NULL;
    sr_val_t *value = NULL;
    char xpath[] = NS_ROOT_XPATH"/instance[name='inst1']/last-pid";
@@ -57,13 +57,13 @@ void test_insts_save_running_pids(void **state)
       mod->name = "module A";
    }
    { // Fake loaded instance
-      inst = run_module_alloc();
+      inst = inst_alloc();
       IF_NO_MEM_FAIL(inst)
       inst->name = "inst1";
       inst->running = true;
-      inst->mod_kind = mod;
+      inst->mod_ref = mod;
       inst->pid = 12312;
-      vector_add(&rnmods_v, inst);
+      vector_add(&insts_v, inst);
    }
 
    { // tests PID is not in sysrepo
@@ -83,7 +83,7 @@ void test_insts_save_running_pids(void **state)
 
    NULLP_TEST_AND_FREE(inst)
    NULLP_TEST_AND_FREE(mod)
-   vector_free(&rnmods_v);
+   vector_free(&insts_v);
    disconnect_sr();
 }
 

@@ -60,7 +60,7 @@ void load_config()
 
    connect_to_sr();
 
-   assert_int_equal(vector_init(&rnmods_v, 10), 0);
+   assert_int_equal(vector_init(&insts_v, 10), 0);
 
    IF_SR_ERR_FAIL(ns_startup_config_load(sr_conn_link.sess))
 
@@ -156,10 +156,9 @@ void run_async_caller_and_sv_routine(char * async_option)
    int *retval;
 
    retval = (int *) calloc(1, sizeof(int));
-   if (retval == NULL) { fail_msg("No memory for int *retval"); }
+   IF_NO_MEM_FAIL(retval)
    async_thread = request_stats_async_thread(async_option);
    fake_sv_routine();
-
 
    if (pthread_join(async_thread, (void **) &retval)) {
       fail_msg("Failed to join assync thread");
@@ -170,6 +169,24 @@ void run_async_caller_and_sv_routine(char * async_option)
    }
 }
 
+void cleanup_structs_and_vectors()
+{
+   inst_t *inst = NULL;
+   for (uint32_t i = 0; i < insts_v.total; i++) {
+      inst = insts_v.items[i];
+      inst_free(inst);
+   }
+   vector_free(&insts_v);
+
+
+   av_module_t *avmod = NULL;
+   for (uint32_t i = 0; i < avmods_v.total; i++) {
+      avmod = avmods_v.items[i];
+      av_module_free(avmod);
+   }
+   vector_free(&avmods_v);
+}
+
 ///////////////////////////TESTS
 ///////////////////////////TESTS
 ///////////////////////////TESTS
@@ -177,7 +194,7 @@ void run_async_caller_and_sv_routine(char * async_option)
 
 void test_get_intable_interface_stats_cb(void **state)
 {
-   system(TESTS_DIR"/helpers/import_conf.sh -s nemea-test-1-startup-for-stats-1.xml");
+   system(TESTS_DIR"/helpers/import_conf.sh -s nemea-test-1-startup-for-stats-1.data.json");
    connect_to_sr();
    load_config();
    subscribe_xpath_stats(NS_ROOT_XPATH"/instance/interface/stats",
@@ -185,7 +202,7 @@ void test_get_intable_interface_stats_cb(void **state)
                          SR_SUBSCR_DEFAULT);
 
    { // Load dummy out_stats
-      run_module_t *inst = rnmods_v.items[0];
+      inst_t *inst = insts_v.items[0];
       interface_t *ifc = inst->out_ifces.items[0];
       ifc_out_stats_t *out_stats = ifc->stats;
       out_stats->sent_msg_cnt = 11111;
@@ -200,12 +217,13 @@ void test_get_intable_interface_stats_cb(void **state)
    }
 
    run_async_caller_and_sv_routine("intable_interfaces_stats");
+   cleanup_structs_and_vectors();
    disconnect_sr();
 }
 
-void test_get_instance_stats(void **state)
+void test_get_inst_stats(void **state)
 {
-   system(TESTS_DIR"/helpers/import_conf.sh -s nemea-test-1-startup-for-stats-1.xml");
+   system(TESTS_DIR"/helpers/import_conf.sh -s nemea-test-1-startup-for-stats-1.data.json");
    connect_to_sr();
    load_config();
    subscribe_xpath_stats(NS_ROOT_XPATH"/instance",
@@ -214,7 +232,7 @@ void test_get_instance_stats(void **state)
 
    {
       // Load dummy stats
-      run_module_t *inst = rnmods_v.items[0];
+      inst_t *inst = insts_v.items[0];
       inst->running = false;
       time(&inst->restart_time);
       inst->restarts_cnt = 2;
@@ -225,12 +243,14 @@ void test_get_instance_stats(void **state)
    }
 
    run_async_caller_and_sv_routine("intable_module_stats");
+   cleanup_structs_and_vectors();
    disconnect_sr();
+
 }
 
 void test_get_intable_inst_stats_including_ifc_stats(void **state)
 {
-   system(TESTS_DIR"/helpers/import_conf.sh -s nemea-test-1-startup-for-stats-1.xml");
+   system(TESTS_DIR"/helpers/import_conf.sh -s nemea-test-1-startup-for-stats-1.data.json");
    connect_to_sr();
    load_config();
    subscribe_xpath_stats(NS_ROOT_XPATH"/instance/interface/stats",
@@ -241,7 +261,7 @@ void test_get_intable_inst_stats_including_ifc_stats(void **state)
                          SR_SUBSCR_CTX_REUSE);
 
    { // load dummy data
-      run_module_t *inst = rnmods_v.items[0];
+      inst_t *inst = insts_v.items[0];
       inst->running = false;
       time(&inst->restart_time);
       inst->restarts_cnt = 2;
@@ -265,6 +285,7 @@ void test_get_intable_inst_stats_including_ifc_stats(void **state)
    }
 
    run_async_caller_and_sv_routine("intable_inst_stats_including_ifc_stats");
+   cleanup_structs_and_vectors();
    disconnect_sr();
 }
 
@@ -274,7 +295,7 @@ void test_tree_path_load(void **state)
    tree_path_t *tpath;
 
    {
-      xpath = strdup("/nemea-test-1:supervisor/instance[name='Intable1']/stats");
+      xpath = strdup(NS_ROOT_XPATH"/instance[name='Intable1']/stats");
       IF_NO_MEM_FAIL(xpath)
       tpath = tree_path_load(xpath);
       assert_non_null(tpath);
@@ -286,7 +307,7 @@ void test_tree_path_load(void **state)
    }
 
    {
-      xpath = strdup("/nemea-test-1:supervisor/instance[name='Intable1']"
+      xpath = strdup(NS_ROOT_XPATH"/instance[name='Intable1']"
                            "/interface[name='ifc1']/stats");
       IF_NO_MEM_FAIL(xpath)
       tpath = tree_path_load(xpath);
@@ -302,15 +323,15 @@ void test_tree_path_load(void **state)
 void test_interface_get_by_tree_path(void **state)
 {
    char * xpath;
-   run_module_t * inst;
+   inst_t * inst;
    interface_t * ifc;
    interface_t * stored_ifc;
 
-   inst = run_module_alloc();
+   inst = inst_alloc();
    IF_NO_MEM_FAIL(inst)
    inst->name = strdup("Intable1");
    IF_NO_MEM_FAIL(inst->name)
-   assert_int_equal(vector_add(&rnmods_v, inst), 0);
+   assert_int_equal(vector_add(&insts_v, inst), 0);
 
    stored_ifc = interface_alloc();
    IF_NO_MEM_FAIL(stored_ifc)
@@ -318,10 +339,10 @@ void test_interface_get_by_tree_path(void **state)
    stored_ifc->type = NS_IF_TYPE_UNIX;
    stored_ifc->name = strdup("ifc1");
    IF_NO_MEM_FAIL(stored_ifc->name)
-   assert_int_equal(run_module_interface_add(inst, stored_ifc), 0);
+   assert_int_equal(inst_interface_add(inst, stored_ifc), 0);
 
    {
-      xpath = strdup("/nemea-test-1:supervisor/instance[name='Intable1']"
+      xpath = strdup(NS_ROOT_XPATH"/instance[name='Intable1']"
                            "/interface[name='ifc1']/stats");
       ifc = interface_get_by_xpath(xpath);
       assert_non_null(ifc);
@@ -330,13 +351,13 @@ void test_interface_get_by_tree_path(void **state)
    }
 
    {
-      xpath = strdup("/nemea-test-1:supervisor/instance[name='Intable1']"
+      xpath = strdup(NS_ROOT_XPATH"/instance[name='Intable1']"
                            "/stats");
       ifc = interface_get_by_xpath(xpath);
       assert_null(ifc);
    }
 
-   vector_delete(&rnmods_v, 0);
+   vector_delete(&insts_v, 0);
    NULLP_TEST_AND_FREE(inst)
    NULLP_TEST_AND_FREE(stored_ifc)
 }
@@ -345,11 +366,13 @@ int main(void)
 {
 
    const struct CMUnitTest tests[] = {
+
+         cmocka_unit_test(test_get_inst_stats),
          cmocka_unit_test(test_interface_get_by_tree_path),
          cmocka_unit_test(test_tree_path_load),
-         cmocka_unit_test(test_get_instance_stats),
          cmocka_unit_test(test_get_intable_interface_stats_cb),
          cmocka_unit_test(test_get_intable_inst_stats_including_ifc_stats),
+
    };
 
    disconnect_sr();

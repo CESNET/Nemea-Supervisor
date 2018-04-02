@@ -59,7 +59,7 @@ static int load_config()
 {
    connect_to_sr();
 
-   if (vector_init(&rnmods_v, 10) != 0) {
+   if (vector_init(&insts_v, 10) != 0) {
       fail_msg("Failed to allocate memory for instances vector");
    }
 
@@ -70,7 +70,7 @@ static int load_config()
    return ns_startup_config_load(sr_conn_link.sess);
 }
 
-void start_intable_module(run_module_t *inst, char *faked_name)
+void start_intable_module(inst_t *inst, char *faked_name)
 {
    inst->pid = fork();
    if (inst->pid == -1) {
@@ -121,7 +121,7 @@ static void disconnect_and_unload_config()
 {
    disconnect_sr();
    vector_free(&avmods_v);
-   vector_free(&rnmods_v);
+   vector_free(&insts_v);
 }
 
 static void make_async_change(char * change)
@@ -156,9 +156,9 @@ static inline void fake_sv_routine()
 
 void test_ns_config_change_cb_with_module_created(void **state)
 {
-   system("helpers/import_conf.sh -s nemea-test-1-startup-4.xml");
+   system("helpers/import_conf.sh -s nemea-test-1-startup-4.json");
    load_config_and_subscribe_to_change();
-   assert_int_equal(rnmods_v.total, 4);
+   assert_int_equal(insts_v.total, 4);
    assert_int_equal(avmods_v.total, 2);
 
    make_async_change("create_available_module");
@@ -184,13 +184,13 @@ void test_ns_config_change_cb_with_module_created(void **state)
 
 void test_ns_config_change_cb_with_module_deleted(void **state)
 {
-   system("helpers/import_conf.sh -s nemea-test-1-startup-4.xml");
+   system("helpers/import_conf.sh -s nemea-test-1-startup-4.json");
    load_config_and_subscribe_to_change();
-   assert_int_equal(rnmods_v.total, 4);
+   assert_int_equal(insts_v.total, 4);
    assert_int_equal(avmods_v.total, 2);
 
    VERBOSE(DEBUG, "Starting fake module")
-   run_module_t *intable_module = rnmods_v.items[2];
+   inst_t *intable_module = insts_v.items[2];
    start_intable_module(intable_module, "intable_module");
 
    VERBOSE(DEBUG, "Making async change")
@@ -198,24 +198,24 @@ void test_ns_config_change_cb_with_module_deleted(void **state)
    VERBOSE(DEBUG, "Inside supervisor routine")
    fake_sv_routine();
 
-   assert_int_equal(rnmods_v.total, 3);
+   assert_int_equal(insts_v.total, 3);
    assert_int_equal(avmods_v.total, 1);
    disconnect_and_unload_config();
 }
 
 void test_ns_config_change_cb_with_module_modified_1(void **state)
 {
-   system("helpers/import_conf.sh -s nemea-test-1-startup-4.xml");
+   system("helpers/import_conf.sh -s nemea-test-1-startup-4.json");
    load_config_and_subscribe_to_change();
-   assert_int_equal(rnmods_v.total, 4);
+   assert_int_equal(insts_v.total, 4);
    assert_int_equal(avmods_v.total, 2);
    av_module_t *mod = NULL;
-   run_module_t *inst = NULL;
+   inst_t *inst = NULL;
 
    mod = avmods_v.items[1];
    assert_string_equal(mod->path, "/a/b");
    { // fake pid in instance m3
-      inst = rnmods_v.items[2];
+      inst = insts_v.items[2];
       assert_string_equal(inst->name, "m3");
       inst->pid = 123;
    }
@@ -228,10 +228,10 @@ void test_ns_config_change_cb_with_module_modified_1(void **state)
    assert_int_equal(avmods_v.total, 2);
    mod = avmods_v.items[1];
    assert_string_equal(mod->path, "/a/b/cc");
-   assert_int_equal(rnmods_v.total, 4);
+   assert_int_equal(insts_v.total, 4);
    /* since module instance was reloaded, it should have default PID=0
     *  and be last in the vector */
-   inst = rnmods_v.items[3];
+   inst = insts_v.items[3];
 
    assert_string_equal(inst->name, "m3");
    assert_int_equal(inst->pid, 0);
@@ -239,12 +239,12 @@ void test_ns_config_change_cb_with_module_modified_1(void **state)
    disconnect_and_unload_config();
 }
 
-void test_ns_config_change_cb_with_instance_modified_1(void **state)
+void test_ns_config_change_cb_with_inst_modified_1(void **state)
 {
-   system("helpers/import_conf.sh -s nemea-test-1-startup-4.xml");
+   system("helpers/import_conf.sh -s nemea-test-1-startup-4.json");
    load_config_and_subscribe_to_change();
 
-   run_module_t * inst = rnmods_v.items[rnmods_v.total - 1];
+   inst_t * inst = insts_v.items[insts_v.total - 1];
    assert_null(inst->params);
    assert_int_equal(inst->in_ifces.total, 0);
    assert_int_equal(inst->out_ifces.total, 1);
@@ -256,7 +256,7 @@ void test_ns_config_change_cb_with_instance_modified_1(void **state)
    VERBOSE(DEBUG, "Inside supervisor routine")
    fake_sv_routine();
 
-   inst = rnmods_v.items[rnmods_v.total - 1];
+   inst = insts_v.items[insts_v.total - 1];
    assert_string_equal(inst->name, "m4");
    assert_int_equal(inst->out_ifces.total, 1);
    assert_int_equal(inst->in_ifces.total, 1);
@@ -308,7 +308,7 @@ int main(void)
 {
 
    const struct CMUnitTest tests[] = {
-         cmocka_unit_test(test_ns_config_change_cb_with_instance_modified_1),
+         cmocka_unit_test(test_ns_config_change_cb_with_inst_modified_1),
          cmocka_unit_test(test_ns_change_load),
          cmocka_unit_test(test_ns_config_change_cb_with_module_deleted),
          cmocka_unit_test(test_ns_config_change_cb_with_module_created),

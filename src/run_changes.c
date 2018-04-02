@@ -5,7 +5,7 @@
 #include "run_changes.h"
 #include "module.h"
 #include "conf.h"
-#include "instance_control.h"
+#include "inst_control.h"
 
 /*--BEGIN superglobal vars--*/
 /*--END superglobal vars--*/
@@ -132,7 +132,7 @@ run_config_change_cb(sr_session_ctx_t *sess,
 
    /* This should allocate enough space since not all avaiable modules and it's instances
     *  configuration gets to reload at the same time */
-   vector_init(&reg_chgs, avmods_v.total + rnmods_v.total + 1);
+   vector_init(&reg_chgs, avmods_v.total + insts_v.total + 1);
 
 
    VERBOSE(V2, "Config change captured inside run_config_change_cb.")
@@ -362,8 +362,8 @@ static inline int run_change_proc_restart(sr_session_ctx_t *sess, run_change_t *
    switch (change->type) {
       case RUN_CHE_T_INST:
          VERBOSE(V3, "Action restart for instance '%s'", change->inst_name)
-         run_module_stop_remove_by_name(change->inst_name);
-         rc = run_module_load_by_name(sess, change->inst_name);
+         inst_stop_remove_by_name(change->inst_name);
+         rc = inst_load_by_name(sess, change->inst_name);
          break;
       case RUN_CHE_T_MOD:
          VERBOSE(V3, "Action restart for instances of module '%s'", change->mod_name)
@@ -383,7 +383,7 @@ static inline void run_change_proc_delete(sr_session_ctx_t *sess, run_change_t *
    switch (change->type) {
       case RUN_CHE_T_INST:
          VERBOSE(V3, "Stopping instance '%s'", change->inst_name)
-         run_module_stop_remove_by_name(change->inst_name);
+         inst_stop_remove_by_name(change->inst_name);
          break;
       case RUN_CHE_T_MOD:
          VERBOSE(V3, "Stopping module '%s'", change->mod_name)

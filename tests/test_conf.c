@@ -123,7 +123,7 @@ static int get_intable_pid_from_sr(pid_t *pid)
 
 void test_interface_specific_params_are_loaded(const interface_t *ifc)
 {
-   // from nemea-tests-1-startup-config-2.xml
+   // from nemea-tests-1-startup-config-2.json
    if (ifc->type == NS_IF_TYPE_TCP && ifc->direction == NS_IF_DIR_OUT) {
       assert_int_equal(ifc->specific_params.tcp->port, 8989);
       assert_int_equal(ifc->specific_params.tcp->max_clients, 2);
@@ -145,7 +145,7 @@ void test_interface_specific_params_are_loaded(const interface_t *ifc)
 
 void test_interface_out_params_are_loaded(const interface_t *ifc)
 {
-   // from nemea-tests-1-startup-config-2.xml
+   // from nemea-tests-1-startup-config-2.json
    switch (ifc->type) {
       case NS_IF_TYPE_TCP:
          assert_string_equal(ifc->buffer, "on");
@@ -182,7 +182,7 @@ void test_interface_is_loaded(const interface_t *ifc)
    test_interface_out_params_are_loaded(ifc);
 }
 
-void test_instance_is_loaded(const run_module_t *inst)
+void test_inst_is_loaded(const inst_t *inst)
 {
    assert_string_equal(inst->name, "intable_module");
    assert_int_equal(inst->enabled, true);
@@ -191,12 +191,12 @@ void test_instance_is_loaded(const run_module_t *inst)
 
 void cleanup_structs_and_vectors()
 {
-   run_module_t *mod = NULL;
-   for (uint32_t i = 0; i < rnmods_v.total; i++) {
-      mod = rnmods_v.items[i];
-      run_module_free(mod);
+   inst_t *inst = NULL;
+   for (uint32_t i = 0; i < insts_v.total; i++) {
+      inst = insts_v.items[i];
+      inst_free(inst);
    }
-   vector_free(&rnmods_v);
+   vector_free(&insts_v);
 
 
    av_module_t *avmod = NULL;
@@ -215,7 +215,7 @@ void cleanup_structs_and_vectors()
 
 void test_interface_file_params_load(void **state)
 {
-   system("../../tests/helpers/import_conf.sh -s nemea-test-1-startup-2.xml");
+   system("../../tests/helpers/import_conf.sh -s nemea-test-1-startup-2.data.json");
    connect_to_sr();
 
    int rc;
@@ -241,7 +241,7 @@ void test_interface_file_params_load(void **state)
 
 void test_interface_unix_params_load(void **state)
 {
-   system("../../tests/helpers/import_conf.sh -s nemea-test-1-startup-2.xml");
+   system("../../tests/helpers/import_conf.sh -s nemea-test-1-startup-2.data.json");
    connect_to_sr();
 
    int rc;
@@ -267,7 +267,7 @@ void test_interface_unix_params_load(void **state)
 
 void test_interface_tcp_tls_params_load(void **state)
 {
-   system("../../tests/helpers/import_conf.sh -s nemea-test-1-startup-2.xml");
+   system("../../tests/helpers/import_conf.sh -s nemea-test-1-startup-2.data.json");
    connect_to_sr();
 
    int rc;
@@ -292,7 +292,7 @@ void test_interface_tcp_tls_params_load(void **state)
 
 void test_interface_tcp_params_load(void **state)
 {
-   system("../../tests/helpers/import_conf.sh -s nemea-test-1-startup-2.xml");
+   system("../../tests/helpers/import_conf.sh -s nemea-test-1-startup-2.data.json");
    connect_to_sr();
 
    int rc;
@@ -315,14 +315,14 @@ void test_interface_tcp_params_load(void **state)
    disconnect_sr();
 }
 
-void test_instance_pid_restore(void **state)
+void test_inst_pid_restore(void **state)
 {
-   system("../../tests/helpers/import_conf.sh -s nemea-test-1-startup-2.xml");
+   system("../../tests/helpers/import_conf.sh -s nemea-test-1-startup-2.data.json");
    connect_to_sr();
 
    int rc;
    pid_t fetched_pid;
-   run_module_t *inst = NULL;
+   inst_t *inst = NULL;
    av_module_t *mod = NULL;
    pid_t intable_pid;
 
@@ -333,14 +333,14 @@ void test_instance_pid_restore(void **state)
       mod->path = get_intable_run_path();
    }
    { // Fake loaded instance
-      inst = run_module_alloc();
+      inst = inst_alloc();
       IF_NO_MEM_FAIL(inst)
       inst->name = "intable_module";
-      inst->mod_kind = mod;
+      inst->mod_ref = mod;
    }
 
    { // Test that nothing changes when provided hopefully non existing PID
-      instance_pid_restore(1999999, inst, sr_conn_link.sess);
+      ins_pid_restore(1999999, inst, sr_conn_link.sess);
       assert_int_equal(inst->pid, 0);
       assert_int_equal(inst->running, false);
    }
@@ -356,7 +356,7 @@ void test_instance_pid_restore(void **state)
 
 
    { // Restore PID and see that pid & running was set
-      instance_pid_restore(intable_pid, inst, sr_conn_link.sess);
+      ins_pid_restore(intable_pid, inst, sr_conn_link.sess);
       assert_int_equal(inst->pid, intable_pid);
       assert_int_equal(inst->running, true);
       // Verify PID was removed from sysrepo
@@ -374,12 +374,12 @@ void test_instance_pid_restore(void **state)
 
 void test_interface_load(void **state)
 {
-   system("../../tests/helpers/import_conf.sh -s nemea-test-1-startup-2.xml");
+   system("../../tests/helpers/import_conf.sh -s nemea-test-1-startup-2.data.json");
    connect_to_sr();
 
    char * xpath = NULL;
 
-   run_module_t *inst = run_module_alloc();
+   inst_t *inst = inst_alloc();
    IF_NO_MEM_FAIL(inst)
 
    {
@@ -396,7 +396,7 @@ void test_interface_load(void **state)
 
 void test_av_module_load(void **state)
 {
-   system("../../tests/helpers/import_conf.sh -s nemea-test-1-startup-2.xml");
+   system("../../tests/helpers/import_conf.sh -s nemea-test-1-startup-2.data.json");
    connect_to_sr();
 
    int rc;
@@ -423,14 +423,14 @@ void test_av_module_load(void **state)
    amod1 = avmods_v.items[0];
    assert_string_equal(amod1->name, "module A");
    assert_string_equal(amod1->path, "/a/a");
-   assert_int_equal(amod1->is_nemea, true);
-   assert_int_equal(amod1->is_sr_en, false);
+   assert_int_equal(amod1->trap_mon, true);
+   assert_int_equal(amod1->sr_rdy, false);
 
    amod1 = avmods_v.items[1];
    assert_string_equal(amod1->name, "module B");
    assert_string_equal(amod1->path, "/a/b");
-   assert_int_equal(amod1->is_nemea, false);
-   assert_int_equal(amod1->is_sr_en, false);
+   assert_int_equal(amod1->trap_mon, false);
+   assert_int_equal(amod1->sr_rdy, false);
 
    sr_free_tree(node);
    vector_delete(&avmods_v, 0);
@@ -440,14 +440,14 @@ void test_av_module_load(void **state)
    disconnect_sr();
 }
 
-void test_run_module_load(void **state)
+void test_inst_load(void **state)
 {
-   system("../../tests/helpers/import_conf.sh -s nemea-test-1-startup-2.xml");
+   system("../../tests/helpers/import_conf.sh -s nemea-test-1-startup-2.data.json");
    connect_to_sr();
 
    int rc;
    char * xpath = NS_ROOT_XPATH"/instance[name='intable_module']";
-   run_module_t *mod = NULL;
+   inst_t *mod = NULL;
 
    av_module_t *avmod = av_module_alloc();
    IF_NO_MEM_FAIL(avmod)
@@ -456,33 +456,32 @@ void test_run_module_load(void **state)
    rc = vector_add(&avmods_v, avmod);
    assert_int_equal(rc, 0);
 
-   assert_int_equal(rnmods_v.total, 0);
-   rc = run_module_load(sr_conn_link.sess, xpath);
+   assert_int_equal(insts_v.total, 0);
+   rc = inst_load(sr_conn_link.sess, xpath);
    assert_int_equal(rc, SR_ERR_OK);
-   assert_int_equal(rnmods_v.total, 1);
+   assert_int_equal(insts_v.total, 1);
 
-   mod = rnmods_v.items[0];
+   mod = insts_v.items[0];
    assert_string_equal(mod->name, "intable_module");
-   assert_ptr_equal(mod->mod_kind, avmod);
-   // TODO more
+   assert_ptr_equal(mod->mod_ref, avmod);
 
-   assert_int_equal(rnmods_v.total, 1);
-   vector_delete(&rnmods_v, 0);
-   assert_int_equal(rnmods_v.total, 0);
-   run_module_free(mod);
+   assert_int_equal(insts_v.total, 1);
+   vector_delete(&insts_v, 0);
+   assert_int_equal(insts_v.total, 0);
+   inst_free(mod);
 
    cleanup_structs_and_vectors();
    disconnect_sr();
 
 }
 
-void test_run_module_load_by_name(void **state)
+void test_inst_load_by_name(void **state)
 {
-   system("../../tests/helpers/import_conf.sh -s nemea-test-1-startup-2.xml");
+   system("../../tests/helpers/import_conf.sh -s nemea-test-1-startup-2.data.json");
    connect_to_sr();
 
    int rc;
-   run_module_t *inst = NULL;
+   inst_t *inst = NULL;
    av_module_t *avmod = av_module_alloc();
    IF_NO_MEM_FAIL(avmod)
    avmod->name = strdup("module A");
@@ -490,12 +489,12 @@ void test_run_module_load_by_name(void **state)
    assert_int_equal(vector_add(&avmods_v, avmod), 0);
 
    {
-      assert_int_equal(rnmods_v.total, 0);
-      rc = run_module_load_by_name(sr_conn_link.sess, "intable_module");
+      assert_int_equal(insts_v.total, 0);
+      rc = inst_load_by_name(sr_conn_link.sess, "intable_module");
       assert_int_equal(rc, 0);
-      assert_int_equal(rnmods_v.total, 1);
-      inst = rnmods_v.items[0];
-      test_instance_is_loaded(inst);
+      assert_int_equal(insts_v.total, 1);
+      inst = insts_v.items[0];
+      test_inst_is_loaded(inst);
       assert_int_equal(inst->out_ifces.total, 5);
       test_interface_is_loaded(inst->out_ifces.items[0]);
    }
@@ -506,7 +505,7 @@ void test_run_module_load_by_name(void **state)
 
 void test_av_module_load_by_name(void **state)
 {
-   system("../../tests/helpers/import_conf.sh -s nemea-test-1-startup-3.xml");
+   system("../../tests/helpers/import_conf.sh -s nemea-test-1-startup-3.data.json");
    connect_to_sr();
 
    int rc;
@@ -514,21 +513,21 @@ void test_av_module_load_by_name(void **state)
    {
       output_fd = stdout;
       assert_int_equal(avmods_v.total, 0);
-      assert_int_equal(rnmods_v.total, 0);
+      assert_int_equal(insts_v.total, 0);
       rc = av_module_load_by_name(sr_conn_link.sess, "module A");
       assert_int_equal(rc, 0);
       assert_int_equal(avmods_v.total, 1);
-      assert_int_equal(rnmods_v.total, 4);
+      assert_int_equal(insts_v.total, 4);
       cleanup_structs_and_vectors();
    }
 
    {
       assert_int_equal(avmods_v.total, 0);
-      assert_int_equal(rnmods_v.total, 0);
+      assert_int_equal(insts_v.total, 0);
       rc = av_module_load_by_name(sr_conn_link.sess, "module B");
       assert_int_equal(rc, 0);
       assert_int_equal(avmods_v.total, 1);
-      assert_int_equal(rnmods_v.total, 2);
+      assert_int_equal(insts_v.total, 2);
    }
 
    cleanup_structs_and_vectors();
@@ -538,7 +537,7 @@ void test_av_module_load_by_name(void **state)
 void test_ns_startup_config_load(void **state)
 {
 
-   system("../../tests/helpers/import_conf.sh -s nemea-test-1-startup-2.xml");
+   system("../../tests/helpers/import_conf.sh -s nemea-test-1-startup-2.data.json");
    connect_to_sr();
 
    int rc;
@@ -546,7 +545,7 @@ void test_ns_startup_config_load(void **state)
    rc = ns_startup_config_load(sr_conn_link.sess);
    IF_SR_ERR_FAIL(rc)
    assert_int_equal(avmods_v.total, 2);
-   assert_int_equal(rnmods_v.total, 1);
+   assert_int_equal(insts_v.total, 1);
 
    cleanup_structs_and_vectors();
 }
@@ -557,7 +556,7 @@ void test_module_name_from_xpath(void **state)
    char *module_name;
 
    {
-      xpath = strdup("/nemea:supervisor/module[name='yy'][module-ref='xx']/enabled");
+      xpath = strdup(NS_ROOT_XPATH"/instance[name='yy'][module-ref='xx']/enabled");
       IF_NO_MEM_FAIL(xpath)
       module_name = module_name_from_xpath(xpath);
       assert_string_equal("yy", module_name);
@@ -565,7 +564,7 @@ void test_module_name_from_xpath(void **state)
    }
 
    {
-      xpath = strdup("/nemea:supervisor/asdfasdf");
+      xpath = strdup(NS_ROOT_XPATH"/asdfasdf");
       IF_NO_MEM_FAIL(xpath)
       module_name = module_name_from_xpath(xpath);
       assert_null(module_name);
@@ -573,7 +572,7 @@ void test_module_name_from_xpath(void **state)
    }
 
    {
-      xpath = strdup("/nemea:supervisor/module[name='yy']/enabled)");
+      xpath = strdup(NS_ROOT_XPATH"/instance[name='yy']/enabled)");
       IF_NO_MEM_FAIL(xpath)
       module_name = module_name_from_xpath(xpath);
       assert_string_equal("yy", module_name);
@@ -584,18 +583,18 @@ void test_module_name_from_xpath(void **state)
 int main(void)
 {
    const struct CMUnitTest tests[] = {
-         cmocka_unit_test(test_interface_file_params_load),
          cmocka_unit_test(test_interface_unix_params_load),
          cmocka_unit_test(test_interface_tcp_tls_params_load),
          cmocka_unit_test(test_interface_tcp_params_load),
+         cmocka_unit_test(test_interface_file_params_load),
          cmocka_unit_test(test_interface_load),
          cmocka_unit_test(test_av_module_load),
-         cmocka_unit_test(test_instance_pid_restore),
-         cmocka_unit_test(test_run_module_load),
+         cmocka_unit_test(test_inst_pid_restore),
+         cmocka_unit_test(test_inst_load),
          cmocka_unit_test(test_ns_startup_config_load),
-         cmocka_unit_test(test_run_module_load_by_name),
-         cmocka_unit_test(test_module_name_from_xpath),
+         cmocka_unit_test(test_inst_load_by_name),
          cmocka_unit_test(test_av_module_load_by_name),
+         cmocka_unit_test(test_module_name_from_xpath),
 
    };
 

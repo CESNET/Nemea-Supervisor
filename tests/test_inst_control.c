@@ -7,7 +7,7 @@
 
 #include "testing_utils.h"
 #include "../src/conf.h"
-#include "../src/instance_control.c"
+#include "src/inst_control.c"
 
 /**
  * @brief Mocked sr_conn_link_t from sup.c
@@ -60,7 +60,7 @@ static int load_config()
 {
    connect_to_sr();
 
-   if (vector_init(&rnmods_v, 10) != 0) {
+   if (vector_init(&insts_v, 10) != 0) {
       fail_msg("Failed to allocate memory for instances vector");
    }
 
@@ -71,7 +71,7 @@ static int load_config()
    return ns_startup_config_load(sr_conn_link.sess);
 }
 
-void start_intable_module(run_module_t *inst, char *faked_name)
+void start_intable_module(inst_t *inst, char *faked_name)
 {
    inst->pid = fork();
    if (inst->pid == -1) {
@@ -94,7 +94,7 @@ static void disconnect_and_unload_config()
 {
    disconnect_sr();
    vector_free(&avmods_v);
-   vector_free(&rnmods_v);
+   vector_free(&insts_v);
 }
 
 ///////////////////////////TESTS
@@ -105,21 +105,21 @@ static void disconnect_and_unload_config()
 
 void test_av_module_stop_remove_by_name(void **state)
 {
-   system("../../tests/helpers/import_conf.sh -s nemea-test-1-startup-5.xml");
+   system("../../tests/helpers/import_conf.sh -s nemea-test-1-startup-5.json");
    assert_int_equal(load_config(), 0);
-   assert_int_equal(rnmods_v.total, 4);
+   assert_int_equal(insts_v.total, 4);
    assert_int_equal(avmods_v.total, 2);
 
 /*   VERBOSE(DEBUG, "Starting fake module")
-   run_module_t *intable_module = rnmods_v.items[2];
+   inst_t *intable_module = insts_v.items[2];
    start_intable_module(intable_module, "intable_module");*/
 
-   run_module_t *intable_module = rnmods_v.items[2];
+   inst_t *intable_module = insts_v.items[2];
    intable_module->pid = 123;
 
    av_module_stop_remove_by_name("module B");
 
-   assert_int_equal(rnmods_v.total, 3);
+   assert_int_equal(insts_v.total, 3);
    assert_int_equal(avmods_v.total, 1);
    disconnect_and_unload_config();
 }
@@ -130,7 +130,7 @@ int main(void)
    const struct CMUnitTest tests[] = {
 /*
  *
-         cmocka_unit_test(test_ns_config_change_cb_with_instance_modified_1),
+         cmocka_unit_test(test_ns_config_change_cb_with_inst_modified_1),
          cmocka_unit_test(test_ns_config_change_cb_with_group_modified_1),
          cmocka_unit_test(test_ns_config_change_cb_with_module_group_deleted),
          cmocka_unit_test(test_ns_config_change_cb_with_module_group_created),
