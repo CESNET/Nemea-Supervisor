@@ -128,8 +128,11 @@ av_module_t * av_module_alloc()
 
    mod->name = NULL;
    mod->path = NULL;
+   mod->sr_model = NULL;
    mod->sr_rdy = false;
    mod->trap_mon = false;
+   mod->use_trap_ifces = false;
+   mod->sr_cb_rdy = false;
 
    return mod;
 }
@@ -319,25 +322,27 @@ void inst_clear_socks(inst_t *inst)
    char service_sock_spec[14];
    interface_t *ifc = NULL;
 
-   for (uint32_t i = 0; i < inst->out_ifces.total; i++) {
-      ifc = inst->out_ifces.items[i];
+   if (inst->mod_ref->use_trap_ifces) {
+      for (uint32_t i = 0; i < inst->out_ifces.total; i++) {
+         ifc = inst->out_ifces.items[i];
 
-      // Remove all UNIX socket files
-      if (ifc->type != NS_IF_TYPE_UNIX ||
-          ifc->specific_params.nix->socket_name == NULL) {
-         continue;
+         // Remove all UNIX socket files
+         if (ifc->type != NS_IF_TYPE_UNIX ||
+             ifc->specific_params.nix->socket_name == NULL) {
+            continue;
+         }
+
+         memset(buffer, 0, DEFAULT_SIZE_OF_BUFFER);
+         sprintf(buffer, trap_default_socket_path_format,
+                 ifc->specific_params.nix->socket_name);
+         VERBOSE(V2, "Deleting socket %s of %s", buffer, inst->name)
+         unlink(buffer);
+
       }
-
-      memset(buffer, 0, DEFAULT_SIZE_OF_BUFFER);
-      sprintf(buffer, trap_default_socket_path_format,
-              ifc->specific_params.nix->socket_name);
-      VERBOSE(V2, "Deleting socket %s of %s", buffer, inst->name)
-      unlink(buffer);
-
    }
 
-   // Delete unix-socket created by modules service interface
-   if (inst->pid > 0) {
+   // Delete unix-socket created by module's service interface
+   if (inst->mod_ref->trap_mon && inst->pid > 0) {
       memset(service_sock_spec, 0, 14 * sizeof(char));
       sprintf(service_sock_spec, "service_%d", inst->pid);
       sprintf(buffer, trap_default_socket_path_format, service_sock_spec);
@@ -350,6 +355,7 @@ void av_module_free(av_module_t *mod)
 {
    NULLP_TEST_AND_FREE(mod->path)
    NULLP_TEST_AND_FREE(mod->name)
+   NULLP_TEST_AND_FREE(mod->sr_model)
    NULLP_TEST_AND_FREE(mod)
 }
 
@@ -473,10 +479,9 @@ int inst_gen_exec_args(inst_t *inst)
    uint32_t exec_args_cnt = 2; // at least the name of the future process and terminating NULL pointer
    uint32_t exec_args_pos = 0;
    int rc = 0; // Status of success for module_params_to_ifc_arr function
-   uint32_t total_ifc_cnt = inst->in_ifces.total + inst->out_ifces.total;
 
    // if the inst has trap interfaces, one argument for "-i" and one for interfaces specifier
-   if (total_ifc_cnt > 0) {
+   if (inst->mod_ref->use_trap_ifces) {
       exec_args_cnt += 2;
    }
 
@@ -514,7 +519,8 @@ int inst_gen_exec_args(inst_t *inst)
       NULLP_TEST_AND_FREE(cfg_params)
    }
 
-   if (total_ifc_cnt == 0) {
+   // Do not generate -i args
+   if (inst->mod_ref->use_trap_ifces == false) {
       inst->exec_args = exec_args;
       return 0;
    }

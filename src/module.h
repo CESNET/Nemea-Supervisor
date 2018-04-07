@@ -164,9 +164,10 @@ typedef struct av_module_s {
    bool sr_rdy; ///< Is module sysrepo ready?
    bool trap_mon; ///< Is module monitorable via TRAP's service interface?
 
+   bool use_trap_ifces; ///< Is module using trap interfaces?
    // TODO implement this
-   char * sr_model; ///< Prefix of sysrepo model that this NEMEA module uses
    bool sr_cb_rdy; ///< Does this module subscribe to changes in sysrepo's running ds?
+   char * sr_model; ///< Prefix of sysrepo model that this NEMEA module uses
 } av_module_t;
 
 typedef struct inst_s {

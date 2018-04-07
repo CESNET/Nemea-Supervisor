@@ -437,17 +437,17 @@ static interface_t * interface_get_by_xpath(const char *xpath)
 
    tpath = tree_path_load(xpath);
    if (tpath == NULL) {
-      VERBOSE(N_ERR, "") // TODO
+      VERBOSE(V3, "") // TODO
       goto err_cleanup;
    }
    if (tpath->ifc == NULL) {
-      VERBOSE(N_ERR, "") // TODO
+      VERBOSE(V3, "") // TODO
       goto err_cleanup;
    }
 
    inst = inst_get_by_name(tpath->inst, NULL);
    if (inst == NULL) {
-      VERBOSE(N_ERR, "") // TODO
+      VERBOSE(V3, "") // TODO
       goto err_cleanup;
    }
 

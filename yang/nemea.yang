@@ -89,7 +89,7 @@ module nemea {
 
       choice if-is-sysrepo-ready {
         case yes {
-          when "is-sysrepo-ready = 'true'";
+          when "is-sysrepo-ready = true";
           description "TODO";
 
           leaf sr-model-prefix {
@@ -106,9 +106,9 @@ module nemea {
       }
  
       
-      choice if-using-trap-ifces {
+      choice if-use-trap-ifces {
         case yes {
-          when "use-trap-ifces = 'true'";
+          when "use-trap-ifces = true";
           description "TODO";
 
           leaf in-ifces-cnt {

@@ -278,9 +278,9 @@ static int load_stats_json(char *data, inst_t *inst)
    if (ifc_cnt != inst->in_ifces.total) {
       /* This could mean that Supervisor has different configuration
        *  than the inst is running with. */
-      VERBOSE(N_ERR, "Instance has different number of IN interfaces (%d)"
+      VERBOSE(N_ERR, "Instance '%s' has different number of IN interfaces (%d)"
                      " than configuration from supervisor (%d).",
-              ifc_cnt, inst->in_ifces.total)
+              inst->name, ifc_cnt, inst->in_ifces.total)
       goto err_cleanup;
    }
 
@@ -291,9 +291,9 @@ static int load_stats_json(char *data, inst_t *inst)
    if (ifc_cnt != inst->out_ifces.total) {
       /* This could mean that Supervisor has different configuration
        *  than the inst is running with. */
-      VERBOSE(N_ERR, "Instance has different number of OUT interfaces (%d)"
+      VERBOSE(N_ERR, "Instance '%s' has different number of OUT interfaces (%d)"
                      " than configuration from supervisor (%d).",
-              ifc_cnt, inst->out_ifces.total)
+              inst->name, ifc_cnt, inst->out_ifces.total)
       goto err_cleanup;
    }
 
@@ -334,7 +334,6 @@ static int load_stats_json(char *data, inst_t *inst)
       IS_JSON_ARR_OR_ERR(ifces_arr)
 
       json_array_foreach(ifces_arr, arr_idx, out_ifc_cnts) {
-         // TODO does it really comes in correct order, yea? yeash
          ifc = inst->out_ifces.items[arr_idx];
          if (ifc == NULL || (arr_idx + 1) > inst->out_ifces.total) {
             VERBOSE(N_ERR, "Instance stats specify more OUT interfaces than supervisor"
@@ -362,7 +361,7 @@ static int load_stats_json(char *data, inst_t *inst)
    json_decref(json_struct);
    return 0;
 
-   err_cleanup:
+err_cleanup:
    if (json_struct != NULL) {
       json_decref(json_struct);
    }

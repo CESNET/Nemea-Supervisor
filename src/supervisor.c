@@ -358,19 +358,18 @@ void check_insts_connections()
 {
     inst_t * inst = NULL;
     bool inst_not_connected;
-    bool has_ifc_stats;
 
     for (uint32_t i = 0; i < insts_v.total; i++) {
        inst = insts_v.items[i];
 
+       // Only connect to modules that implement TRAP service interface
        if (inst->mod_ref->trap_mon == false) {
           continue;
        }
 
        inst_not_connected = (inst->service_ifc_connected == false);
-       has_ifc_stats = ((inst->in_ifces.total + inst->out_ifces.total) > 0);
        // Check connection between instance and supervisor
-       if (inst->running && inst_not_connected && has_ifc_stats) {
+       if (inst->running && inst_not_connected) {
           // Connect to instances only once per NUM_SERVICE_IFC_PERIOD
           inst->service_ifc_conn_timer++;
           if ((inst->service_ifc_conn_timer % NUM_SERVICE_IFC_PERIOD) == 1) {

@@ -411,6 +411,22 @@ av_module_load(sr_session_ctx_t *sess, char *xpath)
    if (FOUND_AND_ERR(rc)) {
       goto err_cleanup;
    }
+   rc = load_sr_num(sess, xpath, "/use-trap-ifces", &(amod->use_trap_ifces), SR_BOOL_T);
+   if (FOUND_AND_ERR(rc)) {
+      goto err_cleanup;
+   }
+
+   if (amod->sr_rdy) {
+      rc = load_sr_str(sess, xpath, "/sr-model-prefix", &(amod->sr_model));
+      if (FOUND_AND_ERR(rc)) {
+         goto err_cleanup;
+      }
+      rc = load_sr_num(sess, xpath, "/sr-callbacks-ready", &(amod->use_trap_ifces),
+                       SR_BOOL_T);
+      if (FOUND_AND_ERR(rc)) {
+         goto err_cleanup;
+      }
+   }
 
    return 0;
 
