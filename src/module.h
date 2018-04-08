@@ -16,14 +16,6 @@
 #include <fcntl.h>
 #include "utils.h"
 
-/*--BEGIN superglobal symbolic const--*/
-/*--END superglobal symbolic const--*/
-
-/*--BEGIN macros--*/
-/*--END macros--*/
-
-/*--BEGIN superglobal typedef--*/
-
 /**
  * @brief Direction of module interface
  * */
@@ -180,11 +172,8 @@ typedef struct inst_s {
    //ifc_out_stats_t *out_ifces_data;  ///< Contains statistics about all output interfaces
    ///<  the module is running with (size of total_out_ifces_cnt)
 
-   //uint32_t ifces_cnt;  ///< Number of interfaces loaded from the configuration file.
-   //TODO uint32_t config_ifces_arr_size;  ///< Size of allocated array for interfaces loaded from the configuration file (array "config_ifces").
-
-
    bool enabled; ///< Specifies whether module is enabled.
+   bool use_sysrepo; ///< Specifies whether to use sysrepo. This option can be true only to sysrepo ready modules
    bool is_my_child; ///< Specifies whether supervisor started this module.
    char *name; ///< Module name (loaded from config file).
    char *params; ///< Module parameter (loaded from config file).
@@ -193,15 +182,8 @@ typedef struct inst_s {
                      ///<  ["module_name", "-a", "blah", NULL]
 
 
-   //TODO int module_served_by_service_thread; ///< TRUE if module was added to graph struct by sevice thread, FALSE on start.
-   //TODO uint8_t module_modified_by_reload; ///< Variable used during reload_configuration, TRUE if already loaded module is changed by reload, else FALSE
-   //TODO uint8_t module_checked_by_reload; ///< Variable used during reload_configuration, TRUE if a new module is added or already loaded module is checked (used for excluding modules_ll with non-unique name)
    av_module_t *mod_ref; ///< Module executable of this process
-   //TODO int module_is_my_child;
-   bool root_perm_needed; ///< Does module require root permissions? TODO what for??
-   //TODO int remove_module; // resi jestli se ma modul odstranit, protoze neni v novy konfiguraci
-   //TODO int init_module;   // resi jestli se ma modul znovu nastavit kvuli novy konfiguraci
-
+   bool root_perm_needed; ///< Does module require root permissions?
    bool running; ///< Is module running?
    bool should_die; ///< Whether instance is marked for kill
    bool sigint_sent; ///< Specifies whether SIGKILL was sent to module.
@@ -223,19 +205,11 @@ typedef struct inst_s {
    uint64_t service_ifc_conn_timer; ///< Indicator of whether to attempt to connect to service ifc.
    ///<  Gets incremented once every supervisor_routine loop to
    ///<  connect each NUM_SERVICE_IFC_PERIOD
-   //TODO dunno what for bool has_service_ifc; ///< Indicator of whether module has service interface (socket)
 } inst_t;
-/*--END superglobal typedef--*/
 
-/*--BEGIN superglobal vars--*/
 extern pthread_mutex_t config_lock;
 extern vector_t avmods_v;
 extern vector_t insts_v;
-
-/*--END superglobal vars--*/
-
-/*--BEGIN superglobal fn prototypes--*/
-
 
 extern int inst_interface_add(inst_t *inst, interface_t *ifc);
 /**
@@ -278,6 +252,7 @@ extern void av_module_free(av_module_t *mod);
  * */
 extern void interfaces_free(inst_t *module);
 
+extern void interface_free(interface_t *ifc);
 /**
  * TODO
  * */
@@ -327,7 +302,5 @@ extern inst_t * inst_get_by_name(const char *name, uint32_t *index);
  * @param inst Module after which the socket files should be cleaned.
  * */
 extern void inst_clear_socks(inst_t *inst);
-
-/*--END superglobal fn prototypes--*/
 
 #endif //NEMEA_SUPERVISOR_MODULE_H

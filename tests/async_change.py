@@ -50,15 +50,15 @@ elif action == "instance_modified_1":
 ##################
 
 
-exit(0)
-
-def module_change_cb(sess, module_name, event, private_ctx):
-    with open('python-cb-file', 'a') as the_file:
-        the_file.write('changed\n')
-    return sr.SR_ERR_OK
-
-conn = sr.Connection("example_application")
-sess = sr.Session(conn, sr.SR_DS_STARTUP)
-subscribe = sr.Subscribe(sess)
-subscribe.module_change_subscribe("nemea-test-1", module_change_cb, None, 0, sr.SR_SUBSCR_DEFAULT | sr.SR_SUBSCR_APPLY_ONLY)
-sr.global_loop()
+#exit(0)
+#
+#def module_change_cb(sess, module_name, event, private_ctx):
+#    with open('python-cb-file', 'a') as the_file:
+#        the_file.write('changed\n')
+#    return sr.SR_ERR_OK
+#
+#conn = sr.Connection("example_application")
+#sess = sr.Session(conn, sr.SR_DS_STARTUP)
+#subscribe = sr.Subscribe(sess)
+#subscribe.module_change_subscribe("nemea-test-1", module_change_cb, None, 0, sr.SR_SUBSCR_DEFAULT | sr.SR_SUBSCR_APPLY_ONLY)
+#sr.global_loop()

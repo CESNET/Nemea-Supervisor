@@ -3,11 +3,6 @@
 
 #include "module.h"
 
-/*--BEGIN superglobal symbolic const--*/
-/*--END superglobal symbolic const--*/
-
-/*--BEGIN macros--*/
-
 /**
  * @details Time in micro seconds between sending SIGINT and SIGKILL to running
  *  modules_ll. Service thread sends SIGINT to stop running module, after time
@@ -16,20 +11,13 @@
  */
 #define WAIT_FOR_INSTS_TO_HANDLE_SIGINT 500000
 
-///< Permissions of directory with stdout and stderr logs of instances
+/**
+ * @brief Permissions of directory with stdout and stderr logs of instances
+ */
 #define PERM_LOGSDIR   (S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | \
                         S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH)
 
-/*--END macros--*/
-
-/*--BEGIN superglobal typedef--*/
-/*--END superglobal typedef--*/
-
-/*--BEGIN superglobal vars--*/
 extern char *logs_path; ///< Path to where logs directory should reside
-/*--END superglobal vars--*/
-
-/*--BEGIN superglobal fn prototypes--*/
 
 /**
  * @brief Checks and assigns running status of each instance
@@ -55,7 +43,8 @@ extern void insts_stop_sigint();
 extern void insts_stop_sigkill();
 
 /**
- * TODO
+ * @brief Stops all instances of module, removes all their structures and structure of module.
+ * @param name Name of module
  * */
 extern void av_module_stop_remove_by_name(const char *name);
 
@@ -77,6 +66,5 @@ extern void insts_start();
  * TODO
  * */
 extern void insts_terminate();
-/*--END superglobal fn prototypes--*/
 
 #endif

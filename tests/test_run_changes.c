@@ -122,14 +122,14 @@ static void load_config_and_subscribe_to_change()
    int rc;
    assert_int_equal(load_config(), 0);
 
-   VERBOSE(DEBUG, "Subscribing to %s", NS_ROOT_XPATH)
+   VERBOSE(V3, "Subscribing to %s", NS_ROOT_XPATH)
    rc = sr_subtree_change_subscribe(sr_conn_link.sess,
                                     NS_ROOT_XPATH,
                                     ns_config_change_cb_wrapper, NULL, 0,
                                     SR_SUBSCR_DEFAULT | SR_SUBSCR_APPLY_ONLY,
                                     &sr_conn_link.subscr_chges);
    IF_SR_ERR_FAIL(rc)
-   VERBOSE(DEBUG, "Subscribed")
+   VERBOSE(V3, "Subscribed")
 
    rc = sr_session_switch_ds(sr_conn_link.sess, SR_DS_RUNNING);
    IF_SR_ERR_FAIL(rc)
@@ -206,13 +206,13 @@ void test_ns_config_change_cb_with_module_deleted(void **state)
    assert_int_equal(insts_v.total, 4);
    assert_int_equal(avmods_v.total, 2);
 
-   VERBOSE(DEBUG, "Starting fake module")
+   VERBOSE(V3, "Starting fake module")
    inst_t *intable_module = insts_v.items[2];
    start_intable_module(intable_module, "intable_module");
 
-   VERBOSE(DEBUG, "Making async change")
+   VERBOSE(V3, "Making async change")
    make_async_change("delete_available_module");
-   VERBOSE(DEBUG, "Inside supervisor routine")
+   VERBOSE(V3, "Inside supervisor routine")
    fake_sv_routine();
 
    assert_int_equal(insts_v.total, 3);
@@ -237,9 +237,9 @@ void test_ns_config_change_cb_with_module_modified_1(void **state)
       inst->pid = 123;
    }
 
-   VERBOSE(DEBUG, "Making async change")
+   VERBOSE(V3, "Making async change")
    make_async_change("available_module_modified_1");
-   VERBOSE(DEBUG, "Inside supervisor routine")
+   VERBOSE(V3, "Inside supervisor routine")
    fake_sv_routine();
 
    assert_int_equal(avmods_v.total, 2);
@@ -268,9 +268,9 @@ void test_ns_config_change_cb_with_inst_modified_1(void **state)
    start_intable_module(inst, "inst");
    pid_t old_pid = inst->pid;
 
-   VERBOSE(DEBUG, "Making async change")
+   VERBOSE(V3, "Making async change")
    make_async_change("instance_modified_1");
-   VERBOSE(DEBUG, "Inside supervisor routine")
+   VERBOSE(V3, "Inside supervisor routine")
    fake_sv_routine();
 
    inst = insts_v.items[insts_v.total - 1];
@@ -304,6 +304,7 @@ void test_ns_change_load(void **state)
       assert_string_equal(change->mod_name, "Module A");
       assert_string_equal(change->node_name, "path");
       NULLP_TEST_AND_FREE(val.xpath)
+      run_change_free(&change);
    }
 
    {
@@ -318,18 +319,20 @@ void test_ns_change_load(void **state)
       assert_string_equal(change->inst_name, "test module 1");
       assert_string_equal(change->node_name, "interface");
       NULLP_TEST_AND_FREE(val.xpath)
+      run_change_free(&change);
    }
 }
 
 int main(void)
 {
 
+   //verbosity_level = V3;
    const struct CMUnitTest tests[] = {
-         cmocka_unit_test(test_ns_config_change_cb_with_inst_modified_1),
-         cmocka_unit_test(test_ns_config_change_cb_with_module_deleted),
-         cmocka_unit_test(test_ns_change_load),
-         cmocka_unit_test(test_ns_config_change_cb_with_module_created),
          cmocka_unit_test(test_ns_config_change_cb_with_module_modified_1),
+         cmocka_unit_test(test_ns_config_change_cb_with_module_created),
+         cmocka_unit_test(test_ns_change_load),
+         cmocka_unit_test(test_ns_config_change_cb_with_module_deleted),
+         cmocka_unit_test(test_ns_config_change_cb_with_inst_modified_1),
    };
 
    disconnect_sr();

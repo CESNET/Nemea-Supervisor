@@ -42,7 +42,7 @@ static void disconnect_sr()
 
 void test_insts_save_running_pids(void **state)
 {
-   system("../../tests/helpers/import_conf.sh -s nemea-test-1-startup-6.data.json");
+   system("helpers/import_conf.sh -s nemea-test-1-startup-6.data.json");
    connect_to_sr();
 
    int rc;
@@ -89,6 +89,7 @@ void test_insts_save_running_pids(void **state)
 
 int main(void)
 {
+   //verbosity_level = V3;
 
    sr_conn_link.conn = NULL;
    sr_conn_link.sess = NULL;

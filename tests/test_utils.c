@@ -71,11 +71,14 @@ void test_vector_delete(void **state)
       vector_add(&v, &ints[2]);
       vector_add(&v, &ints[3]);
       vector_add(&v, &ints[4]);
+
+      vector_free(&v);
    }
 }
 
 int main(void)
 {
+   //verbosity_level = V3;
 
    const struct CMUnitTest tests[] = {
          cmocka_unit_test(test_vector_delete),

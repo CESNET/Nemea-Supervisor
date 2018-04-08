@@ -18,6 +18,8 @@ tests/intable_module
 tests/test_stats
 tests/test_conf
 tests/test_run_changes
+tests/test_inst_control
+tests/test_utils
 src/nemea-supervisor
 src/cmake_install.cmake
 *.swp

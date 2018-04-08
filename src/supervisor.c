@@ -13,10 +13,6 @@
 #include "service.h"
 #include "main.h"
 
- /*--BEGIN superglobal vars--*/
- /*--END superglobal vars--*/
-
- /*--BEGIN local #define--*/
 /**
  * @brief Program identifier supplied to Sysrepo
  * */
@@ -42,16 +38,8 @@
 #define SERVICE_THREAD_SLEEP_IN_MICSEC 1500000
 
 
-
-
- /*--END local #define--*/
- /****************************************************************************/
-
- /****************************************************************************/
- /*--BEGIN local typedef--*/
-
 /**
- * @brief TODO
+ * @brief Structure to hold sysrepo connection, session and subscription
  * */
 typedef struct sr_conn_link_s {
  sr_conn_ctx_t *conn; ///< Sysrepo connection to use in application
@@ -60,33 +48,18 @@ typedef struct sr_conn_link_s {
 } sr_conn_link_t;
 
 
-
-
- /*--END local typedef--*/
- /****************************************************************************/
-
- /****************************************************************************/
- /* --BEGIN local vars-- */
-// TODO do structu???
 bool supervisor_stopped = false; ///< Controls loop of supervisor_routine
-bool supervisor_initialized = false; ///< Specifies whether supervisor_initialization
-                                     ///<  completed successfully
-bool terminate_insts_at_exit = false; ///< Specifies whether signal handler wants
-                                        ///<  to terminate all instances at exit
+bool supervisor_initialized = false; ///< Specifies whether supervisor_initialization completed successfully
+bool terminate_insts_at_exit = false; ///< Specifies whether signal handler wants to terminate all instances at exit
 int supervisor_exit_code = EXIT_SUCCESS; ///< What exit code to return at exit
-uint64_t last_total_cpu = 0; // Variable with total cpu usage of whole operating system
+uint64_t last_total_cpu = 0; ///< Variable with total cpu usage of whole operating system
 
 
-time_t sup_init_time = 0; // Time of supervisor initialization
 sr_conn_link_t sr_conn_link = {
       .conn = NULL,
       .sess = NULL,
 }; ///< Sysrepo connection link
- /* --END local vars-- */
- /****************************************************************************/
 
- /****************************************************************************/
- /* --BEGIN full fns prototypes-- */
 
 static int check_file_type_perm(char *item_path, uint8_t file_type, int file_perm);
 static char *get_absolute_file_path(char *file_name);
@@ -107,29 +80,19 @@ static inline void inst_get_vmrss(inst_t *inst);
  * */
 static void insts_save_running_pids();
 
- /* --END full fns prototypes-- */
- /****************************************************************************/
-
- /****************************************************************************/
- /* --BEGIN superglobal fns-- */
 int init_paths()
 {
    char *ptr = NULL;
    char *buffer = NULL;
-   //char modules_logs_path[PATH_MAX];
    char path[PATH_MAX];
 
    /* Check logs directory */
    if (check_file_type_perm(logs_path, CHECK_DIR, R_OK | W_OK) == -1) {
-      PRINT_ERR("Check the path and permissions (read and write needed) of the logs directory \"%s\".", logs_path)
+      PRINT_ERR("Check the path and permissions (read and write needed) of the logs directory '%s'.", logs_path)
       return -1;
    }
 
-   // TODO check socket path
-   // TODO do I need sockets? no those are for interactive mode
-
-   /* create absolute paths */
-
+   // Create absolute paths for supervisor logs string
    ptr = get_absolute_file_path(logs_path);
    if (ptr != NULL) {
       NULLP_TEST_AND_FREE(logs_path);
@@ -163,33 +126,20 @@ int init_paths()
       }
    }
 
-   // Try to open supervisor debug log file
-   memset(path, 0, PATH_MAX * sizeof(char));
-   snprintf(path, PATH_MAX, "%s%s", logs_path, SUPERVISOR_DEBUG_LOG_FILE_NAME);
-   supervisor_debug_log_fd = fopen(path, "a");
-   if (supervisor_debug_log_fd == NULL) {
-      VERBOSE(N_ERR, "Could not open '%s' supervisor debug log file.", path)
-      return -1;
-   } else {
-      VERBOSE(DEBUG, "--------------------------------------------");
-   }
 
-
-   VERBOSE(DEBUG, "daemon_flag==%d", daemon_flag)
    if (daemon_flag) {
       // Try to create main supervisor log file
       memset(path, 0, PATH_MAX * sizeof(char));
       snprintf(path, PATH_MAX, "%s%s", logs_path, SUPERVISOR_LOG_FILE_NAME);
       supervisor_log_fd = fopen (path, "a");
       if (supervisor_log_fd == NULL) {
-         PRINT_ERR("Could not open \"%s\" supervisor log file.", path)
+         VERBOSE(N_ERR, "Could not open '%s' supervisor log file.", path)
          return -1;
       } else {
-         VERBOSE(SUP_LOG, "--------------------------------------------")
+         VERBOSE(V1, "--------------------------------------------")
       }
       output_fd = supervisor_log_fd;
    } else {
-      VERBOSE(DEBUG, "output_fd=stdout")
       output_fd = stdout;
    }
 
@@ -199,8 +149,6 @@ int init_paths()
 int supervisor_initialization()
 {
    int rc;
-
-   time(&sup_init_time);
 
    // Initialize main mutex
    pthread_mutex_init(&config_lock, NULL);
@@ -299,14 +247,14 @@ int supervisor_initialization()
    }
 
    supervisor_initialized = true;
-   VERBOSE(DEBUG, "Supervisor successfuly initialized")
+   VERBOSE(V3, "Supervisor successfuly initialized")
 
    return 0;
 }
 
 void terminate_supervisor(bool should_terminate_insts)
 {
-   VERBOSE(DEBUG, "Terminating supervisor")
+   VERBOSE(V3, "Terminating supervisor")
 
    // Unsubscribe sysrepo callbacks first so that they won't run on empty structures
    if (sr_conn_link.subscr != NULL) {
@@ -347,13 +295,6 @@ void terminate_supervisor(bool should_terminate_insts)
 
 }
 
- /* --END superglobal fns-- */
- /****************************************************************************/
-
- /****************************************************************************/
- /* --BEGIN local fns-- */
-
-
 void check_insts_connections()
 {
     inst_t * inst = NULL;
@@ -378,7 +319,7 @@ void check_insts_connections()
                 close(inst->service_sd);
                 inst->service_sd = -1;
              }
-             VERBOSE(DEBUG, "Trying to connect to inst '%s'", inst->name)
+             VERBOSE(V3, "Trying to connect to inst '%s'", inst->name)
              connect_to_inst(inst);
           }
        }
@@ -393,9 +334,9 @@ int check_file_type_perm(char *item_path, uint8_t file_type, int file_perm)
       return -1;
    }
 
-   if (S_ISREG(st.st_mode) == TRUE && file_type == CHECK_FILE) {
+   if (S_ISREG(st.st_mode) == 1 && file_type == CHECK_FILE) {
       // nothing to do here
-   } else if (S_ISDIR(st.st_mode) == TRUE && file_type == CHECK_DIR) {
+   } else if (S_ISDIR(st.st_mode) == 1 && file_type == CHECK_DIR) {
       // nothing to do here
    } else {
       // print warning?
@@ -454,10 +395,6 @@ int daemon_init_process()
 
 void free_output_file_strings_and_streams()
 {
-   if (supervisor_debug_log_fd != NULL) {
-      fclose(supervisor_debug_log_fd);
-      supervisor_debug_log_fd = NULL;
-   }
    if (supervisor_log_fd != NULL) {
       fclose(supervisor_log_fd);
       supervisor_log_fd = NULL;
@@ -468,7 +405,7 @@ int load_configuration()
 {
    int rc;
 
-   VERBOSE(N_INFO,"Loading sysrepo configuration");
+   VERBOSE(V1,"Loading sysrepo configuration");
 
    rc = vector_init(&insts_v, 10);
    if (rc != 0) {
@@ -490,19 +427,19 @@ int load_configuration()
       return rc;
    }
 
-   VERBOSE(DEBUG, "Printing available modules:")
+   VERBOSE(V3, "Printing available modules:")
    for (uint32_t i = 0; i < avmods_v.total; i++) {
       av_module_print(avmods_v.items[i]);
    }
 
 
-   VERBOSE(DEBUG, "Printing instances:")
+   VERBOSE(V3, "Printing instances:")
    for (uint32_t i = 0; i < insts_v.total; i++) {
       inst_print(insts_v.items[i]);
    }
 
-   VERBOSE(N_INFO, "Loaded %d modules", insts_v.total)
-   VERBOSE(N_INFO, "Loaded %d instances", insts_v.total)
+   VERBOSE(V1, "Loaded %d modules", insts_v.total)
+   VERBOSE(V1, "Loaded %d instances", insts_v.total)
 
    return 0;
 }
@@ -514,28 +451,28 @@ void sig_handler(int catched_signal)
          break;
 
       case SIGTERM:
-         VERBOSE(N_WARN,"SIGTERM catched -> I'm going to terminate myself!")
+         VERBOSE(V1,"SIGTERM catched -> I'm going to terminate myself!")
          supervisor_stopped = true;
          terminate_insts_at_exit = true;
          supervisor_exit_code = EXIT_SUCCESS;
          break;
 
       case SIGINT:
-         VERBOSE(N_WARN,"SIGINT catched -> I'm going to terminate myself!")
+         VERBOSE(V1,"SIGINT catched -> I'm going to terminate myself!")
          supervisor_stopped = true;
          terminate_insts_at_exit = true; // TODO change to false later
          supervisor_exit_code = EXIT_SUCCESS;
          break;
 
       case SIGQUIT:
-         VERBOSE(N_WARN,"SIGQUIT catched -> I'm going to terminate myself!")
+         VERBOSE(V1,"SIGQUIT catched -> I'm going to terminate myself!")
          supervisor_stopped = true;
          terminate_insts_at_exit = false;
          supervisor_exit_code = EXIT_SUCCESS;
          break;
 
       case SIGSEGV:
-         VERBOSE(N_WARN,"Ouch, SIGSEGV catched -> I'm going to terminate myself!")
+         VERBOSE(V1,"Ouch, SIGSEGV catched -> I'm going to terminate myself!")
          terminate_supervisor(false);
          exit(EXIT_FAILURE);
       default:
@@ -549,9 +486,9 @@ void supervisor_routine()
    uint32_t running_insts_cnt = 0;
    //uint64_t period_cnt = 0;
 
-   VERBOSE(DEBUG, "Starting supervisor routine")
+   VERBOSE(V3, "Starting supervisor routine")
    while (supervisor_stopped == false) {
-      VERBOSE(DEBUG, "-----routine loop-----")
+      VERBOSE(V3, "-----routine loop-----")
 
       /* Lock instances list so that async changes from sysrepo don't
        * interfere with this routine */
@@ -560,13 +497,14 @@ void supervisor_routine()
          // Start instances that should be running
          insts_start();
          running_insts_cnt = get_running_insts_cnt();
-         VERBOSE(DEBUG, "Found %d running instances", running_insts_cnt)
+         VERBOSE(V3, "Found %d running instances", running_insts_cnt)
 
          // Check which instances need to be killed and kill them
+         VERBOSE(V3, "Trying to kill instances that should die")
          insts_stop_sigint();
          insts_stop_sigkill();
          running_insts_cnt = get_running_insts_cnt();
-         VERBOSE(DEBUG, "Found %d running instances", running_insts_cnt)
+         VERBOSE(V3, "Found %d running instances", running_insts_cnt)
 
          // Update CPU and memory usage
          insts_update_resources_usage();
@@ -599,10 +537,10 @@ void supervisor_routine()
       // DEBUG OPTIONS STOP
       // -------------
    }
-   VERBOSE(DEBUG, "Supervisor routine finished")
+   VERBOSE(V3, "Supervisor routine finished")
 
    { // Disconnect from running instances
-      VERBOSE(DEBUG, "Disconnecting from running instances")
+      VERBOSE(V3, "Disconnecting from running instances")
       pthread_mutex_lock(&config_lock);
       {
          for (uint32_t i = 0; i < insts_v.total; i++) {
@@ -647,9 +585,9 @@ static inline void inst_get_vmrss(inst_t *inst)
 
    fd = fopen(path, "r");
    if (fd == NULL) {
-      VERBOSE(DEBUG, "Failed to open stats file of '%s' (PID=%d)",
+      VERBOSE(V2, "Failed to open stats file of '%s' (PID=%d)",
               inst->name, inst->pid)
-      goto cleanup;
+      goto err_cleanup;
    }
 
    while (-1 != getline(&line, &line_len, fd)) {
@@ -666,7 +604,7 @@ static inline void inst_get_vmrss(inst_t *inst)
          break;
       }
    }
-cleanup:
+err_cleanup:
    if (fd != NULL) {
       fclose(fd);
    }
@@ -849,8 +787,6 @@ static void insts_save_running_pids() {
    int rc;
    sr_val_t *val;
 
-   VERBOSE(DEBUG, "==%d", insts_v.total)
-
    if (insts_v.total == 0) {
       // No PIDs to save
       return;
@@ -900,6 +836,3 @@ static void insts_save_running_pids() {
 
    sr_free_val(val);
 }
-
- /* --END local fns-- */
- /****************************************************************************/

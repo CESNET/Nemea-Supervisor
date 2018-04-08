@@ -3,20 +3,6 @@
 #include "utils.h"
 #include "inst_control.h"
 
-/*--BEGIN superglobal vars--*/
-/*--END superglobal vars--*/
-
-/*--BEGIN local #define--*/
-/*--END local #define--*/
-
-/*--BEGIN local typedef--*/
-/*--END local typedef--*/
-
-/* --BEGIN local vars-- */
-/* --END local vars-- */
-
-/* --BEGIN full fns prototypes-- */
-
 /**
  * @brief Releases child processes of supervisor and cleans socket files
  * @details When supervisor kills instance it started (its child) or fails to start
@@ -32,9 +18,7 @@ static void clean_after_children();
  * @param inst Instance to start
  * */
 static void inst_start(inst_t *inst);
-/* --END full fns prototypes-- */
 
-/* --BEGIN superglobal fns-- */
 
 uint32_t get_running_insts_cnt()
 {
@@ -187,7 +171,7 @@ void insts_terminate()
       }
    }
 
-   VERBOSE(DEBUG, "killing all the flies")
+   VERBOSE(V3, "Killing all instances")
    // Ensure they get killed
    insts_stop_sigint();
    usleep(WAIT_FOR_INSTS_TO_HANDLE_SIGINT);
@@ -215,7 +199,7 @@ void insts_start()
       if (time_now - inst->restart_time <= 60) {
          inst->restarts_cnt++;
          if (inst->restarts_cnt == inst->max_restarts_minute) {
-            VERBOSE(MOD_EVNT,
+            VERBOSE(V2,
                     "Instance '%s' reached restart limit. Disabling.",
                     inst->name)
             inst->enabled = false;
@@ -232,9 +216,7 @@ void insts_start()
    // Clean after instances that failed to start
    clean_after_children();
 }
-/* --END superglobal fns-- */
 
-/* --BEGIN local fns-- */
 static void clean_after_children()
 {
    pid_t result;
@@ -375,7 +357,7 @@ void inst_start(inst_t *inst)
          fprintf(stdout, " %s", inst->exec_args[i]);
       }
       fprintf(stdout, "\n");
-      VERBOSE(N_INFO, "")
+      VERBOSE(V1, "")
 
       // Make sure execution message gets written to logs files
       fflush(stdout);
@@ -390,11 +372,9 @@ void inst_start(inst_t *inst)
                  errno)
          fflush(stdout);
          //terminate_supervisor(false);
-         VERBOSE(DEBUG, " trying to exit")
          close(fd_stdout);
          close(fd_stderr);
          _exit(EXIT_FAILURE);
       }
    }
 }
-/* --END local fns-- */

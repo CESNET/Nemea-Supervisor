@@ -8,39 +8,35 @@
         "trap-monitorable": true,
         "use-trap-ifces": true,
         "is-sysrepo-ready": false,
-        "in-ifces-cnt": "1",
-        "out-ifces-cnt": "1"
+        "in-ifces-cnt": "0",
+        "out-ifces-cnt": "5"
       }
     ],
     "instance": [
       {
-        "name": "Intable1",
+        "name": "intable_module",
         "module-ref": "module A",
         "enabled": true,
         "max-restarts-per-min": 4,
         "last-pid": 123,
         "interface": [
           {
-            "name": "if2",
-            "type": "TCP",
+            "name": "if1",
+            "type": "UNIXSOCKET",
             "direction": "IN",
-            "tcp-params": {
-              "port": 8989,
-              "host": "somehost"
+            "unix-params": {
+              "socket-name": "socket-name"
             }
           },
           {
-            "name": "if1",
-            "type": "TCP",
+            "name": "if2",
+            "type": "UNIXSOCKET",
             "direction": "OUT",
-            "timeout": "HALF_WAIT",
-            "buffer": "on",
-            "autoflush": "off",
-            "tcp-params": {
-              "port": 8989,
-              "max-clients": 2
+            "unix-params": {
+              "socket-name": "socket-name",
+              "max-clients": 333
             }
-          } 
+          }
         ]
       }
     ]

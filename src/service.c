@@ -70,7 +70,6 @@ int recv_ifc_stats(inst_t *inst)
 
    // Check whether the inst is running and is connected with supervisor via service interface
    if (false == inst->running || false == inst->service_ifc_connected) {
-      // TODO irelevant? checkuje se to uz predtim
       return -1;
    }
 
@@ -103,7 +102,7 @@ int recv_ifc_stats(inst_t *inst)
    }
 
    // Decode json and save stats into inst structure
-   VERBOSE(DEBUG, "%s", buffer)
+   VERBOSE(V3, "Received JSON: %s", buffer)
    if (load_stats_json(buffer, inst) == -1) {
       VERBOSE(N_ERR, "Error while receiving stats from inst '%s'.", inst->name);
       goto error_label;
@@ -219,7 +218,7 @@ static int load_stats_json(char *data, inst_t *inst)
 #define FETCH_VALUE_OR_ERR(json_object, key) do { \
    value = json_object_get((json_object), (key)) ;\
    if ((key) == NULL) { \
-      VERBOSE(N_WARN, "Could not get JSON key '%s' on line %d", (key), __LINE__) \
+      VERBOSE(N_ERR, "Could not get JSON key '%s' on line %d", (key), __LINE__) \
       goto err_cleanup; \
    } \
 } while (0);
@@ -378,7 +377,7 @@ static int recv_data(inst_t *inst, uint32_t size, void *data)
       last_received = (int) recv(inst->service_sd, data + total_received,
                                  size - total_received, MSG_DONTWAIT);
       if (last_received == 0) {
-         VERBOSE(DEBUG, "Instance service thread closed its socket, im done!")
+         VERBOSE(V3, "Instance service thread closed its socket, everything received!")
          return -1;
       } else if (last_received == -1) {
          if (errno == EAGAIN || errno == EWOULDBLOCK) {

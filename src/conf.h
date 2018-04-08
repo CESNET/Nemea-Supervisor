@@ -8,21 +8,8 @@
 
 #include <sysrepo.h>
 
- /*--BEGIN superglobal symbolic const--*/
- /*--END superglobal symbolic const--*/
-
- /*--BEGIN macros--*/
- /*--END macros--*/
-
- /*--BEGIN superglobal typedef--*/
- /*--END superglobal typedef--*/
-
- /*--BEGIN superglobal vars--*/
 extern bool daemon_flag; ///< CLI startup option to tell whether to start as daemon
 extern char *logs_path; ///< Path to where logs directory should reside
- /*--END superglobal vars--*/
-
- /*--BEGIN superglobal fn prototypes--*/
 
 /**
  * @brief Loads whole nemea supervisor config tree.
@@ -52,6 +39,5 @@ av_module_load_by_name(sr_session_ctx_t *sess, const char *module_name);
  * */
 extern int
 inst_load_by_name(sr_session_ctx_t *sess, const char *inst_name);
- /*--END superglobal fn prototypes--*/
 
 #endif

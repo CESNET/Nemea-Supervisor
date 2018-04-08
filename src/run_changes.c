@@ -7,13 +7,6 @@
 #include "conf.h"
 #include "inst_control.h"
 
-/*--BEGIN superglobal vars--*/
-/*--END superglobal vars--*/
-
-/*--BEGIN local #define--*/
-/*--END local #define--*/
-
-/*--BEGIN local typedef--*/
 /**
  * @brief Defines type of action to take for changed node (module or group).
  * */
@@ -46,12 +39,8 @@ typedef struct run_change_s {
    run_change_type_t type; ///< Type of change
    run_change_action_t action; ///< Action to take for this module or group
 } run_change_t;
-/*--END local typedef--*/
 
-/* --BEGIN local vars-- */
-/* --END local vars-- */
 
-/* --BEGIN full fns prototypes-- */
 /**
  * @brief Creates new run_change_t from given params from given xpath.
  * @details Gets XPATH of modified element from old_val or new_val depending on
@@ -104,9 +93,6 @@ static inline void
 run_change_add_new_change(vector_t *reg_chgs, run_change_t *n_change);
 
 static char * run_change_type_str(run_change_type_t type);
-/* --END full fns prototypes-- */
-
-/* --BEGIN superglobal fns-- */
 
 int
 run_config_change_cb(sr_session_ctx_t *sess,
@@ -205,6 +191,8 @@ run_config_change_cb(sr_session_ctx_t *sess,
 
    VERBOSE(V2, "Successfully leaving change callback")
    pthread_mutex_unlock(&config_lock);
+   sr_free_change_iter(iter);
+
    return SR_ERR_OK;
 
 err_cleanup:
@@ -227,10 +215,6 @@ err_cleanup:
 
    return rc;
 }
-
-/* --END superglobal fns-- */
-
-/* --BEGIN local fns-- */
 
 static inline int
 run_change_replace_same_registered(run_change_t *new, run_change_t *reg)
@@ -546,5 +530,3 @@ static char * run_change_type_str(run_change_type_t type)
          return "INVALID";
    }
 }
-
-/* --END local fns-- */

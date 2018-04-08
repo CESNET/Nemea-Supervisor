@@ -3,32 +3,11 @@
 #include <sysrepo/xpath.h>
 #include "module.h"
 
-/*--BEGIN superglobal vars--*/
 pthread_mutex_t config_lock; ///< Mutex for operations on m_groups_ll and modules_ll
-
-/* Module groups variables */
-//uint32_t loaded_profile_cnt = 0;
-/* Modules variables */
-//uint32_t running_modules_cnt = 0;  ///< Current size of running_modules array.
-//uint32_t loaded_modules_cnt = 0; ///< Current number of loaded modules.
-//uint32_t loaded_module_groups_cnt = 0;
 
 vector_t avmods_v = {.total = 0, .capacity = 0, .items = NULL};
 vector_t insts_v = {.total = 0, .capacity = 0, .items = NULL};
 
-/*--END superglobal vars--*/
-
-/*--BEGIN local #define--*/
-
-/*--END local #define--*/
-
-/*--BEGIN local typedef--*/
-/*--END local typedef--*/
-
-/* --BEGIN local vars-- */
-/* --END local vars-- */
-
-/* --BEGIN full fns prototypes-- */
 static char * tcp_ifc_to_cli_arg(const interface_t *ifc);
 static char * tcp_tls_ifc_to_cli_arg(const interface_t *ifc);
 static char * unix_ifc_to_cli_arg(const interface_t *ifc);
@@ -36,15 +15,13 @@ static char * file_ifc_to_cli_arg(const interface_t *ifc);
 static char * bh_ifc_to_cli_arg(const interface_t *ifc);
 static inline char * module_get_ifcs_as_arg(inst_t *inst);
 
-char * strcat_many(uint8_t cnt, ...);
+static char * strcat_many(uint8_t cnt, ...);
 
 static char **module_params_to_ifc_arr(const inst_t *module, uint32_t *params_num,
                                        int *rc);
 static char *ifc_param_concat(char *base, char *param_s, uint16_t param_u);
-static inline void free_interface_specific_params(interface_t *ifc);
-/* --END full fns prototypes-- */
+static inline void interface_specific_params_free(interface_t *ifc);
 
-/* --BEGIN superglobal fns-- */
 
 int inst_interface_add(inst_t *inst, interface_t *ifc)
 {
@@ -66,17 +43,22 @@ int inst_interface_add(inst_t *inst, interface_t *ifc)
 
 void av_module_print(const av_module_t *mod)
 {
-   VERBOSE(DEBUG, "Module: %s (path=%s)", mod->name, mod->path)
+   VERBOSE(V3, "Module: %s (path=%s)", mod->name, mod->path)
+   VERBOSE(V3, " trap monitorable=%d", mod->trap_mon)
+   VERBOSE(V3, " use trap interfaces=%d", mod->use_trap_ifces)
+   VERBOSE(V3, " sysrepo ready=%d", mod->sr_rdy)
+   VERBOSE(V3, " sysrepo custom model=%s", mod->sr_model)
+   VERBOSE(V3, " sysrepo callbacks ready=%d", mod->sr_cb_rdy)
 }
 void inst_print(inst_t *inst)
 {
-   VERBOSE(DEBUG, "Module instance: %s of %s", inst->name, inst->mod_ref->name)
-   VERBOSE(DEBUG, " params=%s", inst->params)
-   VERBOSE(DEBUG, " pid=%d", inst->pid)
-   VERBOSE(DEBUG, " enabled=%s", inst->enabled ? "true" : "false")
-   VERBOSE(DEBUG, " running=%s", inst->running ? "true" : "false")
-   VERBOSE(DEBUG, " restart_cnt=%d", inst->restarts_cnt)
-   VERBOSE(DEBUG, " max_restarts_minute=%d", inst->max_restarts_minute)
+   VERBOSE(V3, "Module instance: %s of %s", inst->name, inst->mod_ref->name)
+   VERBOSE(V3, " params=%s", inst->params)
+   VERBOSE(V3, " pid=%d", inst->pid)
+   VERBOSE(V3, " enabled=%s", inst->enabled ? "true" : "false")
+   VERBOSE(V3, " running=%s", inst->running ? "true" : "false")
+   VERBOSE(V3, " restart_cnt=%d", inst->restarts_cnt)
+   VERBOSE(V3, " max_restarts_minute=%d", inst->max_restarts_minute)
 
    for (uint32_t i = 0; i < inst->in_ifces.total; i++) {
       print_ifc(inst->in_ifces.items[i]);
@@ -85,35 +67,35 @@ void inst_print(inst_t *inst)
 
 void print_ifc(interface_t *ifc)
 {
-   VERBOSE(DEBUG, " IFC DIR=%d TYPE=%d", ifc->direction, ifc->type)
-   VERBOSE(DEBUG, "  buffer=%s", ifc->buffer)
-   VERBOSE(DEBUG, "  autoflush=%s", ifc->autoflush)
-   VERBOSE(DEBUG, "  timeout=%s", ifc->timeout)
+   VERBOSE(V3, " IFC DIR=%d TYPE=%d", ifc->direction, ifc->type)
+   VERBOSE(V3, "  buffer=%s", ifc->buffer)
+   VERBOSE(V3, "  autoflush=%s", ifc->autoflush)
+   VERBOSE(V3, "  timeout=%s", ifc->timeout)
 
    switch (ifc->type) {
       case NS_IF_TYPE_TCP:
-         VERBOSE(DEBUG, "  host=%s", ifc->specific_params.tcp->host)
-         VERBOSE(DEBUG, "  max_clients=%d", ifc->specific_params.tcp->max_clients)
-         VERBOSE(DEBUG, "  port=%d", ifc->specific_params.tcp->port)
+         VERBOSE(V3, "  host=%s", ifc->specific_params.tcp->host)
+         VERBOSE(V3, "  max_clients=%d", ifc->specific_params.tcp->max_clients)
+         VERBOSE(V3, "  port=%d", ifc->specific_params.tcp->port)
          break;
       case NS_IF_TYPE_TCP_TLS:
-         VERBOSE(DEBUG, "  host=%s", ifc->specific_params.tcp_tls->host)
-         VERBOSE(DEBUG, "  max_clients=%d", ifc->specific_params.tcp_tls->max_clients)
-         VERBOSE(DEBUG, "  port=%d", ifc->specific_params.tcp_tls->port)
-         VERBOSE(DEBUG, "  certfile=%s", ifc->specific_params.tcp_tls->certfile)
-         VERBOSE(DEBUG, "  keyfile=%s", ifc->specific_params.tcp_tls->keyfile)
-         VERBOSE(DEBUG, "  cafile=%s", ifc->specific_params.tcp_tls->cafile)
-         VERBOSE(DEBUG, "  ")
+         VERBOSE(V3, "  host=%s", ifc->specific_params.tcp_tls->host)
+         VERBOSE(V3, "  max_clients=%d", ifc->specific_params.tcp_tls->max_clients)
+         VERBOSE(V3, "  port=%d", ifc->specific_params.tcp_tls->port)
+         VERBOSE(V3, "  certfile=%s", ifc->specific_params.tcp_tls->certfile)
+         VERBOSE(V3, "  keyfile=%s", ifc->specific_params.tcp_tls->keyfile)
+         VERBOSE(V3, "  cafile=%s", ifc->specific_params.tcp_tls->cafile)
+         VERBOSE(V3, "  ")
          break;
       case NS_IF_TYPE_FILE:
-         VERBOSE(DEBUG, "  name=%s", ifc->specific_params.file->name)
-         VERBOSE(DEBUG, "  mode=%s", ifc->specific_params.file->mode)
-         VERBOSE(DEBUG, "  size=%d", ifc->specific_params.file->size)
-         VERBOSE(DEBUG, "  time=%d", ifc->specific_params.file->time)
+         VERBOSE(V3, "  name=%s", ifc->specific_params.file->name)
+         VERBOSE(V3, "  mode=%s", ifc->specific_params.file->mode)
+         VERBOSE(V3, "  size=%d", ifc->specific_params.file->size)
+         VERBOSE(V3, "  time=%d", ifc->specific_params.file->time)
          break;
       case NS_IF_TYPE_UNIX:
-         VERBOSE(DEBUG, "  socket_name=%s", ifc->specific_params.nix->socket_name)
-         VERBOSE(DEBUG, "  max_clients=%d", ifc->specific_params.nix->max_clients)
+         VERBOSE(V3, "  socket_name=%s", ifc->specific_params.nix->socket_name)
+         VERBOSE(V3, "  max_clients=%d", ifc->specific_params.nix->max_clients)
          break;
       case NS_IF_TYPE_BH:
          break;
@@ -143,6 +125,7 @@ inst_t * inst_alloc()
    IF_NO_MEM_NULL_ERR(inst)
 
    inst->enabled = false;
+   inst->use_sysrepo = false;
    inst->running = false;
    inst->should_die = false;
    inst->root_perm_needed = false;
@@ -361,7 +344,6 @@ void av_module_free(av_module_t *mod)
 
 void inst_free(inst_t *inst)
 {
-
    // TODO where to release sockets for ifc stats???
    NULLP_TEST_AND_FREE(inst->name)
    NULLP_TEST_AND_FREE(inst->params)
@@ -383,18 +365,23 @@ void interfaces_free(inst_t *module)
    for (int j = 0; j < 2; j++) {
       for (int i = 0; i < ifces_vec[j]->total; i++) {
          cur_ifc = ifces_vec[j]->items[i];
-         NULLP_TEST_AND_FREE(cur_ifc->name);
-         NULLP_TEST_AND_FREE(cur_ifc->buffer);
-         NULLP_TEST_AND_FREE(cur_ifc->autoflush);
-         NULLP_TEST_AND_FREE(cur_ifc->timeout);
-         cur_ifc->ifc_to_cli_arg_fn = NULL;
-         interface_stats_free(cur_ifc);
-         free_interface_specific_params(cur_ifc);
-
-         NULLP_TEST_AND_FREE(cur_ifc);
+         interface_free(cur_ifc);
       }
       vector_free(ifces_vec[j]);
    }
+}
+
+void interface_free(interface_t *ifc)
+{
+   NULLP_TEST_AND_FREE(ifc->name);
+   NULLP_TEST_AND_FREE(ifc->buffer);
+   NULLP_TEST_AND_FREE(ifc->autoflush);
+   NULLP_TEST_AND_FREE(ifc->timeout);
+   ifc->ifc_to_cli_arg_fn = NULL;
+   interface_stats_free(ifc);
+   interface_specific_params_free(ifc);
+
+   NULLP_TEST_AND_FREE(ifc);
 }
 
 void interface_stats_free(interface_t *ifc)
@@ -430,7 +417,7 @@ inst_t * inst_get_by_name(const char *name, uint32_t *index)
    return NULL;
 }
 
-static inline void free_interface_specific_params(interface_t *ifc)
+static inline void interface_specific_params_free(interface_t *ifc)
 {
    switch (ifc->type) {
       case NS_IF_TYPE_TCP:
@@ -479,14 +466,18 @@ int inst_gen_exec_args(inst_t *inst)
    uint32_t exec_args_cnt = 2; // at least the name of the future process and terminating NULL pointer
    uint32_t exec_args_pos = 0;
    int rc = 0; // Status of success for module_params_to_ifc_arr function
+   uint32_t total_ifc_cnt = inst->in_ifces.total + inst->out_ifces.total;
 
    // if the inst has trap interfaces, one argument for "-i" and one for interfaces specifier
-   if (inst->mod_ref->use_trap_ifces) {
+   if (inst->mod_ref->use_trap_ifces && total_ifc_cnt > 0) {
       exec_args_cnt += 2;
    }
 
-   //* if the inst has non-empty params, try to parse them *//*
-   if (inst->params != NULL) {
+   if (inst->use_sysrepo) {
+      // prepare space for '-x' and 'XPATH' arguments
+      exec_args_cnt += 2;
+   } else if (inst->params != NULL) {
+      // if the inst has non-empty params, try to parse them
       cfg_params = module_params_to_ifc_arr(inst, &module_params_num, &rc);
       if (rc == -1) {
          VERBOSE(N_ERR, "Failed to parse inst params")
@@ -510,17 +501,39 @@ int inst_gen_exec_args(inst_t *inst)
    exec_args[exec_args_cnt - 1] = NULL;
    exec_args_pos = 1;
 
-   // copy already allocated inst params strings returned by module_params_to_ifc_arr function
-   if (cfg_params != NULL && module_params_num > 0) {
-      for (int i = 0; i < module_params_num; i++) {
-         exec_args[exec_args_pos] = cfg_params[i];
-         exec_args_pos++;
+   if (inst->use_sysrepo) {
+      char *xpath = NULL;
+      size_t xpath_len = strlen(inst->mod_ref->sr_model) + strlen(inst->name) + 20;
+
+      // add -x "XPATH_TO_CUSTOM_SYSREPO_MODEL_INSTANCE_CONFIGURATION"
+      exec_args[exec_args_pos] = strdup("-x"); // It's easier for freeing later
+      if (exec_args[exec_args_pos] == NULL) {
+         NO_MEM_ERR
+         goto err_cleanup;
       }
-      NULLP_TEST_AND_FREE(cfg_params)
+      exec_args_pos++;
+
+      xpath = calloc(1, (xpath_len) * sizeof(char));
+      if (xpath == NULL) {
+         NO_MEM_ERR
+         goto err_cleanup;
+      }
+      sprintf(xpath, "/%s:instance[name='%s']", inst->mod_ref->sr_model, inst->name);
+      exec_args[exec_args_pos] = xpath;
+      exec_args_pos++;
+   } else {
+      // copy already allocated inst params strings returned by module_params_to_ifc_arr function
+      if (cfg_params != NULL && module_params_num > 0) {
+         for (int i = 0; i < module_params_num; i++) {
+            exec_args[exec_args_pos] = cfg_params[i];
+            exec_args_pos++;
+         }
+         NULLP_TEST_AND_FREE(cfg_params)
+      }
    }
 
    // Do not generate -i args
-   if (inst->mod_ref->use_trap_ifces == false) {
+   if (inst->mod_ref->use_trap_ifces == false || total_ifc_cnt == 0) {
       inst->exec_args = exec_args;
       return 0;
    }
@@ -532,7 +545,10 @@ int inst_gen_exec_args(inst_t *inst)
    }
 
    exec_args[exec_args_pos] = strdup("-i"); // It's easier for freeing later
-   IF_NO_MEM_INT_ERR(exec_args[exec_args_pos])
+   if (exec_args[exec_args_pos] == NULL) {
+      NO_MEM_ERR
+      goto err_cleanup;
+   }
    exec_args_pos++;
    exec_args[exec_args_pos] = ifc_spec;
    inst->exec_args = exec_args;
@@ -557,9 +573,7 @@ err_cleanup:
 
    return -1;
 }
-/* --END superglobal fns-- */
 
-/* --BEGIN local fns-- */
 
 static inline char * module_get_ifcs_as_arg(inst_t *inst)
 {
@@ -653,7 +667,7 @@ err_cleanup:
    return NULL;
 }
 
-// Only one param shoul be passed, base is cleaned
+// Only param_s or param_u should be passed, base is freed
 static char * ifc_param_concat(char *base, char *param_s, uint16_t param_u)
 {
    char *result = NULL;
@@ -663,7 +677,7 @@ static char * ifc_param_concat(char *base, char *param_s, uint16_t param_u)
 
    if (integer_passed) {
       len = (uint16_t) snprintf(NULL, 0, "%d", param_u);
-      param = (char *) calloc(len, sizeof(char));
+      param = (char *) calloc(len + 1, sizeof(char));
       if (param == NULL) {
          NO_MEM_ERR
          goto err_cleanup;
@@ -698,7 +712,7 @@ err_cleanup:
    return NULL;
 }
 
-char * strcat_many(uint8_t cnt, ...)
+static char * strcat_many(uint8_t cnt, ...)
 {
    va_list args;
    char *tmp, *result;
@@ -852,7 +866,7 @@ static char **module_params_to_ifc_arr(const inst_t *module,
    }
 
    if (params_len < 1) {
-      VERBOSE(MOD_EVNT, "[WARNING] Empty string in '%s' params element.", module->name)
+      VERBOSE(V2, "Empty string in '%s' params element.", module->name)
       goto err_cleanup;
    }
 
@@ -868,14 +882,14 @@ static char **module_params_to_ifc_arr(const inst_t *module,
          case '\'':
          {
             if (act_param_len > 0) { // check whether the ''' character is not in the middle of the word
-               VERBOSE(MOD_EVNT, "[ERROR] Bad format of '%s' params element - used \'\'\' in the middle of the word.", module->name);
+               VERBOSE(V2, "Bad format of '%s' params element - used \'\'\' in the middle of the word.", module->name);
                goto err_cleanup;
             }
 
             for (y = (x + 1); y < params_len; y++) {
                if (module->params[y] == '\'') { // parameter in apostrophes MATCH
                   if (act_param_len == 0) { // check for empty apostrophes
-                     VERBOSE(MOD_EVNT, "[ERROR] Bad format of '%s' params element - used empty apostrophes.", module->name);
+                     VERBOSE(V2, "Bad format of '%s' params element - used empty apostrophes.", module->name);
                      goto err_cleanup;
                   }
                   x = y;
@@ -886,7 +900,7 @@ static char **module_params_to_ifc_arr(const inst_t *module,
                }
             }
             // the terminating ''' was not found
-            VERBOSE(MOD_EVNT, "[ERROR] Bad format of '%s' params element - used single \'\'\'.\n", module->name);
+            VERBOSE(V2, "Bad format of '%s' params element - used single \'\'\'.\n", module->name);
             goto err_cleanup;
             break;
          }
@@ -895,14 +909,14 @@ static char **module_params_to_ifc_arr(const inst_t *module,
          case '\"':
          {
             if (act_param_len > 0) { // check whether the '"' character is not in the middle of the word
-               VERBOSE(MOD_EVNT, "[ERROR] Bad format of '%s' params element - used \'\"\' in the middle of the word.", module->name);
+               VERBOSE(V2, "Bad format of '%s' params element - used \'\"\' in the middle of the word.", module->name);
                goto err_cleanup;
             }
 
             for (y = (x + 1); y < params_len; y++) {
                if (module->params[y] == '\"') { // parameter in quotes MATCH
                   if (act_param_len == 0) { // check for empty quotes
-                     VERBOSE(MOD_EVNT, "[ERROR] Bad format of '%s' params element - used empty quotes.\n", module->name);
+                     VERBOSE(V2, "Bad format of '%s' params element - used empty quotes.\n", module->name);
                      goto err_cleanup;
                   }
                   x = y;
@@ -911,12 +925,12 @@ static char **module_params_to_ifc_arr(const inst_t *module,
                   buffer[act_param_len] = module->params[y];
                   act_param_len++;
                } else {
-                  VERBOSE(MOD_EVNT, "[ERROR] Found apostrophe in '%s' params element in quotes.", module->name);
+                  VERBOSE(V2, "Found apostrophe in '%s' params element in quotes.", module->name);
                   goto err_cleanup;
                }
             }
             // the terminating '"' was not found
-            VERBOSE(MOD_EVNT, "[ERROR] Bad format of '%s' params element - used single \'\"\'.", module->name)
+            VERBOSE(V2, "Bad format of '%s' params element - used single \'\"\'.", module->name)
             goto err_cleanup;
             break;
          }
@@ -980,4 +994,3 @@ err_cleanup:
 
    return NULL;
 }
-/* --END local fns-- */

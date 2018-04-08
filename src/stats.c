@@ -4,72 +4,11 @@
 #include <sysrepo/values.h>
 #include <sysrepo/xpath.h>
 
-/*
-in_ifces [{type,
- ID, modules_ll[x].in_ifces_data[y].id
- "is-conn", modules_ll[x].in_ifces_data[y].state
- "messages", recv_msg_cnt
- "buffers" recv_buff_cnt
- }]
-sssssisIsI
-
-out_ifces [{type,
- ID, id modules_ll[x].in_ifces_data[y].id
- cli-num, num_clients
- sent-msg, sent_msg_cnt
- drop-msg, dropped_msg_cnt
- buffers, sent_buff_cnt
- autoflush autoflush_cnt
- }]
- sssssisIsIsIsI
-
-module [{idx,
- params,
- path,
- status,
- CPU-u, last_period_percent_cpu_usage_user_mode
- CPU-s, last_period_percent_cpu_usage_kernel_mode
- MEM-vms, mem_vms
- MEM-rss, mem_rss * 1024
- inputs:[in_ifces],
- outputs:[out_ifces]}]
- sisssssssisisIsIsoso
-
-module [{CPU-u, last_period_percent_cpu_usage_user_mode
- CPU-s, last_period_percent_cpu_usage_kernel_mode
- MEM-vms, mem_vms
- MEM-rss, mem_rss * 1024
- inputs:[in_ifces], outputs:[out_ifces]}]
- sisisIsIsoso
-
-{
- "module_name": module
-}
-
-
-
-
-
- */
-
-/*--BEGIN superglobal vars--*/
-
-/*--END superglobal vars--*/
-
-/*--BEGIN local #define--*/
-/*--END local #define--*/
-
-/*--BEGIN local typedef--*/
 typedef struct tree_path_s {
    char *inst;
    char *ifc;
 } tree_path_t;
-/*--END local typedef--*/
 
-/* --BEGIN local vars-- */
-/* --END local vars-- */
-
-/* --BEGIN full fns prototypes-- */
 /**
  * TODO
  * */
@@ -83,9 +22,6 @@ static interface_t * interface_get_by_xpath(const char *xpath);
 
 static void tree_path_free(tree_path_t * tpath);
 static tree_path_t * tree_path_load(const char *xpath);
-/* --END full fns prototypes-- */
-
-/* --BEGIN superglobal fns-- */
 
 
 int interface_get_stats_cb(const char *xpath,
@@ -284,9 +220,7 @@ err_cleanup:
 
    return rc;
 }
-/* --END superglobal fns-- */
 
-/* --BEGIN local fns-- */
 static int set_new_sr_val(sr_val_t *new_sr_val,
                           const char *stat_xpath,
                           const char *stat_leaf_name,
@@ -437,17 +371,16 @@ static interface_t * interface_get_by_xpath(const char *xpath)
 
    tpath = tree_path_load(xpath);
    if (tpath == NULL) {
-      VERBOSE(V3, "") // TODO
       goto err_cleanup;
    }
    if (tpath->ifc == NULL) {
-      VERBOSE(V3, "") // TODO
+      VERBOSE(V2, "No interface parsed from given XPATH")
       goto err_cleanup;
    }
 
    inst = inst_get_by_name(tpath->inst, NULL);
    if (inst == NULL) {
-      VERBOSE(V3, "") // TODO
+      VERBOSE(V2, "No instance named '%s' is loaded in supervisor", tpath->inst)
       goto err_cleanup;
    }
 
@@ -468,11 +401,7 @@ static interface_t * interface_get_by_xpath(const char *xpath)
 
 err_cleanup:
    tree_path_free(tpath);
-
    VERBOSE(N_ERR, "Failed interface_get_by_xpath with XPATH=%s", xpath)
 
    return NULL;
 }
-
-
-/* --END local fns-- */

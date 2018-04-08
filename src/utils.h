@@ -10,38 +10,16 @@
 #include <unistd.h>
 #include <string.h>
 
-/* Logging & helper functions */
-
- /*--BEGIN superglobal symbolic const--*/
-
 #define INSTANCES_LOGS_DIR_NAME "modules_logs"
-#define INSTANCES_STATS_FILE_NAME "modules_statistics"
-#define INSTANCES_EVENTS_FILE_NAME "modules_events"
-#define SUPERVISOR_DEBUG_LOG_FILE_NAME "supervisor_debug_log"
 #define SUPERVISOR_LOG_FILE_NAME "supervisor_log"
-#define SUP_TMP_DIR "/tmp/sup_tmp_dir"
 
-#define TRUE 1
-#define FALSE 0
 #define DEFAULT_SIZE_OF_BUFFER   100
 
 // Constants for print_msg function and VERBOSE macro
-#define STATISTICS   1
-#define MOD_EVNT   2
-#define N_STDOUT   3
-#define DEBUG   4
-#define SUP_LOG   5
-#define N_ERR   6
-#define N_WARN   7
-#define N_INFO   8
-#define V1   9
-#define V2   10
-#define V3   11
-
-
- /*--END superglobal symbolic const--*/
-
- /*--BEGIN macros--*/
+#define N_ERR   6 ///< Verbosity level for more generic errors. This is used for error at the end of the functions in error_cleanup most of the time
+#define V1   9 ///< Default verbosity level, informative messages
+#define V2   10 ///< Detailed errors inside functions are printed
+#define V3   11 ///< Prints even non error messages used for debugging
 
 /**
  * @brief Macro for NULL pointer testing, freeing and setting pointer to NULL
@@ -61,12 +39,15 @@
    print_msg(level, verbose_msg); \
 } while (0);
 
+/**
+ * @brief Macro for printing error messages before VERBOSE macro variables are initialized.
+ * */
 #define PRINT_ERR(format, args...) if (1) { \
-   fprintf(stderr, "[ERROR] " format "\n", ##args); \
+   fprintf(stderr, "[ERR] " format "\n", ##args); \
 }
 
 #define NO_MEM_ERR do { \
-   VERBOSE(N_ERR, "Failed to allocate memory in %s %s:%d", \
+   VERBOSE(V2, "Failed to allocate memory in file '%s' %s:%d", \
          __FILE__, __func__,  __LINE__) \
 } while (0);
 
@@ -84,45 +65,33 @@
    } \
 } while (0);
 
+// NS_TEST is defined in tests/CMakeLists.txt
 #ifndef NS_TEST
 
 #define NS_ROOT_XPATH "/nemea:supervisor"
 #define NS_ROOT_XPATH_LEN 17
 
 #endif
- /*--END macros--*/
 
- /*--BEGIN superglobal typedef--*/
- typedef struct vector_s {
-    uint32_t capacity;
-    uint32_t total;
-    void **items;
- } vector_t;
- /*--END superglobal typedef--*/
-
- /*--BEGIN superglobal vars--*/
+typedef struct vector_s {
+   uint32_t capacity;
+   uint32_t total;
+   void **items;
+} vector_t;
 
 // VERBOSE macro variables
-// TODO struct? yes
 extern char verbose_msg[4096];
 extern FILE *output_fd;
-extern FILE *supervisor_debug_log_fd;
 extern FILE *supervisor_log_fd;
-extern FILE *statistics_fd;
-extern FILE *inst_event_fd;
- /*--END superglobal vars--*/
+extern uint8_t verbosity_level;
 
- /*--BEGIN superglobal fn prototypes--*/
+// VERBOSE macro functions
 extern void print_msg(int level, char *string);
 extern char * get_formatted_time();
 
-
+// Vector implementation functions
 extern int vector_init(vector_t *v, uint32_t size);
 extern int vector_add(vector_t *v, void * item);
 extern void vector_delete(vector_t *v, uint32_t index);
 extern void vector_free(vector_t *v);
-extern void vector_set(vector_t *v, uint32_t index, void *item);
-extern void * vector_get(vector_t *v, uint32_t index);
- /*--END superglobal fn prototypes--*/
-
 #endif

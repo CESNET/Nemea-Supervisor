@@ -93,6 +93,8 @@ void start_intable_module(inst_t *inst, char *faked_name)
 static void disconnect_and_unload_config()
 {
    disconnect_sr();
+   insts_free();
+   av_modules_free();
    vector_free(&avmods_v);
    vector_free(&insts_v);
 }
@@ -105,17 +107,14 @@ static void disconnect_and_unload_config()
 
 void test_av_module_stop_remove_by_name(void **state)
 {
-   system("../../tests/helpers/import_conf.sh -s nemea-test-1-startup-5.json");
+   system("helpers/import_conf.sh -s nemea-test-1-startup-5.data.json");
    assert_int_equal(load_config(), 0);
    assert_int_equal(insts_v.total, 4);
    assert_int_equal(avmods_v.total, 2);
 
-/*   VERBOSE(DEBUG, "Starting fake module")
+   VERBOSE(V3, "Starting fake module")
    inst_t *intable_module = insts_v.items[2];
-   start_intable_module(intable_module, "intable_module");*/
-
-   inst_t *intable_module = insts_v.items[2];
-   intable_module->pid = 123;
+   start_intable_module(intable_module, "intable_module");
 
    av_module_stop_remove_by_name("module B");
 
@@ -126,7 +125,7 @@ void test_av_module_stop_remove_by_name(void **state)
 
 int main(void)
 {
-
+   //verbosity_level = V3;
    const struct CMUnitTest tests[] = {
          cmocka_unit_test(test_av_module_stop_remove_by_name),
    };

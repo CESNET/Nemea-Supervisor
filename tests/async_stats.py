@@ -126,7 +126,7 @@ elif action == "intable_inst_stats_including_ifc_stats":
     for i in range(0, s.val_cnt()):
         ex_xpath = xpath_base + expected[i][0]
         if s.val(i).xpath() != ex_xpath:
-            print("xpath don't match expected value {} != {}".format(s.val(i).xpath(), ex_xpath))
+            print("xpath doesn't match expected value {} != {}".format(s.val(i).xpath(), ex_xpath))
             exit(33)
         if getattr(s.val(i).data(), expected[i][1])() != expected[i][2]:
             print("expected value {} != {} for xpath={}".format(str(s.val(i).data()), str(expected[i][2]), s.val(i).xpath()))

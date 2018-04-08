@@ -9,22 +9,6 @@
 
 #include <sysrepo.h>
 
-/*--BEGIN superglobal symbolic const--*/
-/*--END superglobal symbolic const--*/
-
-/*--BEGIN macros--*/
-/*--END macros--*/
-
-/*--BEGIN superglobal typedef--*/
-/*--END superglobal typedef--*/
-
-/*--BEGIN superglobal vars--*/
-// denote with extern
-//extern sr_conn_ctx_t *sr_con = NULL;
-/*--END superglobal vars--*/
-
-/*--BEGIN superglobal fn prototypes--*/
-
 /**
  * @brief Callback function subscribed to changes of subtree beginning
  *  at module level.
@@ -40,6 +24,4 @@
  * */
 extern int run_config_change_cb(sr_session_ctx_t *sess, const char *smn,
                                 sr_notif_event_t evnt, void *priv_ctx);
-/*--END superglobal fn prototypes--*/
-
 #endif

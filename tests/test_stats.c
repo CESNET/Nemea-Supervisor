@@ -6,9 +6,8 @@
 #include "../src/conf.h"
 #include "../src/stats.c"
 
-#define TESTS_DIR "../../tests"
+#define TESTS_DIR "."
 
-const char *ns_root_sr_path = "/nemea-tests-1:nemea-supervisor";
 bool sv_thread_running = false;
 int stats_callback_cnt = 0;
 
@@ -147,7 +146,7 @@ void subscribe_xpath_stats(const char *xpath,
                                   NULL,
                                   subscr_flag,
                                   &sr_conn_link.subscr);
-   IF_SR_ERR_FAIL(rc)
+      IF_SR_ERR_FAIL(rc)
 }
 
 void run_async_caller_and_sv_routine(char * async_option)
@@ -364,14 +363,18 @@ void test_interface_get_by_tree_path(void **state)
 
 int main(void)
 {
+   verbosity_level = V3;
 
    const struct CMUnitTest tests[] = {
-
+/*
          cmocka_unit_test(test_get_inst_stats),
          cmocka_unit_test(test_interface_get_by_tree_path),
-         cmocka_unit_test(test_tree_path_load),
+         cmocka_unit_test(test_tree_path_load),*/
          cmocka_unit_test(test_get_intable_interface_stats_cb),
+
+/*
          cmocka_unit_test(test_get_intable_inst_stats_including_ifc_stats),
+*/
 
    };
 

@@ -3,26 +3,10 @@
 #include "conf.h"
 #include "module.h"
 
-/*--BEGIN superglobal vars--*/
 bool daemon_flag = false;
 char *logs_path = NULL;
-/*--END superglobal vars--*/
-
-/*--BEGIN local #define--*/
 
 #define FOUND_AND_ERR(rc) ((rc) != SR_ERR_NOT_FOUND && (rc) != SR_ERR_OK)
-
-/*--END local #define--*/
-
-/*--BEGIN local typedef--*/
-
-
-/*--END local typedef--*/
-
-/* --BEGIN local vars-- */
-/* --END local vars-- */
-
-/* --BEGIN full fns prototypes-- */
 
 /**
  * @brief Loads module group configuration from sysrepo.
@@ -103,9 +87,9 @@ interface_file_params_load(sr_session_ctx_t *sess, char *base_xpath, interface_t
  * @param inst Module for which last_pid should be reassigned
  * @param sess Sysrepo session to use for last_pid node removal
  * */
-static void ins_pid_restore(pid_t last_pid,
-                            inst_t *inst,
-                            sr_session_ctx_t *sess);
+static void inst_pid_restore(pid_t last_pid,
+                             inst_t *inst,
+                             sr_session_ctx_t *sess);
 
 
 static int load_sr_str(sr_session_ctx_t *sess, char *base_xpath, char *node_xpath,
@@ -113,10 +97,7 @@ static int load_sr_str(sr_session_ctx_t *sess, char *base_xpath, char *node_xpat
 static int load_sr_num(sr_session_ctx_t *sess, char *base_xpath, char *node_xpath,
                        void *where, sr_type_t data_type);
 
-static char * module_name_from_xpath(char *xpath);
-/* --END full fns prototypes-- */
-
-/* --BEGIN superglobal fns-- */
+static char * instance_name_from_xpath(char *xpath);
 
 
 int ns_startup_config_load(sr_session_ctx_t *sess)
@@ -209,14 +190,15 @@ int av_module_load_by_name(sr_session_ctx_t *sess, const char *module_name)
 
    for (size_t i = 0; i < insts_cnt; i++) {
       if (strcmp(insts[i].data.string_val, module_name) == 0) {
-         inst_name = module_name_from_xpath(insts[i].xpath);
+         inst_name = instance_name_from_xpath(insts[i].xpath);
          if (inst_name == NULL) {
-            NO_MEM_ERR
-            rc = SR_ERR_NOMEM;
+            rc = SR_ERR_OPERATION_FAILED;
             goto err_cleanup;
          }
          memset(xpath, 0, XPATH_LEN);
          sprintf(xpath, NS_ROOT_XPATH"/instance[name='%s']", inst_name);
+         NULLP_TEST_AND_FREE(inst_name)
+
          rc = inst_load(sess, xpath);
          if (rc != SR_ERR_OK) {
             VERBOSE(N_ERR, "Failed to reload all instances of module '%s'."
@@ -224,7 +206,7 @@ int av_module_load_by_name(sr_session_ctx_t *sess, const char *module_name)
             goto err_cleanup;
          }
          x = insts_v.items[insts_v.total - 1];
-         VERBOSE(DEBUG, "for module %s is pid %d", inst_name, x->pid)
+         VERBOSE(V3, "for module %s is pid %d", inst_name, x->pid)
       }
    }
 
@@ -234,6 +216,7 @@ err_cleanup:
    if (insts != NULL && insts_cnt != 0) {
       sr_free_values(insts, insts_cnt);
    }
+   NULLP_TEST_AND_FREE(inst_name)
 
    return rc;
 }
@@ -250,6 +233,7 @@ int inst_load_by_name(sr_session_ctx_t *sess, const char *inst_name)
    sprintf(xpath, NS_ROOT_XPATH"/instance[name='%s']", inst_name);
 
    rc = inst_load(sess, xpath);
+   NULLP_TEST_AND_FREE(xpath)
    if (rc != 0) {
       VERBOSE(N_ERR, "Failed to load new module configuration from fetched"
             " sysrepo subtree")
@@ -258,9 +242,6 @@ int inst_load_by_name(sr_session_ctx_t *sess, const char *inst_name)
 
    return SR_ERR_OK;
 }
-/* --END superglobal fns-- */
-
-/* --BEGIN local fns-- */
 
 static int
 inst_load(sr_session_ctx_t *sess, char *xpath)
@@ -310,6 +291,11 @@ inst_load(sr_session_ctx_t *sess, char *xpath)
       VERBOSE(N_ERR, "Failed to load xpath %s/params", xpath)
       goto err_cleanup;
    }
+   rc = load_sr_num(sess, xpath, "/use-sysrepo", &(inst->use_sysrepo), SR_BOOL_T);
+   if (FOUND_AND_ERR(rc)) {
+      VERBOSE(N_ERR, "Failed to load xpath %s/use-sysrepo", xpath)
+      goto err_cleanup;
+   }
    rc = load_sr_num(sess, xpath, "/last-pid", &last_pid, SR_UINT32_T);
    if (FOUND_AND_ERR(rc)) {
       VERBOSE(N_ERR, "Failed to load xpath %s/last-pid", xpath)
@@ -330,6 +316,7 @@ inst_load(sr_session_ctx_t *sess, char *xpath)
                "'%s' is not loaded.", inst->name, mod_ref)
          goto err_cleanup;
       }
+      NULLP_TEST_AND_FREE(mod_ref)
    }
 
    { // load interfaces
@@ -356,8 +343,6 @@ inst_load(sr_session_ctx_t *sess, char *xpath)
 
    rc = inst_gen_exec_args(inst);
    if (rc != 0) {
-      /* hopefully this would be removed in the future due to sysrepo per
-       * module configuration */
       VERBOSE(N_ERR, "Failed to prepare exec_args")
       rc = SR_ERR_NOMEM;
       goto err_cleanup;
@@ -365,7 +350,7 @@ inst_load(sr_session_ctx_t *sess, char *xpath)
 
    if (last_pid > 0) {
       VERBOSE(V3, "Restoring PID=%d for %s", last_pid, inst->name)
-      ins_pid_restore(last_pid, inst, sess);
+      inst_pid_restore(last_pid, inst, sess);
    }
 
    return SR_ERR_OK;
@@ -567,22 +552,27 @@ interface_tcp_params_load(sr_session_ctx_t *sess, char *base_xpath, interface_t 
 
    rc = load_sr_str(sess, xpath, "/host", &(ifc->specific_params.tcp->host));
    if (FOUND_AND_ERR(rc)) {
+      VERBOSE(V2, "Failed to load %s/host", xpath)
       goto err_cleanup;
    }
    rc = load_sr_num(sess, xpath, "/port", &(ifc->specific_params.tcp->port), SR_UINT16_T);
    if (FOUND_AND_ERR(rc)) {
+      VERBOSE(V2, "Failed to load %s/port", xpath)
       goto err_cleanup;
    }
    rc = load_sr_num(sess, xpath, "/max-clients",
                     &(ifc->specific_params.tcp->max_clients), SR_UINT16_T);
    if (FOUND_AND_ERR(rc)) {
+      VERBOSE(V2, "Failed to load %s/max-clients", xpath)
       goto err_cleanup;
    }
 
+   NULLP_TEST_AND_FREE(xpath)
    return SR_ERR_OK;
 
 err_cleanup:
-   // TODO
+   VERBOSE(N_ERR, "Failed to load TCP params of interface '%s'", ifc->name)
+   NULLP_TEST_AND_FREE(xpath)
    return rc;
 }
 
@@ -602,35 +592,43 @@ interface_tcp_tls_params_load(sr_session_ctx_t *sess, char *base_xpath, interfac
 
    rc = load_sr_str(sess, xpath, "/host", &(ifc->specific_params.tcp_tls->host));
    if (FOUND_AND_ERR(rc)) {
+      VERBOSE(V2, "Failed to load %s/host", xpath)
       goto err_cleanup;
    }
    rc = load_sr_str(sess, xpath, "/keyfile", &(ifc->specific_params.tcp_tls->keyfile));
    if (FOUND_AND_ERR(rc)) {
+      VERBOSE(V2, "Failed to load %s/keyfile", xpath)
       goto err_cleanup;
    }
    rc = load_sr_str(sess, xpath, "/certfile", &(ifc->specific_params.tcp_tls->certfile));
    if (FOUND_AND_ERR(rc)) {
+      VERBOSE(V2, "Failed to load %s/certfile", xpath)
       goto err_cleanup;
    }
    rc = load_sr_str(sess, xpath, "/cafile", &(ifc->specific_params.tcp_tls->cafile));
    if (FOUND_AND_ERR(rc)) {
+      VERBOSE(V2, "Failed to load %s/cafile", xpath)
       goto err_cleanup;
    }
    rc = load_sr_num(sess, xpath, "/port",
                     &(ifc->specific_params.tcp_tls->port), SR_UINT16_T);
    if (FOUND_AND_ERR(rc)) {
+      VERBOSE(V2, "Failed to load %s/port", xpath)
       goto err_cleanup;
    }
    rc = load_sr_num(sess, xpath, "/max-clients",
                     &(ifc->specific_params.tcp_tls->max_clients), SR_UINT16_T);
    if (FOUND_AND_ERR(rc)) {
+      VERBOSE(V2, "Failed to load %s/max-clients", xpath)
       goto err_cleanup;
    }
 
+   NULLP_TEST_AND_FREE(xpath)
    return SR_ERR_OK;
 
 err_cleanup:
-   // TODO
+   VERBOSE(N_ERR, "Failed to load TCP-TLS params of interface '%s'", ifc->name)
+   NULLP_TEST_AND_FREE(xpath)
    return rc;
 }
 
@@ -650,19 +648,23 @@ interface_unix_params_load(sr_session_ctx_t *sess, char *base_xpath, interface_t
 
    rc = load_sr_str(sess, xpath, "/socket-name", &(ifc->specific_params.nix->socket_name));
    if (FOUND_AND_ERR(rc)) {
+      VERBOSE(V2, "Failed to load %s/socket-name", xpath)
       goto err_cleanup;
    }
    rc = load_sr_num(sess, xpath, "/max-clients",
                     &(ifc->specific_params.nix->max_clients), SR_UINT16_T);
    if (FOUND_AND_ERR(rc)) {
+      VERBOSE(V2, "Failed to load %s/max-clients", xpath)
       goto err_cleanup;
    }
 
 
+   NULLP_TEST_AND_FREE(xpath)
    return SR_ERR_OK;
 
 err_cleanup:
-   // TODO
+   VERBOSE(N_ERR, "Failed to load UNIX params of interface '%s'", ifc->name)
+   NULLP_TEST_AND_FREE(xpath)
    return rc;
 }
 
@@ -682,43 +684,49 @@ interface_file_params_load(sr_session_ctx_t *sess, char *base_xpath, interface_t
 
    rc = load_sr_str(sess, xpath, "/name", &(ifc->specific_params.file->name));
    if (FOUND_AND_ERR(rc)) {
+      VERBOSE(V2, "Failed to load %s/name", xpath)
       goto err_cleanup;
    }
    rc = load_sr_str(sess, xpath, "/mode", &(ifc->specific_params.file->mode));
    if (FOUND_AND_ERR(rc)) {
+      VERBOSE(V2, "Failed to load %s/mode", xpath)
       goto err_cleanup;
    }
    rc = load_sr_num(sess, xpath, "/time",
                     &(ifc->specific_params.file->time), SR_UINT16_T);
    if (FOUND_AND_ERR(rc)) {
+      VERBOSE(V2, "Failed to load %s/time", xpath)
       goto err_cleanup;
    }
    rc = load_sr_num(sess, xpath, "/size",
                     &(ifc->specific_params.file->size), SR_UINT16_T);
    if (FOUND_AND_ERR(rc)) {
+      VERBOSE(V2, "Failed to load %s/size", xpath)
       goto err_cleanup;
    }
 
 
+   NULLP_TEST_AND_FREE(xpath)
    return SR_ERR_OK;
 
 err_cleanup:
-   // TODO
+   VERBOSE(N_ERR, "Failed to load FILE params of interface '%s'", ifc->name)
+   NULLP_TEST_AND_FREE(xpath)
    return rc;
 }
 
 static void
-ins_pid_restore(pid_t last_pid, inst_t *inst,
-                sr_session_ctx_t *sess)
+inst_pid_restore(pid_t last_pid, inst_t *inst,
+                 sr_session_ctx_t *sess)
 {
    int rc;
-   //pid_t result;
    size_t pid_xpath_len;
    char *pid_xpath;
 
+   // Check if this pid is running
    rc = kill(last_pid, 0);
-   //result = waitpid(last_pid, NULL, WNOHANG);
    if (rc != 0) {
+      // Check failed or is not running
       goto clean_pid;
    }
 
@@ -734,7 +742,6 @@ ins_pid_restore(pid_t last_pid, inst_t *inst,
       goto clean_pid;
    }
 
-
    if (strcmp(run_path, inst->mod_ref->path) == 0) {
       // Process under PID last_pid is really this inst
       inst->pid = last_pid;
@@ -748,7 +755,7 @@ clean_pid:
    /* Try to remove last_pid node from sysrepo but we don't really
     *  care if it fails */
    pid_xpath_len = NS_ROOT_XPATH_LEN
-                   + strlen(inst->name) + 26;
+                   + strlen(inst->name) + 28;
    pid_xpath = (char *) calloc(1, sizeof(char) * (pid_xpath_len));
    if (pid_xpath != NULL) {
       sprintf(pid_xpath,
@@ -792,7 +799,7 @@ load_sr_num(sr_session_ctx_t *sess, char *base_xpath, char *node_xpath,
          break;
 
       default:
-         // TODO err
+         VERBOSE(N_ERR, "Invalid usage of load_sr_num for data type %d", data_type);
          sr_free_val(val);
          return -1;
    }
@@ -820,7 +827,6 @@ load_sr_str(sr_session_ctx_t *sess, char *base_xpath, char *node_xpath,
    sr_free_val(val);
 
    if (*where == NULL) {
-      // TODO err
       NO_MEM_ERR
       return SR_ERR_NOMEM;
    }
@@ -828,7 +834,7 @@ load_sr_str(sr_session_ctx_t *sess, char *base_xpath, char *node_xpath,
    return SR_ERR_OK;
 }
 
-static char * module_name_from_xpath(char *xpath)
+static char * instance_name_from_xpath(char *xpath)
 {
    char *res = NULL;
    char *name = NULL;
@@ -840,7 +846,7 @@ static char * module_name_from_xpath(char *xpath)
       VERBOSE(N_ERR, "Failed to parse module name from xpath on line %d", __LINE__)
       goto err_cleanup;
    }
-   // /module
+   // /instance
    res = sr_xpath_next_node(NULL, &state);
    if (res == NULL) {
       VERBOSE(N_ERR, "Failed to parse module name from xpath on line %d", __LINE__)
@@ -868,4 +874,3 @@ err_cleanup:
    sr_xpath_recover(&state);
    return NULL;
 }
-/* --END local fns-- */

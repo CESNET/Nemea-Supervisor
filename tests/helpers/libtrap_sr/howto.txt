@@ -1,2 +1,0 @@
-int encode_cnts_to_json(char **data, trap_ctx_priv_t *ctx)
-tahle funkce je zodpovedna za packing jsonu v libtrap
