@@ -169,7 +169,8 @@ run_config_change_cb(sr_session_ctx_t *sess,
       if (change->action != RUN_CHE_ACTION_NONE) {
          run_change_add_new_change(&reg_chgs, change);
       } else {
-         // TODO log ignore
+         VERBOSE(V3, "Runtime change ignore for old XPATH=%s new XPATH=%s",
+                 old_val->xpath, new_val->xpath)
       }
 
       // Both cases might happen, depending on operation

@@ -1,5 +1,7 @@
-
-
+/**
+ * @file service.c
+ * @brief Implementation of functions defined in service.h
+ */
 #include <netdb.h>
 #include <sys/un.h>
 #include <libtrap/trap.h>
@@ -8,14 +10,14 @@
 #include "inst_control.h"
 
 /**
- * @brief TODO
+ * @brief Timeout period for communication with service interface UNIX socket
  * */
 #define SERVICE_WAIT_BEFORE_TIMEOUT 25000
 
 
 
 /**
- * @brief TODO
+ * @brief Types of service interface messages
  * */
 typedef enum service_msg_header_type_e {
    SERVICE_GET_COM = 10,
@@ -23,25 +25,27 @@ typedef enum service_msg_header_type_e {
 } service_msg_header_type_t;
 
 /**
- * @brief TODO
- * */
-/*typedef union tcpip_socket_addr_u {
-   struct addrinfo tcpip_sa; ///< used for TCPIP socket
-   struct sockaddr_un unix_sa; ///< used for path of UNIX socket
-} tcpip_socket_addr_t;*/
-
-/**
- * @brief TODO
+ * @brief Service interface message header structure
  * */
 typedef struct service_msg_header_s {
-   service_msg_header_type_t com;
-   uint32_t data_size;
+   service_msg_header_type_t com; ///< Type of service interface message
+   uint32_t data_size; ///< Length of service interface message
 } service_msg_header_t;
 
 
-//TODO
+/**
+ * @brief
+ * @param
+ * @return -1 on error, 0 on success
+ * */
 static int recv_data(inst_t *inst, uint32_t size, void *data);
-//TODO
+
+/**
+ * @brief Loads statistics from given JSON string
+ * @param data JSON string to load statistics from
+ * @param inst Instance to load statistics into
+ * @return -1 on error, 0 on success
+ * */
 static int load_stats_json(char *data, inst_t *inst);
 
 
@@ -79,13 +83,13 @@ int recv_ifc_stats(inst_t *inst)
    if (rc == -1) {
       VERBOSE(N_ERR, "Error while receiving reply header from inst '%s'.",
               inst->name)
-      goto error_label;
+      goto err_cleanup;
    }
 
    // Check if the reply is OK
    if (resp_header.com != SERVICE_OK_REPLY) {
       VERBOSE(N_ERR, "Wrong reply from inst '%s'.", inst->name)
-      goto error_label;
+      goto err_cleanup;
    }
 
    if (resp_header.data_size > buffer_size) {
@@ -98,21 +102,21 @@ int recv_ifc_stats(inst_t *inst)
    // Receive inst stats in json format
    if (recv_data(inst, resp_header.data_size, (void *) buffer) == -1) {
       VERBOSE(N_ERR, "Error while receiving stats from inst %s.", inst->name)
-      goto error_label;
+      goto err_cleanup;
    }
 
    // Decode json and save stats into inst structure
    VERBOSE(V3, "Received JSON: %s", buffer)
    if (load_stats_json(buffer, inst) == -1) {
       VERBOSE(N_ERR, "Error while receiving stats from inst '%s'.", inst->name);
-      goto error_label;
+      goto err_cleanup;
    }
 
    NULLP_TEST_AND_FREE(buffer)
 
    return 0;
 
-   error_label:
+err_cleanup:
    disconnect_from_inst(inst);
    NULLP_TEST_AND_FREE(buffer)
    return -1;

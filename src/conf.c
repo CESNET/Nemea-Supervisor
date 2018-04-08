@@ -9,26 +9,6 @@ char *logs_path = NULL;
 #define FOUND_AND_ERR(rc) ((rc) != SR_ERR_NOT_FOUND && (rc) != SR_ERR_OK)
 
 /**
- * @brief Loads module group configuration from sysrepo.
- * @details Loads content of all siblings and descendants of group_node into
- *  module_group_t and pushes new structure into m_groups_ll. Parses module-group
- *  in YANG schema.
- * @param sess Sysrepo session to use
- * @param group Module group structure to load configuration data to
- * @param node First of leaves or nodes of loaded group.
- * */
-/*static int module_group_load(sr_session_ctx_t *sess,
-                             module_group_t *group,
-                             sr_node_t *node);*/
-
-/**
- * TODO
- * */
-/*static int module_load(sr_session_ctx_t *sess,
-                       module_t *mod,
-                       module_group_t *grp,
-                       sr_node_t *node);*/
-/**
  * @brief Same thing as load_module_group but for modules.
  * @details On top of the same functionality as load_module_group but for modules,
  *  it links new module to group given by parameter group. Parses module container

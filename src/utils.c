@@ -1,5 +1,9 @@
-#include <time.h>
+/**
+ * @file utils.c
+ * @brief Implementation of utils.h
+ */
 
+#include <time.h>
 #include "utils.h"
 
 char verbose_msg[4096];
@@ -7,7 +11,14 @@ FILE *output_fd = NULL;
 FILE *supervisor_log_fd = NULL;
 uint8_t verbosity_level = 0;
 
+/**
+ * @brief Resizes vector to given capacity
+ * @param v Vector to resize
+ * @param capacity Capacity to resize vector to
+ * @return -1 on error, 0 on success
+ * */
 static int vector_resize(vector_t *v, uint32_t capacity);
+
 
 char *get_formatted_time()
 {
@@ -107,6 +118,7 @@ void vector_free(vector_t *v)
    v->capacity = 0;
    NULLP_TEST_AND_FREE(v->items)
 }
+
 static int vector_resize(vector_t *v, uint32_t capacity)
 {
    void **items = realloc(v->items, sizeof(void *) * capacity);
