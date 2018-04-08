@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.8)
 set (CMAKE_C_STANDARD 11)
 
-# TODO plus poresit vsechny checky v config.h
 set (CMAKE_C_FLAGS "-Wall -g -O0 ${CMAKE_C_FLAGS}") # debug mode
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
 

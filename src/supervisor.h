@@ -5,7 +5,6 @@
 #include <inttypes.h>
 #include <sys/stat.h>
 
-#include "config.h"
 #include "module.h"
 #include "utils.h"
 
