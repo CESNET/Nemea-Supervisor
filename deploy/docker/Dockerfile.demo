@@ -4,9 +4,7 @@ FROM fedora:26
 RUN dnf update -y
 RUN dnf install autoconf automake gcc gcc-c++ libtool libxml2-devel make pkgconfig \
                 libpcap libidn bison flex python3 python3-devel dnf-plugins-core git \
-                cmake -y
-RUN dnf install wget -y
-
+                cmake wget -y
 
 RUN dnf copr enable @CESNET/NEMEA -y
 RUN dnf install nemea-framework nemea-common nemea-detectors nemea-modules libtrap-devel -y
@@ -17,10 +15,7 @@ RUN dnf copr enable @CESNET/IPFIXcol -y
 RUN dnf install ipfixcol ipfixcol-lnfstore-output ipfixcol-unirec-output \
                 ipfixcol-profilestats-inter -y
 RUN mkdir -p /data/flow/live/emails /data/ipfixcol-files
-WORKDIR /data
-RUN wget https://owncloud.cesnet.cz/index.php/s/0BQGHSCj4YK0IOu/download \
-         --quiet -O ipfixcol-files.tar.gz
-RUN tar xzf ipfixcol-files.tar.gz && rm ipfixcol-files.tar.gz
+
 
 ENV SRC_FLD /var/nemea_source
 RUN mkdir ${SRC_FLD}
@@ -64,6 +59,15 @@ WORKDIR ${SRC_FLD}
 RUN mkdir -p /var/run/sysrepo-subscriptions/ && \
     chmod -R 777 /var/run/sysrepo-subscriptions/
 
+# Download necessary IPFIXCOL configuration files and data to replay by ipfixsend
+WORKDIR /data
+RUN wget https://owncloud.cesnet.cz/index.php/s/0BQGHSCj4YK0IOu/download \
+         --quiet -O ipfixcol-files.tar.gz
+RUN tar xzf ipfixcol-files.tar.gz && rm ipfixcol-files.tar.gz
+
+# Update this line if you want a current supervisor build
+ARG CACHE_DATE=2018-04-11
+
 # Install nemea-supervisor-sysrepo-edition
 RUN git clone https://github.com/zidekmat/nemea-supervisor-sysrepo-edition && \
 		cd nemea-supervisor-sysrepo-edition  && mkdir build && cd build &&  \
@@ -72,7 +76,5 @@ RUN git clone https://github.com/zidekmat/nemea-supervisor-sysrepo-edition && \
 WORKDIR ${SRC_FLD}/nemea-supervisor-sysrepo-edition
 RUN ./bootstrap.sh
 WORKDIR build/src/
-
-
 
 CMD ["/bin/bash"]
