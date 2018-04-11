@@ -1,6 +1,6 @@
 ### To build use:
 ```
-docker build -t nemea-supervisor-sysrepo-edition-demo:latest -f Dockerfile.demo .
+docker build -t nsr-demo:latest -f Dockerfile.demo .
 ```
 
 ### To run use:
@@ -9,5 +9,6 @@ docker build -t nemea-supervisor-sysrepo-edition-demo:latest -f Dockerfile.demo 
 docker run -ti nemea-supervisor-sysrepo-edition-demo /bin/bash
 
 # start supervisor
-./nemea-supervisor -L .
+```
+./nemea-supervisor  --logs-path=. --verbosity 3
 ```

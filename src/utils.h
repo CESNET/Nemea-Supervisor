@@ -1,6 +1,6 @@
 /**
  * @file utils.h
- * @brief TODO
+ * @brief This module provides helper macros and functions shared accross the whole supervisor.
  */
 #ifndef UTILS_H
 #define UTILS_H
@@ -14,7 +14,7 @@
 
 #define INSTANCES_LOGS_DIR_NAME "modules_logs" ///< Directory of instances logs
 #define SUPERVISOR_LOG_FILE_NAME "supervisor_log" ///< Directory of supervisor log
-#define DEFAULT_SIZE_OF_BUFFER 100 ///< TODO
+#define DEFAULT_SIZE_OF_BUFFER 100 ///< Multipurpose string buffer size. See usages
 
 // Constants for print_msg function and VERBOSE macro
 #define N_ERR 6 ///< Verbosity level for more generic errors. This is used for error at the end of the functions in error_cleanup most of the time
@@ -95,8 +95,8 @@ typedef struct vector_s {
 } vector_t;
 
 extern char verbose_msg[4096]; ///< String buffer for VERBOSE macro
-extern FILE *output_fd; ///< TODO jak to ma spojitost se supervisor_log_fd
-extern FILE *supervisor_log_fd; ///<
+extern FILE *output_fd; ///< Output file descriptor for VERBOSE macro. stdout or supervisor_log_fd is used
+extern FILE *supervisor_log_fd; ///< File descriptor of supervisor's log file
 extern uint8_t verbosity_level; ///< Global application's verbosity level to use
 
 /**

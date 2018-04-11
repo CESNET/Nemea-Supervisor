@@ -9,7 +9,7 @@
 char verbose_msg[4096];
 FILE *output_fd = NULL;
 FILE *supervisor_log_fd = NULL;
-uint8_t verbosity_level = 0;
+uint8_t verbosity_level = V1;
 
 /**
  * @brief Resizes vector to given capacity

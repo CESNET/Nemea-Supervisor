@@ -4,7 +4,7 @@ FROM fedora:26
 RUN dnf update -y
 RUN dnf install autoconf automake gcc gcc-c++ libtool libxml2-devel make pkgconfig \
                 libpcap libidn bison flex python3 python3-devel dnf-plugins-core git \
-                cmake wget -y
+                cmake libcmocka wget -y
 
 RUN dnf copr enable @CESNET/NEMEA -y
 RUN dnf install nemea-framework nemea-common nemea-detectors nemea-modules libtrap-devel -y
@@ -66,15 +66,15 @@ RUN wget https://owncloud.cesnet.cz/index.php/s/0BQGHSCj4YK0IOu/download \
 RUN tar xzf ipfixcol-files.tar.gz && rm ipfixcol-files.tar.gz
 
 # Update this line if you want a current supervisor build
-ARG CACHE_DATE=2018-04-11
+ARG CACHE_DATE=2018-04-11.1
 
 # Install nemea-supervisor-sysrepo-edition
+WORKDIR ${SRC_FLD}
 RUN git clone https://github.com/zidekmat/nemea-supervisor-sysrepo-edition && \
 		cd nemea-supervisor-sysrepo-edition  && mkdir build && cd build &&  \
 		cmake .. && \
 		make
-WORKDIR ${SRC_FLD}/nemea-supervisor-sysrepo-edition
-RUN ./bootstrap.sh
-WORKDIR build/src/
+RUN /bin/bash ${SRC_FLD}/nemea-supervisor-sysrepo-edition/bootstrap.sh
+WORKDIR ${SRC_FLD}/nemea-supervisor-sysrepo-edition/build/src/
 
 CMD ["/bin/bash"]

@@ -1,3 +1,5 @@
+# This file comes from https://github.com/sysrepo/sysrepo/blob/master/CMakeModules/FindCMocka.cmake
+
 #  CMOCKA_FOUND - System has CMocka
 #  CMOCKA_INCLUDE_DIRS - The CMocka include directories
 #  CMOCKA_LIBRARIES - The libraries needed to use CMocka

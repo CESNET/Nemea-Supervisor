@@ -1,3 +1,7 @@
+/**
+ * @file supervisor.c
+ * @brief Implementation of supervisor.h
+ */
 #include <limits.h>
 #include <fcntl.h>
 #include <errno.h>
@@ -13,21 +17,9 @@
 #include "service.h"
 #include "main.h"
 
-/**
- * @brief Program identifier supplied to Sysrepo
- * */
-#define PROGRAM_IDENTIFIER_FSR "nemea-supervisor"
 
-#define CHECK_DIR 1
-#define CHECK_FILE 2
-
-
-/**
- * @brief Defines number of supervisor_routine loops to
- *  take before reconnecting again
- * */
-#define NUM_SERVICE_IFC_PERIOD 30
-
+#define PROGRAM_IDENTIFIER_FSR "nemea-supervisor" ///< Program identifier supplied to Sysrepo
+#define NUM_SERVICE_IFC_PERIOD 30 ///< Defines number of supervisor_routine loops to take before reconnecting again
 /**
  * @brief Time in micro seconds for which the service thread spends sleeping
  *  after each period.
@@ -44,7 +36,7 @@
 typedef struct sr_conn_link_s {
  sr_conn_ctx_t *conn; ///< Sysrepo connection to use in application
  sr_session_ctx_t *sess; ///< Sysrepo session to use in application
- sr_subscription_ctx_t *subscr;
+ sr_subscription_ctx_t *subscr; ///< Sysrepo subscription for runtime changes and statistics requests
 } sr_conn_link_t;
 
 
@@ -53,30 +45,74 @@ bool supervisor_initialized = false; ///< Specifies whether supervisor_initializ
 bool terminate_insts_at_exit = false; ///< Specifies whether signal handler wants to terminate all instances at exit
 int supervisor_exit_code = EXIT_SUCCESS; ///< What exit code to return at exit
 uint64_t last_total_cpu = 0; ///< Variable with total cpu usage of whole operating system
-
-
 sr_conn_link_t sr_conn_link = {
       .conn = NULL,
       .sess = NULL,
 }; ///< Sysrepo connection link
 
+/**
+ * @brief Validates if file at given path is directory and has valid permissions
+ * @param path Path to file
+ * @param perm File permissions on given path
+ * @return -1 on error, 0 on success
+ * */
+static int check_dir_perm(char *path, int perm);
 
-static int check_file_type_perm(char *item_path, uint8_t file_type, int file_perm);
-static char *get_absolute_file_path(char *file_name);
+/**
+ * @brief Returns absolute path of given directory
+ * @param path Path to file
+ * @return Static pointer to absolute path or NULL on error 
+ * */
+static char *get_absolute_file_path(char *path);
 
-static void free_output_file_strings_and_streams();
+/**
+ * @brief Closes supervisor's log file
+ * */
+static void close_log();
+
+/**
+ * @brief TODO
+ * @return -1 on error, 0 on success
+ * */
 static int load_configuration();
+
+/**
+ * @brief Signal handler
+ * @param catched_signal Catched signal
+ * */
 static void sig_handler(int catched_signal);
 
+/**
+ * @brief TODO
+ * */
 static inline void get_service_ifces_stats();
+
+/**
+ * @brief TODO
+ * */
 static void insts_update_resources_usage();
+
+/**
+ * @brief TODO
+ * @param total_cpu_usage Return pointer for total CPU usage
+ * @return -1 on error, 0 on success
+ * */
 static int get_total_cpu_usage(uint64_t *total_cpu_usage);
+
+/**
+ * @brief TODO
+ * @param inst
+ * */
 static inline void inst_get_sys_stats(inst_t *inst);
+
+/**
+ * @brief TODO
+ * @param inst Instance for which vmrss should be found out
+ * */
 static inline void inst_get_vmrss(inst_t *inst);
 
 /**
- * @brief Saves PIDs of running instances to sysrepo so that they can be
- *  recovered after supervisor restart.
+ * @brief Saves PIDs of running instances to sysrepo so that they can be recovered after supervisor restart.
  * */
 static void insts_save_running_pids();
 
@@ -87,7 +123,7 @@ int init_paths()
    char path[PATH_MAX];
 
    /* Check logs directory */
-   if (check_file_type_perm(logs_path, CHECK_DIR, R_OK | W_OK) == -1) {
+   if (check_dir_perm(logs_path, R_OK | W_OK) == -1) {
       PRINT_ERR("Check the path and permissions (read and write needed) of the logs directory '%s'.", logs_path)
       return -1;
    }
@@ -115,7 +151,7 @@ int init_paths()
    // Try to create instances logs directory
    if (mkdir(path, PERM_LOGSDIR) == -1) {
       if (errno == EEXIST) { // path already exists
-         if (check_file_type_perm(path, CHECK_DIR, R_OK | W_OK) == -1) {
+         if (check_dir_perm(path, R_OK | W_OK) == -1) {
             VERBOSE(N_ERR, "Check the permissions (read and write needed) of the "
                   "instances logs directory '%s'.", path)
             return -1;
@@ -275,7 +311,7 @@ void terminate_supervisor(bool should_terminate_insts)
    VERBOSE(V3, "Freeing modules vector")
    av_modules_free();
    VERBOSE(V3, "Freeing output strigns and streams")
-   free_output_file_strings_and_streams();
+   close_log();
 
    NULLP_TEST_AND_FREE(logs_path)
 
@@ -326,42 +362,40 @@ void check_insts_connections()
     }
 }
 
-int check_file_type_perm(char *item_path, uint8_t file_type, int file_perm)
+static int check_dir_perm(char *path, int perm)
 {
    struct stat st;
 
-   if (stat(item_path, &st) == -1) {
+   if (stat(path, &st) == -1) {
       return -1;
    }
 
-   if (S_ISREG(st.st_mode) == 1 && file_type == CHECK_FILE) {
-      // nothing to do here
-   } else if (S_ISDIR(st.st_mode) == 1 && file_type == CHECK_DIR) {
+   if (S_ISDIR(st.st_mode) == 1) {
       // nothing to do here
    } else {
-      // print warning?
+      VERBOSE(V3, "Invalid file type for '%s'.", path)
       return -1;
    }
 
-   if (access(item_path, file_perm) == -1) {
-      // print warning?
+   if (access(path, perm) == -1) {
+      VERBOSE(V3, "Invalid file permissions on '%s'.", path)
       return -1;
    }
 
    return 0;
 }
 
-// Returns absolute path of the file / directory passed in name parameter
-char *get_absolute_file_path(char *file_name)
+
+static char *get_absolute_file_path(char *path)
 {
-   if (file_name == NULL) {
+   if (path == NULL) {
       return NULL;
    }
 
    static char absolute_file_path[PATH_MAX];
    memset(absolute_file_path, 0, PATH_MAX * sizeof(char));
 
-   if (realpath(file_name, absolute_file_path) == NULL) {
+   if (realpath(path, absolute_file_path) == NULL) {
       return NULL;
    }
    return absolute_file_path;
@@ -378,7 +412,7 @@ int daemon_init_process()
       return -1;
    } else if (process_id > 0) {
       NULLP_TEST_AND_FREE(logs_path)
-      free_output_file_strings_and_streams();
+      close_log();
       fprintf(stdout, "[INFO] PID of daemon process: %d.", process_id);
       exit(EXIT_SUCCESS);
    }
@@ -393,7 +427,7 @@ int daemon_init_process()
    return 0;
 }
 
-void free_output_file_strings_and_streams()
+static inline void close_log()
 {
    if (supervisor_log_fd != NULL) {
       fclose(supervisor_log_fd);
@@ -424,7 +458,7 @@ int load_configuration()
    pthread_mutex_unlock(&config_lock);
    if (rc != 0) {
       VERBOSE(N_ERR, "Failed to load config from sysrepo tree")
-      return rc;
+      return -1;
    }
 
    VERBOSE(V3, "Printing available modules:")
@@ -444,7 +478,7 @@ int load_configuration()
    return 0;
 }
 
-void sig_handler(int catched_signal)
+static void sig_handler(int catched_signal)
 {
    switch (catched_signal) {
       case SIGPIPE:
@@ -590,7 +624,7 @@ static inline void inst_get_vmrss(inst_t *inst)
       goto err_cleanup;
    }
 
-   while (-1 != getline(&line, &line_len, fd)) {
+   while (getline(&line, &line_len, fd) != -1) {
       if (strstr(line, "VmRSS") != NULL) {
          token = strtok(line, delim);
          while (token != NULL) {
@@ -604,6 +638,7 @@ static inline void inst_get_vmrss(inst_t *inst)
          break;
       }
    }
+
 err_cleanup:
    if (fd != NULL) {
       fclose(fd);

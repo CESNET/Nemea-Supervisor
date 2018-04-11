@@ -1,3 +1,5 @@
+# This file comes from https://github.com/CESNET/Netopeer2/blob/master/CMakeModules/FindSYSREPO.cmake
+
 #  SYSREPO_FOUND - System has SYSREPO
 #  SYSREPO_INCLUDE_DIRS - The SYSREPO include directories
 #  SYSREPO_LIBRARIES - The libraries needed to use SYSREPO
