@@ -9,6 +9,5 @@ docker build -t nsr-demo:latest -f Dockerfile.demo .
 docker run -ti nemea-supervisor-sysrepo-edition-demo /bin/bash
 
 # start supervisor
-```
 ./nemea-supervisor  --logs-path=. --verbosity 3
 ```
