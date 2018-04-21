@@ -4,134 +4,6 @@ submodule trap-interfaces {
 
   import ietf-inet-types { prefix inet; }
 
-  typedef trap-ifc-type {
-    type enumeration {
-      enum TCP { description "IP/TCP for intermachine connections."; }
-      enum TCP-TLS { description "Same as TCP but using TLS on top."; }
-      enum UNIXSOCKET { description "UNIX socket for local connections."; }
-      enum FILE { description "File interface for loading or saving the data from or to a file."; }
-      enum BLACKHOLE { description "Output interface dropping everything."; }
-    }
-    description "Trap interface type.";
-  }
-
-  typedef trap-ifc-dir {
-    type enumeration {
-      enum IN { description "Input interface."; }
-      enum OUT { description "Output interface."; }
-    }
-    description "Direction of trap interface.";
-  }
-
-  typedef full-file-path {
-    type string { 
-      length "1..255";
-      pattern "/.+"; 
-    }
-    description "Full UNIX path to file";
-  }
-
-
-  grouping tls-key-cert-ca-files {
-    leaf keyfile {
-      type full-file-path;
-      mandatory true;
-      description "Path to private key file in PEM format.";
-    }
-    leaf certfile {
-      type full-file-path;
-      mandatory true;
-      description "Path to certificate file in PEM format.";
-    }
-    leaf cafile {
-      type full-file-path;
-      mandatory true;
-      description "Path to CA certificate file in PEM format.";
-    }
-  }
-
-  grouping tcp-port {
-    leaf port {
-      type inet:port-number;
-      mandatory true;
-      description "Port number indetifying TCP socket.";
-    }
-  }
-
-  grouping tcp-host {
-    leaf host { 
-      type inet:host; 
-      description "Hostname or IP address identifying TCP socket.
-                   Host option can be skipped and in that case localhost is used.";
-    }
-  }
-
-  grouping trap-ifc-max-clients {
-    leaf max-clients {
-      type uint16 { range "1..65535"; }
-      // libtrap default 64;
-      description "Maximal number of connected clients (input interfaces).";
-    }
-  }
-
-  grouping unix-socket-name {
-    leaf socket-name {
-      type string { length "1..255"; }
-      mandatory true;
-      description "Name of UNIX socket to connect to.";
-    }
-  }
-
-  grouping trap-ifc-file-name {
-    leaf name {
-      type string { length "1..255"; }
-      mandatory true;
-      description "Name of file to be used as interface.";
-    }
-  }
-
-  grouping trap-ifc-file-out-params {
-    leaf mode {
-      type string { pattern "[aw]"; length 1; }
-      default "a";
-      description "Defines file access mode, 'a' for append and 'w' for write.
-                   Append mode creates new file with an integer suffix
-                   e.g. data.trapcap.0 if the former exists.";
-    }
-    leaf time {
-      type uint16 { range "1..65535"; }
-      description "If set, interface will split captured data to individual files
-                   as often, as value of this parameter indicates. Values are in
-                   minutes and format of created files is 'filename.YYYYmmddHHMM'.
-                   If both 'time' and 'size' options are specified, the data are
-                   split primarily by time, and only if a file of one time interval
-                   exceeds the size limit, it is further splitted. The index of
-                   size-splitted file is appended after the time,
-                   e.g. 'data.trapcap.201604181000.0'.";
-    }
-    leaf size {
-      type uint16 { range "1..65535"; }
-      description "If set, interface will split captured data to individual files
-                   after size of current file exceeds given threshold. Values are
-                   in MB and numeric suffix as added to original file name for each
-                   file in ascending order starting with 0.
-                   If both 'time' and 'size' options are specified, the data are
-                   split primarily by time, and only if a file of one time interval
-                   exceeds the size limit, it is further splitted. The index of
-                   size-splitted file is appended after the time,
-                   e.g. 'data.trapcap.201604181000.0'.";
-    }
-  } // end grouping trap-ifc-file-out-params
-
-  grouping trap-ifc-timeout {
-    leaf timeout {
-      type string { pattern "(([1-9]+[0-9]*)|WAIT|NO_WAIT|HALF_WAIT)"; }
-      // libtrap default "WAIT";
-      description "Time in microseconds that an IFC can block waiting for" +
-                  " message send/receive. Or one of special values.";
-    }
-  }
-
   grouping trap-ifcs-list {
 
     list interface {
@@ -262,4 +134,132 @@ submodule trap-interfaces {
 
     } // end list interface
   } // end grouping interfaces list
-}
+
+  typedef trap-ifc-type {
+    type enumeration {
+      enum TCP { description "IP/TCP for intermachine connections."; }
+      enum TCP-TLS { description "Same as TCP but using TLS on top."; }
+      enum UNIXSOCKET { description "UNIX socket for local connections."; }
+      enum FILE { description "File interface for loading or saving the data from or to a file."; }
+      enum BLACKHOLE { description "Output interface dropping everything."; }
+    }
+    description "Trap interface type.";
+  }
+
+  typedef trap-ifc-dir {
+    type enumeration {
+      enum IN { description "Input interface."; }
+      enum OUT { description "Output interface."; }
+    }
+    description "Direction of trap interface.";
+  }
+
+  typedef full-file-path {
+    type string { 
+      length "1..255";
+      pattern "/.+"; 
+    }
+    description "Full UNIX path to file";
+  }
+
+
+  grouping tls-key-cert-ca-files {
+    leaf keyfile {
+      type full-file-path;
+      mandatory true;
+      description "Path to private key file in PEM format.";
+    }
+    leaf certfile {
+      type full-file-path;
+      mandatory true;
+      description "Path to certificate file in PEM format.";
+    }
+    leaf cafile {
+      type full-file-path;
+      mandatory true;
+      description "Path to CA certificate file in PEM format.";
+    }
+  }
+
+  grouping tcp-port {
+    leaf port {
+      type inet:port-number;
+      mandatory true;
+      description "Port number indetifying TCP socket.";
+    }
+  }
+
+  grouping tcp-host {
+    leaf host { 
+      type inet:host; 
+      description "Hostname or IP address identifying TCP socket.
+                   Host option can be skipped and in that case localhost is used.";
+    }
+  }
+
+  grouping trap-ifc-max-clients {
+    leaf max-clients {
+      type uint16 { range "1..65535"; }
+      // libtrap default 64;
+      description "Maximal number of connected clients (input interfaces).";
+    }
+  }
+
+  grouping unix-socket-name {
+    leaf socket-name {
+      type string { length "1..255"; }
+      mandatory true;
+      description "Name of UNIX socket to connect to.";
+    }
+  }
+
+  grouping trap-ifc-file-name {
+    leaf name {
+      type string { length "1..255"; }
+      mandatory true;
+      description "Name of file to be used as interface.";
+    }
+  }
+
+  grouping trap-ifc-file-out-params {
+    leaf mode {
+      type string { pattern "[aw]"; length 1; }
+      default "a";
+      description "Defines file access mode, 'a' for append and 'w' for write.
+                   Append mode creates new file with an integer suffix
+                   e.g. data.trapcap.0 if the former exists.";
+    }
+    leaf time {
+      type uint16 { range "1..65535"; }
+      description "If set, interface will split captured data to individual files
+                   as often, as value of this parameter indicates. Values are in
+                   minutes and format of created files is 'filename.YYYYmmddHHMM'.
+                   If both 'time' and 'size' options are specified, the data are
+                   split primarily by time, and only if a file of one time interval
+                   exceeds the size limit, it is further splitted. The index of
+                   size-splitted file is appended after the time,
+                   e.g. 'data.trapcap.201604181000.0'.";
+    }
+    leaf size {
+      type uint16 { range "1..65535"; }
+      description "If set, interface will split captured data to individual files
+                   after size of current file exceeds given threshold. Values are
+                   in MB and numeric suffix as added to original file name for each
+                   file in ascending order starting with 0.
+                   If both 'time' and 'size' options are specified, the data are
+                   split primarily by time, and only if a file of one time interval
+                   exceeds the size limit, it is further splitted. The index of
+                   size-splitted file is appended after the time,
+                   e.g. 'data.trapcap.201604181000.0'.";
+    }
+  } // end grouping trap-ifc-file-out-params
+
+  grouping trap-ifc-timeout {
+    leaf timeout {
+      type string { pattern "(([1-9]+[0-9]*)|WAIT|NO_WAIT|HALF_WAIT)"; }
+      // libtrap default "WAIT";
+      description "Time in microseconds that an IFC can block waiting for" +
+                  " message send/receive. Or one of special values.";
+    }
+  }
+} // end submodule trap-interfaces

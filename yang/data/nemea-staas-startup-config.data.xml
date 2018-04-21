@@ -1,0 +1,854 @@
+<?xml version="1.0"?>
+<!--
+This configuration is copy of NEMEA configuration from STaaS at https://github.com/CESNET/staas
+Description for the modules are taken from their GitHub repositories.
+-->
+<supervisor xmlns="urn:ietf:params:xml:ns:yang:nemea">
+  <!-- sources -->
+  <available-module>
+    <name>ipfixcol</name>
+    <description>IPFIXcol is a flexible IPFIX flow data collector designed to be easily extensible by plugins. (see https://github.com/CESNET/ipfixcol/tree/master/base)</description>
+    <use-trap-ifces>false</use-trap-ifces>
+    <trap-monitorable>true</trap-monitorable>
+    <is-sysrepo-ready>false</is-sysrepo-ready>
+    <path>/usr/bin/ipfixcol</path>
+  </available-module>
+  <available-module>
+    <name>ipfixsend</name>
+    <description>Tool that sends ipfix packets. (see https://github.com/CESNET/ipfixcol/tree/master/base/src/utils/ipfixsend)</description>
+    <use-trap-ifces>false</use-trap-ifces>
+    <trap-monitorable>false</trap-monitorable>
+    <is-sysrepo-ready>false</is-sysrepo-ready>
+    <path>/usr/bin/ipfixsend</path>
+  </available-module>
+  <!-- detectors -->
+  <available-module>
+    <name>amplification_detection</name>
+    <description>Module implements simple amplification attacks detection, based on flow's number of packets and bytes. It analyzes query and response traffic. Works with flow data. (see https://github.com/CESNET/Nemea-Detectors/tree/master/amplification_detection)</description>
+    <use-trap-ifces>true</use-trap-ifces>
+    <trap-monitorable>true</trap-monitorable>
+    <is-sysrepo-ready>false</is-sysrepo-ready>
+    <path>/usr/bin/nemea/amplification_detection</path>
+    <in-ifces-cnt>1</in-ifces-cnt>
+    <out-ifces-cnt>1</out-ifces-cnt>
+  </available-module>
+  <available-module>
+    <name>brute_force_detector</name>
+    <description>The module can be used for detecting brute force attacks on different services. Protocols as SSH, Telnet and RDP are currently supported. (see https://github.com/CESNET/Nemea-Detectors/tree/master/brute_force_detector)</description>
+    <use-trap-ifces>true</use-trap-ifces>
+    <trap-monitorable>true</trap-monitorable>
+    <is-sysrepo-ready>false</is-sysrepo-ready>
+    <path>/usr/bin/nemea/brute_force_detector</path>
+    <in-ifces-cnt>1</in-ifces-cnt>
+    <out-ifces-cnt>1</out-ifces-cnt>
+  </available-module>
+  <available-module>
+    <name>dnstunnel_detection</name>
+    <description>The module detects communication tunnels over DNS protocol. Such tunnels can be established e.g. by iodine, dns2tcp and others. It is based on data encapsulation into DNS messages in order to bypass security policy. (see https://github.com/CESNET/Nemea-Detectors/tree/master/tunnel_detection)</description>
+    <use-trap-ifces>true</use-trap-ifces>
+    <trap-monitorable>true</trap-monitorable>
+    <is-sysrepo-ready>false</is-sysrepo-ready>
+    <path>/usr/bin/nemea/dnstunnel_detection</path>
+    <in-ifces-cnt>1</in-ifces-cnt>
+    <out-ifces-cnt>*</out-ifces-cnt>
+  </available-module>
+  <available-module>
+    <name>haddrscan_detector</name>
+    <description>This module is a simple, threshold-based detector for horizontal scans which processes incoming flow records and outputs alerts. The module uses TRAP platform and it has one input and one output interface.
+
+      The detection algorithm uses information from basic flow records and it is based on analysis of the number of destination addresses per source address. It is important to remember all unique destination addresses for each pair of source address and destination port separately. The source address is a potential source of scan, meanwhile, the destination addresses are victims. (see https://github.com/CESNET/Nemea-Detectors/tree/master/haddrscan_detector)</description>
+    <use-trap-ifces>true</use-trap-ifces>
+    <trap-monitorable>true</trap-monitorable>
+    <is-sysrepo-ready>false</is-sysrepo-ready>
+    <path>/usr/bin/nemea/haddrscan_detector</path>
+    <in-ifces-cnt>1</in-ifces-cnt>
+    <out-ifces-cnt>1</out-ifces-cnt>
+  </available-module>
+  <available-module>
+    <name>haddrscan_aggregator</name>
+    <description>Aggregator module for haddrscan_detector. (see https://github.com/CESNET/Nemea-Detectors/tree/master/haddrscan_detector)</description>
+    <use-trap-ifces>true</use-trap-ifces>
+    <trap-monitorable>true</trap-monitorable>
+    <is-sysrepo-ready>false</is-sysrepo-ready>
+    <path>/usr/bin/nemea/haddrscan_aggregator.py</path>
+    <in-ifces-cnt>1</in-ifces-cnt>
+    <out-ifces-cnt>1</out-ifces-cnt>
+  </available-module>
+  <available-module>
+    <name>hoststatsnemea</name>
+    <description>HostStatsNemea module calculates statistics about network traffic of each
+      individual host (IP address) in the network. The statistics are searched
+      for suspicious behavior using a simple rule set. This suspicious behavior
+      is stored in a log file and send on output module interface. (see https://github.com/CESNET/Nemea-Detectors/tree/master/hoststatsnemea)</description>
+    <use-trap-ifces>true</use-trap-ifces>
+    <trap-monitorable>true</trap-monitorable>
+    <is-sysrepo-ready>false</is-sysrepo-ready>
+    <path>/usr/bin/nemea/hoststatsnemea</path>
+    <in-ifces-cnt>1</in-ifces-cnt>
+    <out-ifces-cnt>1</out-ifces-cnt>
+  </available-module>
+  <available-module>
+    <name>ipblacklistfilter</name>
+    <description>odule recieves the UniRec and checks if the stored source
+      address or destination address is not present in any
+      blacklist that are available. If any of the addresses is
+      blacklisted the record is changed by adding a number of
+      the list which blacklisted the address. UniRec with this
+      flag is then sent to the next module. (see https://github.com/CESNET/Nemea-Detectors/tree/master/blacklistfilter/ipdetect)</description>
+    <use-trap-ifces>true</use-trap-ifces>
+    <trap-monitorable>true</trap-monitorable>
+    <is-sysrepo-ready>false</is-sysrepo-ready>
+    <path>/usr/bin/nemea/ipblacklistfilter</path>
+    <in-ifces-cnt>1</in-ifces-cnt>
+    <out-ifces-cnt>1</out-ifces-cnt>
+  </available-module>
+  <available-module>
+    <name>miner_detector</name>
+    <description>Miner detector module was implemented to detect hosts in network that participate in bitcoin mining and communicate with mining pool server. If miners are using stratum mining protocol, this communication is detected and corresponding miner and server IP addresses are reported.
+
+      To greatly reduce false positive detection, after module detect suspicious communication it will connect to the suspicious server and try to communicate with it using stratum protocol. After positive reply from the server, detection is done and detected incident is reported. (see https://github.com/CESNET/Nemea-Detectors/tree/master/miner_detector)</description>
+    <use-trap-ifces>true</use-trap-ifces>
+    <trap-monitorable>true</trap-monitorable>
+    <is-sysrepo-ready>false</is-sysrepo-ready>
+    <path>/usr/bin/nemea/miner_detector</path>
+    <in-ifces-cnt>1</in-ifces-cnt>
+    <out-ifces-cnt>1</out-ifces-cnt>
+  </available-module>
+  <available-module>
+    <name>sip_bf_detector</name>
+    <description>Module for detecting brute-force attacks and user search attack on Session Initiation Protocol. It analyses SIP response traffic and is capable of detecting distributed brute-force attacks and username scans. (see https://github.com/CESNET/Nemea-Detectors/tree/master/sip_bf_detector)</description>
+    <use-trap-ifces>true</use-trap-ifces>
+    <trap-monitorable>true</trap-monitorable>
+    <is-sysrepo-ready>false</is-sysrepo-ready>
+    <path>/usr/bin/nemea/sip_bf_detector</path>
+    <in-ifces-cnt>1</in-ifces-cnt>
+    <out-ifces-cnt>1</out-ifces-cnt>
+  </available-module>
+  <available-module>
+    <name>voip_fraud_detection</name>
+    <description>Module detecting fraud in VoIP telephony - in SIP communication.
+
+      Firstly, it detects testing prefix enumeration in telephone numbers.
+      Secondly, it stores information about countries to which individual IP
+      address calling. Module warnings, if is detected calling to different
+      country. (see https://github.com/CESNET/Nemea-Detectors/blob/master/voip_fraud_detection)</description>
+    <use-trap-ifces>true</use-trap-ifces>
+    <trap-monitorable>true</trap-monitorable>
+    <is-sysrepo-ready>false</is-sysrepo-ready>
+    <path>/usr/bin/nemea/voip_fraud_detection</path>
+    <in-ifces-cnt>1</in-ifces-cnt>
+    <out-ifces-cnt>*</out-ifces-cnt>
+  </available-module>
+  <available-module>
+    <name>vportscan_detector</name>
+    <description>Vportscan detector is a simple, threshold-based detector for vertical scans detection. The detection algorithm uses information from basic flow records (source and destination IP addresses and ports, protocol, #packets, #bytes).
+
+      The detection algorithm is based on analysis of the number of destination ports per source address. It is important to remember all unique destination ports for each pair of source and destination addresses separately. The source address is a potential source of scan, meanwhile, the destination address is a victim.
+
+      The input of algorithm are all incoming flow records, however, only the flow records that satisfy a condition are processed. The condition contains transport protocol (must be TCP), the number of packets in a flow (must be lower or equal to 4), TCP flags (must be equal to SYN). If the destination port is not yet stored in the list of seen ports of the pair of addresses, the port is normally added. Otherwise, the port is completely removed from the set due to the following assumption. We assume that repeating destination port belongs to benign traffic because there is generally no reason to scan one port repeatedly from one source address. If the list of seen ports of a pair of addresses contains 50 unique ports, an alert is reported. (see https://github.com/CESNET/Nemea-Detectors/tree/master/vportscan_detector)</description>
+    <use-trap-ifces>true</use-trap-ifces>
+    <trap-monitorable>true</trap-monitorable>
+    <is-sysrepo-ready>false</is-sysrepo-ready>
+    <path>/usr/bin/nemea/vportscan_detector</path>
+    <in-ifces-cnt>1</in-ifces-cnt>
+    <out-ifces-cnt>1</out-ifces-cnt>
+  </available-module>
+  <available-module>
+    <name>vportscan_aggregator</name>
+    <description>Aggregator module for vportscan_detector. (see https://github.com/CESNET/Nemea-Detectors/blob/master/vportscan_detector/vportscan_aggregator.py)</description>
+    <use-trap-ifces>true</use-trap-ifces>
+    <trap-monitorable>true</trap-monitorable>
+    <is-sysrepo-ready>false</is-sysrepo-ready>
+    <path>/usr/bin/nemea/vportscan_aggregator.py</path>
+    <in-ifces-cnt>1</in-ifces-cnt>
+    <out-ifces-cnt>1</out-ifces-cnt>
+  </available-module>
+  <!-- reporters -->
+  <available-module>
+    <name>hoststats2idea</name>
+    <description>Reporting module for hoststatsnemea module that receives alerts from detectors and stores them into database (MongoDB), file or forwards them into Warden. (see https://github.com/CESNET/Nemea-Modules/tree/master/report2idea)</description>
+    <use-trap-ifces>true</use-trap-ifces>
+    <trap-monitorable>true</trap-monitorable>
+    <is-sysrepo-ready>false</is-sysrepo-ready>
+    <path>/usr/bin/nemea/hoststats2idea.py</path>
+    <in-ifces-cnt>1</in-ifces-cnt>
+    <out-ifces-cnt>0</out-ifces-cnt>
+  </available-module>
+  <available-module>
+    <name>amplification2idea</name>
+    <description>Reporting module for dns_amplification module that receives alerts from detectors and stores them into database (MongoDB), file or forwards them into Warden. (see https://github.com/CESNET/Nemea-Modules/tree/master/report2idea)</description>
+    <use-trap-ifces>true</use-trap-ifces>
+    <trap-monitorable>true</trap-monitorable>
+    <is-sysrepo-ready>false</is-sysrepo-ready>
+    <path>/usr/bin/nemea/amplification2idea.py</path>
+    <in-ifces-cnt>1</in-ifces-cnt>
+    <out-ifces-cnt>0</out-ifces-cnt>
+  </available-module>
+  <available-module>
+    <name>ipblacklist2idea</name>
+    <description>Reporting module for ipblacklistfilter module that receives alerts from detectors and stores them into database (MongoDB), file or forwards them into Warden. (see https://github.com/CESNET/Nemea-Modules/tree/master/report2idea)</description>
+    <use-trap-ifces>true</use-trap-ifces>
+    <trap-monitorable>true</trap-monitorable>
+    <is-sysrepo-ready>false</is-sysrepo-ready>
+    <path>/usr/bin/nemea/ipblacklist2idea.py</path>
+    <in-ifces-cnt>1</in-ifces-cnt>
+    <out-ifces-cnt>0</out-ifces-cnt>
+  </available-module>
+  <available-module>
+    <name>vportscan2idea</name>
+    <description>Reporting module for vportscan_detector module that receives alerts from detectors and stores them into database (MongoDB), file or forwards them into Warden. (see https://github.com/CESNET/Nemea-Modules/tree/master/report2idea)</description>
+    <use-trap-ifces>true</use-trap-ifces>
+    <trap-monitorable>true</trap-monitorable>
+    <is-sysrepo-ready>false</is-sysrepo-ready>
+    <path>/usr/bin/nemea/vportscan2idea.py</path>
+    <in-ifces-cnt>1</in-ifces-cnt>
+    <out-ifces-cnt>0</out-ifces-cnt>
+  </available-module>
+  <available-module>
+    <name>bruteforce2idea</name>
+    <description>Reporting module for brute_force_detector module that receives alerts from detectors and stores them into database (MongoDB), file or forwards them into Warden. (see https://github.com/CESNET/Nemea-Modules/tree/master/report2idea)</description>
+    <use-trap-ifces>true</use-trap-ifces>
+    <trap-monitorable>true</trap-monitorable>
+    <is-sysrepo-ready>false</is-sysrepo-ready>
+    <path>/usr/bin/nemea/bruteforce2idea.py</path>
+    <in-ifces-cnt>1</in-ifces-cnt>
+    <out-ifces-cnt>0</out-ifces-cnt>
+  </available-module>
+  <available-module>
+    <name>voipfraud2idea</name>
+    <description>Reporting module for voip_fraud_detection module that receives alerts from detectors and stores them into database (MongoDB), file or forwards them into Warden. (see https://github.com/CESNET/Nemea-Modules/tree/master/report2idea)</description>
+    <use-trap-ifces>true</use-trap-ifces>
+    <trap-monitorable>true</trap-monitorable>
+    <is-sysrepo-ready>false</is-sysrepo-ready>
+    <path>/usr/bin/nemea/voipfraud2idea.py</path>
+    <in-ifces-cnt>1</in-ifces-cnt>
+    <out-ifces-cnt>0</out-ifces-cnt>
+  </available-module>
+  <available-module>
+    <name>dnstunnel2idea</name>
+    <description>Reporting module for dnstunnel_detection module that receives alerts from detectors and stores them into database (MongoDB), file or forwards them into Warden. (see https://github.com/CESNET/Nemea-Modules/tree/master/report2idea)</description>
+    <use-trap-ifces>true</use-trap-ifces>
+    <trap-monitorable>true</trap-monitorable>
+    <is-sysrepo-ready>false</is-sysrepo-ready>
+    <path>/usr/bin/nemea/dnstunnel2idea.py</path>
+    <in-ifces-cnt>1</in-ifces-cnt>
+    <out-ifces-cnt>0</out-ifces-cnt>
+  </available-module>
+  <available-module>
+    <name>haddrscan2idea</name>
+    <description>Reporting module for haddrscan_detector module that receives alerts from detectors and stores them into database (MongoDB), file or forwards them into Warden. (see https://github.com/CESNET/Nemea-Modules/tree/master/report2idea)</description>
+    <use-trap-ifces>true</use-trap-ifces>
+    <trap-monitorable>true</trap-monitorable>
+    <is-sysrepo-ready>false</is-sysrepo-ready>
+    <path>/usr/bin/nemea/haddrscan2idea.py</path>
+    <in-ifces-cnt>1</in-ifces-cnt>
+    <out-ifces-cnt>0</out-ifces-cnt>
+  </available-module>
+  <available-module>
+    <name>minerdetector2idea</name>
+    <description>Reporting module for miner_detector module that receives alerts from detectors and stores them into database (MongoDB), file or forwards them into Warden. (see https://github.com/CESNET/Nemea-Modules/tree/master/report2idea)</description>
+    <use-trap-ifces>true</use-trap-ifces>
+    <trap-monitorable>true</trap-monitorable>
+    <is-sysrepo-ready>false</is-sysrepo-ready>
+    <path>/usr/bin/nemea/minerdetector2idea.py</path>
+    <in-ifces-cnt>1</in-ifces-cnt>
+    <out-ifces-cnt>0</out-ifces-cnt>
+  </available-module>
+  <available-module>
+    <name>sipbf2idea</name>
+    <description>Reporting module for sip_bf_detector module that receives alerts from detectors and stores them into database (MongoDB), file or forwards them into Warden. (see https://github.com/CESNET/Nemea-Modules/tree/master/report2idea)</description>
+    <use-trap-ifces>true</use-trap-ifces>
+    <trap-monitorable>true</trap-monitorable>
+    <is-sysrepo-ready>false</is-sysrepo-ready>
+    <path>/usr/bin/nemea/sipbf2idea.py</path>
+    <in-ifces-cnt>1</in-ifces-cnt>
+    <out-ifces-cnt>0</out-ifces-cnt>
+  </available-module>
+  <!-- loggers -->
+  <available-module>
+    <name>logger</name>
+    <description>This NEMEA module logs incoming UniRec records into stdout or into specified file(s). (see https://github.com/CESNET/Nemea-Modules/tree/master/logger)</description>
+    <use-trap-ifces>true</use-trap-ifces>
+    <trap-monitorable>true</trap-monitorable>
+    <is-sysrepo-ready>false</is-sysrepo-ready>
+    <path>/usr/bin/nemea/logger</path>
+    <in-ifces-cnt>*</in-ifces-cnt>
+    <out-ifces-cnt>0</out-ifces-cnt>
+  </available-module>
+
+  <!-- INSTANCES -->
+  <!-- =========================================================================== -->
+  <!-- =========================================================================== -->
+  <!-- sources -->
+  <instance>
+    <name>ipfixcol</name>
+    <module-ref>ipfixcol</module-ref>
+    <enabled>true</enabled>
+    <params>-c /data/ipfixcol-files/ipfixcol-startup.xml -p /tmp/ipfixcol.pid</params>
+  </instance>
+  <instance>
+    <name>ipfixsend</name>
+    <module-ref>ipfixsend</module-ref>
+    <enabled>true</enabled>
+    <params>-i /data/ipfixcol-files/data.ipfix -R 0.5</params>
+  </instance>
+  <!-- detectors -->
+  <instance>
+    <name>dns_amplification</name>
+    <module-ref>amplification_detection</module-ref>
+    <enabled>true</enabled>
+    <params>-d /data/dns_amplification_detection/</params>
+    <interface>
+      <name>if0</name>
+      <type>UNIXSOCKET</type>
+      <direction>IN</direction>
+      <unix-params>
+        <socket-name>flow_data_source</socket-name>
+      </unix-params>
+    </interface>
+    <interface>
+      <name>if1</name>
+      <type>TCP</type>
+      <direction>OUT</direction>
+      <tcp-params>
+        <port>12001</port>
+      </tcp-params>
+    </interface>
+  </instance>
+  <instance>
+    <name>brute_force_detector</name>
+    <module-ref>brute_force_detector</module-ref>
+    <enabled>true</enabled>
+    <params>-R -S -T</params>
+    <interface>
+      <name>if0</name>
+      <type>UNIXSOCKET</type>
+      <direction>IN</direction>
+      <unix-params>
+        <socket-name>flow_data_source</socket-name>
+      </unix-params>
+    </interface>
+    <interface>
+      <name>if1</name>
+      <type>UNIXSOCKET</type>
+      <direction>OUT</direction>
+      <unix-params>
+        <socket-name>bfd_data_out</socket-name>
+      </unix-params>
+    </interface>
+  </instance>
+  <instance>
+    <name>dnstunnel_detection</name>
+    <module-ref>dnstunnel_detection</module-ref>
+    <enabled>false</enabled>
+    <interface>
+      <name>if0</name>
+      <type>UNIXSOCKET</type>
+      <direction>IN</direction>
+      <unix-params>
+        <socket-name>flow_data_source</socket-name>
+      </unix-params>
+    </interface>
+    <interface>
+      <name>if1</name>
+      <type>TCP</type>
+      <direction>OUT</direction>
+      <tcp-params>
+        <port>12004</port>
+      </tcp-params>
+    </interface>
+    <interface>
+      <name>if2</name>
+      <type>UNIXSOCKET</type>
+      <direction>OUT</direction>
+      <timeout>NO_WAIT</timeout>
+      <unix-params>
+        <socket-name>dnstunnel_sdmoutput</socket-name>
+      </unix-params>
+    </interface>
+  </instance>
+  <instance>
+    <name>haddrscan_detector</name>
+    <module-ref>haddrscan_detector</module-ref>
+    <enabled>true</enabled>
+    <interface>
+      <name>if0</name>
+      <type>UNIXSOCKET</type>
+      <direction>IN</direction>
+      <unix-params>
+        <socket-name>flow_data_source</socket-name>
+      </unix-params>
+    </interface>
+    <interface>
+      <name>if1</name>
+      <type>UNIXSOCKET</type>
+      <direction>OUT</direction>
+      <unix-params>
+        <socket-name>haddrscan_out</socket-name>
+      </unix-params>
+    </interface>
+  </instance>
+  <instance>
+    <name>haddrscan_aggregator</name>
+    <module-ref>haddrscan_aggregator</module-ref>
+    <enabled>true</enabled>
+    <params>-t 10</params>
+    <interface>
+      <name>if0</name>
+      <type>UNIXSOCKET</type>
+      <direction>IN</direction>
+      <unix-params>
+        <socket-name>haddrscan_out</socket-name>
+      </unix-params>
+    </interface>
+    <interface>
+      <name>if1</name>
+      <type>TCP</type>
+      <direction>OUT</direction>
+      <tcp-params>
+        <port>12008</port>
+      </tcp-params>
+    </interface>
+  </instance>
+  <instance>
+    <name>hoststatsnemea</name>
+    <module-ref>hoststatsnemea</module-ref>
+    <enabled>true</enabled>
+    <params>-c /etc/nemea/hoststats.conf</params>
+    <interface>
+      <name>if0</name>
+      <type>UNIXSOCKET</type>
+      <direction>IN</direction>
+      <unix-params>
+        <socket-name>flow_data_source</socket-name>
+      </unix-params>
+    </interface>
+    <interface>
+      <name>if1</name>
+      <type>TCP</type>
+      <direction>OUT</direction>
+      <tcp-params>
+        <port>12002</port>
+      </tcp-params>
+    </interface>
+  </instance>
+  <instance>
+    <name>ipblacklistfilter</name>
+    <module-ref>ipblacklistfilter</module-ref>
+    <enabled>true</enabled>
+    <params>-D</params>
+    <interface>
+      <name>if0</name>
+      <type>UNIXSOCKET</type>
+      <direction>IN</direction>
+      <unix-params>
+        <socket-name>flow_data_source</socket-name>
+      </unix-params>
+    </interface>
+    <interface>
+      <name>if1</name>
+      <type>TCP</type>
+      <direction>OUT</direction>
+      <tcp-params>
+        <port>12006</port>
+      </tcp-params>
+    </interface>
+  </instance>
+  <instance>
+    <name>miner_detector</name>
+    <module-ref>miner_detector</module-ref>
+    <enabled>false</enabled>
+    <params>-u /etc/nemea/miner_detector/userConfigFile.xml</params>
+    <interface>
+      <name>if0</name>
+      <type>UNIXSOCKET</type>
+      <direction>IN</direction>
+      <unix-params>
+        <socket-name>flow_data_source</socket-name>
+      </unix-params>
+    </interface>
+    <interface>
+      <name>if1</name>
+      <type>UNIXSOCKET</type>
+      <direction>OUT</direction>
+      <unix-params>
+        <socket-name>miner_detector_data_out</socket-name>
+      </unix-params>
+    </interface>
+  </instance>
+  <instance>
+    <name>sip_bf_detector</name>
+    <module-ref>sip_bf_detector</module-ref>
+    <enabled>true</enabled>
+    <params>-a 50 -c 300 -f 1800</params>
+    <interface>
+      <name>if0</name>
+      <type>UNIXSOCKET</type>
+      <direction>IN</direction>
+      <unix-params>
+        <socket-name>voip_data_source</socket-name>
+      </unix-params>
+    </interface>
+    <interface>
+      <name>if1</name>
+      <type>TCP</type>
+      <direction>OUT</direction>
+      <tcp-params>
+        <port>12009</port>
+      </tcp-params>
+    </interface>
+    <interface>
+      <name>if2</name>
+      <type>BLACKHOLE</type>
+      <direction>OUT</direction>
+      <timeout>NO_WAIT</timeout>
+    </interface>
+  </instance>
+  <instance>
+    <name>voip_fraud_detection</name>
+    <module-ref>voip_fraud_detection</module-ref>
+    <enabled>true</enabled>
+    <params>-o -w -l /data/voip_fraud_detection/log</params>
+    <interface>
+      <name>if0</name>
+      <type>UNIXSOCKET</type>
+      <direction>IN</direction>
+      <unix-params>
+        <socket-name>voip_data_source</socket-name>
+      </unix-params>
+    </interface>
+    <interface>
+      <name>if1</name>
+      <type>TCP</type>
+      <direction>OUT</direction>
+      <tcp-params>
+        <port>12003</port>
+      </tcp-params>
+    </interface>
+  </instance>
+  <instance>
+    <name>vportscan_detector</name>
+    <module-ref>vportscan_detector</module-ref>
+    <enabled>true</enabled>
+    <interface>
+      <name>if0</name>
+      <type>UNIXSOCKET</type>
+      <direction>IN</direction>
+      <unix-params>
+        <socket-name>flow_data_source</socket-name>
+      </unix-params>
+    </interface>
+    <interface>
+      <name>if1</name>
+      <type>UNIXSOCKET</type>
+      <direction>OUT</direction>
+      <unix-params>
+        <socket-name>vportscan_out</socket-name>
+      </unix-params>
+    </interface>
+  </instance>
+  <instance>
+    <name>vportscan_aggregator</name>
+    <module-ref>vportscan_aggregator</module-ref>
+    <enabled>true</enabled>
+    <params>-t 10</params>
+    <interface>
+      <name>if0</name>
+      <type>UNIXSOCKET</type>
+      <direction>IN</direction>
+      <unix-params>
+        <socket-name>vportscan_out</socket-name>
+      </unix-params>
+    </interface>
+    <interface>
+      <name>if1</name>
+      <type>TCP</type>
+      <direction>OUT</direction>
+      <tcp-params>
+        <port>12005</port>
+      </tcp-params>
+    </interface>
+  </instance>
+  <!-- reporters -->
+  <instance>
+    <name>hoststats2idea</name>
+    <module-ref>hoststats2idea</module-ref>
+    <enabled>true</enabled>
+    <params>-n cz.cesnet.nemea.hoststats --warden=/etc/warden/hoststats.cfg -c /etc/nemea/reporters-config.yml</params>
+    <interface>
+      <name>if0</name>
+      <type>TCP</type>
+      <direction>IN</direction>
+      <tcp-params>
+        <port>12002</port>
+      </tcp-params>
+    </interface>
+  </instance>
+  <instance>
+    <name>amplification2idea</name>
+    <module-ref>amplification2idea</module-ref>
+    <enabled>true</enabled>
+    <params>-n cz.cesnet.nemea.amplificationdetector --warden=/etc/warden/amplificationdetector.cfg -c /etc/nemea/reporters-config.yml</params>
+    <interface>
+      <name>if0</name>
+      <type>TCP</type>
+      <direction>IN</direction>
+      <tcp-params>
+        <port>12001</port>
+      </tcp-params>
+    </interface>
+  </instance>
+  <instance>
+    <name>ipblacklist2idea</name>
+    <module-ref>ipblacklist2idea</module-ref>
+    <enabled>true</enabled>
+    <params>-n cz.cesnet.nemea.ipblacklist --warden=/etc/warden/ipblacklist.cfg -c /etc/nemea/reporters-config.yml</params>
+    <interface>
+      <name>if0</name>
+      <type>TCP</type>
+      <direction>IN</direction>
+      <tcp-params>
+        <port>12006</port>
+      </tcp-params>
+    </interface>
+  </instance>
+  <instance>
+    <name>vportscan2idea</name>
+    <module-ref>vportscan2idea</module-ref>
+    <enabled>true</enabled>
+    <params>-n cz.cesnet.nemea.vportscan --warden=/etc/warden/vportscan.cfg -c /etc/nemea/reporters-config.yml</params>
+    <interface>
+      <name>if0</name>
+      <type>TCP</type>
+      <direction>IN</direction>
+      <tcp-params>
+        <port>12005</port>
+      </tcp-params>
+    </interface>
+  </instance>
+  <instance>
+    <name>bruteforce2idea</name>
+    <module-ref>bruteforce2idea</module-ref>
+    <enabled>true</enabled>
+    <params>-n cz.cesnet.nemea.bruteforce --warden=/etc/warden/bruteforce.cfg -c /etc/nemea/reporters-config.yml</params>
+    <interface>
+      <name>if0</name>
+      <type>UNIXSOCKET</type>
+      <direction>IN</direction>
+      <unix-params>
+        <socket-name>bfd_data_out</socket-name>
+      </unix-params>
+    </interface>
+  </instance>
+  <instance>
+    <name>voipfraud2idea</name>
+    <module-ref>voipfraud2idea</module-ref>
+    <enabled>true</enabled>
+    <params>-n cz.cesnet.nemea.voipfraud_detection --warden=/etc/warden/voipfraud_detection.cfg -c /etc/nemea/reporters-config.yml</params>
+    <interface>
+      <name>if0</name>
+      <type>TCP</type>
+      <direction>IN</direction>
+      <tcp-params>
+        <port>12003</port>
+      </tcp-params>
+    </interface>
+  </instance>
+  <instance>
+    <name>dnstunnel2idea</name>
+    <module-ref>dnstunnel2idea</module-ref>
+    <enabled>false</enabled>
+    <params>-n cz.cesnet.nemea.dnstunnel --warden=/etc/warden/dnstunnel.cfg -c /etc/nemea/reporters-config.yml</params>
+    <interface>
+      <name>if0</name>
+      <type>TCP</type>
+      <direction>IN</direction>
+      <tcp-params>
+        <port>12004</port>
+      </tcp-params>
+    </interface>
+  </instance>
+  <instance>
+    <name>haddrscan2idea</name>
+    <module-ref>haddrscan2idea</module-ref>
+    <enabled>true</enabled>
+    <params>-n cz.cesnet.nemea.haddrscan -c /etc/nemea/reporters-config.yml</params>
+    <interface>
+      <name>if0</name>
+      <type>TCP</type>
+      <direction>IN</direction>
+      <tcp-params>
+        <port>12008</port>
+      </tcp-params>
+    </interface>
+  </instance>
+  <instance>
+    <name>minerdetector2idea</name>
+    <module-ref>minerdetector2idea</module-ref>
+    <enabled>false</enabled>
+    <params>-n cz.cesnet.nemea.miner_detector -c /etc/nemea/reporters-config.yml</params>
+    <interface>
+      <name>if0</name>
+      <type>UNIXSOCKET</type>
+      <direction>IN</direction>
+      <unix-params>
+        <socket-name>miner_detector_data_out</socket-name>
+      </unix-params>
+    </interface>
+  </instance>
+  <instance>
+    <name>sipbf2idea</name>
+    <module-ref>sipbf2idea</module-ref>
+    <enabled>true</enabled>
+    <params>-n cz.cesnet.nemea.sip_bf_detector -c /etc/nemea/reporters-config.yml</params>
+    <interface>
+      <name>if0</name>
+      <type>TCP</type>
+      <direction>IN</direction>
+      <tcp-params>
+        <port>12009</port>
+      </tcp-params>
+    </interface>
+  </instance>
+  <!-- loggers -->
+  <instance>
+    <name>dns_amplification_logger</name>
+    <module-ref>logger</module-ref>
+    <enabled>true</enabled>
+    <params>-t -T -a /data/dns_amplification_detection/detected.log</params>
+    <interface>
+      <name>if0</name>
+      <type>TCP</type>
+      <direction>IN</direction>
+      <tcp-params>
+        <port>12001</port>
+      </tcp-params>
+    </interface>
+  </instance>
+  <instance>
+    <name>brute_force_logger</name>
+    <module-ref>logger</module-ref>
+    <enabled>true</enabled>
+    <params>-t -T -a /data/brute_force_detector/detected.log</params>
+    <interface>
+      <name>if0</name>
+      <type>UNIXSOCKET</type>
+      <direction>IN</direction>
+      <unix-params>
+        <socket-name>bfd_data_out</socket-name>
+      </unix-params>
+    </interface>
+  </instance>
+  <instance>
+    <name>dnstunnel_logger</name>
+    <module-ref>logger</module-ref>
+    <enabled>false</enabled>
+    <params>-t -T -a /data/dnstunnel_detection/alerts.log</params>
+    <interface>
+      <name>if0</name>
+      <type>TCP</type>
+      <direction>IN</direction>
+      <tcp-params>
+        <port>12004</port>
+      </tcp-params>
+    </interface>
+  </instance>
+  <instance>
+    <name>haddrscan_agg_logger</name>
+    <module-ref>logger</module-ref>
+    <enabled>true</enabled>
+    <params>-t -T -a /data/haddrscan/alerts.log</params>
+    <interface>
+      <name>if0</name>
+      <type>TCP</type>
+      <direction>IN</direction>
+      <tcp-params>
+        <port>12008</port>
+      </tcp-params>
+    </interface>
+  </instance>
+  <instance>
+    <name>hoststatsnemea_logger</name>
+    <module-ref>logger</module-ref>
+    <enabled>true</enabled>
+    <params>-t -T -a /data/hoststatsnemea/detected.log</params>
+    <interface>
+      <name>if0</name>
+      <type>TCP</type>
+      <direction>IN</direction>
+      <tcp-params>
+        <port>12002</port>
+      </tcp-params>
+    </interface>
+  </instance>
+  <instance>
+    <name>ipblacklistfilter_logger</name>
+    <module-ref>logger</module-ref>
+    <enabled>true</enabled>
+    <params>-t -T -a /data/ipblacklistfilter/detected.log</params>
+    <interface>
+      <name>if0</name>
+      <type>TCP</type>
+      <direction>IN</direction>
+      <tcp-params>
+        <port>12006</port>
+      </tcp-params>
+    </interface>
+  </instance>
+  <instance>
+    <name>miner_detector_logger</name>
+    <module-ref>logger</module-ref>
+    <enabled>false</enabled>
+    <params>-t -T -a /data/miner_detector/detected.log</params>
+    <interface>
+      <name>if0</name>
+      <type>UNIXSOCKET</type>
+      <direction>IN</direction>
+      <unix-params>
+        <socket-name>miner_detector_data_out</socket-name>
+      </unix-params>
+    </interface>
+  </instance>
+  <instance>
+    <name>sip_bf_logger</name>
+    <module-ref>logger</module-ref>
+    <enabled>true</enabled>
+    <params>-t -a /data/sip_bf_detector/alerts.log</params>
+    <interface>
+      <name>if0</name>
+      <type>TCP</type>
+      <direction>IN</direction>
+      <tcp-params>
+        <port>12009</port>
+      </tcp-params>
+    </interface>
+  </instance>
+  <instance>
+    <name>voip_fraud_logger</name>
+    <module-ref>logger</module-ref>
+    <enabled>true</enabled>
+    <params>-t -T -a /data/voip_fraud_detection/alerts.log</params>
+    <interface>
+      <name>if0</name>
+      <type>TCP</type>
+      <direction>IN</direction>
+      <tcp-params>
+        <port>12003</port>
+      </tcp-params>
+    </interface>
+  </instance>
+  <instance>
+    <name>vportscan_agg_logger</name>
+    <module-ref>logger</module-ref>
+    <enabled>true</enabled>
+    <params>-t -T -a /data/vportscan/alerts.log</params>
+    <interface>
+      <name>if0</name>
+      <type>TCP</type>
+      <direction>IN</direction>
+      <tcp-params>
+        <port>12005</port>
+      </tcp-params>
+    </interface>
+  </instance>
+</supervisor>

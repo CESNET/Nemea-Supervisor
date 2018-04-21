@@ -54,6 +54,9 @@ RUN git clone https://github.com/sysrepo/sysrepo.git && \
 		ldconfig
 WORKDIR ${SRC_FLD}
 
+# Run sysrepo daemon
+RUN sysrepod
+
 # It's probably not needed as user running supervisor is root, but it
 #  should be noted somewhere...
 RUN mkdir -p /var/run/sysrepo-subscriptions/ && \
@@ -66,7 +69,7 @@ RUN wget https://owncloud.cesnet.cz/index.php/s/0BQGHSCj4YK0IOu/download \
 RUN tar xzf ipfixcol-files.tar.gz && rm ipfixcol-files.tar.gz
 
 # Update this line if you want a current supervisor build
-ARG CACHE_DATE=2018-04-11.1
+ARG CACHE_DATE=2018-04-21.1
 
 # Install nemea-supervisor-sysrepo-edition
 WORKDIR ${SRC_FLD}
