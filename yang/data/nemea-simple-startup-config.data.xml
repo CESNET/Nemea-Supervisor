@@ -37,13 +37,15 @@
       <type>UNIXSOCKET</type>
       <direction>OUT</direction>
     </interface>
-    <params>-c /data/ipfixcol-files/ipfixcol-startup.xml -p /tmp/ipfixcol.pid</params>
+    <!-- can be found here https://owncloud.cesnet.cz/index.php/s/0BQGHSCj4YK0IOu -->
+    <params>-c /data/ipfixcol-startup.xml -p /tmp/ipfixcol.pid</params>
   </instance>
   <instance>
     <name>ipfixsend1</name>
     <module-ref>ipfixsend</module-ref>
     <enabled>true</enabled>
-    <params>-i /data/ipfixcol-files/data.ipfix -R 0.5</params>
+    <!-- can be found here https://owncloud.cesnet.cz/index.php/s/bWkw9eM0vjuXyuD -->
+    <params>-i /data/data.ipfix -R 0.5</params>
   </instance>
   <instance>
     <name>vportscan_detector1</name>

@@ -12,6 +12,8 @@ Description for the modules are taken from their GitHub repositories.
     <trap-monitorable>true</trap-monitorable>
     <is-sysrepo-ready>false</is-sysrepo-ready>
     <path>/usr/bin/ipfixcol</path>
+    <in-ifces-cnt>0</in-ifces-cnt>
+    <out-ifces-cnt>2</out-ifces-cnt>
   </available-module>
   <available-module>
     <name>ipfixsend</name>
@@ -285,6 +287,16 @@ Description for the modules are taken from their GitHub repositories.
     <module-ref>ipfixcol</module-ref>
     <enabled>true</enabled>
     <params>-c /etc/staas/ipfixcol-startup.xml -p /tmp/ipfixcol.pid</params>
+    <interface>
+      <name>if0</name>
+      <type>UNIXSOCKET</type>
+      <direction>OUT</direction>
+    </interface>
+    <interface>
+      <name>if1</name>
+      <type>UNIXSOCKET</type>
+      <direction>OUT</direction>
+    </interface>
   </instance>
   <instance>
     <name>ipfixsend</name>

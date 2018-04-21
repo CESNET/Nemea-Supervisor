@@ -80,7 +80,7 @@ WORKDIR /data/logs
 RUN mkdir -p dns_amplification_detection voip_fraud_detection/log dns_amplification_detection brute_force_detector dnstunnel_detection haddrscan hoststatsnemea ipblacklistfilter miner_detector sip_bf_detector voip_fraud_detection vportscan
 
 # Update this line if you want a current supervisor build
-ARG CACHE_DATE=2018-04-21.1
+ARG CACHE_DATE=2018-04-21.2
 
 # Install nemea-supervisor-sysrepo-edition
 WORKDIR ${SRC_FLD}

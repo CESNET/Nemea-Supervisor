@@ -62,7 +62,7 @@ module nemea {
       
       choice if-use-trap-ifces {
         case yes {
-          when "use-trap-ifces = 'true'";
+          when "trap-monitorable = 'true'";
           description "TODO";
 
           leaf in-ifces-cnt {
