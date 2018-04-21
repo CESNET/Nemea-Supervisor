@@ -233,7 +233,7 @@ static void clean_after_children()
          switch (result) {
             case 0:
                if (inst->sigint_sent) {
-                  VERBOSE(V1, "Instance (%s) is still running after killing",
+                  VERBOSE(V1, "waitpid: Instance (%s) is still running after killing",
                           inst->name)
                }
                break;
@@ -243,7 +243,7 @@ static void clean_after_children()
                   // Process with PID doesn't exist or isn't supervisor's child
                   inst->is_my_child = false;
                }
-               VERBOSE(V2, "Some error occured, but inst %s is not running",
+               VERBOSE(V2, "waitpid: Some error occured, but inst %s is not running",
                        inst->name)
                inst->should_die = true;
                //inst->running = false;
@@ -251,10 +251,12 @@ static void clean_after_children()
                break;
 
             default: // Module is not running
-               VERBOSE(V2, "Instance %s is not running %d", inst->name, result)
-               inst->should_die = true;
+               VERBOSE(V2, "waitpid: Instance %s is not running %d", inst->name, result)
+               //inst->should_die = true;
                //inst->running = false;
-               inst_clear_socks(inst);
+               if (inst->enabled == false) {
+                  inst_clear_socks(inst);
+               }
          }
       }
    }

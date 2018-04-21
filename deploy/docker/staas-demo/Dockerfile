@@ -62,11 +62,22 @@ RUN sysrepod
 RUN mkdir -p /var/run/sysrepo-subscriptions/ && \
     chmod -R 777 /var/run/sysrepo-subscriptions/
 
-# Download necessary IPFIXCOL configuration files and data to replay by ipfixsend
+# Download test data to be replayed by ipfixsend
 WORKDIR /data
-RUN wget https://owncloud.cesnet.cz/index.php/s/0BQGHSCj4YK0IOu/download \
-         --quiet -O ipfixcol-files.tar.gz
-RUN tar xzf ipfixcol-files.tar.gz && rm ipfixcol-files.tar.gz
+RUN wget https://owncloud.cesnet.cz/index.php/s/bWkw9eM0vjuXyuD/download \
+         --quiet -O data.ipfix.tar.gz
+RUN tar xzf data.ipfix.tar.gz && rm data.ipfix.tar.gz
+
+# Download necessary configuration files for IPFIXcol, NEMEA reporters, etc.
+RUN mkdir -p /etc/staas
+RUN wget https://owncloud.cesnet.cz/index.php/s/dL1TohhLLHFkgCG/download \
+         --quiet -O staas.tar.gz
+RUN tar xzf staas.tar.gz -C /etc && rm staas.tar.gz
+
+# Create directories for loggers
+RUN mkdir -p /data/logs
+WORKDIR /data/logs
+RUN mkdir -p dns_amplification_detection voip_fraud_detection/log dns_amplification_detection brute_force_detector dnstunnel_detection haddrscan hoststatsnemea ipblacklistfilter miner_detector sip_bf_detector voip_fraud_detection vportscan
 
 # Update this line if you want a current supervisor build
 ARG CACHE_DATE=2018-04-21.1

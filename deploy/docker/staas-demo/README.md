@@ -1,12 +1,12 @@
 ### To build use:
 ```
-docker build -t nsr-demo:latest -f Dockerfile.demo .
+docker build -t staas-demo:latest .
 ```
 
 ### To run use:
 ```
 # get shell inside docker container
-docker run -ti nemea-supervisor-sysrepo-edition-demo /bin/bash
+docker run -ti staas-demo /bin/bash
 
 # start supervisor
 ./nemea-supervisor  --logs-path=. --verbosity 3

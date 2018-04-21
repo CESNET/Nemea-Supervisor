@@ -253,13 +253,13 @@
         "name": "ipfixcol",
         "module-ref": "ipfixcol",
         "enabled": true,
-        "params": "-c /data/ipfixcol-files/ipfixcol-startup.xml -p /tmp/ipfixcol.pid"
+        "params": "-c /etc/staas/ipfixcol-startup.xml -p /tmp/ipfixcol.pid"
       },
       {
         "name": "ipfixsend",
         "module-ref": "ipfixsend",
         "enabled": true,
-        "params": "-i /data/ipfixcol-files/data.ipfix -R 0.5"
+        "params": "-i /data/data.ipfix -R 0.5"
       },
       {
         "name": "dns_amplification",
@@ -283,7 +283,7 @@
             }
           }
         ],
-        "params": "-d /data/dns_amplification_detection/"
+        "params": "-d /data/logs/dns_amplification_detection/"
       },
       {
         "name": "brute_force_detector",
@@ -410,7 +410,7 @@
             }
           }
         ],
-        "params": "-c /etc/nemea/hoststats.conf"
+        "params": "-c /etc/staas/hoststats.conf"
       },
       {
         "name": "ipblacklistfilter",
@@ -458,7 +458,7 @@
             }
           }
         ],
-        "params": "-u /etc/nemea/miner_detector/userConfigFile.xml"
+        "params": "-u /etc/staas/miner_detector_userConfigFile.xml"
       },
       {
         "name": "sip_bf_detector",
@@ -480,12 +480,6 @@
             "tcp-params": {
               "port": 12009
             }
-          },
-          {
-            "name": "if2",
-            "type": "BLACKHOLE",
-            "direction": "OUT",
-            "timeout": "NO_WAIT"
           }
         ],
         "params": "-a 50 -c 300 -f 1800"
@@ -512,7 +506,7 @@
             }
           }
         ],
-        "params": "-o -w -l /data/voip_fraud_detection/log"
+        "params": "-o -w -l /data/logs/voip_fraud_detection/log"
       },
       {
         "name": "vportscan_detector",
@@ -575,7 +569,7 @@
             }
           }
         ],
-        "params": "-n cz.cesnet.nemea.hoststats --warden=/etc/warden/hoststats.cfg -c /etc/nemea/reporters-config.yml"
+        "params": "-n cz.cesnet.nemea.hoststats -c /etc/staas/reporters-config.yml"
       },
       {
         "name": "amplification2idea",
@@ -591,7 +585,7 @@
             }
           }
         ],
-        "params": "-n cz.cesnet.nemea.amplificationdetector --warden=/etc/warden/amplificationdetector.cfg -c /etc/nemea/reporters-config.yml"
+        "params": "-n cz.cesnet.nemea.amplificationdetector -c /etc/staas/reporters-config.yml"
       },
       {
         "name": "ipblacklist2idea",
@@ -607,7 +601,7 @@
             }
           }
         ],
-        "params": "-n cz.cesnet.nemea.ipblacklist --warden=/etc/warden/ipblacklist.cfg -c /etc/nemea/reporters-config.yml"
+        "params": "-n cz.cesnet.nemea.ipblacklist -c /etc/staas/reporters-config.yml"
       },
       {
         "name": "vportscan2idea",
@@ -623,7 +617,7 @@
             }
           }
         ],
-        "params": "-n cz.cesnet.nemea.vportscan --warden=/etc/warden/vportscan.cfg -c /etc/nemea/reporters-config.yml"
+        "params": "-n cz.cesnet.nemea.vportscan -c /etc/staas/reporters-config.yml"
       },
       {
         "name": "bruteforce2idea",
@@ -639,7 +633,7 @@
             }
           }
         ],
-        "params": "-n cz.cesnet.nemea.bruteforce --warden=/etc/warden/bruteforce.cfg -c /etc/nemea/reporters-config.yml"
+        "params": "-n cz.cesnet.nemea.bruteforce -c /etc/staas/reporters-config.yml"
       },
       {
         "name": "voipfraud2idea",
@@ -655,7 +649,7 @@
             }
           }
         ],
-        "params": "-n cz.cesnet.nemea.voipfraud_detection --warden=/etc/warden/voipfraud_detection.cfg -c /etc/nemea/reporters-config.yml"
+        "params": "-n cz.cesnet.nemea.voipfraud_detection -c /etc/staas/reporters-config.yml"
       },
       {
         "name": "dnstunnel2idea",
@@ -671,7 +665,7 @@
             }
           }
         ],
-        "params": "-n cz.cesnet.nemea.dnstunnel --warden=/etc/warden/dnstunnel.cfg -c /etc/nemea/reporters-config.yml"
+        "params": "-n cz.cesnet.nemea.dnstunnel -c /etc/staas/reporters-config.yml"
       },
       {
         "name": "haddrscan2idea",
@@ -687,7 +681,7 @@
             }
           }
         ],
-        "params": "-n cz.cesnet.nemea.haddrscan -c /etc/nemea/reporters-config.yml"
+        "params": "-n cz.cesnet.nemea.haddrscan -c /etc/staas/reporters-config.yml"
       },
       {
         "name": "minerdetector2idea",
@@ -703,7 +697,7 @@
             }
           }
         ],
-        "params": "-n cz.cesnet.nemea.miner_detector -c /etc/nemea/reporters-config.yml"
+        "params": "-n cz.cesnet.nemea.miner_detector -c /etc/staas/reporters-config.yml"
       },
       {
         "name": "sipbf2idea",
@@ -719,7 +713,7 @@
             }
           }
         ],
-        "params": "-n cz.cesnet.nemea.sip_bf_detector -c /etc/nemea/reporters-config.yml"
+        "params": "-n cz.cesnet.nemea.sip_bf_detector -c /etc/staas/reporters-config.yml"
       },
       {
         "name": "dns_amplification_logger",
@@ -735,7 +729,7 @@
             }
           }
         ],
-        "params": "-t -T -a /data/dns_amplification_detection/detected.log"
+        "params": "-t -T -a /data/logs/dns_amplification_detection/detected.log"
       },
       {
         "name": "brute_force_logger",
@@ -751,7 +745,7 @@
             }
           }
         ],
-        "params": "-t -T -a /data/brute_force_detector/detected.log"
+        "params": "-t -T -a /data/logs/brute_force_detector/detected.log"
       },
       {
         "name": "dnstunnel_logger",
@@ -767,7 +761,7 @@
             }
           }
         ],
-        "params": "-t -T -a /data/dnstunnel_detection/alerts.log"
+        "params": "-t -T -a /data/logs/dnstunnel_detection/alerts.log"
       },
       {
         "name": "haddrscan_agg_logger",
@@ -783,7 +777,7 @@
             }
           }
         ],
-        "params": "-t -T -a /data/haddrscan/alerts.log"
+        "params": "-t -T -a /data/logs/haddrscan/alerts.log"
       },
       {
         "name": "hoststatsnemea_logger",
@@ -799,7 +793,7 @@
             }
           }
         ],
-        "params": "-t -T -a /data/hoststatsnemea/detected.log"
+        "params": "-t -T -a /data/logs/hoststatsnemea/detected.log"
       },
       {
         "name": "ipblacklistfilter_logger",
@@ -815,7 +809,7 @@
             }
           }
         ],
-        "params": "-t -T -a /data/ipblacklistfilter/detected.log"
+        "params": "-t -T -a /data/logs/ipblacklistfilter/detected.log"
       },
       {
         "name": "miner_detector_logger",
@@ -831,7 +825,7 @@
             }
           }
         ],
-        "params": "-t -T -a /data/miner_detector/detected.log"
+        "params": "-t -T -a /data/logs/miner_detector/detected.log"
       },
       {
         "name": "sip_bf_logger",
@@ -847,7 +841,7 @@
             }
           }
         ],
-        "params": "-t -a /data/sip_bf_detector/alerts.log"
+        "params": "-t -a /data/logs/sip_bf_detector/alerts.log"
       },
       {
         "name": "voip_fraud_logger",
@@ -863,7 +857,7 @@
             }
           }
         ],
-        "params": "-t -T -a /data/voip_fraud_detection/alerts.log"
+        "params": "-t -T -a /data/logs/voip_fraud_detection/alerts.log"
       },
       {
         "name": "vportscan_agg_logger",
@@ -879,7 +873,7 @@
             }
           }
         ],
-        "params": "-t -T -a /data/vportscan/alerts.log"
+        "params": "-t -T -a /data/logs/vportscan/alerts.log"
       }
     ]
   }

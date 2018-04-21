@@ -144,7 +144,7 @@ data_requester(sr_session_ctx_t *session)
     /* get all list instances with their content (recursive) */
     //rc = sr_get_items_iter(session, "/nemea-tests-1:nemea-supervisor/module-group/module/stats//*", &iter);
     //rc = sr_get_items_iter(session, "/nemea-tests-1:nemea-supervisor/module-group/module[name='ipfixcol']/interface//*", &iter);
-    rc = sr_get_items_iter(session, "/nemea-tests-1:supervisor/instance[name='ipfixcol1']/interface//*", &iter);
+    rc = sr_get_items_iter(session, "/nemea-test-1:supervisor/instance[name='ipfixcol1']/interface//*", &iter);
     if (SR_ERR_OK != rc) {
         return rc;
     }
@@ -187,6 +187,7 @@ main(int argc, char **argv)
         /* run as a data provider */
 //      printf("run with arguments\n");
 //			exit(0);
+			sr_log_stderr(SR_LL_DBG);
         printf("This application will be a data provider for state data of ietf-interfaces.\n");
         printf("Run the same executable with one (any) argument to request some data.\n");
         rc = data_provider(session);

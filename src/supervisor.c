@@ -472,7 +472,7 @@ int load_configuration()
       inst_print(insts_v.items[i]);
    }
 
-   VERBOSE(V1, "Loaded %d modules", insts_v.total)
+   VERBOSE(V1, "Loaded %d modules", avmods_v.total)
    VERBOSE(V1, "Loaded %d instances", insts_v.total)
 
    return 0;
