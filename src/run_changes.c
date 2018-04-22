@@ -7,6 +7,8 @@
 #include "conf.h"
 #include "inst_control.h"
 
+#define RUN_CHE_STR(che) ((che)->type == RUN_CHE_T_INVAL ? "--" : ((che)->type == RUN_CHE_T_INST ? (che)->inst_name : (che)->mod_name))
+
 /**
  * @brief Defines type of action to take for changed node (module or group).
  * */
@@ -82,6 +84,18 @@ run_change_proc_reg_chgs(sr_session_ctx_t *sess, vector_t *reg_chgs);
 static inline void run_change_handle_create(run_change_t *change);
 static inline void run_change_handle_delete(run_change_t *change);
 static inline void run_change_handle_modify(run_change_t *change);
+
+/**
+ * @brief Checks case where new and reg change are of same type and name. If so, it replaces values in reg by values in new.
+ * */
+static inline int
+run_change_replace_same_registered(run_change_t *new, run_change_t *reg);
+
+/**
+ * @brief Checks case where new change of instance (new variable) is already handled by change of its owner module (reg). In case it's handled, new change is ignored.
+ * */
+static inline int run_change_ignore_new(run_change_t *new, run_change_t *reg);
+
 /**
  * @brief  Adds n_change to reg_chgs vector or ignores the change in case it
  *  would be handled by some other change that is already in the vector.
@@ -145,19 +159,23 @@ run_config_change_cb(sr_session_ctx_t *sess,
 
       switch (op) {
          case SR_OP_CREATED:
-            VERBOSE(V3, " CREATED %s", run_change_type_str(change->type));
+            VERBOSE(V3, " CREATED %s (%s)", run_change_type_str(change->type),
+                    RUN_CHE_STR(change));
             run_change_handle_create(change);
             break;
          case SR_OP_MODIFIED:
-            VERBOSE(V3, " MODIFIED %s", run_change_type_str(change->type));
+            VERBOSE(V3, " MODIFIED %s (%s)", run_change_type_str(change->type),
+                    RUN_CHE_STR(change));
             run_change_handle_modify(change);
             break;
          case SR_OP_DELETED:
-            VERBOSE(V3, " DELETED %s", run_change_type_str(change->type));
+            VERBOSE(V3, " DELETED %s (%s)", run_change_type_str(change->type),
+                    RUN_CHE_STR(change));
             run_change_handle_delete(change);
             break;
          case SR_OP_MOVED:
-            VERBOSE(V3, " MOVED %s", run_change_type_str(change->type));
+            VERBOSE(V3, " MOVED %s (%s)", run_change_type_str(change->type),
+                    RUN_CHE_STR(change));
             /* This operation is intentionally omitted, since it's quite
              * complex and not really required to be handled. */
             break;
@@ -221,19 +239,25 @@ static inline int
 run_change_replace_same_registered(run_change_t *new, run_change_t *reg)
 {
    if (new->type == RUN_CHE_T_INST && reg->type == RUN_CHE_T_INST) {
-      reg->action = new->action;
-      reg->type = new->type;
-      run_change_free(&new);
-      VERBOSE(V3, "New INSTANCE change updates already registred change")
-      return 0;
+      if (strcmp(new->inst_name, reg->inst_name) == 0) {
+         reg->action = new->action;
+         reg->type = new->type;
+         VERBOSE(V3, "New INSTANCE '%s' change updates already registred change",
+                 new->inst_name)
+         run_change_free(&new);
+         return 0;
+      }
    }
 
    if (new->type == RUN_CHE_T_MOD && reg->type == RUN_CHE_T_MOD) {
-      reg->action = new->action;
-      reg->type = new->type;
-      run_change_free(&new);
-      VERBOSE(V3, "New MODULE change updates already registred change")
-      return 0;
+      if (strcmp(new->mod_name, reg->mod_name) == 0) {
+         reg->action = new->action;
+         reg->type = new->type;
+         VERBOSE(V3, "New MODULE '%s' change updates already registred change",
+                 new->mod_name)
+         run_change_free(&new);
+         return 0;
+      }
    }
 
    // Replace of registred change was not possible, return error
@@ -242,31 +266,16 @@ run_change_replace_same_registered(run_change_t *new, run_change_t *reg)
 
 static inline int run_change_ignore_new(run_change_t *new, run_change_t *reg)
 {
-   if (reg->type > new->type) {
-      VERBOSE(V3, "New change of %s is being ignored due to registered %s change",
-              run_change_type_str(new->type), run_change_type_str(reg->type))
-      run_change_free(&new);
-      return 0;
-   }
+   if (reg->type == RUN_CHE_T_MOD && new->type == RUN_CHE_T_INST) {
+      inst_t * inst = inst_get_by_name(new->inst_name, NULL);
 
-   return -1;
-}
-
-static inline int
-run_change_replace_other_registered(run_change_t *new, run_change_t *reg)
-{
-   if (reg->type < new->type) {
-      reg->action = new->action;
-      reg->type = new->type;
-
-      VERBOSE(V3, "Replacing %s with %s", run_change_type_str(reg->type),
-              run_change_type_str(new->type))
-      if (reg->type > RUN_CHE_T_INST) {
-         NULLP_TEST_AND_FREE(reg->inst_name)
+      if (inst != NULL && strcmp(reg->mod_name, inst->mod_ref->name) == 0) {
+         VERBOSE(V3, "New change of %s (%s) is being ignored due to registered %s (%s) change",
+                 run_change_type_str(new->type), RUN_CHE_STR(new),
+                 run_change_type_str(reg->type), RUN_CHE_STR(reg))
+         run_change_free(&new);
+         return 0;
       }
-
-      run_change_free(&new);
-      return 0;
    }
 
    return -1;
@@ -286,24 +295,37 @@ static inline void run_change_add_new_change(vector_t *reg_chgs, run_change_t *n
       if (run_change_ignore_new(n_change, r_change) == 0) {
          return;
       }
-      if (run_change_replace_other_registered(n_change, r_change) == 0) {
-         return;
+
+      /**
+       * Checks case where registered change is for instance and new change is
+       * for module. If module that should be changed is parent of instance which
+       * change is registered, then registered instance change is removed.
+       * */
+      if (r_change->type == RUN_CHE_T_INST && n_change->type == RUN_CHE_T_MOD) {
+         inst_t *inst = inst_get_by_name(r_change->inst_name, NULL);
+         if (inst != NULL && strcmp(inst->mod_ref->name, n_change->mod_name) == 0) {
+            VERBOSE(V3, "Removing change of instance '%s', it's child of '%s'",
+                    r_change->inst_name, n_change->mod_name)
+            run_change_free(&r_change);
+            vector_delete(reg_chgs, i);
+            i--;
+         }
       }
    }
 
    /* This new change is not registered yet and doesn't interfere with
     * already registered ones. Add it to vector of registered changes */
    vector_add(reg_chgs, n_change);
-   VERBOSE(V3, "New change registered")
+   VERBOSE(V3, "New change of %s (%s) registered",
+           run_change_type_str(n_change->type), RUN_CHE_STR(n_change))
 }
 
 static inline void run_change_handle_modify(run_change_t *change)
 {
-   VERBOSE(V3, "MODIFIED")
    if (change->type == RUN_CHE_T_MOD) {
       change->action = RUN_CHE_ACTION_RESTART;
    } else if (change->type == RUN_CHE_T_INST) {
-      if (strcmp(change->node_name, "last-pid") == 0) {
+      if (change->node_name != NULL && strcmp(change->node_name, "last-pid") == 0) {
          change->action = RUN_CHE_ACTION_NONE;
       } else {
          change->action = RUN_CHE_ACTION_RESTART;
@@ -313,13 +335,20 @@ static inline void run_change_handle_modify(run_change_t *change)
 
 static inline void run_change_handle_delete(run_change_t *change)
 {
-   VERBOSE(V3, "DELETED")
    change->action = RUN_CHE_ACTION_DELETE;
    if (change->type == RUN_CHE_T_MOD) {
-      change->action = RUN_CHE_ACTION_DELETE;
+      if (change->node_name != NULL) {
+         // not whole module was deleted, restart the module to load new configuration
+         change->action = RUN_CHE_ACTION_RESTART;
+      }
    } else if (change->type == RUN_CHE_T_INST) {
-      if (strcmp(change->node_name, "last-pid") == 0) {
-         change->action = RUN_CHE_ACTION_NONE;
+      if (change->node_name != NULL) {
+         if (strcmp(change->node_name, "last-pid") == 0) {
+            change->action = RUN_CHE_ACTION_NONE;
+         } else {
+            // not whole instance was deleted, old its node. restart instance to load new configuration
+            change->action = RUN_CHE_ACTION_RESTART;
+         }
       } else {
          change->action = RUN_CHE_ACTION_DELETE;
       }
@@ -328,11 +357,10 @@ static inline void run_change_handle_delete(run_change_t *change)
 
 static inline void run_change_handle_create(run_change_t *change)
 {
-   VERBOSE(V3, "CREATED")
    if (change->type == RUN_CHE_T_MOD) {
       change->action = RUN_CHE_ACTION_RESTART;
    } else if (change->type == RUN_CHE_T_INST) {
-      if (strcmp(change->node_name, "last-pid") == 0) {
+      if (change->node_name != NULL && strcmp(change->node_name, "last-pid") == 0) {
          change->action = RUN_CHE_ACTION_NONE;
       } else {
          change->action = RUN_CHE_ACTION_RESTART;
@@ -365,17 +393,10 @@ static inline int run_change_proc_restart(sr_session_ctx_t *sess, run_change_t *
 
 static inline void run_change_proc_delete(sr_session_ctx_t *sess, run_change_t *change)
 {
-   switch (change->type) {
-      case RUN_CHE_T_INST:
-         VERBOSE(V3, "Stopping instance '%s'", change->inst_name)
-         inst_stop_remove_by_name(change->inst_name);
-         break;
-      case RUN_CHE_T_MOD:
-         VERBOSE(V3, "Stopping instances of module '%s'", change->mod_name)
-         av_module_stop_remove_by_name(change->mod_name);
-         break;
-      default:
-         break;
+   if (change->type == RUN_CHE_T_INST) {
+      inst_stop_remove_by_name(change->inst_name);
+   } else if (change->type == RUN_CHE_T_MOD) {
+      av_module_stop_remove_by_name(change->mod_name);
    }
 }
 
@@ -388,6 +409,8 @@ static inline int run_change_proc_reg_chgs(sr_session_ctx_t *sess, vector_t *reg
    // Go from back so that if there is error, not processed elements get freed
    for (long i = reg_chgs->total - 1; i >= 0; i--) {
       change = reg_chgs->items[i];
+      VERBOSE(V3, "Processing change of %s (%s)",
+              run_change_type_str(change->type), RUN_CHE_STR(change));
       if (change->action == RUN_CHE_ACTION_RESTART) {
          rc = run_change_proc_restart(sess, change);
 
@@ -490,9 +513,15 @@ run_change_load(sr_change_oper_t op, sr_val_t *old_val, sr_val_t *new_val)
    // node name
    res = sr_xpath_next_node(NULL, &state);
    if (res == NULL) {
-      change->type = RUN_CHE_T_MOD;
-      sr_xpath_recover(&state);
-      return change;
+      if (change->type == RUN_CHE_T_INVAL) {
+         change->type = RUN_CHE_T_MOD;
+         sr_xpath_recover(&state);
+         return change;
+      } else {
+         // it's type of PREFIX/instance[name='vportscan_detector1111']
+         sr_xpath_recover(&state);
+         return change;
+      }
    }
    change->node_name = strdup(res);
    if (change->node_name == NULL) {

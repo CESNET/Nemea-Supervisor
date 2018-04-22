@@ -48,10 +48,10 @@ void print_msg(int level, char *string)
       case V1:
          if (verbosity_level >= V1) {
             if (output_fd != NULL) {
-               fprintf(output_fd, "[INFO]%s", string);
+               fprintf(output_fd, "[INF]%s", string);
                fflush(output_fd);
             } else if (stdout != NULL) {
-               fprintf(stdout, "[INFO]%s", string);
+               fprintf(stdout, "[INF]%s", string);
                fflush(stdout);
             }
          }
@@ -59,10 +59,10 @@ void print_msg(int level, char *string)
       case V2:
          if (verbosity_level >= V2) {
             if (output_fd != NULL) {
-               fprintf(output_fd, "[ERR]%s", string);
+               fprintf(output_fd, "[INF]%s", string);
                fflush(output_fd);
             } else if (stderr != NULL) {
-               fprintf(stderr, "[ERR]%s", string);
+               fprintf(stderr, "[INF]%s", string);
                fflush(stderr);
             }
          }

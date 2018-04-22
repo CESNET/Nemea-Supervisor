@@ -1,0 +1,12 @@
+[Unit]
+Description=This service creates libtrap directory under /var/run. If this service would not run and folder would be created manually, it might get deleted by systemd or something.
+After=network.target
+
+[Service]
+Type=simple
+ExecStartPre=-/usr/bin/mkdir /var/run/libtrap
+ExecStart=/usr/bin/chmod 777 /var/run/libtrap
+Restart=on-abort
+
+[Install]
+WantedBy=multi-user.target

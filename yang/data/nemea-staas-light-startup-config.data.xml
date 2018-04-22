@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <!--
-This configuration is copy of NEMEA configuration from STaaS at https://github.com/CESNET/staas
+This configuration is lightweight copy of NEMEA configuration from STaaS at https://github.com/CESNET/staas
 Description for the modules are taken from their GitHub repositories.
 -->
 <supervisor xmlns="urn:ietf:params:xml:ns:yang:nemea">
@@ -35,26 +35,6 @@ Description for the modules are taken from their GitHub repositories.
     <out-ifces-cnt>1</out-ifces-cnt>
   </available-module>
   <available-module>
-    <name>brute_force_detector</name>
-    <description>The module can be used for detecting brute force attacks on different services. Protocols as SSH, Telnet and RDP are currently supported. (see https://github.com/CESNET/Nemea-Detectors/tree/master/brute_force_detector)</description>
-    <use-trap-ifces>true</use-trap-ifces>
-    <trap-monitorable>true</trap-monitorable>
-    <is-sysrepo-ready>false</is-sysrepo-ready>
-    <path>/usr/bin/nemea/brute_force_detector</path>
-    <in-ifces-cnt>1</in-ifces-cnt>
-    <out-ifces-cnt>1</out-ifces-cnt>
-  </available-module>
-  <available-module>
-    <name>dnstunnel_detection</name>
-    <description>The module detects communication tunnels over DNS protocol. Such tunnels can be established e.g. by iodine, dns2tcp and others. It is based on data encapsulation into DNS messages in order to bypass security policy. (see https://github.com/CESNET/Nemea-Detectors/tree/master/tunnel_detection)</description>
-    <use-trap-ifces>true</use-trap-ifces>
-    <trap-monitorable>true</trap-monitorable>
-    <is-sysrepo-ready>false</is-sysrepo-ready>
-    <path>/usr/bin/nemea/dnstunnel_detection</path>
-    <in-ifces-cnt>1</in-ifces-cnt>
-    <out-ifces-cnt>*</out-ifces-cnt>
-  </available-module>
-  <available-module>
     <name>haddrscan_detector</name>
     <description>This module is a simple, threshold-based detector for horizontal scans which processes incoming flow records and outputs alerts. The module uses TRAP platform and it has one input and one output interface.
 
@@ -73,19 +53,6 @@ Description for the modules are taken from their GitHub repositories.
     <trap-monitorable>true</trap-monitorable>
     <is-sysrepo-ready>false</is-sysrepo-ready>
     <path>/usr/bin/nemea/haddrscan_aggregator.py</path>
-    <in-ifces-cnt>1</in-ifces-cnt>
-    <out-ifces-cnt>1</out-ifces-cnt>
-  </available-module>
-  <available-module>
-    <name>hoststatsnemea</name>
-    <description>HostStatsNemea module calculates statistics about network traffic of each
-      individual host (IP address) in the network. The statistics are searched
-      for suspicious behavior using a simple rule set. This suspicious behavior
-      is stored in a log file and send on output module interface. (see https://github.com/CESNET/Nemea-Detectors/tree/master/hoststatsnemea)</description>
-    <use-trap-ifces>true</use-trap-ifces>
-    <trap-monitorable>true</trap-monitorable>
-    <is-sysrepo-ready>false</is-sysrepo-ready>
-    <path>/usr/bin/nemea/hoststatsnemea</path>
     <in-ifces-cnt>1</in-ifces-cnt>
     <out-ifces-cnt>1</out-ifces-cnt>
   </available-module>
@@ -167,16 +134,6 @@ Description for the modules are taken from their GitHub repositories.
   </available-module>
   <!-- reporters -->
   <available-module>
-    <name>hoststats2idea</name>
-    <description>Reporting module for hoststatsnemea module that receives alerts from detectors and stores them into database (MongoDB), file or forwards them into Warden. (see https://github.com/CESNET/Nemea-Modules/tree/master/report2idea)</description>
-    <use-trap-ifces>true</use-trap-ifces>
-    <trap-monitorable>true</trap-monitorable>
-    <is-sysrepo-ready>false</is-sysrepo-ready>
-    <path>/usr/bin/nemea/hoststats2idea.py</path>
-    <in-ifces-cnt>1</in-ifces-cnt>
-    <out-ifces-cnt>0</out-ifces-cnt>
-  </available-module>
-  <available-module>
     <name>amplification2idea</name>
     <description>Reporting module for dns_amplification module that receives alerts from detectors and stores them into database (MongoDB), file or forwards them into Warden. (see https://github.com/CESNET/Nemea-Modules/tree/master/report2idea)</description>
     <use-trap-ifces>true</use-trap-ifces>
@@ -207,32 +164,12 @@ Description for the modules are taken from their GitHub repositories.
     <out-ifces-cnt>0</out-ifces-cnt>
   </available-module>
   <available-module>
-    <name>bruteforce2idea</name>
-    <description>Reporting module for brute_force_detector module that receives alerts from detectors and stores them into database (MongoDB), file or forwards them into Warden. (see https://github.com/CESNET/Nemea-Modules/tree/master/report2idea)</description>
-    <use-trap-ifces>true</use-trap-ifces>
-    <trap-monitorable>true</trap-monitorable>
-    <is-sysrepo-ready>false</is-sysrepo-ready>
-    <path>/usr/bin/nemea/bruteforce2idea.py</path>
-    <in-ifces-cnt>1</in-ifces-cnt>
-    <out-ifces-cnt>0</out-ifces-cnt>
-  </available-module>
-  <available-module>
     <name>voipfraud2idea</name>
     <description>Reporting module for voip_fraud_detection module that receives alerts from detectors and stores them into database (MongoDB), file or forwards them into Warden. (see https://github.com/CESNET/Nemea-Modules/tree/master/report2idea)</description>
     <use-trap-ifces>true</use-trap-ifces>
     <trap-monitorable>true</trap-monitorable>
     <is-sysrepo-ready>false</is-sysrepo-ready>
     <path>/usr/bin/nemea/voipfraud2idea.py</path>
-    <in-ifces-cnt>1</in-ifces-cnt>
-    <out-ifces-cnt>0</out-ifces-cnt>
-  </available-module>
-  <available-module>
-    <name>dnstunnel2idea</name>
-    <description>Reporting module for dnstunnel_detection module that receives alerts from detectors and stores them into database (MongoDB), file or forwards them into Warden. (see https://github.com/CESNET/Nemea-Modules/tree/master/report2idea)</description>
-    <use-trap-ifces>true</use-trap-ifces>
-    <trap-monitorable>true</trap-monitorable>
-    <is-sysrepo-ready>false</is-sysrepo-ready>
-    <path>/usr/bin/nemea/dnstunnel2idea.py</path>
     <in-ifces-cnt>1</in-ifces-cnt>
     <out-ifces-cnt>0</out-ifces-cnt>
   </available-module>
@@ -328,58 +265,6 @@ Description for the modules are taken from their GitHub repositories.
     </interface>
   </instance>
   <instance>
-    <name>brute_force_detector</name>
-    <module-ref>brute_force_detector</module-ref>
-    <enabled>true</enabled>
-    <params>-R -S -T</params>
-    <interface>
-      <name>if0</name>
-      <type>UNIXSOCKET</type>
-      <direction>IN</direction>
-      <unix-params>
-        <socket-name>flow_data_source</socket-name>
-      </unix-params>
-    </interface>
-    <interface>
-      <name>if1</name>
-      <type>UNIXSOCKET</type>
-      <direction>OUT</direction>
-      <unix-params>
-        <socket-name>bfd_data_out</socket-name>
-      </unix-params>
-    </interface>
-  </instance>
-  <instance>
-    <name>dnstunnel_detection</name>
-    <module-ref>dnstunnel_detection</module-ref>
-    <enabled>false</enabled>
-    <interface>
-      <name>if0</name>
-      <type>UNIXSOCKET</type>
-      <direction>IN</direction>
-      <unix-params>
-        <socket-name>flow_data_source</socket-name>
-      </unix-params>
-    </interface>
-    <interface>
-      <name>if1</name>
-      <type>TCP</type>
-      <direction>OUT</direction>
-      <tcp-params>
-        <port>12004</port>
-      </tcp-params>
-    </interface>
-    <interface>
-      <name>if2</name>
-      <type>UNIXSOCKET</type>
-      <direction>OUT</direction>
-      <timeout>NO_WAIT</timeout>
-      <unix-params>
-        <socket-name>dnstunnel_sdmoutput</socket-name>
-      </unix-params>
-    </interface>
-  </instance>
-  <instance>
     <name>haddrscan_detector</name>
     <module-ref>haddrscan_detector</module-ref>
     <enabled>true</enabled>
@@ -419,28 +304,6 @@ Description for the modules are taken from their GitHub repositories.
       <direction>OUT</direction>
       <tcp-params>
         <port>12008</port>
-      </tcp-params>
-    </interface>
-  </instance>
-  <instance>
-    <name>hoststatsnemea</name>
-    <module-ref>hoststatsnemea</module-ref>
-    <enabled>true</enabled>
-    <params>-c /etc/staas/hoststats.conf</params>
-    <interface>
-      <name>if0</name>
-      <type>UNIXSOCKET</type>
-      <direction>IN</direction>
-      <unix-params>
-        <socket-name>flow_data_source</socket-name>
-      </unix-params>
-    </interface>
-    <interface>
-      <name>if1</name>
-      <type>TCP</type>
-      <direction>OUT</direction>
-      <tcp-params>
-        <port>12002</port>
       </tcp-params>
     </interface>
   </instance>
@@ -577,20 +440,6 @@ Description for the modules are taken from their GitHub repositories.
   </instance>
   <!-- reporters -->
   <instance>
-    <name>hoststats2idea</name>
-    <module-ref>hoststats2idea</module-ref>
-    <enabled>true</enabled>
-    <params>-n cz.cesnet.nemea.hoststats -c /etc/staas/reporters-config.yml</params>
-    <interface>
-      <name>if0</name>
-      <type>TCP</type>
-      <direction>IN</direction>
-      <tcp-params>
-        <port>12002</port>
-      </tcp-params>
-    </interface>
-  </instance>
-  <instance>
     <name>amplification2idea</name>
     <module-ref>amplification2idea</module-ref>
     <enabled>true</enabled>
@@ -633,20 +482,6 @@ Description for the modules are taken from their GitHub repositories.
     </interface>
   </instance>
   <instance>
-    <name>bruteforce2idea</name>
-    <module-ref>bruteforce2idea</module-ref>
-    <enabled>true</enabled>
-    <params>-n cz.cesnet.nemea.bruteforce -c /etc/staas/reporters-config.yml</params>
-    <interface>
-      <name>if0</name>
-      <type>UNIXSOCKET</type>
-      <direction>IN</direction>
-      <unix-params>
-        <socket-name>bfd_data_out</socket-name>
-      </unix-params>
-    </interface>
-  </instance>
-  <instance>
     <name>voipfraud2idea</name>
     <module-ref>voipfraud2idea</module-ref>
     <enabled>true</enabled>
@@ -657,20 +492,6 @@ Description for the modules are taken from their GitHub repositories.
       <direction>IN</direction>
       <tcp-params>
         <port>12003</port>
-      </tcp-params>
-    </interface>
-  </instance>
-  <instance>
-    <name>dnstunnel2idea</name>
-    <module-ref>dnstunnel2idea</module-ref>
-    <enabled>false</enabled>
-    <params>-n cz.cesnet.nemea.dnstunnel -c /etc/staas/reporters-config.yml</params>
-    <interface>
-      <name>if0</name>
-      <type>TCP</type>
-      <direction>IN</direction>
-      <tcp-params>
-        <port>12004</port>
       </tcp-params>
     </interface>
   </instance>
@@ -732,34 +553,6 @@ Description for the modules are taken from their GitHub repositories.
     </interface>
   </instance>
   <instance>
-    <name>brute_force_logger</name>
-    <module-ref>logger</module-ref>
-    <enabled>true</enabled>
-    <params>-t -T -a /data/logs/brute_force_detector/detected.log</params>
-    <interface>
-      <name>if0</name>
-      <type>UNIXSOCKET</type>
-      <direction>IN</direction>
-      <unix-params>
-        <socket-name>bfd_data_out</socket-name>
-      </unix-params>
-    </interface>
-  </instance>
-  <instance>
-    <name>dnstunnel_logger</name>
-    <module-ref>logger</module-ref>
-    <enabled>false</enabled>
-    <params>-t -T -a /data/logs/dnstunnel_detection/alerts.log</params>
-    <interface>
-      <name>if0</name>
-      <type>TCP</type>
-      <direction>IN</direction>
-      <tcp-params>
-        <port>12004</port>
-      </tcp-params>
-    </interface>
-  </instance>
-  <instance>
     <name>haddrscan_agg_logger</name>
     <module-ref>logger</module-ref>
     <enabled>true</enabled>
@@ -770,20 +563,6 @@ Description for the modules are taken from their GitHub repositories.
       <direction>IN</direction>
       <tcp-params>
         <port>12008</port>
-      </tcp-params>
-    </interface>
-  </instance>
-  <instance>
-    <name>hoststatsnemea_logger</name>
-    <module-ref>logger</module-ref>
-    <enabled>true</enabled>
-    <params>-t -T -a /data/logs/hoststatsnemea/detected.log</params>
-    <interface>
-      <name>if0</name>
-      <type>TCP</type>
-      <direction>IN</direction>
-      <tcp-params>
-        <port>12002</port>
       </tcp-params>
     </interface>
   </instance>

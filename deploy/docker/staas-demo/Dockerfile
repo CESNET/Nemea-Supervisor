@@ -73,6 +73,9 @@ RUN mkdir -p /etc/staas
 RUN wget https://owncloud.cesnet.cz/index.php/s/dL1TohhLLHFkgCG/download \
          --quiet -O staas.tar.gz
 RUN tar xzf staas.tar.gz -C /etc && rm staas.tar.gz
+# Service to make sure /var/run/libtrap directory for TRAP sockets won't get deleted
+RUN ln -s /etc/staas/libtrap-dir.service /etc/systemd/system/libtrap-dir.service
+RUN systemctl start libtrap-dir
 
 # Create directories for loggers
 RUN mkdir -p /data/logs
@@ -80,7 +83,7 @@ WORKDIR /data/logs
 RUN mkdir -p dns_amplification_detection voip_fraud_detection/log dns_amplification_detection brute_force_detector dnstunnel_detection haddrscan hoststatsnemea ipblacklistfilter miner_detector sip_bf_detector voip_fraud_detection vportscan
 
 # Update this line if you want a current supervisor build
-ARG CACHE_DATE=2018-04-21.2
+ARG CACHE_DATE=2018-04-21.3
 
 # Install nemea-supervisor-sysrepo-edition
 WORKDIR ${SRC_FLD}

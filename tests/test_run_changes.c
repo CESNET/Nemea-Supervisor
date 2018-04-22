@@ -321,6 +321,21 @@ void test_ns_change_load(void **state)
       NULLP_TEST_AND_FREE(val.xpath)
       run_change_free(&change);
    }
+
+   {
+      val.xpath = strdup(NS_ROOT_XPATH"/instance[name='vportscan_detector1111']");
+      IF_NO_MEM_FAIL(val.xpath)
+
+      change = run_change_load(SR_OP_CREATED, NULL, &val);
+      assert_non_null(change);
+      assert_int_equal(change->type, RUN_CHE_T_INST);
+      assert_null(change->mod_name);
+      assert_string_equal(change->inst_name, "vportscan_detector1111");
+      assert_null(change->node_name);
+      NULLP_TEST_AND_FREE(val.xpath)
+      run_change_free(&change);
+   }
+   
 }
 
 int main(void)
@@ -328,11 +343,12 @@ int main(void)
 
    //verbosity_level = V3;
    const struct CMUnitTest tests[] = {
-         cmocka_unit_test(test_ns_config_change_cb_with_module_modified_1),
-         cmocka_unit_test(test_ns_config_change_cb_with_module_created),
          cmocka_unit_test(test_ns_change_load),
+         
+/*         cmocka_unit_test(test_ns_config_change_cb_with_module_modified_1),
+         cmocka_unit_test(test_ns_config_change_cb_with_module_created),
          cmocka_unit_test(test_ns_config_change_cb_with_module_deleted),
-         cmocka_unit_test(test_ns_config_change_cb_with_inst_modified_1),
+         cmocka_unit_test(test_ns_config_change_cb_with_inst_modified_1),*/
    };
 
    disconnect_sr();

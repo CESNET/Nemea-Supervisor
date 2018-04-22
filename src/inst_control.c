@@ -147,7 +147,7 @@ void inst_stop_remove_by_name(const char *name)
       // Instance was not found, no need to do anything
       return;
    }
-   VERBOSE(V3, "Stopping instance '%s'", inst->name)
+   VERBOSE(V2, "Stopping instance '%s'", inst->name)
 
    if (inst->pid > 0) {
       kill(inst->pid, SIGINT);
@@ -251,7 +251,7 @@ static void clean_after_children()
                break;
 
             default: // Module is not running
-               VERBOSE(V2, "waitpid: Instance %s is not running %d", inst->name, result)
+               VERBOSE(V2, "waitpid: Instance %s is not running. waitpid result=%d", inst->name, result)
                //inst->should_die = true;
                //inst->running = false;
                if (inst->enabled == false) {

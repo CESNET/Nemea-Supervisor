@@ -38,7 +38,7 @@
       <direction>OUT</direction>
     </interface>
     <!-- can be found here https://owncloud.cesnet.cz/index.php/s/0BQGHSCj4YK0IOu -->
-    <params>-c /data/ipfixcol-startup.xml -p /tmp/ipfixcol.pid</params>
+    <params>-c /etc/staas/ipfixcol-startup.xml -p /tmp/ipfixcol.pid</params>
   </instance>
   <instance>
     <name>ipfixsend1</name>
