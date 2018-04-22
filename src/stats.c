@@ -180,14 +180,14 @@ int inst_get_stats_cb(const char *xpath,
    }
 
    rc = set_new_sr_val(&new_vals[2], xpath, "cpu-user", SR_UINT64_T,
-                       &inst->last_cpu_umode);
+                       &inst->last_cpu_perc_umode);
    if (rc != 0) {
       VERBOSE(N_ERR, "Setting node value for /cpu-user failed")
       goto err_cleanup;
    }
 
    rc = set_new_sr_val(&new_vals[3], xpath, "cpu-kern", SR_UINT64_T,
-                       &inst->last_cpu_kmode);
+                       &inst->last_cpu_perc_kmode);
    if (rc != 0) {
       VERBOSE(N_ERR, "Setting node value for /cpu-kern failed")
       goto err_cleanup;

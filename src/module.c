@@ -373,15 +373,17 @@ void interfaces_free(inst_t *module)
 
 void interface_free(interface_t *ifc)
 {
-   NULLP_TEST_AND_FREE(ifc->name);
-   NULLP_TEST_AND_FREE(ifc->buffer);
-   NULLP_TEST_AND_FREE(ifc->autoflush);
-   NULLP_TEST_AND_FREE(ifc->timeout);
-   ifc->ifc_to_cli_arg_fn = NULL;
-   interface_stats_free(ifc);
-   interface_specific_params_free(ifc);
+   if (ifc != NULL) {
+      NULLP_TEST_AND_FREE(ifc->name);
+      NULLP_TEST_AND_FREE(ifc->buffer);
+      NULLP_TEST_AND_FREE(ifc->autoflush);
+      NULLP_TEST_AND_FREE(ifc->timeout);
+      ifc->ifc_to_cli_arg_fn = NULL;
+      interface_stats_free(ifc);
+      interface_specific_params_free(ifc);
 
-   NULLP_TEST_AND_FREE(ifc);
+      NULLP_TEST_AND_FREE(ifc);
+   }
 }
 
 void interface_stats_free(interface_t *ifc)

@@ -271,6 +271,11 @@ inst_load(sr_session_ctx_t *sess, char *xpath)
       VERBOSE(N_ERR, "Failed to load xpath %s/params", xpath)
       goto err_cleanup;
    }
+   if (inst->params != NULL && inst->params[0] == '\0') {
+      // make inst->params NULL instead of zero length string
+      NULLP_TEST_AND_FREE(inst->params)
+   }
+
    rc = load_sr_num(sess, xpath, "/use-sysrepo", &(inst->use_sysrepo), SR_BOOL_T);
    if (FOUND_AND_ERR(rc)) {
       VERBOSE(N_ERR, "Failed to load xpath %s/use-sysrepo", xpath)
@@ -342,6 +347,7 @@ err_cleanup:
    }
    NULLP_TEST_AND_FREE(ifc_xpath)
    NULLP_TEST_AND_FREE(mod_ref)
+   vector_delete(&insts_v, insts_v.total - 1);
    inst_free(inst);
 
    return rc;

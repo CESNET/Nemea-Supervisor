@@ -170,11 +170,11 @@ module nemea {
       }
       leaf cpu-user {
       	type uint64;
-      	description "TODO";
+      	description "TODO %";
       }
       leaf cpu-kern {
       	type uint64;
-      	description "TODO";
+      	description "TODO %";
       }
       leaf mem-vms {
       	type uint64;
