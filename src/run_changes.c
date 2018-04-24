@@ -383,7 +383,7 @@ static inline int run_change_proc_restart(sr_session_ctx_t *sess, run_change_t *
          break;
       case RUN_CHE_T_MOD:
          VERBOSE(V3, "Action restart for instances of module '%s'", change->mod_name)
-         if (strcmp(change->node_name, "description") == 0) {
+         if (change->node_name != NULL && strcmp(change->node_name, "description") == 0) {
             VERBOSE(V3, "Change of module's description was ignored.")
             return 0;
          }

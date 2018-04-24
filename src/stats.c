@@ -29,7 +29,7 @@ int interface_get_stats_cb(const char *xpath,
                            size_t *values_cnt,
                            void *private_ctx)
 {
-   VERBOSE(V3, "Entering interface_get_stats_cb xpath=%s", xpath)
+   VERBOSE(V3, "Request for interface stats at xpath=%s", xpath)
 
    int rc;
    uint8_t vals_cnt;
@@ -125,7 +125,7 @@ int inst_get_stats_cb(const char *xpath,
                       size_t *values_cnt,
                       void *private_ctx)
 {
-   VERBOSE(V3, "Entering inst_get_stats_cb xpath=%s", xpath)
+   VERBOSE(V3, "Request for instance stats at xpath=%s", xpath)
 
    int rc;
    uint8_t vals_cnt = 6;

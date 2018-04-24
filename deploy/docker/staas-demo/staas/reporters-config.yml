@@ -1,0 +1,23 @@
+custom_actions:
+  - id: store_mongo
+    mongo:
+       host: localhost
+       db: nemeadb
+       collection: alerts_new
+  - id: store_warden
+    warden:
+      url: https://localhost/warden/
+  - id: file
+    file:
+       path: /dev/stdout
+  - id: sendmail
+    email:
+      to: root@localhost
+      subject: "Example report"
+      from: "nemead@localhost"
+rules:
+- id: 1
+  condition: True
+  actions:
+  - store_mongo
+  - store_warden

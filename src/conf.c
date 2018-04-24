@@ -755,7 +755,7 @@ clean_pid:
               inst->name);
       rc = sr_delete_item(sess, pid_xpath, SR_EDIT_NON_RECURSIVE);
       if (rc == SR_ERR_OK) {
-         sr_commit(sess);
+          sr_commit(sess);
       }
       NULLP_TEST_AND_FREE(pid_xpath)
    }

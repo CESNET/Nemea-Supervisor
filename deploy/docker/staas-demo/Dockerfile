@@ -68,22 +68,17 @@ RUN wget https://owncloud.cesnet.cz/index.php/s/bWkw9eM0vjuXyuD/download \
          --quiet -O data.ipfix.tar.gz
 RUN tar xzf data.ipfix.tar.gz && rm data.ipfix.tar.gz
 
-# Download necessary configuration files for IPFIXcol, NEMEA reporters, etc.
-RUN mkdir -p /etc/staas
-RUN wget https://owncloud.cesnet.cz/index.php/s/dL1TohhLLHFkgCG/download \
-         --quiet -O staas.tar.gz
-RUN tar xzf staas.tar.gz -C /etc && rm staas.tar.gz
+# Install necessary configuration files for IPFIXcol, NEMEA reporters, etc.
+COPY staas/ /etc/staas
 # Service to make sure /var/run/libtrap directory for TRAP sockets won't get deleted
-RUN ln -s /etc/staas/libtrap-dir.service /etc/systemd/system/libtrap-dir.service
+#RUN ln -s /etc/staas/libtrap-dir.service /etc/systemd/system/libtrap-dir.service
 #RUN systemctl start libtrap-dir
 
 # Create directories for loggers
-RUN mkdir -p /data/logs
-WORKDIR /data/logs
-RUN mkdir -p dns_amplification_detection voip_fraud_detection/log dns_amplification_detection brute_force_detector dnstunnel_detection haddrscan hoststatsnemea ipblacklistfilter miner_detector sip_bf_detector voip_fraud_detection vportscan
+RUN mkdir -p /data/logs/dns_amplification_detection /data/logs/voip_fraud_detection/log /data/logs/dns_amplification_detection /data/logs/brute_force_detector /data/logs/dnstunnel_detection /data/logs/haddrscan /data/logs/hoststatsnemea /data/logs/ipblacklistfilter /data/logs/miner_detector /data/logs/sip_bf_detector /data/logs/voip_fraud_detection /data/logs/vportscan
 
 # Update this line if you want a current supervisor build
-ARG CACHE_DATE=2018-04-24.2
+ARG CACHE_DATE=2018-04-24.5
 
 # Install nemea-supervisor-sysrepo-edition
 WORKDIR ${SRC_FLD}

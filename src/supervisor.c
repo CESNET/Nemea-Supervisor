@@ -231,6 +231,7 @@ int supervisor_initialization()
       terminate_supervisor(false);
       return -1;
    }
+   VERBOSE(V2, "Susbscribed to changes at "NS_ROOT_XPATH)
 
    { // subscribe to requests for stats
       rc = sr_dp_get_items_subscribe(sr_conn_link.sess,
@@ -245,6 +246,7 @@ int supervisor_initialization()
          terminate_supervisor(false);
          return -1;
       }
+      VERBOSE(V2, "Susbscribed to %s", NS_ROOT_XPATH"/instance/stats")
 
       rc = sr_dp_get_items_subscribe(sr_conn_link.sess,
                                      NS_ROOT_XPATH"/instance/interface/stats",
@@ -258,6 +260,7 @@ int supervisor_initialization()
          terminate_supervisor(false);
          return -1;
       }
+      VERBOSE(V2, "Susbscribed to %s", NS_ROOT_XPATH"/instance/interface/stats")
    }
 
    // Signal handling
@@ -413,7 +416,8 @@ int daemon_init_process()
    } else if (process_id > 0) {
       NULLP_TEST_AND_FREE(logs_path)
       close_log();
-      fprintf(stdout, "[INFO] PID of daemon process: %d.", process_id);
+      // TODO verbose
+      fprintf(stdout, "[INF] PID of daemon process: %d.\n", process_id);
       exit(EXIT_SUCCESS);
    }
 
@@ -523,6 +527,7 @@ void supervisor_routine()
    VERBOSE(V3, "Starting supervisor routine")
    while (supervisor_stopped == false) {
       VERBOSE(V3, "-----routine loop-----")
+      //period_cnt++;
 
       /* Lock instances list so that async changes from sysrepo don't
        * interfere with this routine */
@@ -549,27 +554,12 @@ void supervisor_routine()
          (void) get_running_insts_cnt();
       }
       pthread_mutex_unlock(&config_lock);
+/* TODO
+ * if (period_cnt == 2) {
+            supervisor_stopped = true;
+            terminate_insts_at_exit = false;
+         }*/
       usleep(SERVICE_THREAD_SLEEP_IN_MICSEC);
-
-      // -------------
-      // DEBUG OPTIONS START
-/*      if (((period_cnt % 30) == 0) && (running_insts_cnt > 0)) {
-         print_statistics();
-      }
-      period_cnt++;*/
-
-      // tests turning off
-      //modules->enabled = false;
-      //if ((period_cnt % 2) == 0) {
-      //   VERBOSE(DEBUG,"w")
-      //}
-
-/*      if ((period_cnt % 2) == 0) {
-         supervisor_stopped = true;
-      }*/
-      // -------------
-      // DEBUG OPTIONS STOP
-      // -------------
    }
    VERBOSE(V3, "Supervisor routine finished")
 
@@ -852,7 +842,7 @@ static void insts_save_running_pids() {
          continue;
       }
 
-      memset(xpath, 0, 4096);
+      memset(xpath, 0, NS_ROOT_XPATH_LEN + 255 + 25 + 1);
       sprintf(xpath, NS_ROOT_XPATH"/instance[name='%s']/last-pid", inst->name);
 
       val->data.uint32_val = (uint32_t) inst->pid;
@@ -862,11 +852,18 @@ static void insts_save_running_pids() {
          VERBOSE(N_ERR, "Failed to save PID for '%s' (err: %s)",
                  inst->name,
                  sr_strerror(rc))
+      } else {
+         VERBOSE(V2, "PID %d for instance '%s' set.", inst->pid, inst->name)
       }
    }
+
    rc = sr_commit(sr_conn_link.sess);
    if (rc != SR_ERR_OK) {
-      VERBOSE(N_ERR, "Failed to commit PID saving.")
+      VERBOSE(N_ERR, "Failed to commit PID for '%s' (err: %s)",
+              inst->name,
+              sr_strerror(rc))
+   } else {
+      VERBOSE(V2, "All PIDs commited.")
    }
 
    sr_free_val(val);
