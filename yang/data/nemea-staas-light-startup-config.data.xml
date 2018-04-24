@@ -57,33 +57,6 @@ Description for the modules are taken from their GitHub repositories.
     <out-ifces-cnt>1</out-ifces-cnt>
   </available-module>
   <available-module>
-    <name>ipblacklistfilter</name>
-    <description>odule recieves the UniRec and checks if the stored source
-      address or destination address is not present in any
-      blacklist that are available. If any of the addresses is
-      blacklisted the record is changed by adding a number of
-      the list which blacklisted the address. UniRec with this
-      flag is then sent to the next module. (see https://github.com/CESNET/Nemea-Detectors/tree/master/blacklistfilter/ipdetect)</description>
-    <use-trap-ifces>true</use-trap-ifces>
-    <trap-monitorable>true</trap-monitorable>
-    <is-sysrepo-ready>false</is-sysrepo-ready>
-    <path>/usr/bin/nemea/ipblacklistfilter</path>
-    <in-ifces-cnt>1</in-ifces-cnt>
-    <out-ifces-cnt>1</out-ifces-cnt>
-  </available-module>
-  <available-module>
-    <name>miner_detector</name>
-    <description>Miner detector module was implemented to detect hosts in network that participate in bitcoin mining and communicate with mining pool server. If miners are using stratum mining protocol, this communication is detected and corresponding miner and server IP addresses are reported.
-
-      To greatly reduce false positive detection, after module detect suspicious communication it will connect to the suspicious server and try to communicate with it using stratum protocol. After positive reply from the server, detection is done and detected incident is reported. (see https://github.com/CESNET/Nemea-Detectors/tree/master/miner_detector)</description>
-    <use-trap-ifces>true</use-trap-ifces>
-    <trap-monitorable>true</trap-monitorable>
-    <is-sysrepo-ready>false</is-sysrepo-ready>
-    <path>/usr/bin/nemea/miner_detector</path>
-    <in-ifces-cnt>1</in-ifces-cnt>
-    <out-ifces-cnt>1</out-ifces-cnt>
-  </available-module>
-  <available-module>
     <name>sip_bf_detector</name>
     <description>Module for detecting brute-force attacks and user search attack on Session Initiation Protocol. It analyses SIP response traffic and is capable of detecting distributed brute-force attacks and username scans. (see https://github.com/CESNET/Nemea-Detectors/tree/master/sip_bf_detector)</description>
     <use-trap-ifces>true</use-trap-ifces>
@@ -144,16 +117,6 @@ Description for the modules are taken from their GitHub repositories.
     <out-ifces-cnt>0</out-ifces-cnt>
   </available-module>
   <available-module>
-    <name>ipblacklist2idea</name>
-    <description>Reporting module for ipblacklistfilter module that receives alerts from detectors and stores them into database (MongoDB), file or forwards them into Warden. (see https://github.com/CESNET/Nemea-Modules/tree/master/report2idea)</description>
-    <use-trap-ifces>true</use-trap-ifces>
-    <trap-monitorable>true</trap-monitorable>
-    <is-sysrepo-ready>false</is-sysrepo-ready>
-    <path>/usr/bin/nemea/ipblacklist2idea.py</path>
-    <in-ifces-cnt>1</in-ifces-cnt>
-    <out-ifces-cnt>0</out-ifces-cnt>
-  </available-module>
-  <available-module>
     <name>vportscan2idea</name>
     <description>Reporting module for vportscan_detector module that receives alerts from detectors and stores them into database (MongoDB), file or forwards them into Warden. (see https://github.com/CESNET/Nemea-Modules/tree/master/report2idea)</description>
     <use-trap-ifces>true</use-trap-ifces>
@@ -180,16 +143,6 @@ Description for the modules are taken from their GitHub repositories.
     <trap-monitorable>true</trap-monitorable>
     <is-sysrepo-ready>false</is-sysrepo-ready>
     <path>/usr/bin/nemea/haddrscan2idea.py</path>
-    <in-ifces-cnt>1</in-ifces-cnt>
-    <out-ifces-cnt>0</out-ifces-cnt>
-  </available-module>
-  <available-module>
-    <name>minerdetector2idea</name>
-    <description>Reporting module for miner_detector module that receives alerts from detectors and stores them into database (MongoDB), file or forwards them into Warden. (see https://github.com/CESNET/Nemea-Modules/tree/master/report2idea)</description>
-    <use-trap-ifces>true</use-trap-ifces>
-    <trap-monitorable>true</trap-monitorable>
-    <is-sysrepo-ready>false</is-sysrepo-ready>
-    <path>/usr/bin/nemea/minerdetector2idea.py</path>
     <in-ifces-cnt>1</in-ifces-cnt>
     <out-ifces-cnt>0</out-ifces-cnt>
   </available-module>
@@ -308,50 +261,6 @@ Description for the modules are taken from their GitHub repositories.
     </interface>
   </instance>
   <instance>
-    <name>ipblacklistfilter</name>
-    <module-ref>ipblacklistfilter</module-ref>
-    <enabled>true</enabled>
-    <params>-D</params>
-    <interface>
-      <name>if0</name>
-      <type>UNIXSOCKET</type>
-      <direction>IN</direction>
-      <unix-params>
-        <socket-name>flow_data_source</socket-name>
-      </unix-params>
-    </interface>
-    <interface>
-      <name>if1</name>
-      <type>TCP</type>
-      <direction>OUT</direction>
-      <tcp-params>
-        <port>12006</port>
-      </tcp-params>
-    </interface>
-  </instance>
-  <instance>
-    <name>miner_detector</name>
-    <module-ref>miner_detector</module-ref>
-    <enabled>false</enabled>
-    <params>-u /etc/staas/miner_detector_userConfigFile.xml</params>
-    <interface>
-      <name>if0</name>
-      <type>UNIXSOCKET</type>
-      <direction>IN</direction>
-      <unix-params>
-        <socket-name>flow_data_source</socket-name>
-      </unix-params>
-    </interface>
-    <interface>
-      <name>if1</name>
-      <type>UNIXSOCKET</type>
-      <direction>OUT</direction>
-      <unix-params>
-        <socket-name>miner_detector_data_out</socket-name>
-      </unix-params>
-    </interface>
-  </instance>
-  <instance>
     <name>sip_bf_detector</name>
     <module-ref>sip_bf_detector</module-ref>
     <enabled>true</enabled>
@@ -454,20 +363,6 @@ Description for the modules are taken from their GitHub repositories.
     </interface>
   </instance>
   <instance>
-    <name>ipblacklist2idea</name>
-    <module-ref>ipblacklist2idea</module-ref>
-    <enabled>true</enabled>
-    <params>-n cz.cesnet.nemea.ipblacklist -c /etc/staas/reporters-config.yml</params>
-    <interface>
-      <name>if0</name>
-      <type>TCP</type>
-      <direction>IN</direction>
-      <tcp-params>
-        <port>12006</port>
-      </tcp-params>
-    </interface>
-  </instance>
-  <instance>
     <name>vportscan2idea</name>
     <module-ref>vportscan2idea</module-ref>
     <enabled>true</enabled>
@@ -507,20 +402,6 @@ Description for the modules are taken from their GitHub repositories.
       <tcp-params>
         <port>12008</port>
       </tcp-params>
-    </interface>
-  </instance>
-  <instance>
-    <name>minerdetector2idea</name>
-    <module-ref>minerdetector2idea</module-ref>
-    <enabled>false</enabled>
-    <params>-n cz.cesnet.nemea.miner_detector -c /etc/staas/reporters-config.yml</params>
-    <interface>
-      <name>if0</name>
-      <type>UNIXSOCKET</type>
-      <direction>IN</direction>
-      <unix-params>
-        <socket-name>miner_detector_data_out</socket-name>
-      </unix-params>
     </interface>
   </instance>
   <instance>
@@ -564,34 +445,6 @@ Description for the modules are taken from their GitHub repositories.
       <tcp-params>
         <port>12008</port>
       </tcp-params>
-    </interface>
-  </instance>
-  <instance>
-    <name>ipblacklistfilter_logger</name>
-    <module-ref>logger</module-ref>
-    <enabled>true</enabled>
-    <params>-t -T -a /data/logs/ipblacklistfilter/detected.log</params>
-    <interface>
-      <name>if0</name>
-      <type>TCP</type>
-      <direction>IN</direction>
-      <tcp-params>
-        <port>12006</port>
-      </tcp-params>
-    </interface>
-  </instance>
-  <instance>
-    <name>miner_detector_logger</name>
-    <module-ref>logger</module-ref>
-    <enabled>false</enabled>
-    <params>-t -T -a /data/logs/miner_detector/detected.log</params>
-    <interface>
-      <name>if0</name>
-      <type>UNIXSOCKET</type>
-      <direction>IN</direction>
-      <unix-params>
-        <socket-name>miner_detector_data_out</socket-name>
-      </unix-params>
     </interface>
   </instance>
   <instance>
