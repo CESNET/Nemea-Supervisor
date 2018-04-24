@@ -72,11 +72,21 @@ static void inst_pid_restore(pid_t last_pid,
                              sr_session_ctx_t *sess);
 
 
+/**
+ * TODO
+ * */
 static int load_sr_str(sr_session_ctx_t *sess, char *base_xpath, char *node_xpath,
                        char **where);
+
+/**
+ * TODO
+ * */
 static int load_sr_num(sr_session_ctx_t *sess, char *base_xpath, char *node_xpath,
                        void *where, sr_type_t data_type);
 
+/**
+ * TODO
+ * */
 static char * instance_name_from_xpath(char *xpath);
 
 
@@ -90,7 +100,7 @@ int ns_startup_config_load(sr_session_ctx_t *sess)
 
    { // load /available-modules
       rc = sr_get_items(sess, av_mods_xpath, &vals, &vals_cnt);
-      if (rc != SR_ERR_OK) {
+      if (FOUND_AND_ERR(rc)) {
          VERBOSE(N_ERR, "Failed to load %s. Error: %s", av_mods_xpath, sr_strerror(rc))
          goto err_cleanup;
       }
@@ -107,10 +117,10 @@ int ns_startup_config_load(sr_session_ctx_t *sess)
    }
 
 
-   { // load /modules
+   { // load /instances
       rc = sr_get_items(sess, insts_xpath, &vals, &vals_cnt);
-      if (rc != SR_ERR_OK) {
-         VERBOSE(N_ERR, "Failed to load %s. Error: %s", av_mods_xpath, sr_strerror(rc))
+      if (FOUND_AND_ERR(rc)) {
+         VERBOSE(N_ERR, "Failed to load %s. Error: %s", insts_xpath, sr_strerror(rc))
          goto err_cleanup;
       }
 
@@ -166,8 +176,6 @@ int av_module_load_by_name(sr_session_ctx_t *sess, const char *module_name)
       goto err_cleanup;
    }
 
-   inst_t * x;
-
    for (size_t i = 0; i < insts_cnt; i++) {
       if (strcmp(insts[i].data.string_val, module_name) == 0) {
          inst_name = instance_name_from_xpath(insts[i].xpath);
@@ -185,8 +193,6 @@ int av_module_load_by_name(sr_session_ctx_t *sess, const char *module_name)
                   " Failed at instance '%s'", module_name, inst_name)
             goto err_cleanup;
          }
-         x = insts_v.items[insts_v.total - 1];
-         VERBOSE(V3, "for module %s is pid %d", inst_name, x->pid)
       }
    }
 

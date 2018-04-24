@@ -157,38 +157,41 @@ run_config_change_cb(sr_session_ctx_t *sess,
          goto err_cleanup;
       }
 
-      switch (op) {
-         case SR_OP_CREATED:
-            VERBOSE(V3, " CREATED %s (%s)", run_change_type_str(change->type),
-                    RUN_CHE_STR(change));
-            run_change_handle_create(change);
-            break;
-         case SR_OP_MODIFIED:
-            VERBOSE(V3, " MODIFIED %s (%s)", run_change_type_str(change->type),
-                    RUN_CHE_STR(change));
-            run_change_handle_modify(change);
-            break;
-         case SR_OP_DELETED:
-            VERBOSE(V3, " DELETED %s (%s)", run_change_type_str(change->type),
-                    RUN_CHE_STR(change));
-            run_change_handle_delete(change);
-            break;
-         case SR_OP_MOVED:
-            VERBOSE(V3, " MOVED %s (%s)", run_change_type_str(change->type),
-                    RUN_CHE_STR(change));
-            /* This operation is intentionally omitted, since it's quite
-             * complex and not really required to be handled. */
-            break;
-         default:
-            // This branch is here so that compiler doesn't complain
-            break;
+      if (change->type != RUN_CHE_T_INVAL) {
+         switch (op) {
+            case SR_OP_CREATED:
+               VERBOSE(V3, " CREATED %s (%s)", run_change_type_str(change->type),
+                       RUN_CHE_STR(change));
+               run_change_handle_create(change);
+               break;
+            case SR_OP_MODIFIED:
+               VERBOSE(V3, " MODIFIED %s (%s)", run_change_type_str(change->type),
+                       RUN_CHE_STR(change));
+               run_change_handle_modify(change);
+               break;
+            case SR_OP_DELETED:
+               VERBOSE(V3, " DELETED %s (%s)", run_change_type_str(change->type),
+                       RUN_CHE_STR(change));
+               run_change_handle_delete(change);
+               break;
+            case SR_OP_MOVED:
+               VERBOSE(V3, " MOVED %s (%s)", run_change_type_str(change->type),
+                       RUN_CHE_STR(change));
+               /* This operation is intentionally omitted, since it's quite
+                * complex and not really required to be handled. */
+               break;
+            default:
+               // This branch is here so that compiler doesn't complain
+               break;
+         }
       }
 
       if (change->action != RUN_CHE_ACTION_NONE) {
          run_change_add_new_change(&reg_chgs, change);
       } else {
          VERBOSE(V3, "Runtime change ignore for old XPATH=%s new XPATH=%s",
-                 old_val->xpath, new_val->xpath)
+                 old_val == NULL ? NULL : old_val->xpath,
+                 new_val == NULL ? NULL : new_val->xpath)
       }
 
       // Both cases might happen, depending on operation
@@ -380,6 +383,10 @@ static inline int run_change_proc_restart(sr_session_ctx_t *sess, run_change_t *
          break;
       case RUN_CHE_T_MOD:
          VERBOSE(V3, "Action restart for instances of module '%s'", change->mod_name)
+         if (strcmp(change->node_name, "description") == 0) {
+            VERBOSE(V3, "Change of module's description was ignored.")
+            return 0;
+         }
 
          av_module_stop_remove_by_name(change->mod_name);
          rc = av_module_load_by_name(sess, change->mod_name);
@@ -405,6 +412,21 @@ static inline int run_change_proc_reg_chgs(sr_session_ctx_t *sess, vector_t *reg
    int rc;
    run_change_t *change;
 
+   /* sort to have modules at the end
+    * this prevents instance to be loaded before module because processing is
+    * in reverse order */
+   run_change_t *ch1, *ch2;
+   for (long i = 0; i < reg_chgs->total; i++) {
+      for (long j = 1; j < reg_chgs->total; j++) {
+         ch1 = reg_chgs->items[j-1];
+         ch2 = reg_chgs->items[j];
+         if (ch1->type == RUN_CHE_T_MOD && ch2->type == RUN_CHE_T_INST) {
+            reg_chgs->items[j-1] = ch2;
+            reg_chgs->items[j] = ch1;
+         }
+      }
+   }
+
    VERBOSE(V3, "Processing %d registered changes", reg_chgs->total)
    // Go from back so that if there is error, not processed elements get freed
    for (long i = reg_chgs->total - 1; i >= 0; i--) {
@@ -413,10 +435,8 @@ static inline int run_change_proc_reg_chgs(sr_session_ctx_t *sess, vector_t *reg
               run_change_type_str(change->type), RUN_CHE_STR(change));
       if (change->action == RUN_CHE_ACTION_RESTART) {
          rc = run_change_proc_restart(sess, change);
-
          if (rc != SR_ERR_OK) {
-            //VERBOSE(N_ERR, "Failed to restart ",
-            //        change->grp_name, change->mod_name, change->inst_name)
+            VERBOSE(N_ERR, "Failed to process restart for %s", RUN_CHE_STR(change))
             reg_chgs->total = (uint32_t) (i == 0 ? 0 : i) ;
             run_change_free(&change);
             return rc;
@@ -469,11 +489,13 @@ run_change_load(sr_change_oper_t op, sr_val_t *old_val, sr_val_t *new_val)
       goto err_cleanup;
    }
 
-   // available-module OR module
+   // available-module OR module OR nothing for /nemea:supervisor
    res = sr_xpath_next_node(NULL, &state);
    if (res == NULL) {
-      VERBOSE(N_ERR, "Failed to parse run_change on line %d", __LINE__)
-      goto err_cleanup;
+      sr_xpath_recover(&state);
+      return change;
+/*      VERBOSE(N_ERR, "Failed to parse run_change on line %d", __LINE__)
+      goto err_cleanup;*/
    }
 
    { // retrieve name of available-module OR module

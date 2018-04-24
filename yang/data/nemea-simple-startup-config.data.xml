@@ -6,6 +6,8 @@
     <use-trap-ifces>false</use-trap-ifces>
     <trap-monitorable>true</trap-monitorable>
     <is-sysrepo-ready>false</is-sysrepo-ready>
+    <in-ifces-cnt>0</in-ifces-cnt>
+    <out-ifces-cnt>2</out-ifces-cnt>
   </available-module>
   <available-module>
     <name>ipfixsend</name>
@@ -22,6 +24,8 @@
     <use-trap-ifces>true</use-trap-ifces>
     <trap-monitorable>true</trap-monitorable>
     <is-sysrepo-ready>false</is-sysrepo-ready>
+    <in-ifces-cnt>1</in-ifces-cnt>
+    <out-ifces-cnt>1</out-ifces-cnt>
   </available-module>
   <instance>
     <name>ipfixcol1</name>
