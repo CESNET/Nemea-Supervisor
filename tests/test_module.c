@@ -180,14 +180,12 @@ static void test_module_load_exec_args(void **state)
       mod->sr_rdy = true;
       mod->use_trap_ifces = true;
       inst->use_sysrepo = true;
-      mod->sr_model = strdup("link-traffic");
-      IF_NO_MEM_FAIL(mod->sr_model);
 
       assert_int_equal(inst_gen_exec_args(inst), 0);
       assert_non_null(inst->exec_args);
       assert_string_equal(inst->exec_args[0], inst->name);
       assert_string_equal(inst->exec_args[1], "-x");
-      assert_string_equal(inst->exec_args[2], "/link-traffic:instance[name='tests-module']");
+      assert_string_equal(inst->exec_args[2], "tests-module");
       assert_string_equal(inst->exec_args[3], "-i");
       assert_string_equal(inst->exec_args[4], "u:sock_2,t:192.168.0.1:1");
    }

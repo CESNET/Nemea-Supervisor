@@ -47,7 +47,6 @@ void av_module_print(const av_module_t *mod)
    VERBOSE(V3, " trap monitorable=%d", mod->trap_mon)
    VERBOSE(V3, " use trap interfaces=%d", mod->use_trap_ifces)
    VERBOSE(V3, " sysrepo ready=%d", mod->sr_rdy)
-   VERBOSE(V3, " sysrepo custom model=%s", mod->sr_model)
 }
 void inst_print(inst_t *inst)
 {
@@ -109,7 +108,6 @@ av_module_t * av_module_alloc()
 
    mod->name = NULL;
    mod->path = NULL;
-   mod->sr_model = NULL;
    mod->sr_rdy = false;
    mod->trap_mon = false;
    mod->use_trap_ifces = false;
@@ -336,7 +334,6 @@ void av_module_free(av_module_t *mod)
 {
    NULLP_TEST_AND_FREE(mod->path)
    NULLP_TEST_AND_FREE(mod->name)
-   NULLP_TEST_AND_FREE(mod->sr_model)
    NULLP_TEST_AND_FREE(mod)
 }
 
@@ -502,10 +499,7 @@ int inst_gen_exec_args(inst_t *inst)
    exec_args_pos = 1;
 
    if (inst->use_sysrepo) {
-      char *xpath = NULL;
-      size_t xpath_len = strlen(inst->mod_ref->sr_model) + strlen(inst->name) + 20;
-
-      // add -x "XPATH_TO_CUSTOM_SYSREPO_MODEL_INSTANCE_CONFIGURATION"
+      // add -x "INSTANCE_NAME"
       exec_args[exec_args_pos] = strdup("-x"); // It's easier for freeing later
       if (exec_args[exec_args_pos] == NULL) {
          NO_MEM_ERR
@@ -513,13 +507,11 @@ int inst_gen_exec_args(inst_t *inst)
       }
       exec_args_pos++;
 
-      xpath = calloc(1, (xpath_len) * sizeof(char));
-      if (xpath == NULL) {
+      exec_args[exec_args_pos] = strdup(inst->name);
+      if (exec_args[exec_args_pos] == NULL) {
          NO_MEM_ERR
          goto err_cleanup;
       }
-      sprintf(xpath, "/%s:instance[name='%s']", inst->mod_ref->sr_model, inst->name);
-      exec_args[exec_args_pos] = xpath;
       exec_args_pos++;
    } else {
       // copy already allocated inst params strings returned by module_params_to_ifc_arr function

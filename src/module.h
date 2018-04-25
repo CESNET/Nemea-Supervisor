@@ -157,7 +157,6 @@ typedef struct av_module_s {
    bool trap_mon; ///< Is module monitorable via TRAP's service interface?
 
    bool use_trap_ifces; ///< Is module using trap interfaces?
-   char * sr_model; ///< Prefix of sysrepo model that this NEMEA module uses
 } av_module_t;
 
 typedef struct inst_s {
