@@ -697,17 +697,17 @@ static inline void inst_get_sys_stats(inst_t *inst)
 
    if (proc_stat_fd == NULL) {
       VERBOSE(V1, "Failed to open stats file of inst with PID=%d", inst->pid)
-      goto cleanup;
+      goto err_cleanup;
    }
 
    if (getline(&line, &tmp_num, proc_stat_fd) == -1) {
       VERBOSE(V1, "Failed to read stats of inst with PID=%d", inst->pid)
-      goto cleanup;
+      goto err_cleanup;
    }
 
    token = strtok(line, delim);
    if (token == NULL) {
-      goto cleanup;
+      goto err_cleanup;
    }
 
    for (int position = 1; token != NULL && position <= 23; position++) {
@@ -716,7 +716,7 @@ static inline void inst_get_sys_stats(inst_t *inst)
             // position of "user mode time" field in /proc/pid/stat file is 14
             tmp_num = strtoul(token, &endptr, 10);
             if (endptr == token) {
-               VERBOSE(V1, "Unable to get user mode time for inst PID=%d", inst->pid)
+               VERBOSE(N_ERR, "Unable to get user mode time for inst PID=%d", inst->pid)
                continue;
             }
             inst->last_cpu_perc_umode = (uint64_t)
@@ -728,7 +728,7 @@ static inline void inst_get_sys_stats(inst_t *inst)
             // position of "kernel mode time" field in /proc/pid/stat file is 15
             tmp_num = strtoul(token, &endptr, 10);
             if (endptr == token) {
-               VERBOSE(V1, "Unable to get kernel mode time for inst PID=%d", inst->pid)
+               VERBOSE(N_ERR, "Unable to get kernel mode time for inst PID=%d", inst->pid)
                continue;
             }
             inst->last_cpu_perc_kmode = (uint64_t)
@@ -751,7 +751,7 @@ static inline void inst_get_sys_stats(inst_t *inst)
       token = strtok(NULL, delim);
    }
 
-cleanup:
+err_cleanup:
    if (proc_stat_fd != NULL) {
       fclose(proc_stat_fd);
    }
@@ -765,7 +765,7 @@ static int get_total_cpu_usage(uint64_t *total_cpu_usage)
    char *line = NULL,
          *token = NULL,
          *endptr = NULL;
-   int ret_val = 0;
+   int rc = 0;
    size_t line_len = 0;
    FILE *proc_stat_fd = fopen("/proc/stat","r");
 
@@ -773,18 +773,18 @@ static int get_total_cpu_usage(uint64_t *total_cpu_usage)
       return -1;
    }
    if (getline(&line, &line_len, proc_stat_fd) == -1) {
-      ret_val = -1;
-      goto cleanup;
+      rc = -1;
+      goto err_cleanup;
    }
 
    token = strtok(line, delim);
    if (token == NULL) {
-      ret_val = -1;
-      goto cleanup;
+      rc = -1;
+      goto err_cleanup;
    }
    if (strcmp(token, "cpu") != 0) {
-      ret_val = -1;
-      goto cleanup;
+      rc = -1;
+      goto err_cleanup;
    }
    token = strtok(NULL, delim);
 
@@ -792,17 +792,17 @@ static int get_total_cpu_usage(uint64_t *total_cpu_usage)
       num = strtoul(token, &endptr, 10);
       if (endptr == token) {
          // if there were no character convertable to numeric in token
-         ret_val = -1;
+         rc = -1;
          break;
       }
       *total_cpu_usage += num;
       token = strtok(NULL, delim);
    }
 
-cleanup:
+err_cleanup:
    fclose(proc_stat_fd);
    NULLP_TEST_AND_FREE(line);
-   return ret_val;
+   return rc;
 }
 
 static void insts_save_running_pids() {

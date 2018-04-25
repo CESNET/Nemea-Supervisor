@@ -97,11 +97,6 @@ module nemea-test-1 {
             mandatory true;
             description "Prefix of Sysrepo module to use for NEMEA module specific configuration";
           }
-          leaf sr-callbacks-ready {
-            type boolean;
-            default false;
-            description "Sysrepo callbacks ready";
-          }
         }
       }
  

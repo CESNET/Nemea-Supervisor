@@ -78,7 +78,7 @@ COPY staas/ /etc/staas
 RUN mkdir -p /data/logs/dns_amplification_detection /data/logs/voip_fraud_detection/log /data/logs/dns_amplification_detection /data/logs/brute_force_detector /data/logs/dnstunnel_detection /data/logs/haddrscan /data/logs/hoststatsnemea /data/logs/ipblacklistfilter /data/logs/miner_detector /data/logs/sip_bf_detector /data/logs/voip_fraud_detection /data/logs/vportscan
 
 # Update this line if you want a current supervisor build
-ARG CACHE_DATE=2018-04-24.5
+ARG CACHE_DATE=2018-04-25.1
 
 # Install nemea-supervisor-sysrepo-edition
 WORKDIR ${SRC_FLD}

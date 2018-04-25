@@ -48,7 +48,6 @@ void av_module_print(const av_module_t *mod)
    VERBOSE(V3, " use trap interfaces=%d", mod->use_trap_ifces)
    VERBOSE(V3, " sysrepo ready=%d", mod->sr_rdy)
    VERBOSE(V3, " sysrepo custom model=%s", mod->sr_model)
-   VERBOSE(V3, " sysrepo callbacks ready=%d", mod->sr_cb_rdy)
 }
 void inst_print(inst_t *inst)
 {
@@ -114,7 +113,6 @@ av_module_t * av_module_alloc()
    mod->sr_rdy = false;
    mod->trap_mon = false;
    mod->use_trap_ifces = false;
-   mod->sr_cb_rdy = false;
 
    return mod;
 }

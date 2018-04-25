@@ -63,7 +63,7 @@ extern void inst_stop_remove_by_name(const char *name);
 extern void insts_start();
 
 /**
- * TODO
+ * @brief Terminates all instances in insts_v vector
  * */
 extern void insts_terminate();
 

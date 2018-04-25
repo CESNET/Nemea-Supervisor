@@ -1,6 +1,6 @@
 /**
  * @file service.h
- * @brief This module provides functions for handling connections to libtrap's service interface of individual instances and gather statistics via this interface.
+ * @brief This module provides functions for handling connections to libtrap's service interface of individual instances and gathering statistics via this interface.
  */
 
 #ifndef SERVICE_H
