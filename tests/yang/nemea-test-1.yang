@@ -75,7 +75,7 @@ module nemea-test-1 {
         mandatory true;
         description "TODO";
       }
-      leaf use-trap-ifces {
+      leaf trap-ifces-cli {
         type boolean;
         mandatory true;
         description "TODO";
@@ -101,9 +101,9 @@ module nemea-test-1 {
       }
  
       
-      choice if-use-trap-ifces {
+      choice if-trap-ifces-cli {
         case yes {
-          when "use-trap-ifces = true";
+          when "trap-ifces-cli = true";
           description "TODO";
 
           leaf in-ifces-cnt {
@@ -153,7 +153,7 @@ module nemea-test-1 {
       }
       
       /**
-       * It would be nice to specify that we want to use trap-ifcs-list only if use-trap-ifces is true, but then the subscription for runtime statistics to /nemea:supervisor/module/interface/stats would unfortunately not work. 
+       * It would be nice to specify that we want to use trap-ifcs-list only if trap-ifces-cli is true, but then the subscription for runtime statistics to /nemea:supervisor/module/interface/stats would unfortunately not work.
        */
       uses trap-ifcs-list;
       uses nemea-module-stats;

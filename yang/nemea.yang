@@ -31,7 +31,7 @@ module nemea {
         mandatory true;
         description "TODO";
       }
-      leaf use-trap-ifces {
+      leaf trap-ifces-cli {
         type boolean;
         mandatory true;
         description "TODO";
@@ -43,15 +43,13 @@ module nemea {
       }
 
       choice if-is-sysrepo-ready {
-        case yes {
-          when "is-sysrepo-ready = 'true'";
-          description "TODO";
+        when "is-sysrepo-ready = 'true'";
+        description "TODO";
 
-          leaf sr-model-prefix {
-            type string;
-            mandatory true;
-            description "Prefix of Sysrepo module to use for NEMEA module specific configuration";
-          }
+        leaf sr-model-prefix {
+          type string;
+          mandatory true;
+          description "Prefix of Sysrepo module to use for NEMEA module specific configuration";
         }
       } // end choice if-is-sysrepo-ready
       
@@ -110,7 +108,7 @@ module nemea {
        * It would be nice to specify that we want to use trap-ifcs-list only if use-trap-ifces is true, but then the subscription for runtime statistics to /nemea:supervisor/module/interface/stats would unfortunately not work. 
        */
       uses trap-ifcs-list;
-      uses nemea-module-stats;
+      uses nemea-instance-stats;
 
       choice if-is-sysrepo-ready {
         when "deref(.)/../is-sysrepo-ready = true";
@@ -146,9 +144,9 @@ module nemea {
       }
       mandatory true;
     }
-  } // End grouping nemea-key-name
+  } // end grouping nemea-key-name
 
-  grouping nemea-module-stats {
+  grouping nemea-instance-stats {
     /* This grouping is here just to make nemea-supervisor container
      *  more readable */
     container stats {
@@ -179,7 +177,6 @@ module nemea {
       	type uint64;
       	description "TODO";
       }
-    }
-  } // end grouping nemea-module-instance-stats
-
+    } // end container stats
+  } // end grouping nemea-instance-stats
 } // end module nemea

@@ -6,7 +6,7 @@
         "path": "/a/a",
         "description": "aaaaaa",
         "trap-monitorable": true,
-        "use-trap-ifces": true,
+        "trap-ifces-cli": true,
         "is-sysrepo-ready": false,
         "in-ifces-cnt": "0",
         "out-ifces-cnt": "5"
@@ -16,7 +16,7 @@
         "path": "/a/b",
         "description": "bbbbbbbbb",
         "trap-monitorable": false,
-        "use-trap-ifces": false,
+        "trap-ifces-cli": false,
         "is-sysrepo-ready": false
       }
     ],

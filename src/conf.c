@@ -388,7 +388,7 @@ av_module_load(sr_session_ctx_t *sess, char *xpath)
    if (FOUND_AND_ERR(rc)) {
       goto err_cleanup;
    }
-   rc = load_sr_num(sess, xpath, "/use-trap-ifces", &(amod->use_trap_ifces), SR_BOOL_T);
+   rc = load_sr_num(sess, xpath, "/trap-ifces-cli", &(amod->trap_ifces_cli), SR_BOOL_T);
    if (FOUND_AND_ERR(rc)) {
       goto err_cleanup;
    }
@@ -728,6 +728,8 @@ inst_pid_restore(pid_t last_pid, inst_t *inst,
       inst->running = true;
       inst->is_my_child = false;
    }
+
+   // Might be good to compare even /proc/{pid}/cmdline
 
    goto clean_pid;
 

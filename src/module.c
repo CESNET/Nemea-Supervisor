@@ -45,7 +45,7 @@ void av_module_print(const av_module_t *mod)
 {
    VERBOSE(V3, "Module: %s (path=%s)", mod->name, mod->path)
    VERBOSE(V3, " trap monitorable=%d", mod->trap_mon)
-   VERBOSE(V3, " use trap interfaces=%d", mod->use_trap_ifces)
+   VERBOSE(V3, " trap interfaces cli=%d", mod->trap_ifces_cli)
    VERBOSE(V3, " sysrepo ready=%d", mod->sr_rdy)
 }
 void inst_print(inst_t *inst)
@@ -57,6 +57,7 @@ void inst_print(inst_t *inst)
    VERBOSE(V3, " running=%s", inst->running ? "true" : "false")
    VERBOSE(V3, " restart_cnt=%d", inst->restarts_cnt)
    VERBOSE(V3, " max_restarts_minute=%d", inst->max_restarts_minute)
+   VERBOSE(V3, " use_sysrepo=%d", inst->use_sysrepo)
 
    for (uint32_t i = 0; i < inst->in_ifces.total; i++) {
       print_ifc(inst->in_ifces.items[i]);
@@ -110,7 +111,7 @@ av_module_t * av_module_alloc()
    mod->path = NULL;
    mod->sr_rdy = false;
    mod->trap_mon = false;
-   mod->use_trap_ifces = false;
+   mod->trap_ifces_cli = false;
 
    return mod;
 }
@@ -301,7 +302,7 @@ void inst_clear_socks(inst_t *inst)
    char service_sock_spec[14];
    interface_t *ifc = NULL;
 
-   if (inst->mod_ref->use_trap_ifces) {
+   if (inst->mod_ref->trap_ifces_cli) {
       for (uint32_t i = 0; i < inst->out_ifces.total; i++) {
          ifc = inst->out_ifces.items[i];
 
@@ -466,7 +467,7 @@ int inst_gen_exec_args(inst_t *inst)
    uint32_t total_ifc_cnt = inst->in_ifces.total + inst->out_ifces.total;
 
    // if the inst has trap interfaces, one argument for "-i" and one for interfaces specifier
-   if (inst->mod_ref->use_trap_ifces && total_ifc_cnt > 0) {
+   if (inst->mod_ref->trap_ifces_cli && total_ifc_cnt > 0) {
       exec_args_cnt += 2;
    }
 
@@ -525,7 +526,7 @@ int inst_gen_exec_args(inst_t *inst)
    }
 
    // Do not generate -i args
-   if (inst->mod_ref->use_trap_ifces == false || total_ifc_cnt == 0) {
+   if (inst->mod_ref->trap_ifces_cli == false || total_ifc_cnt == 0) {
       inst->exec_args = exec_args;
       return 0;
    }

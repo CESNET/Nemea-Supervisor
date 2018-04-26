@@ -155,8 +155,7 @@ typedef struct av_module_s {
    char * path; ///< Path to executable file
    bool sr_rdy; ///< Is module sysrepo ready?
    bool trap_mon; ///< Is module monitorable via TRAP's service interface?
-
-   bool use_trap_ifces; ///< Is module using trap interfaces?
+   bool trap_ifces_cli; ///< Is passing TRAP interfaces params at CLI?
 } av_module_t;
 
 typedef struct inst_s {

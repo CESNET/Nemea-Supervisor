@@ -89,7 +89,7 @@ static void test_module_load_exec_args(void **state)
    interface_t *ifc;
    av_module_t *mod = av_module_alloc();
    IF_NO_MEM_FAIL_MSG(mod, "fialed to allocate module struct")
-   mod->use_trap_ifces = true;
+   mod->trap_ifces_cli = true;
 
    inst_t *inst = inst_alloc();
    IF_NO_MEM_FAIL_MSG(inst, "tests module")
@@ -142,8 +142,8 @@ static void test_module_load_exec_args(void **state)
       free(inst->exec_args);
    }
 
-   { // test with use_trap_ifces == false (eg. IPFIXCOL)
-      mod->use_trap_ifces = false;
+   { // test with trap_ifces_cli == false (eg. IPFIXCOL)
+      mod->trap_ifces_cli = false;
 
       assert_int_equal(inst_gen_exec_args(inst), 0);
       assert_non_null(inst->exec_args);
@@ -160,7 +160,7 @@ static void test_module_load_exec_args(void **state)
    }
 
    { // test only interfaces param
-      mod->use_trap_ifces = true;
+      mod->trap_ifces_cli = true;
 
       NULLP_TEST_AND_FREE(inst->params)
       assert_int_equal(inst_gen_exec_args(inst), 0);
@@ -178,7 +178,7 @@ static void test_module_load_exec_args(void **state)
 
    { // test sysrepo params
       mod->sr_rdy = true;
-      mod->use_trap_ifces = true;
+      mod->trap_ifces_cli = true;
       inst->use_sysrepo = true;
 
       assert_int_equal(inst_gen_exec_args(inst), 0);
