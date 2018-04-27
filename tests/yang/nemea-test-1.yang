@@ -4,8 +4,16 @@ module nemea-test-1 {
   prefix "nemea-test-1";
   include trap-interfaces-test-1;
   contact "zidekmat@fit.cvut.cz";
-  description "Module specifying configuration of Nemea supervisor.";
+  description "Module specifying configuration of Nemea Supervisor.";
   revision "2018-01-17" { description "First version"; }
+
+  typedef full-unix-path {
+    type string {
+      length "1..255";
+      pattern "/.+[^/]";
+    }
+    description "Full UNIX path to file";
+  }
 
   grouping nemea-key-name {
     leaf name {
@@ -15,9 +23,9 @@ module nemea-test-1 {
       }
       mandatory true;
     }
-  } // End grouping nemea-key-name
+  } // end grouping nemea-key-name
 
-  grouping nemea-module-stats {
+  grouping nemea-instance-stats {
     /* This grouping is here just to make nemea-supervisor container
      *  more readable */
     container stats {
@@ -34,11 +42,11 @@ module nemea-test-1 {
       }
       leaf cpu-user {
       	type uint64;
-      	description "TODO";
+      	description "TODO %";
       }
       leaf cpu-kern {
       	type uint64;
-      	description "TODO";
+      	description "TODO %";
       }
       leaf mem-vms {
       	type uint64;
@@ -48,20 +56,20 @@ module nemea-test-1 {
       	type uint64;
       	description "TODO";
       }
-    }
-  } // end grouping nemea-module-instance-stats
-
+    } // end container stats
+  } // end grouping nemea-instance-stats
 
   container supervisor {
     list available-module {
+      description "TODO";
+
       key name;
       uses nemea-key-name {
         description "Unique module name";
       }
-      description "TODO";
 
       leaf path {
-        type string { pattern "^/.+"; }
+        type full-unix-path;
         mandatory true;
         description "Full path to where module binary resides.";
       }
@@ -85,25 +93,16 @@ module nemea-test-1 {
         mandatory true;
         description "TODO";
       }
-
-
-      choice if-is-sysrepo-ready {
-        case yes {
-          when "is-sysrepo-ready = true";
-          description "TODO";
-
-          leaf sr-model-prefix {
-            type string;
-            mandatory true;
-            description "Prefix of Sysrepo module to use for NEMEA module specific configuration";
-          }
-        }
+      leaf sr-model-prefix {
+        when "../is-sysrepo-ready = 'true'";
+        type string;
+        mandatory true;
+        description "Prefix of Sysrepo module to use for NEMEA module specific configuration";
       }
- 
       
-      choice if-trap-ifces-cli {
+      choice if-trap-ifces {
         case yes {
-          when "trap-ifces-cli = true";
+          when "trap-monitorable = 'true' or trap-ifces-cli = 'true'";
           description "TODO";
 
           leaf in-ifces-cnt {
@@ -123,7 +122,7 @@ module nemea-test-1 {
             description "";
           }
         }
-      }
+      } // end choice if-trap-ifces
     } // end list available-module
 
     list instance {
@@ -151,36 +150,23 @@ module nemea-test-1 {
         type uint32 { range "1..max"; }
         description "In case supervisor was interrupted and shouldn't have stopped the modules, PID of this Nemea module process is stored so that supervisor can reconnect to it once it starts again.";
       }
-      
+      leaf use-sysrepo {
+        when "../../available-module[name=current()/../module-ref]/is-sysrepo-ready = 'true'";
+        type boolean;
+        default false;
+        description "Specifies whether module has it's own YANG model derived from Nemea module template and is capable of loading configuration from Sysrepo when passed -sr 'INSTANCE_NAME'. INSTANCE_NAME is TODO";
+      }
+      leaf params {
+        when "../../available-module[name=current()/../module-ref]/is-sysrepo-ready = 'false' or ../use-sysrepo = 'false'";
+        type string;
+        description "TODO";
+      }
+ 
       /**
-       * It would be nice to specify that we want to use trap-ifcs-list only if trap-ifces-cli is true, but then the subscription for runtime statistics to /nemea:supervisor/module/interface/stats would unfortunately not work.
+       * It would be nice to specify that we want to use trap-ifcs-list only if use-trap-ifces is true, but then the subscription for runtime statistics to /nemea:supervisor/module/interface/stats would unfortunately not work. 
        */
       uses trap-ifcs-list;
-      uses nemea-module-stats;
-
-      choice if-is-sysrepo-ready {
-        when "deref(.)/../is-sysrepo-ready = true";
-        // this is old: when "../available-module[name=current()/module-ref]/use-sysrepo";
-        description "TODO";
-
-        leaf use-sysrepo {
-          type boolean;
-          default false;
-          description "Specifies whether module has it's own YANG model derived from Nemea module template and is capable of loading configuration from Sysrepo when passed -sr 'INSTANCE_NAME'. INSTANCE_NAME is TODO";
-        }
-      }
-
-      choice if-isnt-sysrepo-ready-or-doesnt-use-sysrepo {
-        when "deref(.)/../is-sysrepo-ready = false or use-sysrepo = false";
-        // this is old: when "../available-module[name=current()/module-ref]/is-sysrepo-ready = 'false' or use-sysrepo = 'false'";
-        description "TODO";
-      
-        leaf params {
-          type string;
-          description "TODO";
-        }
-      } // end choice is-module-sysrepo-ready
+      uses nemea-instance-stats;
     } // end of list module
   } // end container nemea-supervisor
 } // end module nemea-test-1
-

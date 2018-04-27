@@ -16,3 +16,6 @@ sed -i 's/include trap-interfaces/include trap-interfaces-test-1/' "$test_module
 sed -i 's/submodule trap-interfaces/submodule trap-interfaces-test-1/g' "$test_trap_yang"
 sed -i 's/belongs-to nemea/belongs-to nemea-test-1/g' "$test_trap_yang"
 sed -i 's/prefix nemea/prefix nemea-test-1/g' "$test_trap_yang"
+sed -i 's/nemea:nemea-key-name/nemea-test-1:nemea-key-name/g' "$test_trap_yang"
+sed -i 's/nemea:full-unix-path/nemea-test-1:full-unix-path/g' "$test_trap_yang"
+

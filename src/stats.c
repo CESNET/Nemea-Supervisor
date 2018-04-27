@@ -108,7 +108,7 @@ int interface_get_stats_cb(const char *xpath,
    *values_cnt = vals_cnt;
    *values = new_vals;
 
-   VERBOSE(V3, "Successfully leaving inst_get_stats_cb")
+   VERBOSE(V3, "Successfully leaving interface_get_stats_cb")
    return SR_ERR_OK;
 
 err_cleanup:
@@ -133,6 +133,7 @@ int inst_get_stats_cb(const char *xpath,
    inst_t *inst = NULL;
    sr_val_t *new_vals = NULL;
    time_t time_now;
+   uint8_t restarts_cnt = 0;
 
    tpath = tree_path_load(xpath);
    if (tpath == NULL) {
@@ -167,13 +168,13 @@ int inst_get_stats_cb(const char *xpath,
       /* Find out whether it was more than a minute since last restart and if it was,
        * reset restarts_cnt to provide correct value to the caller */
       time(&time_now);
-      if (time_now - inst->restart_time > 60) {
-         inst->restarts_cnt = 0;
+      if (time_now - inst->restart_time <= 60) {
+         restarts_cnt = inst->restarts_cnt;
       }
    }
 
    rc = set_new_sr_val(&new_vals[1], xpath, "restart-counter", SR_UINT8_T,
-                       &inst->restarts_cnt);
+                       &restarts_cnt);
    if (rc != 0) {
       VERBOSE(N_ERR, "Setting node value for /restart-counter failed")
       goto err_cleanup;
@@ -231,7 +232,7 @@ static int set_new_sr_val(sr_val_t *new_sr_val,
    char *stat_leaf_xpath = NULL;
    uint64_t stat_xpath_len = strlen(stat_xpath) + strlen(stat_leaf_name) + 2;
 
-   stat_leaf_xpath = (char *) calloc(1, sizeof(char) * (stat_xpath_len));
+   stat_leaf_xpath = (char *) calloc(stat_xpath_len, sizeof(char));
    if (stat_leaf_xpath == NULL) {
       NO_MEM_ERR
       goto err_cleanup;
@@ -387,7 +388,7 @@ static interface_t * interface_get_by_xpath(const char *xpath)
    vector_t *ifces_vec[2] = { &(inst->in_ifces), &(inst->out_ifces) };
 
    for (uint32_t j = 0; j < 2; j++) {
-      for (uint32_t i = 0; i < inst->in_ifces.total; i++) {
+      for (uint32_t i = 0; i < ifces_vec[j]->total; i++) {
          ifc = ifces_vec[j]->items[i];
 
          if (strcmp(ifc->name, tpath->ifc) == 0) {

@@ -595,20 +595,18 @@ int main(void)
 {
    //verbosity_level = V3;
    const struct CMUnitTest tests[] = {
-/*         cmocka_unit_test(test_interface_unix_params_load),
+         cmocka_unit_test(test_interface_unix_params_load),
          cmocka_unit_test(test_interface_tcp_tls_params_load),
          cmocka_unit_test(test_interface_tcp_params_load),
          cmocka_unit_test(test_interface_file_params_load),
          cmocka_unit_test(test_interface_load),
-         cmocka_unit_test(test_av_module_load),*/
-/*
+         cmocka_unit_test(test_av_module_load),
          cmocka_unit_test(test_inst_pid_restore),
-*/
-/*         cmocka_unit_test(test_inst_load),
+         cmocka_unit_test(test_inst_load),
          cmocka_unit_test(test_ns_startup_config_load),
          cmocka_unit_test(test_inst_load_by_name),
          cmocka_unit_test(test_av_module_load_by_name),
-         cmocka_unit_test(test_module_name_from_xpath),*/
+         cmocka_unit_test(test_module_name_from_xpath),
    };
 
 

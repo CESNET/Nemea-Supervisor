@@ -59,41 +59,43 @@ elif action == "intable_interfaces_stats":
     s = sess.get_items(xpath_base + '*')
     if s.val_cnt() != 6:
       exit(111)
-    if s.val(0).xpath() != xpath_if1 + "sent-msg-cnt":
-      print(s.val(0).xpath() + ' != ' + xpath_if1 + "sent-msg-cnt")
-      exit(112)
-    if s.val(0).data().get_uint64() != 11111:
-      exit(113)
 
-    if s.val(1).xpath() != xpath_if1 + "sent-buff-cnt":
-      print(s.val(1).xpath() + ' != ' + xpath_if1 + "sent-buff-cnt")
-      exit(114)
-    if s.val(1).data().get_uint64() != 11112:
-      exit(115)
-
-    if s.val(2).xpath() != xpath_if1 + "dropped-msg-cnt":
-      print(s.val(2).xpath() + ' != ' + xpath_if1 + "dropped-msg-cnt")
-      exit(116)
-    if s.val(2).data().get_uint64() != 11113:
-      exit(117)
-
-    if s.val(3).xpath() != xpath_if1 + "autoflush-cnt":
-      print(s.val(3).xpath() + ' != ' + xpath_if1 + "autoflush-cnt")
-      exit(118)
-    if s.val(3).data().get_uint64() != 11114:
-      exit(119)
-
-    if s.val(4).xpath() != xpath_if2 + "recv-msg-cnt":
-      print(s.val(4).xpath() + ' != ' + xpath_if1 + "recv-msg-cnt")
+    if s.val(0).xpath() != xpath_if1 + "recv-msg-cnt":
+      print(s.val(0).xpath() + ' != ' + xpath_if2 + "recv-msg-cnt")
       exit(120)
-    if s.val(4).data().get_uint64() != 12333:
+    if s.val(0).data().get_uint64() != 12333:
       exit(121)
 
-    if s.val(5).xpath() != xpath_if2 + "recv-buff-cnt":
-      print(s.val(5).xpath() + ' != ' + xpath_if1 + "recv-buff-cnt")
+    if s.val(1).xpath() != xpath_if1 + "recv-buff-cnt":
+      print(s.val(1).xpath() + ' != ' + xpath_if2 + "recv-buff-cnt")
       exit(122)
-    if s.val(5).data().get_uint64() != 12334:
+    if s.val(1).data().get_uint64() != 12334:
       exit(123)
+
+    if s.val(2).xpath() != xpath_if2 + "sent-msg-cnt":
+      print(s.val(2).xpath() + ' != ' + xpath_if2 + "sent-msg-cnt")
+      exit(112)
+    if s.val(2).data().get_uint64() != 11111:
+      exit(113)
+
+    if s.val(3).xpath() != xpath_if2 + "sent-buff-cnt":
+      print(s.val(3).xpath() + ' != ' + xpath_if2 + "sent-buff-cnt")
+      exit(114)
+    if s.val(3).data().get_uint64() != 11112:
+      exit(115)
+
+    if s.val(4).xpath() != xpath_if2 + "dropped-msg-cnt":
+      print(s.val(4).xpath() + ' != ' + xpath_if2 + "dropped-msg-cnt")
+      exit(116)
+    if s.val(4).data().get_uint64() != 11113:
+      exit(117)
+
+    if s.val(5).xpath() != xpath_if2 + "autoflush-cnt":
+      print(s.val(5).xpath() + ' != ' + xpath_if2 + "autoflush-cnt")
+      exit(118)
+    if s.val(5).data().get_uint64() != 11114:
+      exit(119)
+
 
   except Exception as e:
     print('asynch_stats.py error: ' +str(e))
@@ -115,12 +117,12 @@ elif action == "intable_inst_stats_including_ifc_stats":
         ["stats/cpu-kern", "get_uint64", 8888],
         ["stats/mem-vms", "get_uint64", 7777],
         ["stats/mem-rss", "get_uint64", 6666],
-        ["interface[name='if1']/stats/sent-msg-cnt", "get_uint64", 11111],
-        ["interface[name='if1']/stats/sent-buff-cnt", "get_uint64", 11112],
-        ["interface[name='if1']/stats/dropped-msg-cnt", "get_uint64", 11113],
-        ["interface[name='if1']/stats/autoflush-cnt", "get_uint64", 11114],
-        ["interface[name='if2']/stats/recv-msg-cnt", "get_uint64", 12333],
-        ["interface[name='if2']/stats/recv-buff-cnt", "get_uint64", 12334],
+        ["interface[name='if1']/stats/recv-msg-cnt", "get_uint64", 12333],
+        ["interface[name='if1']/stats/recv-buff-cnt", "get_uint64", 12334],
+        ["interface[name='if2']/stats/sent-msg-cnt", "get_uint64", 11111],
+        ["interface[name='if2']/stats/sent-buff-cnt", "get_uint64", 11112],
+        ["interface[name='if2']/stats/dropped-msg-cnt", "get_uint64", 11113],
+        ["interface[name='if2']/stats/autoflush-cnt", "get_uint64", 11114],
     ]
 
     for i in range(0, s.val_cnt()):

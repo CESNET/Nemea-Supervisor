@@ -14,7 +14,7 @@
     ],
     "instance": [
       {
-        "name": "intable_module",
+        "name": "Intable1",
         "module-ref": "module A",
         "enabled": true,
         "max-restarts-per-min": 4,

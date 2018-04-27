@@ -3,7 +3,7 @@
     <name>ipfixcol</name>
     <path>/usr/bin/ipfixcol</path>
     <description>TODO</description>
-    <use-trap-ifces>false</use-trap-ifces>
+    <trap-ifces-cli>false</trap-ifces-cli>
     <trap-monitorable>true</trap-monitorable>
     <is-sysrepo-ready>false</is-sysrepo-ready>
     <in-ifces-cnt>0</in-ifces-cnt>
@@ -13,7 +13,7 @@
     <name>ipfixsend</name>
     <path>/usr/bin/ipfixsend</path>
     <description>TODO</description>
-    <use-trap-ifces>false</use-trap-ifces>
+    <trap-ifces-cli>false</trap-ifces-cli>
     <trap-monitorable>false</trap-monitorable>
     <is-sysrepo-ready>false</is-sysrepo-ready>
   </available-module>
@@ -21,7 +21,7 @@
     <name>vportscan_detector</name>
     <path>/usr/bin/nemea/vportscan_detector</path>
     <description>TODO</description>
-    <use-trap-ifces>true</use-trap-ifces>
+    <trap-ifces-cli>true</trap-ifces-cli>
     <trap-monitorable>true</trap-monitorable>
     <is-sysrepo-ready>false</is-sysrepo-ready>
     <in-ifces-cnt>1</in-ifces-cnt>

@@ -112,7 +112,7 @@ void * request_stats_async(void * stats_type)
    int *rc = (int *) calloc(1, sizeof(int));
    IF_NO_MEM_FAIL(rc)
 
-   char *cmd = (char *) calloc(1, sizeof(char) * (strlen(stats_type) + 16));
+   char *cmd = (char *) calloc(strlen(stats_type) + 17 + strlen(TESTS_DIR), sizeof(char));
    IF_NO_MEM_FAIL(cmd)
    sprintf(cmd, TESTS_DIR"/async_stats.py %s", (char *)stats_type);
 
@@ -146,7 +146,8 @@ void subscribe_xpath_stats(const char *xpath,
                                   NULL,
                                   subscr_flag,
                                   &sr_conn_link.subscr);
-      IF_SR_ERR_FAIL(rc)
+
+   IF_SR_ERR_FAIL(rc)
 }
 
 void run_async_caller_and_sv_routine(char * async_option)
@@ -235,8 +236,8 @@ void test_get_inst_stats(void **state)
       inst->running = false;
       time(&inst->restart_time);
       inst->restarts_cnt = 2;
-      inst->last_cpu_umode = 9999;
-      inst->last_cpu_kmode = 8888;
+      inst->last_cpu_perc_umode = 9999;
+      inst->last_cpu_perc_kmode = 8888;
       inst->mem_vms = 7777;
       inst->mem_rss = 6666;
    }
@@ -264,8 +265,8 @@ void test_get_intable_inst_stats_including_ifc_stats(void **state)
       inst->running = false;
       time(&inst->restart_time);
       inst->restarts_cnt = 2;
-      inst->last_cpu_umode = 9999;
-      inst->last_cpu_kmode = 8888;
+      inst->last_cpu_perc_umode = 9999;
+      inst->last_cpu_perc_kmode = 8888;
       inst->mem_vms = 7777;
       inst->mem_rss = 6666;
 
@@ -328,7 +329,7 @@ void test_interface_get_by_tree_path(void **state)
 
    inst = inst_alloc();
    IF_NO_MEM_FAIL(inst)
-   inst->name = strdup("Intable1");
+   inst->name = strdup("intable_module");
    IF_NO_MEM_FAIL(inst->name)
    assert_int_equal(vector_add(&insts_v, inst), 0);
 
@@ -341,8 +342,8 @@ void test_interface_get_by_tree_path(void **state)
    assert_int_equal(inst_interface_add(inst, stored_ifc), 0);
 
    {
-      xpath = strdup(NS_ROOT_XPATH"/instance[name='Intable1']"
-                           "/interface[name='ifc1']/stats");
+      xpath = strdup(NS_ROOT_XPATH"/instance[name='intable_module']"
+                           "/interface[name='if1']/stats");
       ifc = interface_get_by_xpath(xpath);
       assert_non_null(ifc);
       stored_ifc = inst->in_ifces.items[0];
@@ -350,7 +351,7 @@ void test_interface_get_by_tree_path(void **state)
    }
 
    {
-      xpath = strdup(NS_ROOT_XPATH"/instance[name='Intable1']"
+      xpath = strdup(NS_ROOT_XPATH"/instance[name='intable_module']"
                            "/stats");
       ifc = interface_get_by_xpath(xpath);
       assert_null(ifc);
@@ -367,13 +368,14 @@ int main(void)
 
    const struct CMUnitTest tests[] = {
 /*
-         cmocka_unit_test(test_get_inst_stats),
-         cmocka_unit_test(test_interface_get_by_tree_path),
-         cmocka_unit_test(test_tree_path_load),*/
-         cmocka_unit_test(test_get_intable_interface_stats_cb),
+         */
 
-/*
+         cmocka_unit_test(test_get_intable_interface_stats_cb),
+         cmocka_unit_test(test_tree_path_load),
+         cmocka_unit_test(test_interface_get_by_tree_path),
+         cmocka_unit_test(test_get_inst_stats),
          cmocka_unit_test(test_get_intable_inst_stats_including_ifc_stats),
+/*
 */
 
    };

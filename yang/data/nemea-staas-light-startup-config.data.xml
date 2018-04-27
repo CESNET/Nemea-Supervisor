@@ -8,7 +8,7 @@ Description for the modules are taken from their GitHub repositories.
   <available-module>
     <name>ipfixcol</name>
     <description>IPFIXcol is a flexible IPFIX flow data collector designed to be easily extensible by plugins. (see https://github.com/CESNET/ipfixcol/tree/master/base)</description>
-    <use-trap-ifces>false</use-trap-ifces>
+    <trap-ifces-cli>false</trap-ifces-cli>
     <trap-monitorable>true</trap-monitorable>
     <is-sysrepo-ready>false</is-sysrepo-ready>
     <path>/usr/bin/ipfixcol</path>
@@ -18,7 +18,7 @@ Description for the modules are taken from their GitHub repositories.
   <available-module>
     <name>ipfixsend</name>
     <description>Tool that sends ipfix packets. (see https://github.com/CESNET/ipfixcol/tree/master/base/src/utils/ipfixsend)</description>
-    <use-trap-ifces>false</use-trap-ifces>
+    <trap-ifces-cli>false</trap-ifces-cli>
     <trap-monitorable>false</trap-monitorable>
     <is-sysrepo-ready>false</is-sysrepo-ready>
     <path>/usr/bin/ipfixsend</path>
@@ -27,7 +27,7 @@ Description for the modules are taken from their GitHub repositories.
   <available-module>
     <name>amplification_detection</name>
     <description>Module implements simple amplification attacks detection, based on flow's number of packets and bytes. It analyzes query and response traffic. Works with flow data. (see https://github.com/CESNET/Nemea-Detectors/tree/master/amplification_detection)</description>
-    <use-trap-ifces>true</use-trap-ifces>
+    <trap-ifces-cli>true</trap-ifces-cli>
     <trap-monitorable>true</trap-monitorable>
     <is-sysrepo-ready>false</is-sysrepo-ready>
     <path>/usr/bin/nemea/amplification_detection</path>
@@ -39,7 +39,7 @@ Description for the modules are taken from their GitHub repositories.
     <description>This module is a simple, threshold-based detector for horizontal scans which processes incoming flow records and outputs alerts. The module uses TRAP platform and it has one input and one output interface.
 
       The detection algorithm uses information from basic flow records and it is based on analysis of the number of destination addresses per source address. It is important to remember all unique destination addresses for each pair of source address and destination port separately. The source address is a potential source of scan, meanwhile, the destination addresses are victims. (see https://github.com/CESNET/Nemea-Detectors/tree/master/haddrscan_detector)</description>
-    <use-trap-ifces>true</use-trap-ifces>
+    <trap-ifces-cli>true</trap-ifces-cli>
     <trap-monitorable>true</trap-monitorable>
     <is-sysrepo-ready>false</is-sysrepo-ready>
     <path>/usr/bin/nemea/haddrscan_detector</path>
@@ -49,7 +49,7 @@ Description for the modules are taken from their GitHub repositories.
   <available-module>
     <name>haddrscan_aggregator</name>
     <description>Aggregator module for haddrscan_detector. (see https://github.com/CESNET/Nemea-Detectors/tree/master/haddrscan_detector)</description>
-    <use-trap-ifces>true</use-trap-ifces>
+    <trap-ifces-cli>true</trap-ifces-cli>
     <trap-monitorable>true</trap-monitorable>
     <is-sysrepo-ready>false</is-sysrepo-ready>
     <path>/usr/bin/nemea/haddrscan_aggregator.py</path>
@@ -59,7 +59,7 @@ Description for the modules are taken from their GitHub repositories.
   <available-module>
     <name>sip_bf_detector</name>
     <description>Module for detecting brute-force attacks and user search attack on Session Initiation Protocol. It analyses SIP response traffic and is capable of detecting distributed brute-force attacks and username scans. (see https://github.com/CESNET/Nemea-Detectors/tree/master/sip_bf_detector)</description>
-    <use-trap-ifces>true</use-trap-ifces>
+    <trap-ifces-cli>true</trap-ifces-cli>
     <trap-monitorable>true</trap-monitorable>
     <is-sysrepo-ready>false</is-sysrepo-ready>
     <path>/usr/bin/nemea/sip_bf_detector</path>
@@ -74,7 +74,7 @@ Description for the modules are taken from their GitHub repositories.
       Secondly, it stores information about countries to which individual IP
       address calling. Module warnings, if is detected calling to different
       country. (see https://github.com/CESNET/Nemea-Detectors/blob/master/voip_fraud_detection)</description>
-    <use-trap-ifces>true</use-trap-ifces>
+    <trap-ifces-cli>true</trap-ifces-cli>
     <trap-monitorable>true</trap-monitorable>
     <is-sysrepo-ready>false</is-sysrepo-ready>
     <path>/usr/bin/nemea/voip_fraud_detection</path>
@@ -88,7 +88,7 @@ Description for the modules are taken from their GitHub repositories.
       The detection algorithm is based on analysis of the number of destination ports per source address. It is important to remember all unique destination ports for each pair of source and destination addresses separately. The source address is a potential source of scan, meanwhile, the destination address is a victim.
 
       The input of algorithm are all incoming flow records, however, only the flow records that satisfy a condition are processed. The condition contains transport protocol (must be TCP), the number of packets in a flow (must be lower or equal to 4), TCP flags (must be equal to SYN). If the destination port is not yet stored in the list of seen ports of the pair of addresses, the port is normally added. Otherwise, the port is completely removed from the set due to the following assumption. We assume that repeating destination port belongs to benign traffic because there is generally no reason to scan one port repeatedly from one source address. If the list of seen ports of a pair of addresses contains 50 unique ports, an alert is reported. (see https://github.com/CESNET/Nemea-Detectors/tree/master/vportscan_detector)</description>
-    <use-trap-ifces>true</use-trap-ifces>
+    <trap-ifces-cli>true</trap-ifces-cli>
     <trap-monitorable>true</trap-monitorable>
     <is-sysrepo-ready>false</is-sysrepo-ready>
     <path>/usr/bin/nemea/vportscan_detector</path>
@@ -98,7 +98,7 @@ Description for the modules are taken from their GitHub repositories.
   <available-module>
     <name>vportscan_aggregator</name>
     <description>Aggregator module for vportscan_detector. (see https://github.com/CESNET/Nemea-Detectors/blob/master/vportscan_detector/vportscan_aggregator.py)</description>
-    <use-trap-ifces>true</use-trap-ifces>
+    <trap-ifces-cli>true</trap-ifces-cli>
     <trap-monitorable>true</trap-monitorable>
     <is-sysrepo-ready>false</is-sysrepo-ready>
     <path>/usr/bin/nemea/vportscan_aggregator.py</path>
@@ -109,7 +109,7 @@ Description for the modules are taken from their GitHub repositories.
   <available-module>
     <name>amplification2idea</name>
     <description>Reporting module for dns_amplification module that receives alerts from detectors and stores them into database (MongoDB), file or forwards them into Warden. (see https://github.com/CESNET/Nemea-Modules/tree/master/report2idea)</description>
-    <use-trap-ifces>true</use-trap-ifces>
+    <trap-ifces-cli>true</trap-ifces-cli>
     <trap-monitorable>true</trap-monitorable>
     <is-sysrepo-ready>false</is-sysrepo-ready>
     <path>/usr/bin/nemea/amplification2idea.py</path>
@@ -119,7 +119,7 @@ Description for the modules are taken from their GitHub repositories.
   <available-module>
     <name>vportscan2idea</name>
     <description>Reporting module for vportscan_detector module that receives alerts from detectors and stores them into database (MongoDB), file or forwards them into Warden. (see https://github.com/CESNET/Nemea-Modules/tree/master/report2idea)</description>
-    <use-trap-ifces>true</use-trap-ifces>
+    <trap-ifces-cli>true</trap-ifces-cli>
     <trap-monitorable>true</trap-monitorable>
     <is-sysrepo-ready>false</is-sysrepo-ready>
     <path>/usr/bin/nemea/vportscan2idea.py</path>
@@ -129,7 +129,7 @@ Description for the modules are taken from their GitHub repositories.
   <available-module>
     <name>voipfraud2idea</name>
     <description>Reporting module for voip_fraud_detection module that receives alerts from detectors and stores them into database (MongoDB), file or forwards them into Warden. (see https://github.com/CESNET/Nemea-Modules/tree/master/report2idea)</description>
-    <use-trap-ifces>true</use-trap-ifces>
+    <trap-ifces-cli>true</trap-ifces-cli>
     <trap-monitorable>true</trap-monitorable>
     <is-sysrepo-ready>false</is-sysrepo-ready>
     <path>/usr/bin/nemea/voipfraud2idea.py</path>
@@ -139,7 +139,7 @@ Description for the modules are taken from their GitHub repositories.
   <available-module>
     <name>haddrscan2idea</name>
     <description>Reporting module for haddrscan_detector module that receives alerts from detectors and stores them into database (MongoDB), file or forwards them into Warden. (see https://github.com/CESNET/Nemea-Modules/tree/master/report2idea)</description>
-    <use-trap-ifces>true</use-trap-ifces>
+    <trap-ifces-cli>true</trap-ifces-cli>
     <trap-monitorable>true</trap-monitorable>
     <is-sysrepo-ready>false</is-sysrepo-ready>
     <path>/usr/bin/nemea/haddrscan2idea.py</path>
@@ -149,7 +149,7 @@ Description for the modules are taken from their GitHub repositories.
   <available-module>
     <name>sipbf2idea</name>
     <description>Reporting module for sip_bf_detector module that receives alerts from detectors and stores them into database (MongoDB), file or forwards them into Warden. (see https://github.com/CESNET/Nemea-Modules/tree/master/report2idea)</description>
-    <use-trap-ifces>true</use-trap-ifces>
+    <trap-ifces-cli>true</trap-ifces-cli>
     <trap-monitorable>true</trap-monitorable>
     <is-sysrepo-ready>false</is-sysrepo-ready>
     <path>/usr/bin/nemea/sipbf2idea.py</path>
@@ -160,7 +160,7 @@ Description for the modules are taken from their GitHub repositories.
   <available-module>
     <name>logger</name>
     <description>This NEMEA module logs incoming UniRec records into stdout or into specified file(s). (see https://github.com/CESNET/Nemea-Modules/tree/master/logger)</description>
-    <use-trap-ifces>true</use-trap-ifces>
+    <trap-ifces-cli>true</trap-ifces-cli>
     <trap-monitorable>true</trap-monitorable>
     <is-sysrepo-ready>false</is-sysrepo-ready>
     <path>/usr/bin/nemea/logger</path>
