@@ -522,12 +522,10 @@ static void sig_handler(int catched_signal)
 void supervisor_routine()
 {
    uint32_t running_insts_cnt = 0;
-   //uint64_t period_cnt = 0;
 
    VERBOSE(V3, "Starting supervisor routine")
    while (supervisor_stopped == false) {
       VERBOSE(V3, "-----routine loop-----")
-      //period_cnt++;
 
       /* Lock instances list so that async changes from sysrepo don't
        * interfere with this routine */
@@ -554,11 +552,6 @@ void supervisor_routine()
          (void) get_running_insts_cnt();
       }
       pthread_mutex_unlock(&config_lock);
-/* TODO
- * if (period_cnt == 2) {
-            supervisor_stopped = true;
-            terminate_insts_at_exit = false;
-         }*/
       usleep(SERVICE_THREAD_SLEEP_IN_MICSEC);
    }
    VERBOSE(V3, "Supervisor routine finished")

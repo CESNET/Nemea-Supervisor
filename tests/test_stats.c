@@ -233,7 +233,7 @@ void test_get_inst_stats(void **state)
    {
       // Load dummy stats
       inst_t *inst = insts_v.items[0];
-      inst->running = false;
+      inst->running = true;
       time(&inst->restart_time);
       inst->restarts_cnt = 2;
       inst->last_cpu_perc_umode = 9999;
@@ -262,7 +262,7 @@ void test_get_intable_inst_stats_including_ifc_stats(void **state)
 
    { // load dummy data
       inst_t *inst = insts_v.items[0];
-      inst->running = false;
+      inst->running = true;
       time(&inst->restart_time);
       inst->restarts_cnt = 2;
       inst->last_cpu_perc_umode = 9999;

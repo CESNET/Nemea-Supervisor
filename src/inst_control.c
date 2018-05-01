@@ -129,7 +129,7 @@ void av_module_stop_remove_by_name(const char *name)
          }
          vector_delete(&insts_v, i);
          inst_free(inst);
-         i--; // TODO
+         i--;
       }
    }
 
@@ -245,16 +245,18 @@ static void clean_after_children()
                }
                VERBOSE(V2, "waitpid: Some error occured, but inst %s is not running",
                        inst->name)
-               inst->should_die = true;
-               //inst->running = false;
+               inst->running = false;
+               if (inst->enabled == false) {
+                  inst->should_die = true;
+               }
                inst_clear_socks(inst);
                break;
 
             default: // Module is not running
                VERBOSE(V2, "waitpid: Instance %s is not running. waitpid result=%d", inst->name, result)
-               //inst->should_die = true;
-               //inst->running = false;
+               inst->running = false;
                if (inst->enabled == false) {
+                  inst->should_die = true;
                   inst_clear_socks(inst);
                }
          }

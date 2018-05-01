@@ -458,7 +458,6 @@ interface_load(sr_session_ctx_t *sess, char *xpath, inst_t *inst)
          return SR_ERR_VERSION_MISMATCH;
       }
       if (rc != SR_ERR_OK) {
-         // TODO
          goto err_cleanup;
       }
       NULLP_TEST_AND_FREE(ifc_type)

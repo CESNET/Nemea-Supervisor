@@ -19,7 +19,7 @@ if action == "intable_module_stats":
       exit(1)
     if s.val(0).xpath() != xpath_base + "running":
       exit(22)
-    if s.val(0).data().get_bool() != False:
+    if s.val(0).data().get_bool() != True:
       exit(2)
 
     if s.val(1).xpath() != xpath_base + "restart-counter":
@@ -111,7 +111,7 @@ elif action == "intable_inst_stats_including_ifc_stats":
         eixt(1)
 
     expected = [
-        ["stats/running", "get_bool", False],
+        ["stats/running", "get_bool", True],
         ["stats/restart-counter", "get_uint8", 2],
         ["stats/cpu-user", "get_uint64", 9999],
         ["stats/cpu-kern", "get_uint64", 8888],

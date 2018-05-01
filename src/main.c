@@ -121,7 +121,6 @@ int main (int argc, char *argv [])
    }
 
    VERBOSE(V1, "======= STARTING =======")
-   //TODO add to debug verbosity? sr_log_stderr(SR_LL_DBG);
 
    if (daemon_flag) {
       // Initialize a new daemon process

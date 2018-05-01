@@ -134,6 +134,7 @@ int inst_get_stats_cb(const char *xpath,
    sr_val_t *new_vals = NULL;
    time_t time_now;
    uint8_t restarts_cnt = 0;
+   uint64_t zero_val = 0;
 
    tpath = tree_path_load(xpath);
    if (tpath == NULL) {
@@ -181,26 +182,28 @@ int inst_get_stats_cb(const char *xpath,
    }
 
    rc = set_new_sr_val(&new_vals[2], xpath, "cpu-user", SR_UINT64_T,
-                       &inst->last_cpu_perc_umode);
+                       inst->running ? &inst->last_cpu_perc_umode : &zero_val);
    if (rc != 0) {
       VERBOSE(N_ERR, "Setting node value for /cpu-user failed")
       goto err_cleanup;
    }
 
    rc = set_new_sr_val(&new_vals[3], xpath, "cpu-kern", SR_UINT64_T,
-                       &inst->last_cpu_perc_kmode);
+                       inst->running ? &inst->last_cpu_perc_kmode : &zero_val);
    if (rc != 0) {
       VERBOSE(N_ERR, "Setting node value for /cpu-kern failed")
       goto err_cleanup;
    }
 
-   rc = set_new_sr_val(&new_vals[4], xpath, "mem-vms", SR_UINT64_T, &inst->mem_vms);
+   rc = set_new_sr_val(&new_vals[4], xpath, "mem-vms", SR_UINT64_T,
+                       inst->running ? &inst->mem_vms : &zero_val);
    if (rc != 0) {
       VERBOSE(N_ERR, "Setting node value for /mem-vms failed")
       goto err_cleanup;
    }
 
-   rc = set_new_sr_val(&new_vals[5], xpath, "mem-rss", SR_UINT64_T, &inst->mem_rss);
+   rc = set_new_sr_val(&new_vals[5], xpath, "mem-rss", SR_UINT64_T,
+                       inst->running ? &inst->mem_rss : &zero_val);
    if (rc != 0) {
       VERBOSE(N_ERR, "Setting node value for /mem-rss failed")
       goto err_cleanup;

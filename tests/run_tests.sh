@@ -1,9 +1,5 @@
 #!/bin/bash
 
-
-# WARNING !!!
-# These tests work only if run separately so this script doesn't really work.
-
 msg() {
 	echo -e "\e[32m[*] $1\e[0m"
 }
