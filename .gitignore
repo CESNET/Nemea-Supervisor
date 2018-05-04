@@ -23,4 +23,5 @@ tests/test_utils
 src/nemea-supervisor
 src/cmake_install.cmake
 *.swp
-
+_config.yml
+doc/html/
