@@ -171,6 +171,28 @@ static inline void fake_sv_routine()
 ///////////////////////////TESTS
 ///////////////////////////TESTS
 
+void test_ns_config_change_cb_with_module_and_inst_created(void **state)
+{
+   system("helpers/import_conf.sh -s nemea-test-1-startup-4.data.json");
+   load_config_and_subscribe_to_change();
+   assert_int_equal(insts_v.total, 4);
+   assert_int_equal(avmods_v.total, 2);
+
+   make_async_change("create_available_module_with_instance");
+   fake_sv_routine();
+
+   av_module_t *mod;
+   inst_t *inst;
+   assert_int_equal(insts_v.total, 5);
+   inst = insts_v.items[4];
+   assert_string_equal(inst->name, "i5");
+   assert_int_equal(avmods_v.total, 3);
+   mod = avmods_v.items[2];
+   assert_string_equal(mod->name, "m5");
+
+   disconnect_and_unload_config();
+}
+
 void test_ns_config_change_cb_with_module_created(void **state)
 {
    system("helpers/import_conf.sh -s nemea-test-1-startup-4.data.json");
@@ -343,8 +365,8 @@ int main(void)
 
    //verbosity_level = V3;
    const struct CMUnitTest tests[] = {
+         cmocka_unit_test(test_ns_config_change_cb_with_module_and_inst_created),
          cmocka_unit_test(test_ns_change_load),
-
          cmocka_unit_test(test_ns_config_change_cb_with_module_modified_1),
          cmocka_unit_test(test_ns_config_change_cb_with_module_created),
          cmocka_unit_test(test_ns_config_change_cb_with_module_deleted),

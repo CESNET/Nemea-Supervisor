@@ -243,10 +243,14 @@ run_change_replace_same_registered(run_change_t *new, run_change_t *reg)
 {
    if (new->type == RUN_CHE_T_INST && reg->type == RUN_CHE_T_INST) {
       if (strcmp(new->inst_name, reg->inst_name) == 0) {
-         reg->action = new->action;
-         reg->type = new->type;
-         VERBOSE(V3, "New INSTANCE '%s' change updates already registred change",
-                 new->inst_name)
+         if (new->node_name == NULL) {
+            VERBOSE(V3, "New INSTANCE '%s' root change updates already registred change",
+                    new->inst_name)
+            reg->action = new->action;
+         } else {
+            VERBOSE(V3, "New INSTANCE '%s' child change is ignored",
+                    new->inst_name)
+         }
          run_change_free(&new);
          return 0;
       }
@@ -254,10 +258,14 @@ run_change_replace_same_registered(run_change_t *new, run_change_t *reg)
 
    if (new->type == RUN_CHE_T_MOD && reg->type == RUN_CHE_T_MOD) {
       if (strcmp(new->mod_name, reg->mod_name) == 0) {
-         reg->action = new->action;
-         reg->type = new->type;
-         VERBOSE(V3, "New MODULE '%s' change updates already registred change",
-                 new->mod_name)
+         if (new->node_name == NULL) {
+            VERBOSE(V3, "New MODULE '%s' root change updates already registred change",
+                    new->mod_name)
+            reg->action = new->action;
+         } else {
+            VERBOSE(V3, "New MODULE '%s' child change is ignored",
+                    new->mod_name)
+         }
          run_change_free(&new);
          return 0;
       }
@@ -349,7 +357,8 @@ static inline void run_change_handle_delete(run_change_t *change)
          if (strcmp(change->node_name, "last-pid") == 0) {
             change->action = RUN_CHE_ACTION_NONE;
          } else {
-            // not whole instance was deleted, old its node. restart instance to load new configuration
+            // not whole instance was deleted, only its node
+            // restart instance to load new configuration
             change->action = RUN_CHE_ACTION_RESTART;
          }
       } else {
@@ -494,11 +503,9 @@ run_change_load(sr_change_oper_t op, sr_val_t *old_val, sr_val_t *new_val)
    if (res == NULL) {
       sr_xpath_recover(&state);
       return change;
-/*      VERBOSE(N_ERR, "Failed to parse run_change on line %d", __LINE__)
-      goto err_cleanup;*/
    }
 
-   { // retrieve name of available-module OR module
+   { // retrieve name of available-module OR instance
       if (strcmp(res, "available-module") == 0) {
          res = sr_xpath_node_key_value(NULL, "name", &state);
          if (res == NULL) {
@@ -532,7 +539,7 @@ run_change_load(sr_change_oper_t op, sr_val_t *old_val, sr_val_t *new_val)
       }
    }
 
-   // node name
+   // module's or instance's node name
    res = sr_xpath_next_node(NULL, &state);
    if (res == NULL) {
       if (change->type == RUN_CHE_T_INVAL) {

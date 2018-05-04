@@ -10,10 +10,14 @@ sess = sr.Session(conn, sr.SR_DS_RUNNING)
 
 action = sys.argv[1]
 
-if action == "create_group_with_modules_and_instances":
-    sess.set_item("/nemea-test-1:supervisor/instance[name='m1']/path", sr.Val("/m1path"))
-    sess.set_item("/nemea-test-1:supervisor/instance[name='m2']/path", sr.Val("/m2path"))
-    sess.set_item("/nemea-test-1:supervisor/instance[name='m2']/instance[name='i1']/enabled", sr.Val(True))
+if action == "create_available_module_with_instance":
+    sess.set_item("/nemea-test-1:supervisor/available-module[name='m5']/path", sr.Val("/m1path"))
+    sess.set_item("/nemea-test-1:supervisor/available-module[name='m5']/description", sr.Val("lorem ipsum"))
+    sess.set_item("/nemea-test-1:supervisor/available-module[name='m5']/trap-monitorable", sr.Val(True))
+    sess.set_item("/nemea-test-1:supervisor/available-module[name='m5']/is-sysrepo-ready", sr.Val(False))
+    sess.set_item("/nemea-test-1:supervisor/available-module[name='m5']/trap-ifces-cli", sr.Val(False))
+    sess.set_item("/nemea-test-1:supervisor/instance[name='i5']/enabled", sr.Val(False))
+    sess.set_item("/nemea-test-1:supervisor/instance[name='i5']/module-ref", sr.Val('m5'))
     sess.commit()
 ##################
 elif action == "create_available_module":
@@ -31,10 +35,6 @@ elif action == "delete_group_with_module_and_instance":
 elif action == "delete_available_module":
     sess.delete_item("/nemea-test-1:supervisor/instance[name='m3']")
     sess.delete_item("/nemea-test-1:supervisor/available-module[name='module B']")
-    sess.commit()
-##################
-elif action == "group_modified_1":
-    sess.set_item("/nemea-test-1:supervisor/[name='To remove']/enabled", sr.Val(False))
     sess.commit()
 ##################
 elif action == "available_module_modified_1":

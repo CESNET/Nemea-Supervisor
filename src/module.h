@@ -25,7 +25,7 @@ typedef enum interface_dir_e {
 } interface_dir_t;
 
 /**
- * @brief Type of module interface
+ * @brief Type of instance's interface
  * */
 typedef enum interface_type_e {
    NS_IF_TYPE_TCP,     ///< TCP
