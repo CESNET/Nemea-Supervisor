@@ -1,5 +1,0 @@
-both from master cmake -DCMAKE_BUILD_TYPE=Release ..
-
-yanglint 0.14.50
-sysrepod - sysrepo daemon, version 0.7.2 
-
