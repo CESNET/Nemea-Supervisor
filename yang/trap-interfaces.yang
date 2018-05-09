@@ -208,12 +208,12 @@ submodule trap-interfaces {
          leaf recv-msg-cnt {
           when "../direction = 'IN'";
            type uint64;
-           description "Number of received messages.";
+           description "A number of received messages.";
          }
          leaf recv-buff-cnt {
           when "../direction = 'IN'";
            type uint64;
-           description "TODO";
+           description "A number of received buffers. Buffers are blocks for sending messages in larger packs and their usage can be set individually for each interface.";
          }
         // } End stats for interfaces with IN direction
 
@@ -222,22 +222,22 @@ submodule trap-interfaces {
         leaf sent-msg-cnt {
           when "../direction = 'OUT'";
           type uint64;
-          description "Number of sent messages.";
+          description "A number of sent messages.";
         }
         leaf sent-buff-cnt {
           when "../direction = 'OUT'";
           type uint64;
-          description "TODO";
+          description "A number of sent buffers.";
         }
         leaf dropped-msg-cnt {
           when "../direction = 'OUT'";
           type uint64;
-          description "TODO";
+          description "A number of dropped messages.";
         }
         leaf autoflush-cnt {
           when "../direction = 'OUT'";
           type uint64;
-          description "TODO";
+          description "A number of autoflushes. Autoflushes are events that occur once an every predefined time period, during which a buffer is sent even when it is not full. The behaviour of autoflushes can be set individually for each interface.";
         }
         // } End stats for interfaces with OUT direction
       } // end of stats container  
