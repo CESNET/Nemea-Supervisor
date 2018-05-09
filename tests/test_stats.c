@@ -367,17 +367,11 @@ int main(void)
    verbosity_level = V3;
 
    const struct CMUnitTest tests[] = {
-/*
-         */
-
          cmocka_unit_test(test_get_intable_interface_stats_cb),
          cmocka_unit_test(test_tree_path_load),
          cmocka_unit_test(test_interface_get_by_tree_path),
          cmocka_unit_test(test_get_inst_stats),
          cmocka_unit_test(test_get_intable_inst_stats_including_ifc_stats),
-/*
-*/
-
    };
 
    disconnect_sr();

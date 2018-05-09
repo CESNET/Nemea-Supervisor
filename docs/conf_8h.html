@@ -85,13 +85,14 @@ Functions</h2></td></tr>
 <tr class="memdesc:a31628067d241487a68c96174d7cba413"><td class="mdescLeft">&#160;</td><td class="mdescRight">Loads module structure of given name from sysrepo.  <a href="#a31628067d241487a68c96174d7cba413">More...</a><br /></td></tr>
 <tr class="separator:a31628067d241487a68c96174d7cba413"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aacabca030afcb8290955781a498d8064"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="conf_8h.html#aacabca030afcb8290955781a498d8064">inst_load_by_name</a> (sr_session_ctx_t *sess, const char *inst_name)</td></tr>
+<tr class="memdesc:aacabca030afcb8290955781a498d8064"><td class="mdescLeft">&#160;</td><td class="mdescRight">Loads instance structure of given name from sysrepo.  <a href="#aacabca030afcb8290955781a498d8064">More...</a><br /></td></tr>
 <tr class="separator:aacabca030afcb8290955781a498d8064"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="var-members"></a>
 Variables</h2></td></tr>
 <tr class="memitem:afcca730c82ace56e4cca6ce10169f71a"><td class="memItemLeft" align="right" valign="top"><a id="afcca730c82ace56e4cca6ce10169f71a"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="conf_8h.html#afcca730c82ace56e4cca6ce10169f71a">daemon_flag</a></td></tr>
-<tr class="memdesc:afcca730c82ace56e4cca6ce10169f71a"><td class="mdescLeft">&#160;</td><td class="mdescRight">CLI startup option to tell whether to start as daemon. <br /></td></tr>
+<tr class="memdesc:afcca730c82ace56e4cca6ce10169f71a"><td class="mdescLeft">&#160;</td><td class="mdescRight">CLI startup option to tell whether to start as daemon (whether to fork) <br /></td></tr>
 <tr class="separator:afcca730c82ace56e4cca6ce10169f71a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5c7aa2275411c0f45433494bb65e905e"><td class="memItemLeft" align="right" valign="top"><a id="a5c7aa2275411c0f45433494bb65e905e"></a>
 char *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="conf_8h.html#a5c7aa2275411c0f45433494bb65e905e">logs_path</a></td></tr>
@@ -128,15 +129,14 @@ char *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="co
 </div><div class="memdoc">
 
 <p>Loads module structure of given name from sysrepo. </p>
-<p>It's a wrapper around load_module(sr_node_t *module_node, module_group_t *group) function. </p><dl class="section see"><dt>See also</dt><dd>load_module() </dd></dl>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">sess</td><td>Sysrepo session to use </td></tr>
-    <tr><td class="paramname">group_name</td><td>Name of group to which module belongs to </td></tr>
     <tr><td class="paramname">module_name</td><td>Name of module to load </td></tr>
   </table>
   </dd>
 </dl>
+<dl class="section return"><dt>Returns</dt><dd>sysrepo error code </dd></dl>
 
 </div>
 </div>
@@ -165,7 +165,16 @@ char *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="co
         </tr>
       </table>
 </div><div class="memdoc">
-<p>TODO </p>
+
+<p>Loads instance structure of given name from sysrepo. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">sess</td><td>Sysrepo session to use </td></tr>
+    <tr><td class="paramname">inst_name</td><td>Name of module to load </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>sysrepo error code </dd></dl>
 
 </div>
 </div>
@@ -186,9 +195,9 @@ char *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="co
 </div><div class="memdoc">
 
 <p>Loads whole nemea supervisor config tree. </p>
-<p>Load whole nemea supervisor config tree into supervisor structures (module_group_t and module_t) and pushes them into appropriate linked lists. Parses nemea-supervisor container in YANG schema. </p><dl class="params"><dt>Parameters</dt><dd>
+<p>Load whole nemea supervisor config tree into supervisor structures </p><dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">sess</td><td>Sysrepo session to use configugration from sr_get_subtree function. </td></tr>
+    <tr><td class="paramname">sess</td><td>Sysrepo session to use </td></tr>
   </table>
   </dd>
 </dl>

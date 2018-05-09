@@ -4,7 +4,7 @@ FROM fedora:26
 RUN dnf update -y
 RUN dnf install autoconf automake gcc gcc-c++ libtool libxml2-devel make pkgconfig \
                 libpcap libidn bison flex python3 python3-devel dnf-plugins-core git \
-                cmake libcmocka wget -y
+                cmake libcmocka-devel wget -y
 
 RUN dnf copr enable @CESNET/NEMEA -y
 RUN dnf install nemea-framework nemea-common nemea-detectors nemea-modules libtrap-devel -y
@@ -63,6 +63,7 @@ RUN mkdir -p /var/run/sysrepo-subscriptions/ && \
     chmod -R 777 /var/run/sysrepo-subscriptions/
 
 # Download test data to be replayed by ipfixsend
+# data.ipfix file is from http://www.liberouter.org/~thorgrin/data.ipfix.bz2
 WORKDIR /data
 RUN wget https://owncloud.cesnet.cz/index.php/s/bWkw9eM0vjuXyuD/download \
          --quiet -O data.ipfix.tar.gz

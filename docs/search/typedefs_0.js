@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['file_5fifc_5fparams_5ft',['file_ifc_params_t',['../module_8h.html#a9b931f8f34e3a6ae37d7ea939ba3ae73',1,'module.h']]]
+  ['av_5fmodule_5ft',['av_module_t',['../module_8h.html#ad360c7485507fec64cdedc86ebe6d84b',1,'module.h']]]
 ];

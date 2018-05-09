@@ -1,6 +1,6 @@
 var searchData=
 [
-  ['daemon_5fflag',['daemon_flag',['../conf_8h.html#afcca730c82ace56e4cca6ce10169f71a',1,'daemon_flag():&#160;conf.c'],['../main_8h.html#afcca730c82ace56e4cca6ce10169f71a',1,'daemon_flag():&#160;conf.c']]],
+  ['daemon_5fflag',['daemon_flag',['../conf_8c.html#afcca730c82ace56e4cca6ce10169f71a',1,'daemon_flag():&#160;conf.c'],['../conf_8h.html#afcca730c82ace56e4cca6ce10169f71a',1,'daemon_flag():&#160;conf.c'],['../main_8h.html#afcca730c82ace56e4cca6ce10169f71a',1,'daemon_flag():&#160;conf.c']]],
   ['daemon_5finit_5fprocess',['daemon_init_process',['../supervisor_8c.html#a776949c22c7290bbce588a2fa2dce5b4',1,'daemon_init_process():&#160;supervisor.c'],['../supervisor_8h.html#a776949c22c7290bbce588a2fa2dce5b4',1,'daemon_init_process():&#160;supervisor.c']]],
   ['data_5fsize',['data_size',['../structservice__msg__header__s.html#af6115d3bf800e88d22c01b29cbcaedaa',1,'service_msg_header_s']]],
   ['default_5fsize_5fof_5fbuffer',['DEFAULT_SIZE_OF_BUFFER',['../utils_8h.html#ae9dcd233f70af159655ada8f10f67d73',1,'utils.h']]],

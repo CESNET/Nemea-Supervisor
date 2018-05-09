@@ -1,6 +1,6 @@
 /**
  * @file main.h
- * @brief
+ * @brief Entry file containing main unction, where CLI arguments are processed and where the Supervisor is launched.
  * */
 
 #ifndef MAIN_H

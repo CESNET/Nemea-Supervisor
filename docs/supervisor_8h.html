@@ -81,25 +81,79 @@ $(function() {
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
 Functions</h2></td></tr>
 <tr class="memitem:aa98169aefb360a5523be9e6bae9900f9"><td class="memItemLeft" align="right" valign="top"><a id="aa98169aefb360a5523be9e6bae9900f9"></a>
-int&#160;</td><td class="memItemRight" valign="bottom"><b>init_paths</b> ()</td></tr>
+int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="supervisor_8h.html#aa98169aefb360a5523be9e6bae9900f9">init_paths</a> ()</td></tr>
+<tr class="memdesc:aa98169aefb360a5523be9e6bae9900f9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Initializes paths for logs.  0 on succcess, -1 on error. <br /></td></tr>
 <tr class="separator:aa98169aefb360a5523be9e6bae9900f9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a776949c22c7290bbce588a2fa2dce5b4"><td class="memItemLeft" align="right" valign="top"><a id="a776949c22c7290bbce588a2fa2dce5b4"></a>
 int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="supervisor_8h.html#a776949c22c7290bbce588a2fa2dce5b4">daemon_init_process</a> ()</td></tr>
-<tr class="memdesc:a776949c22c7290bbce588a2fa2dce5b4"><td class="mdescLeft">&#160;</td><td class="mdescRight">TODO. <br /></td></tr>
+<tr class="memdesc:a776949c22c7290bbce588a2fa2dce5b4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Forks Supervisor daemon to background.  0 on succcess, -1 on error. <br /></td></tr>
 <tr class="separator:a776949c22c7290bbce588a2fa2dce5b4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a560997fc35199ce984a2c60e401d9bb6"><td class="memItemLeft" align="right" valign="top"><a id="a560997fc35199ce984a2c60e401d9bb6"></a>
-int&#160;</td><td class="memItemRight" valign="bottom"><b>supervisor_initialization</b> ()</td></tr>
+<tr class="memitem:a560997fc35199ce984a2c60e401d9bb6"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="supervisor_8h.html#a560997fc35199ce984a2c60e401d9bb6">supervisor_initialization</a> ()</td></tr>
+<tr class="memdesc:a560997fc35199ce984a2c60e401d9bb6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Connects to sysrepo, subsribes callbacks, loads data and registers signal handlers.  <a href="#a560997fc35199ce984a2c60e401d9bb6">More...</a><br /></td></tr>
 <tr class="separator:a560997fc35199ce984a2c60e401d9bb6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:acebe18b9428a1bc26c3be56ac472172e"><td class="memItemLeft" align="right" valign="top"><a id="acebe18b9428a1bc26c3be56ac472172e"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>supervisor_routine</b> ()</td></tr>
+void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="supervisor_8h.html#acebe18b9428a1bc26c3be56ac472172e">supervisor_routine</a> ()</td></tr>
+<tr class="memdesc:acebe18b9428a1bc26c3be56ac472172e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Daemon routine of the Supervisor. <br /></td></tr>
 <tr class="separator:acebe18b9428a1bc26c3be56ac472172e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:adb4561aeed083927b9c08bf9650efc3e"><td class="memItemLeft" align="right" valign="top"><a id="adb4561aeed083927b9c08bf9650efc3e"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>terminate_supervisor</b> (bool should_terminate_insts)</td></tr>
+<tr class="memitem:adb4561aeed083927b9c08bf9650efc3e"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="supervisor_8h.html#adb4561aeed083927b9c08bf9650efc3e">terminate_supervisor</a> (bool should_terminate_insts)</td></tr>
+<tr class="memdesc:adb4561aeed083927b9c08bf9650efc3e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Shut down procedure of the supervisor, frees everything.  <a href="#adb4561aeed083927b9c08bf9650efc3e">More...</a><br /></td></tr>
 <tr class="separator:adb4561aeed083927b9c08bf9650efc3e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Core of the supervisor, contains main daemon loop/routine. </p>
-</div></div><!-- contents -->
+</div><h2 class="groupheader">Function Documentation</h2>
+<a id="a560997fc35199ce984a2c60e401d9bb6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a560997fc35199ce984a2c60e401d9bb6">&#9670;&nbsp;</a></span>supervisor_initialization()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int supervisor_initialization </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Connects to sysrepo, subsribes callbacks, loads data and registers signal handlers. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">0</td><td>on success, -1 or other SR error code on error </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a id="adb4561aeed083927b9c08bf9650efc3e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#adb4561aeed083927b9c08bf9650efc3e">&#9670;&nbsp;</a></span>terminate_supervisor()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void terminate_supervisor </td>
+          <td>(</td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>should_terminate_insts</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Shut down procedure of the supervisor, frees everything. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">should_terminate_insts</td><td>Whether to kill all instances </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+</div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
 Generated by &#160;<a href="http://www.doxygen.org/index.html">

@@ -1,3 +1,7 @@
+/**
+ * @file inst_control.c
+ * @brief Takes care of starting and stopping of instances.
+ */
 
 #include <libtrap/trap.h>
 #include "utils.h"

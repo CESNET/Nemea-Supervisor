@@ -1,3 +1,8 @@
+/**
+ * @file conf.c
+ * @brief Defines functions for loading configuration from sysrepo.
+ */
+
 #include <string.h>
 #include <sysrepo/xpath.h>
 #include "conf.h"
@@ -9,58 +14,77 @@ char *logs_path = NULL;
 #define FOUND_AND_ERR(rc) ((rc) != SR_ERR_NOT_FOUND && (rc) != SR_ERR_OK)
 
 /**
- * @brief Same thing as load_module_group but for modules.
- * @details On top of the same functionality as load_module_group but for modules,
- *  it links new module to group given by parameter group. Parses module container
- *  in YANG schema.
- * @see load_module_group(sr_node_t *group_node)
+ * @brief Loads instance into insts_v by given XPATH.
  * @param sess Sysrepo session to use
- * @param inst Module structure to load configuration to
- * @param node First of leaves or nodes of loaded module.
- * @param mod Group to which new module will be linked.
+ * @param xpath XPATH of given instance
+ * @return sysrepo error code
  * */
 static int
 inst_load(sr_session_ctx_t *sess, char *xpath);
 
+/**
+ * @brief Loads module into avmods_v by given XPATH.
+ * @param sess Sysrepo session to use
+ * @param xpath XPATH of given available module
+ * @return sysrepo error code
+ * */
 static int
 av_module_load(sr_session_ctx_t *sess, char *xpath);
 
 /**
- * @brief Loads new interface_t and if successful assigns it to given module.
- * @details Parses interface container in YANG schema.
- * @see load_module_group(sr_node_t *group_node)
- * @param sess
- * @param inst Module to which the new interface belongs to.
+ * @brief Loads new interface_t and if successful assigns it to given instance.
+ * @param sess sysrepo session to use
+ * @param xpath XPATH of given interface
+ * @param inst Instance to which the new interface belongs to
+ * @return sysrepo error code
  * */
 static int
 interface_load(sr_session_ctx_t *sess, char *xpath, inst_t *inst);
 
 
-// TODO
+/**
+ * @brief Loads TCP params into given interface_t.
+ * @param sess sysrepo session to use
+ * @param base_xpath XPATH of passed interface ifc
+ * @param ifc Interface to which params should be assigned
+ * @return sysrepo error code
+ * */
 static inline int interface_tcp_params_load(sr_session_ctx_t *sess, char *base_xpath,
                                             interface_t *ifc);
 
 /**
- * TODO
+ * @brief Loads TCP-TLS params into given interface_t.
+ * @param sess sysrepo session to use
+ * @param base_xpath XPATH of passed interface ifc
+ * @param ifc Interface to which params should be assigned
+ * @return sysrepo error code
  * */
 static inline int
 interface_tcp_tls_params_load(sr_session_ctx_t *sess, char *base_xpath, interface_t *ifc);
 
 /**
- * TODO
+ * @brief Loads UNIX params into given interface_t.
+ * @param sess sysrepo session to use
+ * @param base_xpath XPATH of passed interface ifc
+ * @param ifc Interface to which params should be assigned
+ * @return sysrepo error code
  * */
 static inline int
 interface_unix_params_load(sr_session_ctx_t *sess, char *base_xpath, interface_t *ifc);
 
 /**
- * TODO
+ * @brief Loads FILE params into given interface_t.
+ * @param sess sysrepo session to use
+ * @param base_xpath XPATH of passed interface ifc
+ * @param ifc Interface to which params should be assigned
+ * @return sysrepo error code
  * */
 static inline int
 interface_file_params_load(sr_session_ctx_t *sess, char *base_xpath, interface_t *ifc);
 
 /**
  * @brief Restores PID for already running module.
- * @details When supervisor exits and keeps modules running, PIDs of running modules are
+ * @details When supervisor exits and keeps instances running, PIDs of running instances are
  *           stored inside last_pid node in sysrepo. This function stores this PID inside
  *           module structure in case the process of same exec path is running.
  * @param last_pid Last PID detected for this module
@@ -73,19 +97,32 @@ static void inst_pid_restore(pid_t last_pid,
 
 
 /**
- * TODO
+ * @brief Loads char * into 'where' parameter from given base_xpath+node_xpath.
+ * @param sess sysrepo session to use
+ * @param base_xpath Part 1 of XPATH in sysrepo
+ * @param node_xpath Part 2 of XPATH in sysrepo
+ * @param where Pointer to where char * should be loaded
+ * @return sysrepo error code
  * */
 static int load_sr_str(sr_session_ctx_t *sess, char *base_xpath, char *node_xpath,
                        char **where);
 
 /**
- * TODO
+ * @brief Loads number into 'where' parameter from given base_xpath+node_xpath.
+ * @param sess sysrepo session to use
+ * @param base_xpath Part 1 of XPATH in sysrepo
+ * @param node_xpath Part 2 of XPATH in sysrepo
+ * @param where Pointer to where number should be loaded
+ * @param data_type Numeric type to load
+ * @return sysrepo error code
  * */
 static int load_sr_num(sr_session_ctx_t *sess, char *base_xpath, char *node_xpath,
                        void *where, sr_type_t data_type);
 
 /**
- * TODO
+ * @brief Returns instance name char * parsed from given sysrepo XPATH.
+ * @param xpath XPATH to parse
+ * @return instance name or NULL in case of error
  * */
 static char * instance_name_from_xpath(char *xpath);
 

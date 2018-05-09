@@ -1,4 +1,7 @@
-
+/**
+ * @file run_changes.c
+ * @brief Exports just one function that is called in case a change of /nemea:supervisor subtree in sysrepo’s running datastore occurs.
+ */
 #include <libtrap/trap.h>
 #include <sysrepo/xpath.h>
 
@@ -24,14 +27,13 @@ typedef enum run_change_action_e {
 typedef enum run_change_type_e {
    RUN_CHE_T_INVAL, ///< Type was not recognized or set
 
-   RUN_CHE_T_INST,
-   RUN_CHE_T_MOD, ///< Module root E.g. /.../module-group[name='x']/module[name='y']
+   RUN_CHE_T_INST, ///< E.g. ../instance[name='x']/enabled
+   RUN_CHE_T_MOD, ///< E.g. ../available-module[name='y']/description
 } run_change_type_t;
 
 /**
- * @brief Specifies change from sysrepo, node that got changed, type and action to take.
- * @details Type and names gets parsed from XPATH of changed element. In case type is
- *  NS_CHE_TYPE_GROUP_NODE or NS_CHE_TYPE_GROUP_ROOT, module_name is NULL.
+ * @brief Specifies change from sysrepo, node that got changed or NULL for container nodes, type and action to take.
+ * @details Type and names gets parsed from XPATH of changed element.
  * */
 typedef struct run_change_s {
    char *mod_name; ///< Name of Nemea module that got changed
@@ -44,10 +46,9 @@ typedef struct run_change_s {
 
 
 /**
- * @brief Creates new run_change_t from given params from given xpath.
+ * @brief Creates new run_change_t from xpath of given params.
  * @details Gets XPATH of modified element from old_val or new_val depending on
- *  operation op. Parses XPATH and by found nodes sets type of sysrepo tree node,
- *  group name and possibly module name.
+ *  operation op. Parses XPATH and by found nodes sets type of sysrepo tree node
  * @param op Operation relationship between new_val and old_val
  * @param old_val Old value before change
  * @param new_val New value after change
@@ -58,14 +59,14 @@ run_change_load(sr_change_oper_t op, sr_val_t *old_val, sr_val_t *new_val);
 
 /**
  * @brief Frees dynamic fields of elem and sets initial values of the struct.
- * @param elem Element to be freed
+ * @param elem run_change_t to be freed
  * */
 static inline void
 run_change_free(run_change_t **elem);
 
 /**
  * @brief For each registered change in reg_chgs vector execute the
- *  change - stop/restart group or module.
+ *  change - stop/restart module or instance.
  * @param sess Sysrepo session context for loading in case of restart action
  * @param reg_chgs Vector of registered changes
  * @return In case of restart action, it returns sr_error_t from
@@ -78,35 +79,61 @@ run_change_proc_reg_chgs(sr_session_ctx_t *sess, vector_t *reg_chgs);
  * @brief Handles SR_OP_CREATE operation for given change.
  * @details Assigns change action and adds it to vector via run_change_add_new_change.
  * @see run_change_add_new_change()
- * @param reg_chgs Vector of already registered changes
  * @param change New change to handle
  * */
 static inline void run_change_handle_create(run_change_t *change);
+
+/**
+ * @brief Handles SR_OP_DELETE operation for given change.
+ * @details Assigns change action and adds it to vector via run_change_add_new_change.
+ * @see run_change_add_new_change()
+ * @param change New change to handle
+ * */
 static inline void run_change_handle_delete(run_change_t *change);
+
+/**
+ * @brief Handles SR_OP_MODIFY operation for given change.
+ * @details Assigns change action and adds it to vector via run_change_add_new_change.
+ * @see run_change_add_new_change()
+ * @param change New change to handle
+ * */
 static inline void run_change_handle_modify(run_change_t *change);
 
 /**
  * @brief Checks case where new and reg change are of same type and name. If so, it replaces values in reg by values in new.
+ * @param new New change
+ * @param reg Already registered change
+ * @return 0 if replaced, -1 if not
  * */
 static inline int
 run_change_replace_same_registered(run_change_t *new, run_change_t *reg);
 
 /**
  * @brief Checks case where new change of instance (new variable) is already handled by change of its owner module (reg). In case it's handled, new change is ignored.
+ * @param new New change
+ * @param reg Already registered change
+ * @return 0 if ignored, -1 if not
  * */
 static inline int run_change_ignore_new(run_change_t *new, run_change_t *reg);
 
 /**
  * @brief  Adds n_change to reg_chgs vector or ignores the change in case it
  *  would be handled by some other change that is already in the vector.
- * @details TODO big time
  * @param reg_chgs Vector of already registered changes
  * @param n_change New change to add
  * */
 static inline void
 run_change_add_new_change(vector_t *reg_chgs, run_change_t *n_change);
 
+
+/**
+ * @brief Stringifies given run_change_type_t
+ * @param type Type of run_change_t
+ * @return string type of run_change_t
+ * */
 static char * run_change_type_str(run_change_type_t type);
+
+
 
 int
 run_config_change_cb(sr_session_ctx_t *sess,

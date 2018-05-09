@@ -77,16 +77,121 @@ $(function() {
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:a3749f7fb63598c566e3b13e4d93a0b00"><td class="memItemLeft" align="right" valign="top"><a id="a3749f7fb63598c566e3b13e4d93a0b00"></a>
-int&#160;</td><td class="memItemRight" valign="bottom"><b>interface_get_stats_cb</b> (const char *xpath, sr_val_t **values, size_t *values_cnt, void *private_ctx)</td></tr>
+<tr class="memitem:a3749f7fb63598c566e3b13e4d93a0b00"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="stats_8h.html#a3749f7fb63598c566e3b13e4d93a0b00">interface_get_stats_cb</a> (const char *xpath, sr_val_t **values, size_t *values_cnt, void *private_ctx)</td></tr>
+<tr class="memdesc:a3749f7fb63598c566e3b13e4d93a0b00"><td class="mdescLeft">&#160;</td><td class="mdescRight">Callback that should be subscribed at /nemea:supervisor/instance/interface/stats to provide stats about interfaces.  <a href="#a3749f7fb63598c566e3b13e4d93a0b00">More...</a><br /></td></tr>
 <tr class="separator:a3749f7fb63598c566e3b13e4d93a0b00"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a742fdee259bf2b73c84e18b451fe59c7"><td class="memItemLeft" align="right" valign="top"><a id="a742fdee259bf2b73c84e18b451fe59c7"></a>
-int&#160;</td><td class="memItemRight" valign="bottom"><b>inst_get_stats_cb</b> (const char *xpath, sr_val_t **values, size_t *values_cnt, void *private_ctx)</td></tr>
+<tr class="memitem:a742fdee259bf2b73c84e18b451fe59c7"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="stats_8h.html#a742fdee259bf2b73c84e18b451fe59c7">inst_get_stats_cb</a> (const char *xpath, sr_val_t **values, size_t *values_cnt, void *private_ctx)</td></tr>
+<tr class="memdesc:a742fdee259bf2b73c84e18b451fe59c7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Callback that should be subscribed at /nemea:supervisor/instance/stats to provide stats about instances.  <a href="#a742fdee259bf2b73c84e18b451fe59c7">More...</a><br /></td></tr>
 <tr class="separator:a742fdee259bf2b73c84e18b451fe59c7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Defines callbacks for requests to stats from sysrepo. </p>
-</div></div><!-- contents -->
+</div><h2 class="groupheader">Function Documentation</h2>
+<a id="a742fdee259bf2b73c84e18b451fe59c7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a742fdee259bf2b73c84e18b451fe59c7">&#9670;&nbsp;</a></span>inst_get_stats_cb()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int inst_get_stats_cb </td>
+          <td>(</td>
+          <td class="paramtype">const char *&#160;</td>
+          <td class="paramname"><em>xpath</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">sr_val_t **&#160;</td>
+          <td class="paramname"><em>values</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">size_t *&#160;</td>
+          <td class="paramname"><em>values_cnt</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">void *&#160;</td>
+          <td class="paramname"><em>private_ctx</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Callback that should be subscribed at /nemea:supervisor/instance/stats to provide stats about instances. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir"></td><td class="paramname">xpath</td><td>Received XPATH of instance </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">values</td><td>Array of returned values </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">values_cnt</td><td>Size of returned array </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">private_ctx</td><td>unused </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>sysrepo error code </dd></dl>
+
+</div>
+</div>
+<a id="a3749f7fb63598c566e3b13e4d93a0b00"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3749f7fb63598c566e3b13e4d93a0b00">&#9670;&nbsp;</a></span>interface_get_stats_cb()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int interface_get_stats_cb </td>
+          <td>(</td>
+          <td class="paramtype">const char *&#160;</td>
+          <td class="paramname"><em>xpath</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">sr_val_t **&#160;</td>
+          <td class="paramname"><em>values</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">size_t *&#160;</td>
+          <td class="paramname"><em>values_cnt</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">void *&#160;</td>
+          <td class="paramname"><em>private_ctx</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Callback that should be subscribed at /nemea:supervisor/instance/interface/stats to provide stats about interfaces. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir"></td><td class="paramname">xpath</td><td>Received XPATH of interface </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">values</td><td>Array of returned values </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">values_cnt</td><td>Size of returned array </td></tr>
+    <tr><td class="paramdir"></td><td class="paramname">private_ctx</td><td>unused </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>sysrepo error code </dd></dl>
+
+</div>
+</div>
+</div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
 Generated by &#160;<a href="http://www.doxygen.org/index.html">

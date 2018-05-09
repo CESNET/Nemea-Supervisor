@@ -64,6 +64,11 @@ $(function() {
 <div class="title">inst_s Struct Reference</div>  </div>
 </div><!--header-->
 <div class="contents">
+
+<p>Structure that holds an instance.  
+ <a href="structinst__s.html#details">More...</a></p>
+
+<p><code>#include &lt;<a class="el" href="module_8h_source.html">module.h</a>&gt;</code></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-attribs"></a>
 Data Fields</h2></td></tr>
@@ -75,8 +80,9 @@ Data Fields</h2></td></tr>
 <a class="el" href="utils_8h.html#a2a667c0969a90606386b421b9e777bd3">vector_t</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structinst__s.html#a4a78d2b3d76f2d3f341712929a2f7efb">out_ifces</a></td></tr>
 <tr class="memdesc:a4a78d2b3d76f2d3f341712929a2f7efb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Vector of OUT interfaces. <br /></td></tr>
 <tr class="separator:a4a78d2b3d76f2d3f341712929a2f7efb"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2b4148ae2c721f681a5ed7d8be42e05a"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structinst__s.html#a2b4148ae2c721f681a5ed7d8be42e05a">enabled</a></td></tr>
-<tr class="memdesc:a2b4148ae2c721f681a5ed7d8be42e05a"><td class="mdescLeft">&#160;</td><td class="mdescRight">&lt; the module is running with (size of total_in_ifces_cnt)  <a href="#a2b4148ae2c721f681a5ed7d8be42e05a">More...</a><br /></td></tr>
+<tr class="memitem:a2b4148ae2c721f681a5ed7d8be42e05a"><td class="memItemLeft" align="right" valign="top"><a id="a2b4148ae2c721f681a5ed7d8be42e05a"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structinst__s.html#a2b4148ae2c721f681a5ed7d8be42e05a">enabled</a></td></tr>
+<tr class="memdesc:a2b4148ae2c721f681a5ed7d8be42e05a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Specifies whether module is enabled. <br /></td></tr>
 <tr class="separator:a2b4148ae2c721f681a5ed7d8be42e05a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0181d222fba3113dbf8551d9abbf1553"><td class="memItemLeft" align="right" valign="top"><a id="a0181d222fba3113dbf8551d9abbf1553"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structinst__s.html#a0181d222fba3113dbf8551d9abbf1553">use_sysrepo</a></td></tr>
@@ -97,7 +103,7 @@ char *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="st
 <tr class="memitem:ae985f9fafaac7f2b04d8467db4c1fcf6"><td class="memItemLeft" align="right" valign="top">char **&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structinst__s.html#ae985f9fafaac7f2b04d8467db4c1fcf6">exec_args</a></td></tr>
 <tr class="separator:ae985f9fafaac7f2b04d8467db4c1fcf6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a06a9ddfdc2583f6b36b3fd056b122f49"><td class="memItemLeft" align="right" valign="top"><a id="a06a9ddfdc2583f6b36b3fd056b122f49"></a>
-<a class="el" href="structav__module__s.html">av_module_t</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structinst__s.html#a06a9ddfdc2583f6b36b3fd056b122f49">mod_ref</a></td></tr>
+<a class="el" href="module_8h.html#ad360c7485507fec64cdedc86ebe6d84b">av_module_t</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structinst__s.html#a06a9ddfdc2583f6b36b3fd056b122f49">mod_ref</a></td></tr>
 <tr class="memdesc:a06a9ddfdc2583f6b36b3fd056b122f49"><td class="mdescLeft">&#160;</td><td class="mdescRight">Module executable of this process. <br /></td></tr>
 <tr class="separator:a06a9ddfdc2583f6b36b3fd056b122f49"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a56a14efcbaa437886207b9c22c182d1e"><td class="memItemLeft" align="right" valign="top"><a id="a56a14efcbaa437886207b9c22c182d1e"></a>
@@ -165,24 +171,9 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="stru
 <tr class="memitem:a3bfd65c658e77069f7fb899adae4729a"><td class="memItemLeft" align="right" valign="top">uint64_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structinst__s.html#a3bfd65c658e77069f7fb899adae4729a">service_ifc_conn_timer</a></td></tr>
 <tr class="separator:a3bfd65c658e77069f7fb899adae4729a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<h2 class="groupheader">Field Documentation</h2>
-<a id="a2b4148ae2c721f681a5ed7d8be42e05a"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a2b4148ae2c721f681a5ed7d8be42e05a">&#9670;&nbsp;</a></span>enabled</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">bool inst_s::enabled</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>&lt; the module is running with (size of total_in_ifces_cnt) </p>
-<p>&lt; the module is running with (size of total_out_ifces_cnt) Specifies whether module is enabled. </p>
-
-</div>
-</div>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Structure that holds an instance. </p>
+</div><h2 class="groupheader">Field Documentation</h2>
 <a id="ae985f9fafaac7f2b04d8467db4c1fcf6"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ae985f9fafaac7f2b04d8467db4c1fcf6">&#9670;&nbsp;</a></span>exec_args</h2>
 

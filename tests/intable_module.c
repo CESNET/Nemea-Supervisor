@@ -1,6 +1,6 @@
 /**
  * @file intable_module.c
- * @brief Fake Nemea module that is interuptable by SIGINT. Used for testing.
+ * @brief Fake NEMEA module that is interuptable by SIGINT. Used for testing.
  */
 
 #include <unistd.h>

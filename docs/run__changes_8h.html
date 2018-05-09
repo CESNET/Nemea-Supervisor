@@ -69,7 +69,7 @@ $(function() {
 </div><!--header-->
 <div class="contents">
 
-<p>Defines callback function for changes in running sysrepo datastore.  
+<p>Exports just one function that is called in case a change of /nemea:supervisor subtree in sysrepo’s running datastore occurs.  
 <a href="#details">More...</a></p>
 <div class="textblock"><code>#include &lt;sysrepo.h&gt;</code><br />
 </div>
@@ -82,7 +82,7 @@ Functions</h2></td></tr>
 <tr class="separator:a3a43346fa983ca7e576a0420c034850b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<div class="textblock"><p>Defines callback function for changes in running sysrepo datastore. </p>
+<div class="textblock"><p>Exports just one function that is called in case a change of /nemea:supervisor subtree in sysrepo’s running datastore occurs. </p>
 </div><h2 class="groupheader">Function Documentation</h2>
 <a id="a3a43346fa983ca7e576a0420c034850b"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a3a43346fa983ca7e576a0420c034850b">&#9670;&nbsp;</a></span>run_config_change_cb()</h2>
@@ -123,7 +123,7 @@ Functions</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Callback function subscribed to changes of subtree beginning at module level. </p>
-<p>Though it acts simiralily as module_group_config_change_cb(), I recommend you not to merge those two. Separation is done for sake of readibility. </p><dl class="params"><dt>Parameters</dt><dd>
+<dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">sess</td><td>Used sysrepo sessing </td></tr>
     <tr><td class="paramname">smn</td><td>Name of sysrepo module that was changed </td></tr>

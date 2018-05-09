@@ -25,13 +25,16 @@ var searchData=
   ['sr_5fconn_5flink_5ft',['sr_conn_link_t',['../supervisor_8c.html#a8f1e92a669b8cf9c3f67a331026c7581',1,'supervisor.c']]],
   ['sr_5frdy',['sr_rdy',['../structav__module__s.html#a351a8604f2cbb557832608dfca2e4e86',1,'av_module_s']]],
   ['stats',['stats',['../structinterface__s.html#a9a2a9a22fe2818ec3cdd1a9f053c5dfc',1,'interface_s']]],
+  ['stats_2ec',['stats.c',['../stats_8c.html',1,'']]],
   ['stats_2eh',['stats.h',['../stats_8h.html',1,'']]],
   ['subscr',['subscr',['../structsr__conn__link__s.html#ab6ad04147f4a2ab1e45e5580d8fe0cae',1,'sr_conn_link_s']]],
   ['supervisor_2ec',['supervisor.c',['../supervisor_8c.html',1,'']]],
   ['supervisor_2eh',['supervisor.h',['../supervisor_8h.html',1,'']]],
   ['supervisor_5fexit_5fcode',['supervisor_exit_code',['../supervisor_8c.html#a8b245c58b8d88a64f582a2539165949c',1,'supervisor.c']]],
+  ['supervisor_5finitialization',['supervisor_initialization',['../supervisor_8c.html#a560997fc35199ce984a2c60e401d9bb6',1,'supervisor_initialization():&#160;supervisor.c'],['../supervisor_8h.html#a560997fc35199ce984a2c60e401d9bb6',1,'supervisor_initialization():&#160;supervisor.c']]],
   ['supervisor_5finitialized',['supervisor_initialized',['../supervisor_8c.html#aaff9b0796838db4e98172e5fd4acbfeb',1,'supervisor.c']]],
   ['supervisor_5flog_5ffd',['supervisor_log_fd',['../utils_8c.html#a6d977fa8c78b72b916d36cbe9d4781e2',1,'supervisor_log_fd():&#160;utils.c'],['../utils_8h.html#a6d977fa8c78b72b916d36cbe9d4781e2',1,'supervisor_log_fd():&#160;utils.c']]],
   ['supervisor_5flog_5ffile_5fname',['SUPERVISOR_LOG_FILE_NAME',['../utils_8h.html#aaeceb4f18a8586822ef9b551ffa988ea',1,'utils.h']]],
+  ['supervisor_5froutine',['supervisor_routine',['../supervisor_8c.html#acebe18b9428a1bc26c3be56ac472172e',1,'supervisor_routine():&#160;supervisor.c'],['../supervisor_8h.html#acebe18b9428a1bc26c3be56ac472172e',1,'supervisor_routine():&#160;supervisor.c']]],
   ['supervisor_5fstopped',['supervisor_stopped',['../supervisor_8c.html#a7521ce4512447c5c5422241648db026b',1,'supervisor.c']]]
 ];

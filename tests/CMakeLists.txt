@@ -6,9 +6,6 @@ set (CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
 
 include_directories(../)
 
-
-
-# TODO compile this alongside with conf_test
 add_executable(intable_module intable_module.c)
 
 add_definitions(-DNS_TEST=1)

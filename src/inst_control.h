@@ -1,3 +1,8 @@
+/**
+ * @file inst_control.h
+ * @brief Takes care of starting and stopping of instances.
+ */
+
 #ifndef MODULE_CONTROL_H
 #define MODULE_CONTROL_H
 
@@ -31,29 +36,24 @@ extern uint32_t get_running_insts_cnt();
 extern void inst_set_running_status(inst_t *inst);
 
 /**
- * @brief Sends SIGINT signal to all modules that TODO ...
- * @param module_ll_head First node of linked list of modules to signal
+ * @brief Sends SIGINT signal to all instances that have (.enabled=false || .should_die=true) && .sigint_sent=false
  * */
 extern void insts_stop_sigint();
 
 /**
- * @brief Sends SIGKILL signal to all modules that TODO ...
- * @param module_ll_head First node of linked list of modules to signal
+ * @brief Sends SIGKILL signal to all instances that (.enabled=false || .should_die=true) && .sigint_sent=true
  * */
 extern void insts_stop_sigkill();
 
 /**
- * @brief Stops all instances of module, removes all their structures and structure of module.
+ * @brief Stops all instances of given module, removes all their structures and structure of module.
  * @param name Name of module
  * */
 extern void av_module_stop_remove_by_name(const char *name);
 
 /**
- * @brief Stops module of given name
- * @details First it's using stop_modules_sigint, then stop_modules_sigkill and
- *  finally it cleans the module structure.
- * @param name Name of module to stop
- * @param remove Whether to remove module from vector of configured modules
+ * @brief Stops instance of given name
+ * @param name Name of instance to stop
  * */
 extern void inst_stop_remove_by_name(const char *name);
 

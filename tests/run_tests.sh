@@ -26,6 +26,6 @@ for test_case in "${TESTS[@]}"; do
   ./${test_case} #&& rm ${test_case}
 done
 
-#msg "Cleaning up"
-#sysrepoctl --uninstall --module=${SCHEMA} 2>/dev/null
-#rm -r CMakeFiles CMakeCache.txt cmake_install.cmake
+msg "Cleaning up"
+sysrepoctl --uninstall --module=${SCHEMA} 2>/dev/null
+rm -r CMakeFiles CMakeCache.txt cmake_install.cmake

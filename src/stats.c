@@ -1,16 +1,31 @@
+/**
+ * @file stats.c
+ * @brief Provides callbacks for sysrepo for the purpose of gaining statistics about instances and their interfaces.
+ */
 
 #include "stats.h"
 #include "module.h"
 #include <sysrepo/values.h>
 #include <sysrepo/xpath.h>
 
-typedef struct tree_path_s {
-   char *inst;
-   char *ifc;
-} tree_path_t;
 
 /**
- * TODO
+ * @brief Helper structure that contains parsed XPATH received from callbacks.
+ * */
+typedef struct tree_path_s {
+   char *inst; ///< Name of parsed instance
+   char *ifc; ///< Name of parsed interface
+} tree_path_t;
+
+
+/**
+ * @brief Helper to set val_data of val_type to new_sr_val at stat_xpath+stat_leaf_name.
+ * @param new_sr_val Sysrepo value to be set
+ * @param stat_xpath Base XPATH for concatenation
+ * @param stat_leaf_name Name of XPATH's leaf node
+ * @param val_type Data type of sysrepo's value
+ * @param val_data Pointer to data to be set
+ * @return 0 on success, -1 on error
  * */
 static int set_new_sr_val(sr_val_t *new_sr_val,
                           const char *stat_xpath,
@@ -18,9 +33,25 @@ static int set_new_sr_val(sr_val_t *new_sr_val,
                           sr_type_t val_type,
                           void *val_data);
 
+/**
+ * @brief Returns interface_t from given XPATH.
+ * @param xpath XPATH to be processed
+ * @return Interface or NULL on error
+ * */
 static interface_t * interface_get_by_xpath(const char *xpath);
 
+
+/**
+ * @brief Frees given tpath.
+ * @param tpath Structure to free
+ * */
 static void tree_path_free(tree_path_t * tpath);
+
+/**
+ * @brief Allocates and load new tree path from given xpath.
+ * @param xpath XPATH to parse
+ * @return tree path or NULL on error
+ * */
 static tree_path_t * tree_path_load(const char *xpath);
 
 

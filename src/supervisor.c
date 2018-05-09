@@ -71,7 +71,7 @@ static char *get_absolute_file_path(char *path);
 static void close_log();
 
 /**
- * @brief TODO
+ * @brief Tries to load whole startup configuration
  * @return -1 on error, 0 on success
  * */
 static int load_configuration();
@@ -83,30 +83,30 @@ static int load_configuration();
 static void sig_handler(int catched_signal);
 
 /**
- * @brief TODO
+ * @brief Tries to fetch stats about interfaces from libtrap's service interface
  * */
 static inline void get_service_ifces_stats();
 
 /**
- * @brief TODO
+ * @brief Wrapper function for inst_get_sys_stats and inst_get_vmrss
  * */
 static void insts_update_resources_usage();
 
 /**
- * @brief TODO
+ * @brief Reads /proc/stat to compute total cpu usage
  * @param total_cpu_usage Return pointer for total CPU usage
  * @return -1 on error, 0 on success
  * */
 static int get_total_cpu_usage(uint64_t *total_cpu_usage);
 
 /**
- * @brief TODO
- * @param inst
+ * @brief Parses /proc/PID/stat and loads CPU and vms
+ * @param inst Instance to load stats to
  * */
 static inline void inst_get_sys_stats(inst_t *inst);
 
 /**
- * @brief TODO
+ * @brief Loads vmrss from /proc/PID/status
  * @param inst Instance for which vmrss should be found out
  * */
 static inline void inst_get_vmrss(inst_t *inst);
@@ -416,7 +416,6 @@ int daemon_init_process()
    } else if (process_id > 0) {
       NULLP_TEST_AND_FREE(logs_path)
       close_log();
-      // TODO verbose
       fprintf(stdout, "[INF] PID of daemon process: %d.\n", process_id);
       exit(EXIT_SUCCESS);
    }
@@ -498,7 +497,7 @@ static void sig_handler(int catched_signal)
       case SIGINT:
          VERBOSE(V1,"SIGINT catched -> I'm going to terminate myself!")
          supervisor_stopped = true;
-         terminate_insts_at_exit = true; // TODO change to false later
+         terminate_insts_at_exit = false;
          supervisor_exit_code = EXIT_SUCCESS;
          break;
 

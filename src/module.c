@@ -1,3 +1,8 @@
+/**
+ * @file module.c
+ * @brief Contains internal structures of all available modules and instances, functions for allocation/release of internal structures and also dynamic arrays that contain lists of available modules and instances that are part of the running configuration.
+ */
+
 #include <stdarg.h>
 #include <libtrap/trap.h>
 #include <sysrepo/xpath.h>
@@ -8,18 +13,83 @@ pthread_mutex_t config_lock; ///< Mutex for operations on m_groups_ll and module
 vector_t avmods_v = {.total = 0, .capacity = 0, .items = NULL};
 vector_t insts_v = {.total = 0, .capacity = 0, .items = NULL};
 
+/**
+ * @brief Converts TCP interface params according to libtrap's IFC SPEC to string required by CLI.
+ * @param ifc Interface for which params string should be generated
+ * @return Part of params CLI string or NULL on error
+ * */
 static char * tcp_ifc_to_cli_arg(const interface_t *ifc);
-static char * tcp_tls_ifc_to_cli_arg(const interface_t *ifc);
-static char * unix_ifc_to_cli_arg(const interface_t *ifc);
-static char * file_ifc_to_cli_arg(const interface_t *ifc);
-static char * bh_ifc_to_cli_arg(const interface_t *ifc);
-static inline char * module_get_ifcs_as_arg(inst_t *inst);
 
+
+/**
+ * @brief Converts TCP-TLS interface params according to libtrap's IFC SPEC to string required by CLI.
+ * @param ifc Interface for which params string should be generated
+ * @return Part of params CLI string or NULL on error
+ * */
+static char * tcp_tls_ifc_to_cli_arg(const interface_t *ifc);
+
+
+/**
+ * @brief Converts UNIX interface params according to libtrap's IFC SPEC to string required by CLI.
+ * @param ifc Interface for which params string should be generated
+ * @return Part of params CLI string or NULL on error
+ * */
+static char * unix_ifc_to_cli_arg(const interface_t *ifc);
+
+
+/**
+ * @brief Converts FILE interface params according to libtrap's IFC SPEC to string required by CLI.
+ * @param ifc Interface for which params string should be generated
+ * @return Part of params CLI string or NULL on error
+ * */
+static char * file_ifc_to_cli_arg(const interface_t *ifc);
+
+
+/**
+ * @brief Converts BLACKHOLE interface params according to libtrap's IFC SPEC to string required by CLI.
+ * @param ifc Interface for which params string should be generated
+ * @return Part of params CLI string or NULL on error
+ * */
+static char * bh_ifc_to_cli_arg(const interface_t *ifc);
+
+
+/**
+ * @brief Converts interfaces settings according to libtrap's IFC SPEC to string argument required by CLI.
+ * @param inst Instance for which string should be generated.
+ * @return CLI params string or NULL on error
+ * */
+static inline char * inst_get_ifcs_as_arg(inst_t *inst);
+
+
+/**
+ * @brief Concatenates as many char * arguments as much is given in first parameter.
+ * @param cnt Number of passed strings.
+ * @return Concatenated string or NULL on error
+ * */
 static char * strcat_many(uint8_t cnt, ...);
 
-static char **module_params_to_ifc_arr(const inst_t *module, uint32_t *params_num,
-                                       int *rc);
+/**
+ * @brief Converts instance's params string into array of separate CLI params that ends with NULL.
+ * @param[out] params_num Number of params in the array
+ * @return Pointer to array of params or NULL on error
+ * */
+static char **inst_params_to_arr(const inst_t *inst, uint32_t *params_num,
+                                 int *rc);
+
+/**
+ * @brief Concatenates given ifc param with base. Only param_s or param_u can be given
+ * @param base Base to which the passed param is concatenated
+ * @param param_s String param
+ * @param param_u uint param
+ * @return Concatenated string or NULL on error
+ * */
 static char *ifc_param_concat(char *base, char *param_s, uint16_t param_u);
+
+
+/**
+ * @brief Frees dynamic memory for specific interface params
+ * @param ifc interface to free
+ * */
 static inline void interface_specific_params_free(interface_t *ifc);
 
 
@@ -340,7 +410,6 @@ void av_module_free(av_module_t *mod)
 
 void inst_free(inst_t *inst)
 {
-   // TODO where to release sockets for ifc stats???
    NULLP_TEST_AND_FREE(inst->name)
    NULLP_TEST_AND_FREE(inst->params)
    if (inst->exec_args != NULL) {
@@ -353,10 +422,10 @@ void inst_free(inst_t *inst)
    NULLP_TEST_AND_FREE(inst)
 }
 
-void interfaces_free(inst_t *module)
+void interfaces_free(inst_t *inst)
 {
    interface_t *cur_ifc = NULL;
-   vector_t *ifces_vec[2] = { &module->in_ifces, &module->out_ifces};
+   vector_t *ifces_vec[2] = { &inst->in_ifces, &inst->out_ifces};
 
    for (int j = 0; j < 2; j++) {
       for (int i = 0; i < ifces_vec[j]->total; i++) {
@@ -463,7 +532,7 @@ int inst_gen_exec_args(inst_t *inst)
    uint32_t module_params_num = 0;
    uint32_t exec_args_cnt = 2; // at least the name of the future process and terminating NULL pointer
    uint32_t exec_args_pos = 0;
-   int rc = 0; // Status of success for module_params_to_ifc_arr function
+   int rc = 0; // Status of success for inst_params_to_arr function
    uint32_t total_ifc_cnt = inst->in_ifces.total + inst->out_ifces.total;
 
    // if the inst has trap interfaces, one argument for "-i" and one for interfaces specifier
@@ -476,7 +545,7 @@ int inst_gen_exec_args(inst_t *inst)
       exec_args_cnt += 2;
    } else if (inst->params != NULL) {
       // if the inst has non-empty params, try to parse them
-      cfg_params = module_params_to_ifc_arr(inst, &module_params_num, &rc);
+      cfg_params = inst_params_to_arr(inst, &module_params_num, &rc);
       if (rc == -1) {
          VERBOSE(N_ERR, "Failed to parse inst params")
          return -1;
@@ -515,7 +584,7 @@ int inst_gen_exec_args(inst_t *inst)
       }
       exec_args_pos++;
    } else {
-      // copy already allocated inst params strings returned by module_params_to_ifc_arr function
+      // copy already allocated inst params strings returned by inst_params_to_arr function
       if (cfg_params != NULL && module_params_num > 0) {
          for (int i = 0; i < module_params_num; i++) {
             exec_args[exec_args_pos] = cfg_params[i];
@@ -531,7 +600,7 @@ int inst_gen_exec_args(inst_t *inst)
       return 0;
    }
 
-   ifc_spec = module_get_ifcs_as_arg(inst);
+   ifc_spec = inst_get_ifcs_as_arg(inst);
    if (ifc_spec == NULL) {
       NO_MEM_ERR
       goto err_cleanup;
@@ -568,7 +637,7 @@ err_cleanup:
 }
 
 
-static inline char * module_get_ifcs_as_arg(inst_t *inst)
+static inline char * inst_get_ifcs_as_arg(inst_t *inst)
 {
    char *ifc_spec = NULL;
    char *new_ifc_spec = NULL;
@@ -838,9 +907,9 @@ static char * bh_ifc_to_cli_arg(const interface_t *ifc)
 }
 
 
-static char **module_params_to_ifc_arr(const inst_t *module,
-                                       uint32_t *params_num,
-                                       int *rc)
+static char **inst_params_to_arr(const inst_t *inst,
+                                 uint32_t *params_num,
+                                 int *rc)
 {
    uint32_t params_arr_size = 5,
          params_cnt = 0;
@@ -848,7 +917,7 @@ static char **module_params_to_ifc_arr(const inst_t *module,
          y = 0,
          act_param_len = 0;
    char *buffer = NULL;
-   uint32_t params_len = (uint32_t) strlen(module->params);
+   uint32_t params_len = (uint32_t) strlen(inst->params);
    char **params = NULL;
 
    *rc = 0;
@@ -859,7 +928,7 @@ static char **module_params_to_ifc_arr(const inst_t *module,
    }
 
    if (params_len < 1) {
-      VERBOSE(V2, "Empty string in '%s' params element.", module->name)
+      VERBOSE(V2, "Empty string in '%s' params element.", inst->name)
       goto err_cleanup;
    }
 
@@ -870,30 +939,30 @@ static char **module_params_to_ifc_arr(const inst_t *module,
    }
 
    for (x = 0; x < params_len; x++) {
-      switch(module->params[x]) {
+      switch(inst->params[x]) {
          // parameter in apostrophes
          case '\'':
          {
             if (act_param_len > 0) { // check whether the ''' character is not in the middle of the word
-               VERBOSE(V2, "Bad format of '%s' params element - used \'\'\' in the middle of the word.", module->name);
+               VERBOSE(V2, "Bad format of '%s' params element - used \'\'\' in the middle of the word.", inst->name);
                goto err_cleanup;
             }
 
             for (y = (x + 1); y < params_len; y++) {
-               if (module->params[y] == '\'') { // parameter in apostrophes MATCH
+               if (inst->params[y] == '\'') { // parameter in apostrophes MATCH
                   if (act_param_len == 0) { // check for empty apostrophes
-                     VERBOSE(V2, "Bad format of '%s' params element - used empty apostrophes.", module->name);
+                     VERBOSE(V2, "Bad format of '%s' params element - used empty apostrophes.", inst->name);
                      goto err_cleanup;
                   }
                   x = y;
                   goto add_param;
                } else { // add character to parameter in apostrophes
-                  buffer[act_param_len] = module->params[y];
+                  buffer[act_param_len] = inst->params[y];
                   act_param_len++;
                }
             }
             // the terminating ''' was not found
-            VERBOSE(V2, "Bad format of '%s' params element - used single \'\'\'.\n", module->name);
+            VERBOSE(V2, "Bad format of '%s' params element - used single \'\'\'.\n", inst->name);
             goto err_cleanup;
             break;
          }
@@ -902,28 +971,28 @@ static char **module_params_to_ifc_arr(const inst_t *module,
          case '\"':
          {
             if (act_param_len > 0) { // check whether the '"' character is not in the middle of the word
-               VERBOSE(V2, "Bad format of '%s' params element - used \'\"\' in the middle of the word.", module->name);
+               VERBOSE(V2, "Bad format of '%s' params element - used \'\"\' in the middle of the word.", inst->name);
                goto err_cleanup;
             }
 
             for (y = (x + 1); y < params_len; y++) {
-               if (module->params[y] == '\"') { // parameter in quotes MATCH
+               if (inst->params[y] == '\"') { // parameter in quotes MATCH
                   if (act_param_len == 0) { // check for empty quotes
-                     VERBOSE(V2, "Bad format of '%s' params element - used empty quotes.\n", module->name);
+                     VERBOSE(V2, "Bad format of '%s' params element - used empty quotes.\n", inst->name);
                      goto err_cleanup;
                   }
                   x = y;
                   goto add_param;
-               } else if (module->params[y] != '\'') { // add character to parameter in quotes
-                  buffer[act_param_len] = module->params[y];
+               } else if (inst->params[y] != '\'') { // add character to parameter in quotes
+                  buffer[act_param_len] = inst->params[y];
                   act_param_len++;
                } else {
-                  VERBOSE(V2, "Found apostrophe in '%s' params element in quotes.", module->name);
+                  VERBOSE(V2, "Found apostrophe in '%s' params element in quotes.", inst->name);
                   goto err_cleanup;
                }
             }
             // the terminating '"' was not found
-            VERBOSE(V2, "Bad format of '%s' params element - used single \'\"\'.", module->name)
+            VERBOSE(V2, "Bad format of '%s' params element - used single \'\"\'.", inst->name)
             goto err_cleanup;
             break;
          }
@@ -953,7 +1022,7 @@ static char **module_params_to_ifc_arr(const inst_t *module,
          // adding one character to parameter out of quotes and apostrophes
          default:
          {
-            buffer[act_param_len] = module->params[x];
+            buffer[act_param_len] = inst->params[x];
             act_param_len++;
 
             if (x == (params_len - 1)) { // if last character of the params element was added, add current module parameter to the params array

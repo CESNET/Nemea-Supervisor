@@ -319,11 +319,6 @@ void test_interface_tcp_params_load(void **state)
 
 void test_inst_pid_restore(void **state)
 {
-   // TODO
-   // TODO there is bug that if you run this sysrepo enters broken state and must be reinstalled
-   // TODO
-
-
    system("helpers/import_conf.sh -s nemea-test-1-startup-2.data.json");
    connect_to_sr();
 

@@ -209,7 +209,7 @@ static void test_module_params_no_ifc_arr(void **state)
    IF_NO_MEM_FAIL(i1->params)
 
    {
-      parsed_params = module_params_to_ifc_arr(i1, &params_num, &rc);
+      parsed_params = inst_params_to_arr(i1, &params_num, &rc);
       assert_int_equal(rc, 0);
       assert_int_equal(params_num, 1);
       assert_string_equal(parsed_params[0], i1->params);
@@ -224,7 +224,7 @@ static void test_module_params_no_ifc_arr(void **state)
    {
       i1->params = strdup("-v v xxv tt rr -vv --yyy");
       IF_NO_MEM_FAIL(i1->params)
-      parsed_params = module_params_to_ifc_arr(i1, &params_num, &rc);
+      parsed_params = inst_params_to_arr(i1, &params_num, &rc);
       assert_int_equal(rc, 0);
       assert_int_equal(params_num, 7);
       assert_string_equal(parsed_params[0], "-v");
@@ -257,28 +257,28 @@ static void test_module_get_ifcs_as_arg(void **state)
 
    ifc = get_test_ifc(NS_IF_DIR_IN, NS_IF_TYPE_TCP, 1);
    inst_interface_add(mod, ifc);
-   params = module_get_ifcs_as_arg(mod);
+   params = inst_get_ifcs_as_arg(mod);
    assert_non_null(params);
    assert_string_equal(params, "t:1");
    free(params);
 
    ifc = get_test_ifc(NS_IF_DIR_OUT, NS_IF_TYPE_UNIX, 2);
    inst_interface_add(mod, ifc);
-   params = module_get_ifcs_as_arg(mod);
+   params = inst_get_ifcs_as_arg(mod);
    assert_non_null(params);
    assert_string_equal(params, "t:1,u:sock_2:123");
    free(params);
 
    ifc = get_test_ifc(NS_IF_DIR_IN, NS_IF_TYPE_UNIX, 3);
    inst_interface_add(mod, ifc);
-   params = module_get_ifcs_as_arg(mod);
+   params = inst_get_ifcs_as_arg(mod);
    assert_non_null(params);
    assert_string_equal(params, "t:1,u:sock_3,u:sock_2:123");
    free(params);
 
    ifc = get_test_ifc(NS_IF_DIR_OUT, NS_IF_TYPE_TCP, 4);
    inst_interface_add(mod, ifc);
-   params = module_get_ifcs_as_arg(mod);
+   params = inst_get_ifcs_as_arg(mod);
    assert_non_null(params);
    assert_string_equal(params, "t:1,u:sock_3,u:sock_2:123,t:192.168.0.1:4");
    free(params);
@@ -289,7 +289,7 @@ static void test_module_get_ifcs_as_arg(void **state)
    IF_NO_MEM_FAIL_MSG(ifc->buffer, "ifc->buffer")
    ifc->timeout = strdup("HALF_WAIT");
    IF_NO_MEM_FAIL_MSG(ifc->timeout, "ifc->timeout")
-   params = module_get_ifcs_as_arg(mod);
+   params = inst_get_ifcs_as_arg(mod);
    assert_non_null(params);
    assert_string_equal(params,
                        "t:1,u:sock_3,u:sock_2:123,""t:192.168.0.1:4:"

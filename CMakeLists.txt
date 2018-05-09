@@ -3,11 +3,9 @@ project(nemea-supervisor)
 
 add_subdirectory(src)
 
-
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMakeModules/")
 
 find_package(SYSREPO REQUIRED)
-# todo include libtrap checks
 include_directories(SYSREPO_INCLUDE_DIR)
 
 

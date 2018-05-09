@@ -1,6 +1,6 @@
 /**
  * @file run_changes.h
- * @brief Defines callback function for changes in running sysrepo datastore.
+ * @brief Exports just one function that is called in case a change of /nemea:supervisor subtree in sysrepo’s running datastore occurs.
  */
 
 #ifndef RUN_CHANGES_H
@@ -12,8 +12,6 @@
 /**
  * @brief Callback function subscribed to changes of subtree beginning
  *  at module level.
- * @details Though it acts simiralily as module_group_config_change_cb(), I
- *  recommend you not to merge those two. Separation is done for sake of readibility.
  * @param sess Used sysrepo sessing
  * @param smn Name of sysrepo module that was changed
  * @param evnt Type of sysrepo event for this change. This function is cabable of

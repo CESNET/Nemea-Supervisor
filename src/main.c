@@ -1,6 +1,6 @@
 /**
- * @file main.h
- * @brief TODO
+ * @file main.c
+ * @brief Entry file containing main unction, where CLI arguments are processed and where the Supervisor is launched.
  * */
 
 #include <getopt.h>
@@ -18,13 +18,10 @@
                   "Path of the unix socket which is used for supervisor daemon and client communication.\n"\
 
 /**
- * @details Function parses program arguments using SUP_GETOPT macro (it is set
- *  by configure script to getopt or getopt_long function according to the
- *  available system libraries).
- *
- * @param[in] argc Argument counter passed from the main function.
- * @param[in] argv Argument values passed from the main function.
- * @return DAEMON_MODE_CODE or INTERACTIVE_MODE_CODE in case of success, otherwise -1.
+ * @details Function parses program arguments using getopt_long
+ * @param argc Argument counter passed from the main function.
+ * @param argv Argument values passed from the main function.
+ * @return daemon_flag or -1 on error
  * */
 int parse_prog_args(int argc, char **argv);
 
@@ -142,7 +139,6 @@ int main (int argc, char *argv [])
       }
    }
 
-   // TODO revisit
    // Kill all instances and cleanup all structures
    terminate_supervisor(true);
 

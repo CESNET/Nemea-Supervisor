@@ -13,7 +13,7 @@ var searchData=
   ['ns_5fif_5ftype_5ftcp_5ftls',['NS_IF_TYPE_TCP_TLS',['../module_8h.html#adc30dc221e21e04add9cd5c92c35d0a3a24e75339e9ab7c248556cf651cdd03d5',1,'module.h']]],
   ['ns_5fif_5ftype_5funix',['NS_IF_TYPE_UNIX',['../module_8h.html#adc30dc221e21e04add9cd5c92c35d0a3ab8a18138f37a2271965077f26306f99a',1,'module.h']]],
   ['ns_5froot_5fxpath',['NS_ROOT_XPATH',['../utils_8h.html#af1aeff4db8d0bc1b3979b6b01762c6ef',1,'utils.h']]],
-  ['ns_5fstartup_5fconfig_5fload',['ns_startup_config_load',['../conf_8h.html#a92f28aff9f43d45573c2316c68c92aee',1,'conf.c']]],
+  ['ns_5fstartup_5fconfig_5fload',['ns_startup_config_load',['../conf_8c.html#a92f28aff9f43d45573c2316c68c92aee',1,'ns_startup_config_load(sr_session_ctx_t *sess):&#160;conf.c'],['../conf_8h.html#a92f28aff9f43d45573c2316c68c92aee',1,'ns_startup_config_load(sr_session_ctx_t *sess):&#160;conf.c']]],
   ['nullp_5ftest_5fand_5ffree',['NULLP_TEST_AND_FREE',['../utils_8h.html#a65a3b6102656a4aaca1fcc44a83323d1',1,'utils.h']]],
   ['num_5fservice_5fifc_5fperiod',['NUM_SERVICE_IFC_PERIOD',['../supervisor_8c.html#a87a197c874cf262ee62b96a2de4ad01f',1,'supervisor.c']]]
 ];
