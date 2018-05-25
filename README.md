@@ -20,7 +20,7 @@ This program allows user to configure and monitor Nemea modules (see [basic modu
 
 
 ## How to build
-First install [dependencies](#dependencies) and build dependencies, then simply run:
+First install [dependencies](#dependencies) and [build dependencies](#build-dependencies), then simply run:
 
 ```sh
 ./bootstrap.sh
@@ -31,8 +31,7 @@ or use get docker image from zmat/nemea-supervisor-sysrepo-edition (built from `
 
 ### Build dependencies
  - cmake
- - 
-
+ - runtime [dependencies](#dependencies)
 
 
 ## How to test
