@@ -5,6 +5,8 @@ add_subdirectory(src)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMakeModules/")
 
+find_package(TRAP REQUIRED)
+include_directories(TRAP_INCLUDE_DIR)
 find_package(SYSREPO REQUIRED)
 include_directories(SYSREPO_INCLUDE_DIR)
 

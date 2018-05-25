@@ -8,12 +8,18 @@
 #include "inst_control.h"
 
 /**
- * @brief Releases child processes of supervisor and cleans socket files
+ * @brief Releases child process of supervisor and cleans socket files
  * @details When supervisor kills instance it started (its child) or fails to start
  *  instance in forked process, the process stays as zombie in the system and needs
  *  to be released via waitpid(WNOHANG) inside this function.
  *  Some instances are also leaving their libtrap socket files in the filesystem so
  *  those get removed in this function as well.
+ * @param inst Instance to clean after
+ * */
+static inline void clean_after_child(inst_t * inst);
+
+/**
+ * @brief Loop over all instances and call clean_after_child for each
  * */
 static void clean_after_children();
 
@@ -131,6 +137,7 @@ void av_module_stop_remove_by_name(const char *name)
          if (inst->pid > 0) {
             kill(inst->pid, SIGKILL);
          }
+         clean_after_child(inst);
          vector_delete(&insts_v, i);
          inst_free(inst);
          i--;
@@ -157,6 +164,7 @@ void inst_stop_remove_by_name(const char *name)
       kill(inst->pid, SIGINT);
       usleep(WAIT_FOR_INSTS_TO_HANDLE_SIGINT);
       kill(inst->pid, SIGKILL);
+      clean_after_child(inst);
    }
 
    vector_delete(&insts_v, fi);
@@ -181,6 +189,7 @@ void insts_terminate()
    usleep(WAIT_FOR_INSTS_TO_HANDLE_SIGINT);
    (void) get_running_insts_cnt();
    insts_stop_sigkill();
+   // No need for waitpid since supervisor as a parent is terminated anyway
    pthread_mutex_unlock(&config_lock);
 }
 
@@ -221,50 +230,55 @@ void insts_start()
    clean_after_children();
 }
 
-static void clean_after_children()
+static inline void clean_after_child(inst_t * inst)
 {
    pid_t result;
    int status;
 
+   if (inst->pid > 0 && inst->is_my_child) {
+      /* waitpid releases children that failed to execute execv in inst_start.
+       * if this would be left out, processes would stay there as zombies */
+      result = waitpid(inst->pid , &status, WNOHANG);
+      switch (result) {
+         case 0:
+            if (inst->sigint_sent) {
+               VERBOSE(V1, "waitpid: Instance (%s) is still running after killing",
+                       inst->name)
+            }
+            break;
+
+         case -1: // Error
+            if (errno == ECHILD) {
+               // Process with PID doesn't exist or isn't supervisor's child
+               inst->is_my_child = false;
+            }
+            VERBOSE(V2, "waitpid: Some error occured, but inst %s is not running",
+                    inst->name)
+            inst->running = false;
+            if (inst->enabled == false) {
+               inst->should_die = true;
+            }
+            inst_clear_socks(inst);
+            break;
+
+         default: // Instance is not running
+            VERBOSE(V2, "waitpid: Instance %s is not running. waitpid result=%d", inst->name, result)
+            inst->running = false;
+            inst->pid = 0; // because of waitpid it is removed from process tree
+            if (inst->enabled == false) {
+               inst->should_die = true;
+               inst_clear_socks(inst);
+            }
+      }
+   }
+}
+
+static void clean_after_children()
+{
    inst_t *inst;
    for (uint32_t i = 0; i < insts_v.total; i++) {
       inst = insts_v.items[i];
-
-      if (inst->pid > 0 && inst->is_my_child) {
-         /* waitpid releases children that failed to execute execv in inst_start.
-          * if this would be left out, processes would stay there as zombies */
-         result = waitpid(inst->pid , &status, WNOHANG);
-         switch (result) {
-            case 0:
-               if (inst->sigint_sent) {
-                  VERBOSE(V1, "waitpid: Instance (%s) is still running after killing",
-                          inst->name)
-               }
-               break;
-
-            case -1: // Error
-               if (errno == ECHILD) {
-                  // Process with PID doesn't exist or isn't supervisor's child
-                  inst->is_my_child = false;
-               }
-               VERBOSE(V2, "waitpid: Some error occured, but inst %s is not running",
-                       inst->name)
-               inst->running = false;
-               if (inst->enabled == false) {
-                  inst->should_die = true;
-               }
-               inst_clear_socks(inst);
-               break;
-
-            default: // Module is not running
-               VERBOSE(V2, "waitpid: Instance %s is not running. waitpid result=%d", inst->name, result)
-               inst->running = false;
-               if (inst->enabled == false) {
-                  inst->should_die = true;
-                  inst_clear_socks(inst);
-               }
-         }
-      }
+      clean_after_child(inst);
    }
 }
 
@@ -301,7 +315,6 @@ void inst_set_running_status(inst_t *inst)
                inst->service_sd = -1;
             }
             inst->running = false;
-            inst->pid = 0;
             inst->service_ifc_connected = false;
       }
    }
