@@ -4,7 +4,7 @@ THIS_DIR="$(dirname $0)"
 
 tools=( sysrepoctl sysrepocfg )
 for tool in ${tools[@]}; do
-    which $tool &>/dev/null
+    command $tool &>/dev/null
     if [ $? -ne 0 ]; then
         echo "${tool} from sysrepo project is missing, please install sysrepo before you continue!"
         exit 1
