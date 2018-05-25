@@ -20,7 +20,7 @@ This program allows user to configure and monitor Nemea modules (see [basic modu
 
 
 ## How to build
-Simply with:
+First install [dependencies](#dependencies) and build dependencies, then simply run:
 
 ```sh
 ./bootstrap.sh
@@ -28,6 +28,12 @@ cmake .
 make
 ```
 or use get docker image from zmat/nemea-supervisor-sysrepo-edition (built from `deploy/docker/staas-demo`).
+
+### Build dependencies
+ - cmake
+ - 
+
+
 
 ## How to test
 ```sh
@@ -118,10 +124,6 @@ Signal handler catches the following signals:
 - SIGINT - it let the modules continue running and generates backup file
 - SIGQUIT - same as SIGINT
 - SIGSEGV - this is for case something goes wrong during runtime. SIGSEGV is catched, modules continue running and backup file is saved.
-
-
-## sysrepo
-
 
 ## Developer documentation
 You can find it online on GitHub pages [here](https://zidekmat.github.io/nemea-supervisor-sysrepo-edition/index.html).
