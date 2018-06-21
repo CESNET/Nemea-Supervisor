@@ -7,7 +7,7 @@ AC_CONFIG_SRCDIR([supervisor.c])
 AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE([foreign silent-rules])
 AM_SILENT_RULES([yes])
-RELEASE=1
+RELEASE=2
 AC_SUBST(RELEASE)
 USERNAME=`git config --get user.name`
 USERMAIL=`git config --get user.email`
@@ -33,8 +33,8 @@ AC_ARG_ENABLE([debug],
         [if test "$enableval" = "yes"; then
                 CFLAGS="-Wall -g -O0 $CFLAGS"
                 CXXFLAGS="-Wall -g -O0 $CXXFLAGS"
-        fi], [CFLAGS="-Wall -O3 $CFLAGS"
-              CXXFLAGS="-Wall -O3 $CXXFLAGS"])
+        fi], [CFLAGS="-Wall -g -O3 $CFLAGS"
+              CXXFLAGS="-Wall -g -O3 $CXXFLAGS"])
 AM_CONDITIONAL(DEBUG, test x"$debug" = x"true")
 
 AC_DEFINE_DIR(initdir, [sysconfdir]/../init.d, [Path to init.d (init script)])
