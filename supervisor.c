@@ -275,11 +275,6 @@ char **parse_module_params(const uint32_t module_idx, uint32_t *params_num)
    uint32_t x = 0, y = 0, act_param_len = 0;
    int params_len = strlen(running_modules[module_idx].module_params);
 
-   if (params_len < 1) {
-      VERBOSE(MODULE_EVENT, "%s [WARNING] Empty string in \"%s\" params element.", get_formatted_time(), running_modules[module_idx].module_name);
-      goto err_cleanup;
-   }
-
    buffer = (char *) calloc(params_len + 1, sizeof(char));
    if (buffer == NULL) {
       VERBOSE(N_STDOUT, "%s [ERROR] Could not allocate memory for \"%s\" params before module execution.\n", get_formatted_time(), running_modules[module_idx].module_name);
@@ -287,7 +282,7 @@ char **parse_module_params(const uint32_t module_idx, uint32_t *params_num)
    }
 
    for (x = 0; x < params_len; x++) {
-      switch(running_modules[module_idx].module_params[x]) {
+      switch (running_modules[module_idx].module_params[x]) {
       /* parameter in apostrophes */
       case '\'':
       {
@@ -379,10 +374,6 @@ add_param:
       }
 
       } // end of switch
-   }
-
-   if (params_cnt == 0) {
-      goto err_cleanup;
    }
 
    *params_num = params_cnt;
@@ -4125,12 +4116,6 @@ int reload_check_interface_element(reload_config_vars_t **config_vars)
             VERBOSE(N_STDOUT, "[ERROR] Too much \"params\" elements in \"interface\" element!\n");
             goto error_label;
          }
-         key = xmlNodeListGetString((*config_vars)->doc_tree_ptr, (*config_vars)->ifc_atr_elem->xmlChildrenNode, 1);
-         if (key == NULL) {
-            /* Empty params element is not allowed */
-            VERBOSE(N_STDOUT, "[ERROR] Empty value in \"params\" element!\n");
-            goto error_label;
-         }
       } else if ((*config_vars)->ifc_atr_elem->type == XML_COMMENT_NODE || (*config_vars)->ifc_atr_elem->type == XML_TEXT_NODE) {
          // Nothing to do here
       } else {
@@ -4362,12 +4347,6 @@ int reload_check_module_element(reload_config_vars_t **config_vars, str_lst_t **
          /* Check the number of found elements params (at most 1 is allowed) */
          if (basic_elements[params_elem_idx] > 1) {
             VERBOSE(N_STDOUT, "[ERROR] Too much \"params\" elements in \"module\" element!\n");
-            goto error_label;
-         }
-         key = xmlNodeListGetString((*config_vars)->doc_tree_ptr, (*config_vars)->module_atr_elem->xmlChildrenNode, 1);
-         if (key == NULL) {
-            /* Empty element params is not allowed */
-            VERBOSE(N_STDOUT, "[ERROR] Empty value in \"params\" element!\n");
             goto error_label;
          }
       } else if ((*config_vars)->module_atr_elem->type == XML_COMMENT_NODE || (*config_vars)->module_atr_elem->type == XML_TEXT_NODE) {
