@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.63])
-AC_INIT([nemea-supervisor], [1.5.4], [svepemar@fit.cvut.cz])
+AC_INIT([nemea-supervisor], [1.5.6], [svepemar@fit.cvut.cz])
 AC_CONFIG_SRCDIR([supervisor.c])
 AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE([foreign silent-rules])
@@ -33,8 +33,8 @@ AC_ARG_ENABLE([debug],
         [if test "$enableval" = "yes"; then
                 CFLAGS="-Wall -g -O0 $CFLAGS"
                 CXXFLAGS="-Wall -g -O0 $CXXFLAGS"
-        fi], [CFLAGS="-Wall -O3 $CFLAGS"
-              CXXFLAGS="-Wall -O3 $CXXFLAGS"])
+        fi], [CFLAGS="-Wall -g -O3 $CFLAGS"
+              CXXFLAGS="-Wall -g -O3 $CXXFLAGS"])
 AM_CONDITIONAL(DEBUG, test x"$debug" = x"true")
 
 AC_DEFINE_DIR(initdir, [sysconfdir]/../init.d, [Path to init.d (init script)])
@@ -59,13 +59,13 @@ AC_PROG_INSTALL
 AC_PROG_MAKE_SET
 AC_CHECK_PROG(GIT, git, git, [""])
 
-AC_ARG_ENABLE(repobuild, AS_HELP_STRING([--disable-repobuild],
-                [disable local compilation without system installed Nemea libraries, default: yes]),
+AC_ARG_ENABLE(repobuild, AS_HELP_STRING([--enable-repobuild],
+                [enable local compilation without system installed Nemea libraries, default: no]),
 [case "${enableval}" in
         yes) repobuild=true ;;
         no)  repobuild=false ;;
         *)   AC_MSG_ERROR([bad value ${enableval} for --disable-repobuild]) ;;
-esac], [repobuild=true])
+esac], [repobuild=false])
 
 if test -n "$GIT"; then
     GIT_VERSION=$($GIT log --format="%h" HEAD^..HEAD | head -1)
@@ -91,22 +91,7 @@ AC_TYPE_UINT64_T
 AC_TYPE_UINT8_T
 
 # Checks for library functions.
-AC_FUNC_FORK
-AC_FUNC_REALLOC
-AC_CHECK_FUNCS([dup2 memset mkdir realpath select socket strchr strdup strstr getopt_long getopt])
-
-# Define SUP_GETOPT()
-if test "x$ac_cv_func_getopt_long" = xyes; then
-  AC_DEFINE_UNQUOTED([SUP_GETOPT(argc, argv, optstr, longopts)],
-    [getopt_long(argc, argv, optstr, longopts, NULL)],
-    [Supervisor getopt macro. Argc and argv are number and values of arguments, optstr is a string containing legitimate option characters, longopts is the array of option structures (unused on system without getopt_long())])
-elif test "x$ac_cv_func_getopt" = xyes; then
-  AC_DEFINE_UNQUOTED([SUP_GETOPT(argc, argv, optstr, longopts)],
-  [getopt(argc, argv, optstr)],
-  [Supervisor getopt macro. Argc and argv are number and values of arguments, optstr is a string containing legitimate option characters, longopts is the array of option structures (unused for on system without getopt_long())])
-else
-  AC_MSG_ERROR([getopt() was not found, module depend on it...])
-fi
+AC_CHECK_FUNCS([dup2 memset mkdir realpath select socket strchr strdup strstr])
 
 AC_ARG_WITH([systemdsystemunitdir],
 	[AS_HELP_STRING([--with-systemdsystemunitdir=DIR], [Directory for systemd service files])],

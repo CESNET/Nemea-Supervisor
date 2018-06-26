@@ -14,10 +14,5 @@
   <direction>OUT</direction>
   <params>12009</params>
 </interface>
-<interface>
-  <type>TCP</type>
-  <direction>OUT</direction>
-  <params>12321</params>
-</interface>
 </trapinterfaces>
 </module>
