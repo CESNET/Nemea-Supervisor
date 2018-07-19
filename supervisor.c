@@ -460,6 +460,9 @@ char **prep_module_args(const uint32_t module_idx)
                } else if (running_modules[module_idx].config_ifces[x].int_ifc_type == BLACKHOLE_MODULE_IFC_TYPE) {
                   strncpy(ifc_spec + ptr, "b:", 2);
                   ptr+=2;
+               } else if (running_modules[module_idx].config_ifces[x].int_ifc_type == TLS_MODULE_IFC_TYPE) {
+                  strncpy(ifc_spec + ptr, "T:", 2);
+                  ptr+=2;
                } else {
                   VERBOSE(MODULE_EVENT, "%s [WARNING] Wrong ifc_type in module %d (interface number %d).\n", get_formatted_time(), module_idx, x);
                   NULLP_TEST_AND_FREE(ifc_spec)
@@ -4079,9 +4082,10 @@ int reload_check_interface_element(reload_config_vars_t **config_vars)
          }
          key = xmlNodeListGetString((*config_vars)->doc_tree_ptr, (*config_vars)->ifc_atr_elem->xmlChildrenNode, 1);
          if (key != NULL) {
-            /* Only "TCP", "UNIXSOCKET", "FILE" or "BLACKHOLE" values in element type are allowed */
+            /* Only "TCP", "UNIXSOCKET", "FILE", "BLACKHOLE" or "TLS" values in element type are allowed */
             if (xmlStrcmp(key, BAD_CAST "TCP") != 0 && xmlStrcmp(key, BAD_CAST "UNIXSOCKET") != 0 &&
-                xmlStrcmp(key, BAD_CAST "FILE") != 0 && xmlStrcmp(key, BAD_CAST "BLACKHOLE") != 0) {
+                xmlStrcmp(key, BAD_CAST "FILE") != 0 && xmlStrcmp(key, BAD_CAST "BLACKHOLE") != 0 &&
+                xmlStrcmp(key, BAD_CAST "TLS")) {
                VERBOSE(N_STDOUT, "[ERROR] Expected one of {TCP,UNIXSOCKET,FILE,BLACKHOLE} values in \"type\" element!\n");
                goto error_label;
             }
@@ -4730,6 +4734,8 @@ void reload_count_module_interfaces(reload_config_vars_t **config_vars)
             running_modules[(*config_vars)->current_module_idx].config_ifces[x].int_ifc_type = SERVICE_MODULE_IFC_TYPE;
          } else if (strncmp(running_modules[(*config_vars)->current_module_idx].config_ifces[x].ifc_type, "BLACKHOLE", 9) == 0) {
             running_modules[(*config_vars)->current_module_idx].config_ifces[x].int_ifc_type = BLACKHOLE_MODULE_IFC_TYPE;
+         } else if (strncmp(running_modules[(*config_vars)->current_module_idx].config_ifces[x].ifc_type, "TLS", 3) == 0) {
+            running_modules[(*config_vars)->current_module_idx].config_ifces[x].int_ifc_type = TLS_MODULE_IFC_TYPE;
          } else {
             running_modules[(*config_vars)->current_module_idx].config_ifces[x].int_ifc_type = INVALID_MODULE_IFC_ATTR;
          }
