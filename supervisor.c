@@ -4082,11 +4082,11 @@ int reload_check_interface_element(reload_config_vars_t **config_vars)
          }
          key = xmlNodeListGetString((*config_vars)->doc_tree_ptr, (*config_vars)->ifc_atr_elem->xmlChildrenNode, 1);
          if (key != NULL) {
-            /* Only "TCP", "UNIXSOCKET", "FILE", "BLACKHOLE" or "TLS" values in element type are allowed */
+            /* Only "TCP", "UNIXSOCKET", "FILE", "BLACKHOLE", or "TLS" values in element type are allowed */
             if (xmlStrcmp(key, BAD_CAST "TCP") != 0 && xmlStrcmp(key, BAD_CAST "UNIXSOCKET") != 0 &&
-                xmlStrcmp(key, BAD_CAST "FILE") != 0 && xmlStrcmp(key, BAD_CAST "BLACKHOLE") != 0 &&
-                xmlStrcmp(key, BAD_CAST "TLS")) {
-               VERBOSE(N_STDOUT, "[ERROR] Expected one of {TCP,UNIXSOCKET,FILE,BLACKHOLE} values in \"type\" element!\n");
+               xmlStrcmp(key, BAD_CAST "FILE") != 0 && xmlStrcmp(key, BAD_CAST "BLACKHOLE") != 0 &&
+               xmlStrcmp(key, BAD_CAST "TLS")) {
+               VERBOSE(N_STDOUT, "[ERROR] Expected one of {TCP,UNIXSOCKET,FILE,BLACKHOLE,TLS} values in \"type\" element!\n");
                goto error_label;
             }
          } else {
