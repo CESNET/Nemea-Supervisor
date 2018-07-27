@@ -38,7 +38,7 @@
       <!-- Set of module's interfaces -->
       <trapinterfaces>
         <interface>
-          <!-- MANDATORY element, values {TCP,UNIXSOCKET,FILE,BLACKHOLE} -->
+          <!-- MANDATORY element, values {TCP,UNIXSOCKET,FILE,BLACKHOLE,TLS} -->
           <!-- Interface uses TCP socket (TCP socket is used for machine to machine communication) -->
           <type>TCP</type>
           <!-- MANDATORY element, values {IN,OUT} -->
@@ -49,9 +49,9 @@
           <params>7600</params>
         </interface>
         <interface>
-          <!-- MANDATORY element, values {TCP,UNIXSOCKET,FILE,BLACKHOLE} -->
+          <!-- MANDATORY element, values {TCP,UNIXSOCKET,FILE,BLACKHOLE,TLS} -->
           <!-- Interface uses unix socket (unix socket is used for localhost communication) -->
-          <type>UNIXSOCKET</type>
+          <type>TCP</type>
           <!-- MANDATORY element, values {IN,OUT} -->
           <!-- Output interface-->
           <direction>OUT</direction>
