@@ -1,3 +1,8 @@
+2018-08-07 nemea-supervisor-1.6.0
+	* Add TLS IFC support into supervisor's config
+	* Improved doc
+	* Removed validation of params element of the modules
+
 2017-11-28 supervisor-1.5.6
 	* configuration now read only from files with ".sup" suffix
 	* specify c-basic-offset in Emacs local varibles

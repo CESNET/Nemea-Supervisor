@@ -2,12 +2,12 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.63])
-AC_INIT([nemea-supervisor], [1.5.6], [svepemar@fit.cvut.cz])
+AC_INIT([nemea-supervisor], [1.6.0], [svepemar@fit.cvut.cz])
 AC_CONFIG_SRCDIR([supervisor.c])
 AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE([foreign silent-rules])
 AM_SILENT_RULES([yes])
-RELEASE=2
+RELEASE=1
 AC_SUBST(RELEASE)
 USERNAME=`git config --get user.name`
 USERMAIL=`git config --get user.email`
