@@ -1,0 +1,23 @@
+<module>
+<name>smtp_spam_detector</name>
+<enabled>true</enabled>
+<path>/usr/bin/nemea/smtp_spam_detector</path>
+<params>--debug True --interval 3600 --log /data/smtp_detector/smtp_spam_detector.log</params>
+<trapinterfaces>
+<interface>
+  <type>UNIXSOCKET</type>
+  <direction>IN</direction>
+  <params>flow_data_source</params>
+</interface>
+<interface>
+  <type>UNIXSOCKET</type>
+  <direction>IN</direction>
+  <params>smtp_data_source</params>
+</interface>
+<interface>
+  <type>UNIXSOCKET</type>
+  <direction>OUT</direction>
+  <params>smtp_detector_out</params>
+</interface>
+</trapinterfaces>
+</module>
