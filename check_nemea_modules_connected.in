@@ -62,6 +62,37 @@ def getnemeamodulesinfo():
     return loads(modulesinfojson)
 
 
+def formatperfdata(label, value, unitofmeasure='',
+                   warn='', crit='',
+                   minimum='', maximum=''):
+    """Return formatted performance data for a single label.
+
+    Arguments warn, crit, minimum or maximum can be left out (for
+    example, if the threshold is not defined or minimum and maximum do
+    not apply).
+
+    Arguments minimum and maximum are implied if unitofmeasure is '%'.
+
+    Arguments value, minimum and maximum should be real numbers. Value
+    may instead be a literal 'U' character to indicate that the value
+    could not be determined.
+
+    Arguments warn and crit are in a range format where a lone number
+    'n' means outside {0 .. n}, 'n:' means outside {n .. inf}, '~:n'
+    means outside {-inf .. n}, 'n:m' means outside {n .. m} and '@n:m'
+    means inside {n .. m}.
+
+    The supplied unitofmeasure is applied to value, warn, crit,
+    minimum and maximum, use empty string for count e.g. processes
+    (default), 's' for seconds (also ms, us), '%' for percentage, 'B'
+    for bytes, 'c' for a continous counter (e.g. bytes received).
+    """
+    return "{}={}{};{};{};{};{}".format(
+        label, value, unitofmeasure,
+        warn, crit,
+        minimum, maximum)
+
+
 def checkmodulesconnected():
     """Retrieve and parse module infos. Return tuple of status code,
     status message and perfdata."""
@@ -69,15 +100,21 @@ def checkmodulesconnected():
     (connectedmodules, partiallyconnectedmodules,
      unconnectedmodules) = checkconnectedstatus(modulesinfo)
     perfdata = '\n'.join([
-        "connectedmodules=%d;;;0;" % len(connectedmodules),
-        "partiallyconnectedmodules=%d;1;;0;" % len(partiallyconnectedmodules),
-        "unconnectedmodules=%d;1;1;0;" % len(unconnectedmodules) ])
+        formatperfdata('connectedmodules',
+                       len(connectedmodules),
+                       minimum=0),
+        formatperfdata('partiallyconnectedmodules',
+                       len(partiallyconnectedmodules),
+                       warn=1, minimum=0),
+        formatperfdata('unconnectedmodules',
+                       len(unconnectedmodules),
+                       crit=1, minimum=0) ])
 
     if unconnectedmodules and partiallyconnectedmodules:
         return (ex_critical,
-                "Critical: %s unconnected, %s partially connected %s"
+                "Critical: %s unconnected, %s partially connected"
                 % (', '.join(unconnectedmodules),
-                   ', '.join(paritallyconnectedmodules)),
+                   ', '.join(partiallyconnectedmodules)),
                 perfdata)
     elif unconnectedmodules:
         return (ex_critical,
