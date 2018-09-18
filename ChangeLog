@@ -1,3 +1,7 @@
+2018-09-18 nemea-supervisor-1.6.1
+	* bugfix - permissions of log files and directory
+	* added config of smtp module
+
 2018-08-07 nemea-supervisor-1.6.0
 	* Add TLS IFC support into supervisor's config
 	* Improved doc
