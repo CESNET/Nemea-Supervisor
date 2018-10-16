@@ -67,11 +67,11 @@
 
 
 #ifndef PERM_LOGSDIR
-#define PERM_LOGSDIR   (S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH) ///< Permissions of directory with stdout and stderr logs of modules
+#define PERM_LOGSDIR   (S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IXOTH) ///< Permissions of directory with stdout and stderr logs of modules
 #endif
 
 #ifndef PERM_LOGFILE
-#define PERM_LOGFILE   (S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH) ///< Permissions of files with stdout and stderr logs of module
+#define PERM_LOGFILE   (S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH) ///< Permissions of files with stdout and stderr logs of module
 #endif
 
 #define RUNNING_MODULES_ARRAY_START_SIZE   10 ///< Initial size of allocated running_modules array.
