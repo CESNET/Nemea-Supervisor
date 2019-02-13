@@ -37,7 +37,6 @@ detectors_DATA = detectors/amplification_detection.sup \
 	   detectors/hoststats.sup \
 	   detectors/haddrscandetector.sup \
 	   detectors/blacklistfilter.sup \
-	   detectors/blacklistfilter_with_af.sup \
 	   detectors/miner_detector.sup \
 	   detectors/sip_bf_detector.sup \
 	   detectors/voipfrauddetection.sup \
@@ -59,8 +58,7 @@ loggers_DATA = loggers/amplification_logger.sup \
 	   loggers/vportscan_aggr_logger.sup
 
 
-
-EXTRA_DIST = ipfixcol-startup.xml supervisor_config_template.xml ${pkgdata_DATA} ${detectors_DATA} ${datasources_DATA} ${others_DATA} ${loggers_DATA}
+EXTRA_DIST = ipfixcol-startup.xml supervisor_config_template.xml detectors/blacklistfilter_with_af.sup ${pkgdata_DATA} ${detectors_DATA} ${datasources_DATA} ${others_DATA} ${loggers_DATA}
 
 sysconf_DATA = supervisor_config_template.xml ipfixcol-startup.xml
 bin_SCRIPTS=prepare_default_config.sh set_default_nic.sh
