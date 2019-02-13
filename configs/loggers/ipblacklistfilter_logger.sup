@@ -2,7 +2,7 @@
 <name>ipblacklistfilter_logger</name>
 <enabled>true</enabled>
 <path>/usr/bin/nemea/logger</path>
-<params>-t -T -a /data/ipblacklistfilter/detected.log</params>
+<params>-t -T -a /data/blacklistfilter/detected.log</params>
 <trapinterfaces>
 <interface>
   <type>TCP</type>

@@ -11,7 +11,7 @@ pkgdata_DATA = amplification_detection.mkdir \
 	   flow_meter.mkdir \
 	   hoststats.mkdir \
 	   haddrscandetector.mkdir \
-	   ipblacklistfilter.mkdir \
+	   blacklistfilter.mkdir \
 	   ipv6stats.mkdir \
 	   miner_detector.mkdir \
 	   multopt.mkdir \
@@ -36,7 +36,8 @@ detectors_DATA = detectors/amplification_detection.sup \
 	   detectors/dnstunnel_detection.sup \
 	   detectors/hoststats.sup \
 	   detectors/haddrscandetector.sup \
-	   detectors/ipblacklistfilter.sup \
+	   detectors/blacklistfilter.sup \
+	   detectors/blacklistfilter_with_af.sup \
 	   detectors/miner_detector.sup \
 	   detectors/sip_bf_detector.sup \
 	   detectors/voipfrauddetection.sup \
