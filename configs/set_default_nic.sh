@@ -37,7 +37,7 @@
 configfile="$1"
 
 if [ -r "$configfile" -a -w "$configfile" ]; then
-        NIC_NAME=`ip route 2>/dev/null | fgrep default | sed 's/^.*dev\s\+\([^ ]\+\)\s.*/\1/'`
+        NIC_NAME=`ip route 2>/dev/null | sed -n 's/^default.*dev\s\+\([^ ]\+\)\s.*/\1/p'`
 
         if [ -z "$NIC_NAME" ]; then
                 # fallback in case the system does not know ip route
@@ -45,9 +45,7 @@ if [ -r "$configfile" -a -w "$configfile" ]; then
         fi
 
         echo "Detected NIC according to routing table: $NIC_NAME"
-        t=`mktemp`
-        sed '/<name>flow_meter/,/<trapinterfaces>/ s/-I \([a-zA-Z0-9]\+\)/-I '$NIC_NAME'/' "$configfile" > "$t" && mv "$t" "$configfile"
-        rm -f "$t"
+        sed -i '/<name>flow_meter/,/<trapinterfaces>/ s/-I \([a-zA-Z0-9]\+\)/-I '$NIC_NAME'/' "$configfile"
 else
         echo "Cannot open '$configfile' (need read&write permissions)" > /dev/stderr
 fi
