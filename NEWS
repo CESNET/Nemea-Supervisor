@@ -1,0 +1,11 @@
+2018-09-18 (Tomas Cejka): updated permissions for log files and directory
+2018-08-14 (Ladislav Macoun): Added smtp_spam_detector to supervisor config.
+
+2018-07-27 (Jaroslav Hlavac): bugfix: add support for TLS interface in config (#23)
+2018-06-30 (Tomas Cejka): supervisor: removed validation on `params` of a module
+2018-06-21 (Tomas Jansky): fixed generating debuginfo package
+2017-08-25 (Ulrik Haugen): readme: update modules statistics and information output docs.
+2017-08-25 (Ulrik Haugen): add nemea-modulesinfo and some monitoring plugins.
+2017-08-25 (Ulrik Haugen): readme: fold long lines, whitespace.
+2017-08-25 (Ulrik Haugen): Makefile.am: whitespace.
+2017-08-25 (Ulrik Haugen): .gitignore: ignore build artefacts.

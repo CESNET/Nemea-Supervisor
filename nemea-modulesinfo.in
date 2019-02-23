@@ -1,0 +1,103 @@
+#! /usr/bin/env python
+# -*- coding: utf-8; -*-
+
+"""Print Nemea modules info from supervisor. Optionally limit output
+to info on supplied module names."""
+
+__author__ = 'Ulrik Haugen <ulrik.haugen@liu.se>'
+__copyright__ = 'Copyright 2017 Linköpings universitet'
+
+import pprint as prettyprint
+
+
+bindir="@bindir@"
+
+
+def encodeunicode(element, context, maxlevels, level):
+    """Encode unicode strings when pretty printing."""
+    if prettyprint._type(element) is unicode:
+        element = element.encode()
+    return prettyprint._safe_repr(element, context, maxlevels, level)
+
+
+def setuppprint():
+    """Setup pprint to use encodeunicode."""
+    global pprint
+    prettyprinter = prettyprint.PrettyPrinter()
+    prettyprinter.format = encodeunicode
+    pprint = prettyprinter.pprint
+
+
+def getnemeamodulesinfo():
+    """Call supervisor_cli for modules info and parse the returned
+    json."""
+    from subprocess import Popen, PIPE
+    from json import loads
+    from os.path import join
+
+    supervisorproc = Popen([ join(bindir, "supervisor_cli"), "-i", ],
+                           stdout=PIPE, stderr=PIPE)
+    modulesinfojson, supervisorerr = supervisorproc.communicate()
+
+    if supervisorerr.strip() or supervisorproc.returncode:
+        raise EnvironmentError("Error retrieving modules info,"
+                               " supervisor returned %d, stderr: \n%s"
+                               % (supervisorproc.returncode,
+                                  supervisorerr.strip()))
+
+    return loads(modulesinfojson)
+
+
+def selectmodulesinfo(modulesinfo, modulesrequested):
+    """Select data from _modulesinfo_, limited to modules in the set
+    _modulesrequested_ unless empty, return tuple of selected data and
+    warnings."""
+    selectedmodulesinfo = None
+    warnings = []
+
+    if modulesrequested:
+        if not modulesrequested.issubset(modulesinfo.keys()):
+            warnings.append("Warning: No info on module(s): %s\n"
+                            % ", ".join(sorted(modulesrequested.difference(
+                                modulesinfo.keys()))))
+        if len(modulesrequested) == 1:
+            selectedmodulesinfo = modulesinfo[list(modulesrequested)[0]]
+        else:
+            selectedmodulesinfo = {
+                modulename: moduleinfo
+                for modulename, moduleinfo in modulesinfo.iteritems()
+                if modulename.encode() in modulesrequested }
+    else:
+        selectedmodulesinfo = modulesinfo
+
+    return selectedmodulesinfo, warnings
+
+
+def usage(programname):
+    """Print usage."""
+    print "usage: %s [ modulename ] ...\n\n%s" % (programname, __doc__)
+
+
+def main(programname, *programargs, **kwargs):
+    """Dispatch to printmodulesinfo, print errors/warnings to keyword arg
+    _errout_."""
+    import os
+    if ('-h' in programargs) or ('--help' in programargs):
+        usage(programname)
+        return os.EX_USAGE
+
+    errout = kwargs['errout']
+
+    setuppprint()
+    selectedmodulesinfo, warnings = selectmodulesinfo(getnemeamodulesinfo(),
+                                                      frozenset(programargs))
+    for warning in warnings: errout.write(warning)
+    pprint(selectedmodulesinfo)
+    if warnings:
+        return os.EX_DATAERR
+    return os.EX_OK
+
+
+if __name__ == '__main__':
+    import sys
+    sys.exit(main(*sys.argv, errout = sys.stderr))

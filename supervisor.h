@@ -67,11 +67,11 @@
 
 
 #ifndef PERM_LOGSDIR
-#define PERM_LOGSDIR   (S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH) ///< Permissions of directory with stdout and stderr logs of modules
+#define PERM_LOGSDIR   (S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IXOTH) ///< Permissions of directory with stdout and stderr logs of modules
 #endif
 
 #ifndef PERM_LOGFILE
-#define PERM_LOGFILE   (S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH) ///< Permissions of files with stdout and stderr logs of module
+#define PERM_LOGFILE   (S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH) ///< Permissions of files with stdout and stderr logs of module
 #endif
 
 #define RUNNING_MODULES_ARRAY_START_SIZE   10 ///< Initial size of allocated running_modules array.
@@ -86,6 +86,7 @@
 #define SERVICE_MODULE_IFC_TYPE   3  ///< Constant for service module interface type
 #define FILE_MODULE_IFC_TYPE   4 ///< Constant for file module interface type
 #define BLACKHOLE_MODULE_IFC_TYPE   5 ///<  Constant for blackhole module interface type
+#define TLS_MODULE_IFC_TYPE   6 ///<  Constant for tls module interface type
 
 #define INVALID_MODULE_IFC_ATTR   -1  ///< Constant for invalid module interface attribute
 
@@ -135,7 +136,7 @@ typedef struct out_ifc_stats_s {
 /** Structure with information about one loaded interface of module */
 typedef struct interface_s {
    char *ifc_note; ///< Interface note
-   char *ifc_type; ///< Interface type (TCP / UNIXSOCKET / SERVICE)
+   char *ifc_type; ///< Interface type (TCP / UNIXSOCKET / SERVICE / FILE / BLACKHOLE / TLS)
    char *ifc_params; ///< Interface parameters (input interface ~ address, port; output interface ~ port, number of connections; service interface ~ port, number of connections)
    char *ifc_direction; ///< Interface direction (IN / OUT / SERVICE)
    int int_ifc_direction; ///< Integer value of interface direction - for faster comparison

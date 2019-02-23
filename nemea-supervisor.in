@@ -132,8 +132,10 @@ reload )
 status )
 	if daemon_status; then
 		echo "nemea-supervisor is running.";
+                exit 0;
 	else
 		echo "nemea-supervisor is stopped.";
+                exit 2;
 	fi
 	;;
 * )

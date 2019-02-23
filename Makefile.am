@@ -7,9 +7,8 @@ supervisor_SOURCES= supervisor.c supervisor.h supervisor_api.h supervisor_main.c
 supervisor_LDADD = -lpthread -ltrap
 supervisor_cli_SOURCES= supervisor_cli.c internal.h internal.c
 doc_DATA=README.md
-EXTRA_DIST = nemea-supervisor README.md nagios
-bin_SCRIPTS=nemea-supervisor
-
+EXTRA_DIST=nemea-supervisor nemea-modulesinfo check_nemea_loaded_module_config check_nemea_modules_connected README.md
+bin_SCRIPTS=nemea-supervisor nemea-modulesinfo check_nemea_loaded_module_config check_nemea_modules_connected
 
 DISTCHECK_CONFIGURE_FLAGS="--with-systemdsystemunitdir=$$dc_install_base/$(systemdsystemunitdir)"
 systemdsystemunit_DATA=nemea-supervisor.service

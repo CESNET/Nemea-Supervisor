@@ -3,10 +3,10 @@
 # \brief Export script for the Munin system to translate date from supervisor.
 # \author Tomas Cejka <cejkat@cesnet.cz>
 # \author Marek Svepes <svepemar@fit.cvut.cz>
-# \date 2014
-# \date 2015
+# \author Jaroslav Hlavac <hlavac@cesnet.cz>
+# \date 2017
 #
-# Copyright (C) 2014-2015 CESNET
+# Copyright (C) 2014-2017 CESNET
 #
 # LICENSE TERMS
 #
@@ -87,6 +87,7 @@ datatypes = {
 
 # vertical axis labels
 vlabels = {
+	"alerts": "count",
 	"inputs": "count",
 	"outputs": "count",
 	"cpu": "%",
@@ -271,7 +272,7 @@ else:
 			for line in f.readlines():
 				data = data + line
 
-def getTotalCountersConfig(m, modules):
+def getTotalCountersConfig(modules):
     print("""multigraph nemea_ifcs_total
 graph_title Total numbers of messages through all modules
 graph_vlabel count
@@ -287,7 +288,7 @@ drop.type DERIVE
 drop.min 0
 """)
 
-def getTotalCountersValues(m, modules):
+def getTotalCountersValues(modules):
 	r = 0
 	s = 0
 	d = 0
@@ -416,6 +417,25 @@ def genTotalMemRssConfig(modules):
 			print("{0}.draw AREASTACK".format(m))
 		print("")
 
+def genInputAlertsConfig(modules):
+	sel_modules = []
+	for m in modules:
+		if m.endswith("2idea"):
+			if "inputs" in modules[m]:
+				sel_modules.append(m)
+	if sel_modules:
+		print("multigraph nemea_alerts")
+		print("graph_title Input messages on report modules")
+		print("graph_category nemea_supervisor")
+		print('graph_vlabel {0}'.format(vlabels["alerts"]))
+		print("graph_info Input messages on all reporter modules.")
+		for m in sel_modules:
+			print("{0}.label {1}".format(m, m.replace("_", " ")))
+			print("{0}.min 0".format(m))
+			print("{0}.type DERIVE".format(m))
+			print("{0}.draw AREASTACK".format(m))
+		print("")
+
 def getConfig(modules):
 	genTotalCpuConfig(modules)
 	genTotalMemVmsConfig(modules)
@@ -425,7 +445,8 @@ def getConfig(modules):
 		genModuleMemConfig(m, modules)
 		genModuleInputsConfig(m, modules)
 		genModuleOutputsConfig(m, modules)
-		getTotalCountersConfig(m, modules)
+	getTotalCountersConfig(modules)
+	genInputAlertsConfig(modules)
 
 # -----------------------------------------------------------------------------------------------
 
@@ -491,6 +512,18 @@ def genTotalMemRssValues(modules):
 			print("{0}.value {1}".format(m, (int)(modules[m]["MEM-rss"])))
 	print("")
 
+def genInputAlertsValues(modules):
+	sel_modules = []
+	for m in modules:
+		if m.endswith("2idea"):
+			if "inputs" in modules[m]:
+				sel_modules.append(m)
+	if sel_modules:
+		print("multigraph nemea_alerts")
+		for m in sel_modules:
+			print("{0}.value {1}".format(m, modules[m]["inputs"][0]["messages"]))
+	print("")
+
 def getValues(modules):
 	genTotalCpuValues(modules)
 	genTotalMemVmsValues(modules)
@@ -500,7 +533,8 @@ def getValues(modules):
 		genModuleMemValues(m, modules)
 		genModuleInputsValues(m, modules)
 		genModuleOutputsValues(m, modules)
-	getTotalCountersValues(m, modules)
+	genInputAlertsValues(modules)
+	getTotalCountersValues(modules)
 
 # ------------------------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------------------------

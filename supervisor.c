@@ -158,6 +158,12 @@ int get_digits_num(const int number)
    return cnt;
 }
 
+// Checks if str ends with suffix.
+int strsuffixis(const char *str, const char *suffix)
+{
+   return strcmp(str + strlen(str) - strlen(suffix), suffix) == 0;
+}
+
 // Returns absolute path of the file / directory passed in file_name parameter
 char *get_absolute_file_path(char *file_name)
 {
@@ -269,11 +275,6 @@ char **parse_module_params(const uint32_t module_idx, uint32_t *params_num)
    uint32_t x = 0, y = 0, act_param_len = 0;
    int params_len = strlen(running_modules[module_idx].module_params);
 
-   if (params_len < 1) {
-      VERBOSE(MODULE_EVENT, "%s [WARNING] Empty string in \"%s\" params element.", get_formatted_time(), running_modules[module_idx].module_name);
-      goto err_cleanup;
-   }
-
    buffer = (char *) calloc(params_len + 1, sizeof(char));
    if (buffer == NULL) {
       VERBOSE(N_STDOUT, "%s [ERROR] Could not allocate memory for \"%s\" params before module execution.\n", get_formatted_time(), running_modules[module_idx].module_name);
@@ -281,7 +282,7 @@ char **parse_module_params(const uint32_t module_idx, uint32_t *params_num)
    }
 
    for (x = 0; x < params_len; x++) {
-      switch(running_modules[module_idx].module_params[x]) {
+      switch (running_modules[module_idx].module_params[x]) {
       /* parameter in apostrophes */
       case '\'':
       {
@@ -375,10 +376,6 @@ add_param:
       } // end of switch
    }
 
-   if (params_cnt == 0) {
-      goto err_cleanup;
-   }
-
    *params_num = params_cnt;
    NULLP_TEST_AND_FREE(buffer);
    return params;
@@ -462,6 +459,9 @@ char **prep_module_args(const uint32_t module_idx)
                   ptr+=2;
                } else if (running_modules[module_idx].config_ifces[x].int_ifc_type == BLACKHOLE_MODULE_IFC_TYPE) {
                   strncpy(ifc_spec + ptr, "b:", 2);
+                  ptr+=2;
+               } else if (running_modules[module_idx].config_ifces[x].int_ifc_type == TLS_MODULE_IFC_TYPE) {
+                  strncpy(ifc_spec + ptr, "T:", 2);
                   ptr+=2;
                } else {
                   VERBOSE(MODULE_EVENT, "%s [WARNING] Wrong ifc_type in module %d (interface number %d).\n", get_formatted_time(), module_idx, x);
@@ -3852,7 +3852,7 @@ int parse_prog_args(int *argc, char **argv)
    char c = 0;
 
    while (1) {
-      c = SUP_GETOPT(*argc, argv, "dC:T:hs:L:", long_options);
+      c = TRAP_GETOPT(*argc, argv, "dC:T:hs:L:", long_options);
       if (c == -1) {
          break;
       }
@@ -4082,10 +4082,11 @@ int reload_check_interface_element(reload_config_vars_t **config_vars)
          }
          key = xmlNodeListGetString((*config_vars)->doc_tree_ptr, (*config_vars)->ifc_atr_elem->xmlChildrenNode, 1);
          if (key != NULL) {
-            /* Only "TCP", "UNIXSOCKET", "FILE" or "BLACKHOLE" values in element type are allowed */
+            /* Only "TCP", "UNIXSOCKET", "FILE", "BLACKHOLE", or "TLS" values in element type are allowed */
             if (xmlStrcmp(key, BAD_CAST "TCP") != 0 && xmlStrcmp(key, BAD_CAST "UNIXSOCKET") != 0 &&
-                xmlStrcmp(key, BAD_CAST "FILE") != 0 && xmlStrcmp(key, BAD_CAST "BLACKHOLE") != 0) {
-               VERBOSE(N_STDOUT, "[ERROR] Expected one of {TCP,UNIXSOCKET,FILE,BLACKHOLE} values in \"type\" element!\n");
+               xmlStrcmp(key, BAD_CAST "FILE") != 0 && xmlStrcmp(key, BAD_CAST "BLACKHOLE") != 0 &&
+               xmlStrcmp(key, BAD_CAST "TLS")) {
+               VERBOSE(N_STDOUT, "[ERROR] Expected one of {TCP,UNIXSOCKET,FILE,BLACKHOLE,TLS} values in \"type\" element!\n");
                goto error_label;
             }
          } else {
@@ -4117,12 +4118,6 @@ int reload_check_interface_element(reload_config_vars_t **config_vars)
          /* Check the number of found elements params (at most 1 is allowed) */
          if (basic_elements[params_elem_idx] > 1) {
             VERBOSE(N_STDOUT, "[ERROR] Too much \"params\" elements in \"interface\" element!\n");
-            goto error_label;
-         }
-         key = xmlNodeListGetString((*config_vars)->doc_tree_ptr, (*config_vars)->ifc_atr_elem->xmlChildrenNode, 1);
-         if (key == NULL) {
-            /* Empty params element is not allowed */
-            VERBOSE(N_STDOUT, "[ERROR] Empty value in \"params\" element!\n");
             goto error_label;
          }
       } else if ((*config_vars)->ifc_atr_elem->type == XML_COMMENT_NODE || (*config_vars)->ifc_atr_elem->type == XML_TEXT_NODE) {
@@ -4356,12 +4351,6 @@ int reload_check_module_element(reload_config_vars_t **config_vars, str_lst_t **
          /* Check the number of found elements params (at most 1 is allowed) */
          if (basic_elements[params_elem_idx] > 1) {
             VERBOSE(N_STDOUT, "[ERROR] Too much \"params\" elements in \"module\" element!\n");
-            goto error_label;
-         }
-         key = xmlNodeListGetString((*config_vars)->doc_tree_ptr, (*config_vars)->module_atr_elem->xmlChildrenNode, 1);
-         if (key == NULL) {
-            /* Empty element params is not allowed */
-            VERBOSE(N_STDOUT, "[ERROR] Empty value in \"params\" element!\n");
             goto error_label;
          }
       } else if ((*config_vars)->module_atr_elem->type == XML_COMMENT_NODE || (*config_vars)->module_atr_elem->type == XML_TEXT_NODE) {
@@ -4745,6 +4734,8 @@ void reload_count_module_interfaces(reload_config_vars_t **config_vars)
             running_modules[(*config_vars)->current_module_idx].config_ifces[x].int_ifc_type = SERVICE_MODULE_IFC_TYPE;
          } else if (strncmp(running_modules[(*config_vars)->current_module_idx].config_ifces[x].ifc_type, "BLACKHOLE", 9) == 0) {
             running_modules[(*config_vars)->current_module_idx].config_ifces[x].int_ifc_type = BLACKHOLE_MODULE_IFC_TYPE;
+         } else if (strncmp(running_modules[(*config_vars)->current_module_idx].config_ifces[x].ifc_type, "TLS", 3) == 0) {
+            running_modules[(*config_vars)->current_module_idx].config_ifces[x].int_ifc_type = TLS_MODULE_IFC_TYPE;
          } else {
             running_modules[(*config_vars)->current_module_idx].config_ifces[x].int_ifc_type = INVALID_MODULE_IFC_ATTR;
          }
@@ -5042,7 +5033,7 @@ void include_item(buffer_t *buffer, char **item_path)
    struct dirent *dir_entry;
 
    if (check_file_type_perm(*item_path, CHECK_FILE, R_OK) == 0) {
-      if (strstr(*item_path, ".sup") != NULL) {
+      if (strsuffixis(*item_path, ".sup")) {
          append_file_content(buffer, *item_path);
       }
       return;
@@ -5076,10 +5067,10 @@ void include_item(buffer_t *buffer, char **item_path)
       }
 
       if (check_file_type_perm(dir_entry_path, CHECK_FILE, R_OK) == 0) {
-         if (strstr(dir_entry->d_name, ".sup") == NULL) {
-            continue;
-         } else {
+         if (strsuffixis(dir_entry->d_name, ".sup")) {
             append_file_content(buffer, dir_entry_path);
+         } else {
+            continue;
          }
       }
    }
@@ -5727,3 +5718,7 @@ xmlDocPtr netconf_get_state_data()
    return doc_tree_ptr;
 }
 #endif
+
+// Local variables:
+// c-basic-offset: 3;
+// End:

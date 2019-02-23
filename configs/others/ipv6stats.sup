@@ -1,0 +1,13 @@
+<module>
+<name>ipv6stats</name>
+<enabled>true</enabled>
+<path>/usr/bin/nemea/ipv6stats</path>
+<params>-d /data/ipv6stats/</params>
+<trapinterfaces>
+<interface>
+  <type>UNIXSOCKET</type>
+  <direction>IN</direction>
+  <params>ipv6tunnel_data_source</params>
+</interface>
+</trapinterfaces>
+</module>
