@@ -1,22 +1,21 @@
 ACLOCAL_AMFLAGS = -I m4
 
-SUBDIRS = munin configs
+SUBDIRS=munin configs nagios
 
-bin_PROGRAMS = supervisor supervisor_cli
-supervisor_SOURCES = supervisor.c supervisor.h supervisor_api.h supervisor_main.c internal.c internal.h
+bin_PROGRAMS=supervisor supervisor_cli
+supervisor_SOURCES= supervisor.c supervisor.h supervisor_api.h supervisor_main.c internal.c internal.h
 supervisor_LDADD = -lpthread -ltrap
-supervisor_cli_SOURCES = supervisor_cli.c internal.h internal.c
-doc_DATA = README.md
-EXTRA_DIST = nemea-supervisor nemea-modulesinfo check_nemea_loaded_module_config check_nemea_modules_connected README.md
-bin_SCRIPTS = nemea-supervisor nemea-modulesinfo check_nemea_loaded_module_config check_nemea_modules_connected
+supervisor_cli_SOURCES= supervisor_cli.c internal.h internal.c
+doc_DATA=README.md
+EXTRA_DIST=nemea-supervisor nemea-modulesinfo check_nemea_loaded_module_config check_nemea_modules_connected README.md
+bin_SCRIPTS=nemea-supervisor nemea-modulesinfo check_nemea_loaded_module_config check_nemea_modules_connected
 
-
-DISTCHECK_CONFIGURE_FLAGS = "--with-systemdsystemunitdir=$$dc_install_base/$(systemdsystemunitdir)"
-systemdsystemunit_DATA = nemea-supervisor.service
+DISTCHECK_CONFIGURE_FLAGS="--with-systemdsystemunitdir=$$dc_install_base/$(systemdsystemunitdir)"
+systemdsystemunit_DATA=nemea-supervisor.service
 
 if MAKE_RPMS
 RPMDIR = RPMBUILD
-RPMFILENAME = $(PACKAGE_NAME)-$(VERSION)
+RPMFILENAME=$(PACKAGE_NAME)-$(VERSION)
 .PHONY: rpm
 rpm:
 	rm -rf "$(RPMDIR)/SOURCES/$(RPMFILENAME)"

@@ -111,7 +111,21 @@ AC_SUBST([systemdsystemunitdir], [$with_systemdsystemunitdir])
 AM_CONDITIONAL([HAVE_SYSTEMD], [test "x$with_systemdsystemunitdir" != "xno"])
 
 
-AC_CONFIG_FILES([Makefile nemea-supervisor.spec nemea-supervisor nemea-supervisor.service munin/Makefile munin/nemea_supervisor configs/Makefile configs/prepare_default_config.sh configs/warning.sup configs/data-sources/ipfixcol.sup configs/supervisor_config_template.xml])
+AC_CONFIG_FILES([Makefile
+	nemea-supervisor.spec
+	nemea-supervisor
+	nemea-supervisor.service
+	nagios/Makefile
+	nagios/nagios-client/Makefile
+	nagios/nagios-server/Makefile
+	nagios/selinux/Makefile
+	munin/Makefile
+	munin/nemea_supervisor
+	configs/Makefile
+	configs/prepare_default_config.sh
+	configs/warning.sup
+	configs/data-sources/ipfixcol.sup
+	configs/supervisor_config_template.xml])
 AC_CONFIG_FILES([nemea-modulesinfo], [chmod +x nemea-modulesinfo])
 AC_CONFIG_FILES([check_nemea_loaded_module_config], [chmod +x check_nemea_loaded_module_config])
 AC_CONFIG_FILES([check_nemea_modules_connected], [chmod +x check_nemea_modules_connected])
