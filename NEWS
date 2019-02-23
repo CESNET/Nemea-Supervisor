@@ -1,3 +1,25 @@
+2019-02-23 (Tomas Cejka): configs: MAINTENANCE simplified script to set default NIC
+2019-02-23 (Tomas Cejka): build: fixed distcheck and RPM creation
+2019-02-13 (Tomas Cejka): configs: do not install devel configuration with adaptive filter
+2019-02-13 (Tomas Cejka): configs: remove unused ipblacklistfilter_logger
+2019-02-13 (Filip Suster): blacklistfilter: Add new sup files, consistent naming
+2018-10-30 (Ladislav): smtp: Smtp spam sup (#26)
+2017-07-21 (Jaroslav Hlavac): nagios: removed hotfix of check link traffic, module was fixed in nemea-modules
+2017-04-01 (Tomas Cejka): nagios: add selinux policy file
+2017-03-29 (Jaroslav Hlavac): check_nemea_modules.py: reading from config
+2017-03-27 (Jaroslav Hlavac): upgrade of memory, link_traffic and nemea_modules scritps default arguments and other minor upgrades
+2017-03-09 (Tomas Cejka): nagios: generate RPM packages
+2017-03-09 (Tomas Cejka): nagios: doc: info about restarting services
+2017-03-09 (Tomas Cejka): nagios: FEATURE check list of running modules
+2017-03-09 (Tomas Cejka): nagios: link_traffic: BUGFIX script did not print OK message
+2017-03-09 (Tomas Cejka): nagios: link_traffic: BUGFIX stopped module was not detected
+2017-03-07 (Jaroslav Hlaváč): parentheses fix
+2017-03-07 (Jaroslav Hlaváč): hotfix: skipping telia links
+2017-03-05 (Tomas Cejka): nagios: free_memory: replace free with available mem
+2017-03-02 (Tomas Cejka): nagios: add simple README to navigate between server/client part
+2017-03-02 (Tomas Cejka): nagios: small fixes of scripts
+2017-03-02 (Jaroslav Hlavac): FEATURE nagios scripts to monitor NEMEA collector
+
 2018-09-18 (Tomas Cejka): updated permissions for log files and directory
 2018-08-14 (Ladislav Macoun): Added smtp_spam_detector to supervisor config.
 
