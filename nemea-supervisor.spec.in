@@ -58,7 +58,6 @@ make -j5 DESTDIR=$RPM_BUILD_ROOT install
 %{_datarootdir}/nemea-supervisor/template.sup
 %{_datarootdir}/nemea-supervisor/*.mkdir
 %{_datarootdir}/nemea-supervisor/detectors/*
-%{_datarootdir}/nemea-supervisor/reporters/*
 %{_datarootdir}/nemea-supervisor/data-sources/*
 %{_datarootdir}/nemea-supervisor/loggers/*
 %{_datarootdir}/nemea-supervisor/others/*
