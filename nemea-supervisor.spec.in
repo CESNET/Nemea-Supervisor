@@ -89,5 +89,7 @@ make -j5 DESTDIR=$RPM_BUILD_ROOT install
 %config(noreplace) %{_libdir}/nagios/plugins/nemea/check_supervisor.sh
 %config(noreplace) %{_libdir}/nagios/plugins/nemea/nemea_common.sh
 %config(noreplace) %{_libdir}/nagios/plugins/nemea/check_nemea_modules.py
+%config(noreplace) %{_libdir}/nagios/plugins/nemea/check_nemea_loaded_module_config
+%config(noreplace) %{_libdir}/nagios/plugins/nemea/check_nemea_modules_connected
 %config(noreplace) %{_libdir}/nagios/plugins/nemea/utils.sh
 %config(noreplace) %{_datarootdir}/nemea-supervisor/nagios-client/nrpe-part.conf
