@@ -1,0 +1,260 @@
+#!/usr/bin/python3
+# \file nemea_ipfixcol2_
+# \brief Export script for the Munin system to translate information from TRAP IFC of ipfixcol2.
+# \author Tomas Cejka <cejkat@cesnet.cz>
+# \date 2019
+#
+# Copyright (C) 2019 CESNET
+#
+# LICENSE TERMS
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+# 1. Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in
+#    the documentation and/or other materials provided with the
+#    distribution.
+# 3. Neither the name of the Company nor the names of its contributors
+#    may be used to endorse or promote products derived from this
+#    software without specific prior written permission.
+#
+# ALTERNATIVELY, provided that this notice is retained in full, this
+# product may be distributed under the terms of the GNU General Public
+# License (GPL) version 2 or later, in which case the provisions
+# of the GPL apply INSTEAD OF those given above.
+#
+# This software is provided ``as is'', and any express or implied
+# warranties, including, but not limited to, the implied warranties of
+# merchantability and fitness for a particular purpose are disclaimed.
+# In no event shall the company or contributors be liable for any
+# direct, indirect, incidental, special, exemplary, or consequential
+# damages (including, but not limited to, procurement of substitute
+# goods or services; loss of use, data, or profits; or business
+# interruption) however caused and on any theory of liability, whether
+# in contract, strict liability, or tort (including negligence or
+# otherwise) arising in any way out of the use of this software, even
+# if advised of the possibility of such damage.
+
+import logging
+import os
+import time
+import signal
+import subprocess
+import json
+import glob
+import re
+
+LOG_FILENAME = '/tmp/nemea_ipfixcol2_munin.log'
+#LOG_LEVEL = logging.DEBUG
+LOG_LEVEL = logging.ERROR
+
+# test set to True disables reading new current data
+#test = True
+test = False
+
+# path to supervisor sockets
+ipfixcol2_socket = glob.glob("/var/run/libtrap/trap-ipfixcol2_*.sock")
+
+# temporary file with downloaded data
+data_temp_file = "/tmp/munin_nemea_ipfixcol2_data.txt"
+
+
+# munin interval, typically 5mins (-5 seconds tolerance)
+munin_interval = 5*60-5
+
+# path to trapstats
+trapstats = "/usr/bin/nemea/trap_stats"
+
+trapstats_reg = "^\s*ID: ([^,]*), TYPE: ., NUM_CLI: ([^,]), SM: ([0-9]*), DM: ([0-9]*), SB: ([0-9]*), AF: ([0-9]*)"
+
+# labels of counters in graphs
+labels = {
+    "inputs": ["received messages", "received buffers"],
+    "outputs": ["sent messages", "dropped messages", "sent buffers", "autoflush"],
+    "cpu": ["kernel mode", "user mode"],
+    "mem": ["virtual memory size", "resident set size"],
+}
+
+# data types of counters in graphs
+datatypes = {
+    "inputs": ["DERIVE", "DERIVE"],
+    "outputs": ["DERIVE", "DERIVE", "DERIVE", "DERIVE"],
+    "cpu": ["GAUGE", "GAUGE"],
+    "mem": ["GAUGE", "GAUGE"],
+}
+
+# vertical axis labels
+vlabels = {
+    "alerts": "count",
+    "inputs": "count",
+    "outputs": "count",
+    "cpu": "%",
+    "mem": "B",
+}
+
+# graph titles
+graph_title = {
+    "inputs": "input IFC",
+    "outputs": "output IFC",
+    "cpu": "CPU usage",
+    "mem": "Memory usage",
+}
+
+#==============================
+# end of configuration        #
+#==============================
+logging.basicConfig(filename=LOG_FILENAME,
+        level=LOG_LEVEL,
+        format='%(asctime)s %(levelname)s %(message)s',
+        filemode='a')
+child_pid = -1
+
+def handler_function(signum, stackframe):
+    global child_pid
+    try:
+        os.unlink(data_temp_file)
+    except:
+        pass
+    if child_pid != -1:
+        os.kill(child_pid, signal.SIGTERM)
+    logging.error("Timouted... Exiting.")
+    exit(1)
+
+#Sets an handler function, you can comment it if you don't need it.
+signal.signal(signal.SIGALRM,handler_function)
+
+#Sets an alarm in 10 seconds
+#If uncaught will terminate your process.
+if not test:
+    signal.alarm(2)
+
+#1408:~$ /usr/bin/nemea/trap_stats -1 /var/run/libtrap/trap-ipfixcol2_basic.sock
+# get data
+if test:
+    data = """
+Input interfaces: 0
+Output interfaces: 1
+    ID: basic_flowdata, TYPE: u, NUM_CLI: 1, SM: 36787136307, DM: 661728, SB: 29079822, AF: 156
+    Client statistics:
+        ID: 4028, TIMER_LAST: 46, TIMER_TOTAL: 102369623
+"""
+    stats = {}
+    for line in data.split("\n"):
+        m = re.findall(trapstats_reg, line)    
+        if m:
+            stats[m[0][0]] = {"num_cli": m[0][1], "sm": m[0][2], "dm": m[0][3], "sb": m[0][4], "af": m[0][5]}
+    data = stats
+else:
+    current_time = time.time()
+    last_time = 0
+    try:
+        last_time = os.stat(data_temp_file).st_mtime
+    except:
+        logging.debug("{} not found or cannot read info.".format(data_temp_file))
+        pass
+    if (current_time - last_time) > munin_interval:
+        logging.debug("Download new data.")
+        sup = ""
+        stats = {}
+        try:
+            for service_sock in ipfixcol2_socket:
+                sup = subprocess.Popen([trapstats, "-1", service_sock], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                child_pid = sup.pid
+                (data, errdata) = sup.communicate()
+                sup.wait()
+                logging.info("Get data %d." % len(data))
+                if errdata:
+                    logging.error(str(errdata))
+                    exit(1)
+
+                data = str(data, encoding="utf8")
+                for line in str(data).split("\n"):
+                    logging.debug("parsing line: " + line)
+                    m = re.findall(trapstats_reg, line)    
+                    if m:
+                        ifc = {"num_cli": m[0][1], "sm": m[0][2], "dm": m[0][3], "sb": m[0][4], "af": m[0][5]}
+                        stats[m[0][0]] = ifc
+                        logging.debug("parsed ifc info: " + str(ifc))
+            with open(data_temp_file, "w") as f:
+                json.dump(stats, f)
+            data = stats
+        except Exception as e:
+            logging.critical("Download failed. ({})".format(e))
+            if child_pid != -1:
+                os.kill(child_pid, signal.SIGTERM)
+            exit(1)
+    else:
+        logging.debug("Use existing data.")
+        data = {}
+        with open(data_temp_file, "r") as f:
+            data = json.load(f)
+
+
+def getTotalCountersConfig(modules):
+    for i in modules:
+        ifcname = i.replace(" ", "_")
+        print("""multigraph ipfixcol2_{0}
+graph_title IPFIXcol2 Numbers of messages {0}
+graph_vlabel count
+graph_category nemea_supervisor
+sent.label sent messages
+sent.type DERIVE
+sent.min 0
+drop.label dropped messages
+drop.type DERIVE
+drop.min 0
+sb.label sent buffers
+sb.type DERIVE
+sb.min 0
+af.label autoflush
+af.type DERIVE
+af.min 0
+numcli.label number of clients
+numcli.type GAUGE
+numcli.min 0
+""".format(ifcname))
+
+def getTotalCountersValues(modules):
+    for i in modules:
+        ifcname = i.replace(" ", "_")
+        print("multigraph ipfixcol2_{0}".format(ifcname))
+        print("sent.value " + str(modules[i]["sm"]))
+        print("drop.value " + str(modules[i]["dm"]))
+        print("sb.value " + str(modules[i]["sb"]))
+        print("af.value " + str(modules[i]["af"]))
+        print("numcli.value " + str(modules[i]["num_cli"]))
+
+
+# ----------------------------------------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------------
+
+def getConfig(modules):
+    getTotalCountersConfig(modules)
+
+# -----------------------------------------------------------------------------------------------
+
+
+def getValues(modules):
+    getTotalCountersValues(modules)
+
+# ------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------------------------
+
+import sys
+if not data:
+    logging.error("Have no data.")
+    os.unlink(data_temp_file)
+    exit(1)
+
+if len(sys.argv) == 2 and sys.argv[1] == "autoconf":
+    print("yes")
+elif len(sys.argv) == 2 and sys.argv[1] == "config":
+    getConfig(data)
+elif len(sys.argv) == 2 and sys.argv[1] == "suggest":
+    print("")
+else:
+    getValues(data)
+
