@@ -127,8 +127,8 @@ AC_CONFIG_FILES([Makefile
 	configs/data-sources/ipfixcol.sup
 	configs/supervisor_config_template.xml])
 AC_CONFIG_FILES([nemea-modulesinfo], [chmod +x nemea-modulesinfo])
-AC_CONFIG_FILES([check_nemea_loaded_module_config], [chmod +x check_nemea_loaded_module_config])
-AC_CONFIG_FILES([check_nemea_modules_connected], [chmod +x check_nemea_modules_connected])
+AC_CONFIG_FILES([nagios/nagios-client/scripts/check_nemea_loaded_module_config], [chmod +x check_nemea_loaded_module_config])
+AC_CONFIG_FILES([nagios/nagios-client/scripts/check_nemea_modules_connected], [chmod +x check_nemea_modules_connected])
 AC_OUTPUT
 echo
 echo

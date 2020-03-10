@@ -10,6 +10,8 @@ dist_nagiosnrpe_SCRIPTS=scripts/check_ipfixcol_trapoutifc.sh \
 	scripts/check_nemea_dropped.sh \
 	scripts/check_swap_memory.sh \
 	scripts/check_supervisor.sh \
+	scripts/check_nemea_loaded_module_config \
+	scripts/check_nemea_modules_connected \
 	scripts/nemea_common.sh \
 	scripts/check_nemea_modules.py \
 	scripts/utils.sh

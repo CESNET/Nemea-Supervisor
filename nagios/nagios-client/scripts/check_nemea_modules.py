@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 #Checks whether all modules in list below are running.
 
 import os
