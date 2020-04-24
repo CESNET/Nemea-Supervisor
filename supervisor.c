@@ -1934,7 +1934,8 @@ void service_stop_modules_sigint()
             netconf_notify(MODULE_EVENT_STOPPED,running_modules[x].module_name);
          #endif
          VERBOSE(MODULE_EVENT, "%s [STOP] Stopping module %s... sending SIGINT\n", get_formatted_time(), running_modules[x].module_name);
-         kill(running_modules[x].module_pid,2);
+         // kill with negative PID to send the signal to processes in the same process group (subprocesses created by the main process)
+         kill(-running_modules[x].module_pid, 2);
          running_modules[x].sent_sigint = TRUE;
          running_modules[x].module_restart_cnt = -1;
       }
@@ -1954,7 +1955,8 @@ void service_stop_modules_sigkill()
           && (running_modules[x].module_enabled == FALSE || (running_modules[x].modules_profile != NULL && running_modules[x].modules_profile->profile_enabled == FALSE))
           && running_modules[x].sent_sigint == TRUE) {
          VERBOSE(MODULE_EVENT, "%s [STOP] Stopping module %s... sending SIGKILL\n", get_formatted_time(), running_modules[x].module_name);
-         kill(running_modules[x].module_pid,9);
+         // kill with negative PID to send the signal to processes in the same process group (subprocesses created by the main process)
+         kill(-running_modules[x].module_pid, 9);
          running_modules[x].module_restart_cnt = -1;
 
          // Delete all unix-socket files after killing the module
