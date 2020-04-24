@@ -1935,7 +1935,7 @@ void service_stop_modules_sigint()
          #endif
          VERBOSE(MODULE_EVENT, "%s [STOP] Stopping module %s... sending SIGINT\n", get_formatted_time(), running_modules[x].module_name);
          // kill with negative PID to send the signal to processes in the same process group (subprocesses created by the main process)
-         kill(-running_modules[x].module_pid,2);
+         kill(-running_modules[x].module_pid, 2);
          running_modules[x].sent_sigint = TRUE;
          running_modules[x].module_restart_cnt = -1;
       }
@@ -1956,7 +1956,7 @@ void service_stop_modules_sigkill()
           && running_modules[x].sent_sigint == TRUE) {
          VERBOSE(MODULE_EVENT, "%s [STOP] Stopping module %s... sending SIGKILL\n", get_formatted_time(), running_modules[x].module_name);
          // kill with negative PID to send the signal to processes in the same process group (subprocesses created by the main process)
-         kill(-running_modules[x].module_pid,9);
+         kill(-running_modules[x].module_pid, 9);
          running_modules[x].module_restart_cnt = -1;
 
          // Delete all unix-socket files after killing the module
