@@ -1,3 +1,10 @@
+2020-04-24 nemea-supervisor-1.8.0
+	* nagios:
+		updated scripts
+	* munin:
+		updated scripts
+	* nemea-supervisor sends SIGINT to the process groups
+
 2019-02-23 nemea-supervisor-1.7.0
 	* configs:
 		Add config examples for blacklistfilter suite.
