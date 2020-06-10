@@ -252,6 +252,8 @@ else:
 			child_pid = sup.pid
 			(data, errdata) = sup.communicate()
 			sup.wait()
+			data = data.decode("utf-8") if data else ""
+			errdata = errdata.decode("utf-8") if errdata else ""
 			if "ERROR" in data or "WARNING" in data:
 				logging.error(data)
 				exit(1)
