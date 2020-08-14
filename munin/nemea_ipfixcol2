@@ -68,7 +68,7 @@ munin_interval = 5*60-5
 # path to trapstats
 trapstats = "/usr/bin/nemea/trap_stats"
 
-trapstats_reg = "^\s*ID: ([^,]*), TYPE: ., NUM_CLI: ([^,]), SM: ([0-9]*), DM: ([0-9]*), SB: ([0-9]*), AF: ([0-9]*)"
+trapstats_reg = "^\s*ID: ([^,]+), TYPE: ., NUM_CLI: ([^,]+), SM: ([0-9]+), DM: ([0-9]+), SB: ([0-9]+), AF: ([0-9]+)"
 
 # labels of counters in graphs
 labels = {
