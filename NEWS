@@ -1,3 +1,7 @@
+2020-08-18 (Adam Piecek): nemea_status: remove python2 dependency
+2020-08-14 (Tomáš Čejka): munin: ipfixcol2 - improved regex, bugfix parsing IFC with >9 clients
+2020-06-10 (Tomáš Čejka): munin: bugfix - conversion from bytes to string
+
 2020-04-24 (Tomas Cejka): coding style: insert space between arguments
 2020-04-24 (Václav Bartoš): Stop modules by sending signal to whole process group (kill -pid)
 2020-03-06 (Tomáš Čejka): nagios: moved scripts and replaced shebangs to python3

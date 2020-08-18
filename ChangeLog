@@ -1,3 +1,9 @@
+2020-08-18 nemea-supervisor-1.8.1
+	* munin:
+		regex improved, bugfix
+	* nemea_status:
+		removed python2 dependency
+
 2020-04-24 nemea-supervisor-1.8.0
 	* nagios:
 		updated scripts
