@@ -1,6 +1,6 @@
-#!/usr/bin/env python
-# Needs Python 3.x or Python 2.6+
-from __future__ import print_function
+#!/usr/bin/env python3
+# Needs Python 3.x
+
 import sys
 import random
 import time
@@ -29,7 +29,7 @@ try:
         for n,line in enumerate(f):
             if line.lstrip().startswith('#') or not line.strip(): # skip comments and empty lines
                 continue
-            key, val = map(str.strip, line.split('=', 1))
+            key, val = list(map(str.strip, line.split('=', 1)))
             if key == 'link': # parse link specification and append to the list of links
                 cfg['links'].append(tuple(map(str.strip, val.split('|', 1))))
             else:
@@ -95,7 +95,7 @@ def get_topology():
             'output': e.output,
         }
     try:
-        return sorted(json.loads(out).items(), key=lambda mod: mod[1]['idx'])
+        return sorted(list(json.loads(out).items()), key=lambda mod: mod[1]['idx'])
     except ValueError:
         return {
             'error': 'invalidjson',
@@ -132,7 +132,7 @@ def get_stats():
     try:
         res = {}
         j = json.loads(out)
-        for module, data in j.items():
+        for module, data in list(j.items()):
             res[module + '_mem'] = data['MEM-rss']/1000
             res[module + '_cpu'] = data['CPU-u'] + data['CPU-s']
             for inpt in data['inputs']:
