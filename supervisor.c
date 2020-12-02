@@ -5010,25 +5010,30 @@ void check_buffer_space(buffer_t *buffer, unsigned int needed_size)
    }
 }
 
-void append_file_content(buffer_t *buffer, char *incl_path)
+int append_file_content(buffer_t *buffer, char *incl_path)
 {
    FILE *fd = fopen(incl_path, "rb");
    if (fd == NULL) {
-      return;
+      return -1;
    }
 
    fseek(fd, 0, SEEK_END);
    long fsize = ftell(fd);
    fseek(fd, 0, SEEK_SET);
 
+   if (fsize == -1) {
+      fclose(fd);
+      return -1;
+   }
    check_buffer_space(buffer, fsize);
    if (fread(buffer->mem + buffer->mem_used, fsize, 1, fd) != -1) {
       buffer->mem_used += fsize;
    }
    fclose(fd);
+   return 0;
 }
 
-void include_item(buffer_t *buffer, char **item_path)
+int include_item(buffer_t *buffer, char **item_path)
 {
    char dir_entry_path[PATH_MAX];
    DIR *dirp;
@@ -5036,16 +5041,19 @@ void include_item(buffer_t *buffer, char **item_path)
 
    if (check_file_type_perm(*item_path, CHECK_FILE, R_OK) == 0) {
       if (strsuffixis(*item_path, ".sup")) {
-         append_file_content(buffer, *item_path);
+         int status = append_file_content(buffer, *item_path);
+         if (status == -1) {
+            return -1;
+         }
       }
-      return;
+      return 0;
    } else if (check_file_type_perm(*item_path, CHECK_DIR, R_OK) != 0) {
       // error, item is not a file, nor a dir
-      return;
+      return -1;
    }
 
    if ((dirp = opendir(*item_path)) == NULL) {
-      return;
+      return -1;
    }
 
    while (1) {
@@ -5070,7 +5078,11 @@ void include_item(buffer_t *buffer, char **item_path)
 
       if (check_file_type_perm(dir_entry_path, CHECK_FILE, R_OK) == 0) {
          if (strsuffixis(dir_entry->d_name, ".sup")) {
-            append_file_content(buffer, dir_entry_path);
+            int status = append_file_content(buffer, dir_entry_path);
+            if (status == -1) {
+               closedir(dirp);
+               return -1;
+            }
          } else {
             continue;
          }
@@ -5078,7 +5090,7 @@ void include_item(buffer_t *buffer, char **item_path)
    }
 
    closedir(dirp);
-   return;
+   return 0;
 }
 
 
@@ -5090,6 +5102,7 @@ int generate_config_file()
    size_t line_size = 0;
    buffer_t *gener_cont = NULL;
    int pos;
+   int return_code = 0;
 
    VERBOSE(N_STDOUT, "- - -\n[RELOAD] Generating the configuration file from the template...\n");
 
@@ -5121,7 +5134,11 @@ int generate_config_file()
 
       if (sscanf(line + pos, "<!-- include %s -->", incl_path) == 1) {
          // append content of every file from dir
-         include_item(gener_cont, &incl_path);
+         if (include_item(gener_cont, &incl_path) == -1) {
+            VERBOSE(N_STDOUT, "[ERROR] in include_item function\n");
+            return_code = -1;
+            break;
+         }
       } else {
          // append line
          check_buffer_space(gener_cont, ret_val);
@@ -5130,9 +5147,11 @@ int generate_config_file()
       }
    }
 
-   fprintf(gener_fd, "%s", gener_cont->mem);
-   fflush(gener_fd);
-   VERBOSE(N_STDOUT, "[RELOAD] The configuration file was successfully generated.\n");
+   if (return_code == 0) {
+      fprintf(gener_fd, "%s", gener_cont->mem);
+      fflush(gener_fd);
+      VERBOSE(N_STDOUT, "[RELOAD] The configuration file was successfully generated.\n");
+   }
 
    fclose(gener_fd);
    fclose(templ_fd);
