@@ -4685,7 +4685,7 @@ int reload_find_and_check_modules_profile_basic_elements(reload_config_vars_t **
       } else if (basic_elements[enabled_elem_idx] == -1) { // Found empty "enabled" element
          VERBOSE(N_STDOUT, "[WARNING] Reloading error - found empty \"enabled\" element in modules profile.\n");
       }
-      NULLP_TEST_AND_FREE(new_profile_name)
+      xmlFree(new_profile_name);
       return -1;
    } else { // Valid profile -> allocate it
       if (first_profile_ptr == NULL) {
