@@ -3111,7 +3111,7 @@ void interactive_browse_log_files()
 
    VERBOSE(N_STDOUT, FORMAT_INTERACTIVE "[INTERACTIVE] Choose the log number: " FORMAT_RESET);
    chosen_log_idx = get_number_from_input_choosing_option();
-   if (chosen_log_idx == -1 || chosen_log_idx > max_num_of_logs) {
+   if (chosen_log_idx == -1 || chosen_log_idx >= max_num_of_logs) {
       VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] Wrong input.\n" FORMAT_RESET);
       goto exit_label;
    }
