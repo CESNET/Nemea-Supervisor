@@ -466,6 +466,9 @@ char **prep_module_args(const uint32_t module_idx)
                } else {
                   VERBOSE(MODULE_EVENT, "%s [WARNING] Wrong ifc_type in module %d (interface number %d).\n", get_formatted_time(), module_idx, x);
                   NULLP_TEST_AND_FREE(ifc_spec)
+                  for (uint32_t i = 0; i < bin_args_pos; i++) {
+                     free(bin_args[i]);
+                  }
                   return NULL;
                }
                // Get interface params
@@ -3881,15 +3884,18 @@ int parse_prog_args(int *argc, char **argv)
          socket_path = optarg;
          break;
       case 'T':
+         free(templ_config_file);
          templ_config_file = strdup(optarg);
          break;
       case 'C':
+         free(config_files_path);
          config_files_path = strdup(optarg);
          break;
       case 'd':
          daemon_flag = TRUE;
          break;
       case 'L':
+         free(logs_path);
          logs_path = strdup(optarg);
          break;
       }
