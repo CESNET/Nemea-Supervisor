@@ -5166,7 +5166,7 @@ int generate_config_file()
    NULLP_TEST_AND_FREE(gener_cont->mem);
    NULLP_TEST_AND_FREE(gener_cont);
    NULLP_TEST_AND_FREE(incl_path);
-   return 0;
+   return return_code;
 }
 
 
