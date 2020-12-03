@@ -395,6 +395,7 @@ char **prep_module_args(const uint32_t module_idx)
    uint32_t x = 0, y = 0, act_dir = 0, ptr = 0;
    uint32_t ifc_spec_size = DEFAULT_SIZE_OF_BUFFER;
    char *ifc_spec = (char *) calloc(ifc_spec_size, sizeof(char));
+   memset(ifc_spec, 0, ifc_spec_size);
    char *addr = NULL;
    char *port = NULL;
 
