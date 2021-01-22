@@ -131,10 +131,10 @@ void show_file_with_pager(char **file_path)
    int status = 0;
 
    if (pid == 0) {
-      char *params[3];
+      // program parameters: prog_name, options, file_path, NULL
+      char *params[] = {NULL, PAGER_PARAMS NULL, NULL};
       params[0] = strdup(PAGER);
-      params[1] = *file_path;
-      params[2] = NULL;
+      params[sizeof(params)/sizeof(params[0])-2] = *file_path;
       execvp(PAGER, params);
       fprintf(stderr, "[ERROR] Execution of \"%s\" failed.\n", PAGER);
       exit(EXIT_FAILURE);
