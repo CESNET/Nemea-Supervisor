@@ -395,6 +395,7 @@ char **prep_module_args(const uint32_t module_idx)
    uint32_t x = 0, y = 0, act_dir = 0, ptr = 0;
    uint32_t ifc_spec_size = DEFAULT_SIZE_OF_BUFFER;
    char *ifc_spec = (char *) calloc(ifc_spec_size, sizeof(char));
+   memset(ifc_spec, 0, ifc_spec_size);
    char *addr = NULL;
    char *port = NULL;
 
@@ -466,6 +467,9 @@ char **prep_module_args(const uint32_t module_idx)
                } else {
                   VERBOSE(MODULE_EVENT, "%s [WARNING] Wrong ifc_type in module %d (interface number %d).\n", get_formatted_time(), module_idx, x);
                   NULLP_TEST_AND_FREE(ifc_spec)
+                  for (uint32_t i = 0; i < bin_args_pos; i++) {
+                     free(bin_args[i]);
+                  }
                   return NULL;
                }
                // Get interface params
@@ -3111,7 +3115,7 @@ void interactive_browse_log_files()
 
    VERBOSE(N_STDOUT, FORMAT_INTERACTIVE "[INTERACTIVE] Choose the log number: " FORMAT_RESET);
    chosen_log_idx = get_number_from_input_choosing_option();
-   if (chosen_log_idx == -1 || chosen_log_idx > max_num_of_logs) {
+   if (chosen_log_idx == -1 || chosen_log_idx >= max_num_of_logs) {
       VERBOSE(N_STDOUT, FORMAT_WARNING "[WARNING] Wrong input.\n" FORMAT_RESET);
       goto exit_label;
    }
@@ -3881,15 +3885,18 @@ int parse_prog_args(int *argc, char **argv)
          socket_path = optarg;
          break;
       case 'T':
+         free(templ_config_file);
          templ_config_file = strdup(optarg);
          break;
       case 'C':
+         free(config_files_path);
          config_files_path = strdup(optarg);
          break;
       case 'd':
          daemon_flag = TRUE;
          break;
       case 'L':
+         free(logs_path);
          logs_path = strdup(optarg);
          break;
       }
@@ -4685,7 +4692,7 @@ int reload_find_and_check_modules_profile_basic_elements(reload_config_vars_t **
       } else if (basic_elements[enabled_elem_idx] == -1) { // Found empty "enabled" element
          VERBOSE(N_STDOUT, "[WARNING] Reloading error - found empty \"enabled\" element in modules profile.\n");
       }
-      NULLP_TEST_AND_FREE(new_profile_name)
+      xmlFree(new_profile_name);
       return -1;
    } else { // Valid profile -> allocate it
       if (first_profile_ptr == NULL) {
@@ -5010,25 +5017,30 @@ void check_buffer_space(buffer_t *buffer, unsigned int needed_size)
    }
 }
 
-void append_file_content(buffer_t *buffer, char *incl_path)
+int append_file_content(buffer_t *buffer, char *incl_path)
 {
    FILE *fd = fopen(incl_path, "rb");
    if (fd == NULL) {
-      return;
+      return -1;
    }
 
    fseek(fd, 0, SEEK_END);
    long fsize = ftell(fd);
    fseek(fd, 0, SEEK_SET);
 
+   if (fsize == -1) {
+      fclose(fd);
+      return -1;
+   }
    check_buffer_space(buffer, fsize);
    if (fread(buffer->mem + buffer->mem_used, fsize, 1, fd) != -1) {
       buffer->mem_used += fsize;
    }
    fclose(fd);
+   return 0;
 }
 
-void include_item(buffer_t *buffer, char **item_path)
+int include_item(buffer_t *buffer, char **item_path)
 {
    char dir_entry_path[PATH_MAX];
    DIR *dirp;
@@ -5036,16 +5048,19 @@ void include_item(buffer_t *buffer, char **item_path)
 
    if (check_file_type_perm(*item_path, CHECK_FILE, R_OK) == 0) {
       if (strsuffixis(*item_path, ".sup")) {
-         append_file_content(buffer, *item_path);
+         int status = append_file_content(buffer, *item_path);
+         if (status == -1) {
+            return -1;
+         }
       }
-      return;
+      return 0;
    } else if (check_file_type_perm(*item_path, CHECK_DIR, R_OK) != 0) {
       // error, item is not a file, nor a dir
-      return;
+      return -1;
    }
 
    if ((dirp = opendir(*item_path)) == NULL) {
-      return;
+      return -1;
    }
 
    while (1) {
@@ -5070,7 +5085,11 @@ void include_item(buffer_t *buffer, char **item_path)
 
       if (check_file_type_perm(dir_entry_path, CHECK_FILE, R_OK) == 0) {
          if (strsuffixis(dir_entry->d_name, ".sup")) {
-            append_file_content(buffer, dir_entry_path);
+            int status = append_file_content(buffer, dir_entry_path);
+            if (status == -1) {
+               closedir(dirp);
+               return -1;
+            }
          } else {
             continue;
          }
@@ -5078,7 +5097,7 @@ void include_item(buffer_t *buffer, char **item_path)
    }
 
    closedir(dirp);
-   return;
+   return 0;
 }
 
 
@@ -5090,6 +5109,7 @@ int generate_config_file()
    size_t line_size = 0;
    buffer_t *gener_cont = NULL;
    int pos;
+   int return_code = 0;
 
    VERBOSE(N_STDOUT, "- - -\n[RELOAD] Generating the configuration file from the template...\n");
 
@@ -5121,7 +5141,11 @@ int generate_config_file()
 
       if (sscanf(line + pos, "<!-- include %s -->", incl_path) == 1) {
          // append content of every file from dir
-         include_item(gener_cont, &incl_path);
+         if (include_item(gener_cont, &incl_path) == -1) {
+            VERBOSE(N_STDOUT, "[ERROR] in include_item function\n");
+            return_code = -1;
+            break;
+         }
       } else {
          // append line
          check_buffer_space(gener_cont, ret_val);
@@ -5130,9 +5154,11 @@ int generate_config_file()
       }
    }
 
-   fprintf(gener_fd, "%s", gener_cont->mem);
-   fflush(gener_fd);
-   VERBOSE(N_STDOUT, "[RELOAD] The configuration file was successfully generated.\n");
+   if (return_code == 0) {
+      fprintf(gener_fd, "%s", gener_cont->mem);
+      fflush(gener_fd);
+      VERBOSE(N_STDOUT, "[RELOAD] The configuration file was successfully generated.\n");
+   }
 
    fclose(gener_fd);
    fclose(templ_fd);
@@ -5140,7 +5166,7 @@ int generate_config_file()
    NULLP_TEST_AND_FREE(gener_cont->mem);
    NULLP_TEST_AND_FREE(gener_cont);
    NULLP_TEST_AND_FREE(incl_path);
-   return 0;
+   return return_code;
 }
 
 
