@@ -82,6 +82,9 @@
 
 /* Log files are being shown with the following pager */
 #define PAGER "less"
+/* Parameters to pass to the pager (comma-separated list of strings, with a comma at the end) */
+#define PAGER_PARAMS "+G",
+
 #define SUP_TMP_DIR "/tmp/sup_tmp_dir"
 /* Tmp file used for additional communication between daemon and client (e.g. to keep log file name which is client gonna show) */
 #define SUP_CLI_TMP_FILE "/tmp/sup_tmp_dir/sup_cli_tmp_file"
