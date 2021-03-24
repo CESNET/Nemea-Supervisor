@@ -1,0 +1,214 @@
+module "nemea" {
+  namespace "urn:cesnet:tmc:nemea:1.0";
+  prefix "nemea";
+  organization
+    "CESNET, z.s.p.o.";
+  contact
+    "cejkat@cesnet.cz";
+  description
+    "Module specifying configuration of Nemea supervisor.";
+  revision "2014-07-28" {
+    description
+      "Model with state information and notification.";
+  }
+
+  typedef "trapifc-type" {
+    type "enumeration" {
+      enum "TCP" {
+        description
+          "IP/TCP for intermachine connections.";
+      }
+      enum "UNIXSOCKET" {
+        description
+          "UNIX socket for local connections.";
+      }
+      enum "FILE" {
+        description
+          "File interface for loading or saving the data from or to a file.";
+      }
+      enum "BLACKHOLE" {
+        description
+          "Output interface dropping everything.";
+      }
+    }
+  }
+  typedef "trapifc-direction" {
+    type "enumeration" {
+      enum "IN" {
+        description
+          "Input interface.";
+      }
+      enum "OUT" {
+        description
+          "Output interface.";
+      }
+    }
+  }
+
+  container "nemea-supervisor" {
+
+    list "modules" {
+      key "name";
+      leaf "name" {
+        type "string";
+        description "Name of group of Nemea modules.";
+      }
+      leaf "enabled" {
+        type "boolean";
+        description "Activation of group of Nemea modules.";
+      }
+      list "module" {
+        key "name";
+        leaf "name" {
+          type "string";
+          description
+            "Unique name of the module.";
+        }
+        leaf "params" {
+          type "string";
+          description
+            "Additional parameters of the module (program).";
+        }
+
+        leaf "enabled" {
+          type "boolean";
+          mandatory "true";
+          description
+            "Specify whether to start the module or not.";
+        }
+        leaf "running" {
+          type "boolean";
+          config "false";
+          description
+            "Specify whether the module is running.";
+        }
+        leaf "restart-counter" {
+          type "uint8";
+          config "false";
+          description
+            "The number of repeated starts of the module.";
+        }
+        leaf "path" {
+          type "string";
+          mandatory "true";
+          description
+            "Path to module (executable file).";
+        }
+        leaf "module-restarts" {
+          type "uint8";
+          default "3";
+          description "Global number of automatic restarts of a module that ends.";
+        }
+        container "trapinterfaces" {
+          list "interface" {
+            key "type direction params";
+            leaf "type" {
+              type "trapifc-type";
+              mandatory "true";
+              description
+                "Type of libtrap communication interface.";
+            }
+            leaf "direction" {
+              type "trapifc-direction";
+              mandatory "true";
+              description
+                "Type of libtrap communication interface.";
+            }
+            leaf "params" {
+              type "string";
+              mandatory "true";
+              description
+                "Parameters of libtrap interface: hostname,port for input interface; port for output interface.";
+            }
+            leaf "note" {
+              type "string";
+              description
+                "Optional note for interface";
+            }
+            leaf "sent-msg-cnt" {
+              type "uint64";
+              config "false";
+              description
+                "Number of sent messages.";
+            }
+            leaf "dropped-msg-cnt" {
+              type "uint64";
+              config "false";
+              description
+                "Number of dropped messages.";
+            }
+            leaf "recv-msg-cnt" {
+              type "uint64";
+              config "false";
+              description
+                "Number of received messages.";
+            }
+            leaf "sent-buffer-cnt" {
+              type "uint64";
+              config "false";
+              description
+                "Number of sent buffers.";
+            }
+            leaf "autoflush-cnt" {
+              type "uint64";
+              config "false";
+              description
+                "Number of Auto-Flush calls.";
+            }
+            leaf "drop-buffer-cnt" {
+              type "uint64";
+              config "false";
+              description
+                "Number of dropped buffers.";
+            }
+            leaf "drop-msg-cnt" {
+              type "uint64";
+              config "false";
+              description
+                "Number of dropped messages.";
+            }
+          }
+        }
+      }
+    }
+  }
+
+  notification moduleStatusChanged {
+    description
+      "Indicates that the status of module has changed.";
+
+    leaf moduleName {
+      type "string";
+      description "Module unique name.";
+    }
+
+    leaf moduleStatus {
+      description
+        "Indicates the actual module status";
+      type enumeration {
+        enum started {
+          description
+            "The module was started.";
+        }
+        enum stopped {
+          description
+            "The module was stopped.";
+        }
+        enum restarted {
+          description
+            "The module was restarted.";
+        }
+        enum disabled {
+          description
+            "The module was disabled.";
+        }
+      }
+    }
+
+    leaf reason {
+      type "string";
+      description "Reason of changing the status of module.";
+    }
+  }
+}
+

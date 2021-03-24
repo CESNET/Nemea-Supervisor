@@ -1,0 +1,39 @@
+# It's not recommended to modify this file in-place, because it will be
+# overwritten during package upgrades.  If you want to customize, the best
+# way is to create a file "/etc/systemd/system/httpd.service",
+# containing
+#   .include /lib/systemd/system/nemea-supervisor.service
+#   ...make your changes here...
+# For more info about custom unit files, see
+# http://fedoraproject.org/wiki/Systemd#How_do_I_customize_a_unit_file.2F_add_a_custom_unit_file.3F
+#
+# For example, to pass additional options (for instance, -D definitions) to the
+# supervisor binary at startup, you need to create a file named
+# "/etc/systemd/system/nemea-supervisor.service" containing:
+#       .include /lib/systemd/system/nemea-supervisor.service
+#       [Service]
+#       Environment=OPTIONS=-DMY_DEFINE
+
+[Unit]
+Description=Nemea Supervisor
+After=network.target local-fs.target remote-fs.target
+
+[Service]
+Type=forking
+PIDFile=@defaultsocketdir@/nemea-supervisor.pid
+Environment=LANG=C
+User=nemead
+Group=nemead
+
+ExecStart=@bindir@/nemea-supervisor start
+ExecReload=@bindir@/nemea-supervisor reload
+ExecStop=@bindir@/nemea-supervisor stop
+KillMode=none
+PrivateTmp=false
+PermissionsStartOnly=true
+ExecStartPre=/usr/bin/mkdir -p @rundir@/nemea-supervisor
+ExecStartPre=/usr/bin/chown -R nemead:nemead @rundir@/nemea-supervisor
+
+[Install]
+WantedBy=multi-user.target
+

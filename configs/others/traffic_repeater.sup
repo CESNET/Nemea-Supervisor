@@ -1,0 +1,18 @@
+<module>
+<name>traffic_repeater</name>
+<enabled>true</enabled>
+<path>/usr/bin/nemea/traffic_repeater</path>
+<trapinterfaces>
+<interface>
+  <type>TCP</type>
+  <direction>IN</direction>
+  <params>7600</params>
+</interface>
+<interface>
+  <type>UNIXSOCKET</type>
+  <direction>OUT</direction>
+  <params>flow_data_source</params>
+</interface>
+</trapinterfaces>
+</module>
+

@@ -1,0 +1,146 @@
+#!/bin/sh
+#
+# nemea-supervisor: nemea-supervisor init script
+# Copyright (c) 2014 CESNET, z.s.p.o.
+# Author(s): Tomas Cejka <cejkat@cesnet.cz>
+#            Marek Svepes <svepemar@fit.cvut.cz>
+#
+# This script is written according to SysV init principles.
+#
+# To activate this script at the boot time simple copy this file (and
+# rename it to 'nemea-supervisor' - without any suffix) into the /etc/rc.d/init.d
+# directory. Then run chkconfig:
+#
+#    chkconfig --add nemea-supervisor
+#
+# Output is logged in /var/log/nemea-supervisor/ directory.
+#
+# Two lines below this clause are used by chkconfig(8) to set it to run
+# in the boot time. The first of those two lines tells chkconfig what
+# runlevels the service should be started in by default, as well as the
+# start and stop priority levels. The second line contains a description
+# for the service.
+#
+# chkconfig: 345 50 80
+# description: nemea-supervisor startup script
+
+prefix="@prefix@"
+exec_prefix="@exec_prefix@"
+BINDIR="@bindir@"
+CONFIG_FILE="@sysconfdir@/supervisor_config_template.xml"
+LOGDIR="/var/log/nemea-supervisor"
+LOGFILE="/var/log/nemea-supervisor/init.log"
+PID_FILE="@defaultsocketdir@/nemea-supervisor.pid"
+SUPERVISOR="$BINDIR/supervisor"
+SUPERVISOR_CLI="$BINDIR/supervisor_cli"
+
+#include functions
+. /etc/init.d/functions
+
+function get_pid()
+{
+  echo $(cat "$PID_FILE")
+}
+
+function daemon_status()
+{
+  test -e "$PID_FILE" || return 1
+  PID=$(get_pid)
+  test -n "$PID" || return 1
+  `ps "$PID" > /dev/null 2> /dev/null`
+  return $?
+}
+
+function logerror()
+{
+  echo $(date "+%F %T") $1 >> $LOGFILE;
+  $2; echo $1;
+}
+
+case "$1" in
+start )
+        test -e "$LOGDIR" || mkdir -p "$LOGDIR" || { echo "Log dir could not be created."; exit 1; }
+        test -w "$LOGDIR" || chmod u+w "$LOGDIR" || { echo "Log dir is not writable."; exit 1; }
+
+	echo "== Starting nemea-supervisor ==" >> $LOGFILE
+        test -e "$(dirname "$PID_FILE")" || mkdir -p "$(dirname "$PID_FILE")" || {
+          logerror "PID file directory could not be created." "failure"
+          exit 1
+        }
+        test -w "$(dirname "$PID_FILE")" || chmod u+w "$(dirname "$PID_FILE")" || {
+          logerror "PID file directory is not writable" "failure"
+          exit 1
+        }
+
+	if daemon_status; then
+		logerror "Failed: nemea-supervisor is already running." "failure"
+		exit 1;
+	fi
+
+        TMPFILE=$(mktemp)
+	$SUPERVISOR  --daemon -T "$CONFIG_FILE" -L "$LOGDIR" > "$TMPFILE"
+        sed 's/.*PID of daemon process: \([0-9]*\)\./\1/' "$TMPFILE" > "$PID_FILE"
+        rm "$TMPFILE"
+
+	# for server to start
+	sleep 1;
+
+	if ! daemon_status; then
+		logerror "Failure: nemea-supervisor failed to start." "failure"
+		exit 1;
+	fi
+
+       logerror "Starting nemea-supervisor" "success"
+       exit 0;
+	;;
+
+stop )
+	if ! daemon_status; then
+		logerror "Failure: nemea-supervisor is not running." "failure"
+		exit 1;
+	fi
+
+	kill -15 $(get_pid)
+
+	sleep 3;
+
+	if daemon_status; then
+		kill -9 $(get_pid)
+		sleep 1;
+
+		if daemon_status; then
+			logerror "Failure: nemea-supervisor is still running." "failure"
+			exit 1;
+		fi
+	fi
+
+        # clean up PID file
+        rm "$PID_FILE"
+
+        logerror "Success: nemea-supervisor stopped" "success"
+	;;
+
+restart )
+	$0 stop
+	$0 start
+	;;
+
+reload )
+	$SUPERVISOR_CLI -r
+        ;;
+
+status )
+	if daemon_status; then
+		echo "nemea-supervisor is running.";
+                exit 0;
+	else
+		echo "nemea-supervisor is stopped.";
+                exit 2;
+	fi
+	;;
+* )
+	# Display usage of this script
+	echo "Usage: $0 {start|stop|restart|reload|status}"
+	;;
+esac
+

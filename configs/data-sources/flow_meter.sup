@@ -1,0 +1,13 @@
+<module>
+<name>flow_meter</name>
+<enabled>false</enabled>
+<path>/usr/bin/nemea/flow_meter</path>
+<params>-I eth0</params>
+<trapinterfaces>
+<interface>
+  <type>UNIXSOCKET</type>
+  <direction>OUT</direction>
+  <params>flow_data_source</params>
+</interface>
+</trapinterfaces>
+</module>

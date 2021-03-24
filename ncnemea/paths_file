@@ -1,0 +1,5 @@
+nemea=urn:cesnet:tmc:nemea:1.0
+/nemea:nemea-supervisor/nemea:modules/nemea:module/nemea:enabled
+/nemea:nemea-supervisor/nemea:modules/nemea:module
+/nemea:nemea-supervisor/nemea:modules
+/nemea:nemea-supervisor

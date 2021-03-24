@@ -1,0 +1,44 @@
+2020-08-18 (Adam Piecek): nemea_status: remove python2 dependency
+2020-08-14 (Tomáš Čejka): munin: ipfixcol2 - improved regex, bugfix parsing IFC with >9 clients
+2020-06-10 (Tomáš Čejka): munin: bugfix - conversion from bytes to string
+
+2020-04-24 (Tomas Cejka): coding style: insert space between arguments
+2020-04-24 (Václav Bartoš): Stop modules by sending signal to whole process group (kill -pid)
+2020-03-06 (Tomáš Čejka): nagios: moved scripts and replaced shebangs to python3
+2020-03-06 (Tomáš Čejka): munin: add script to monitor ipfixcol2-unirec IFCs
+2019-09-10 (Václav Bartoš): nemea_status: Resident set memory size shown instead of virtual memory
+2018-09-12 (Ulrik Haugen): Break out perfdata formatting and repair some typos
+
+2019-02-23 (Tomas Cejka): configs: MAINTENANCE simplified script to set default NIC
+2019-02-23 (Tomas Cejka): build: fixed distcheck and RPM creation
+2019-02-13 (Tomas Cejka): configs: do not install devel configuration with adaptive filter
+2019-02-13 (Tomas Cejka): configs: remove unused ipblacklistfilter_logger
+2019-02-13 (Filip Suster): blacklistfilter: Add new sup files, consistent naming
+2018-10-30 (Ladislav): smtp: Smtp spam sup (#26)
+2017-07-21 (Jaroslav Hlavac): nagios: removed hotfix of check link traffic, module was fixed in nemea-modules
+2017-04-01 (Tomas Cejka): nagios: add selinux policy file
+2017-03-29 (Jaroslav Hlavac): check_nemea_modules.py: reading from config
+2017-03-27 (Jaroslav Hlavac): upgrade of memory, link_traffic and nemea_modules scritps default arguments and other minor upgrades
+2017-03-09 (Tomas Cejka): nagios: generate RPM packages
+2017-03-09 (Tomas Cejka): nagios: doc: info about restarting services
+2017-03-09 (Tomas Cejka): nagios: FEATURE check list of running modules
+2017-03-09 (Tomas Cejka): nagios: link_traffic: BUGFIX script did not print OK message
+2017-03-09 (Tomas Cejka): nagios: link_traffic: BUGFIX stopped module was not detected
+2017-03-07 (Jaroslav Hlaváč): parentheses fix
+2017-03-07 (Jaroslav Hlaváč): hotfix: skipping telia links
+2017-03-05 (Tomas Cejka): nagios: free_memory: replace free with available mem
+2017-03-02 (Tomas Cejka): nagios: add simple README to navigate between server/client part
+2017-03-02 (Tomas Cejka): nagios: small fixes of scripts
+2017-03-02 (Jaroslav Hlavac): FEATURE nagios scripts to monitor NEMEA collector
+
+2018-09-18 (Tomas Cejka): updated permissions for log files and directory
+2018-08-14 (Ladislav Macoun): Added smtp_spam_detector to supervisor config.
+
+2018-07-27 (Jaroslav Hlavac): bugfix: add support for TLS interface in config (#23)
+2018-06-30 (Tomas Cejka): supervisor: removed validation on `params` of a module
+2018-06-21 (Tomas Jansky): fixed generating debuginfo package
+2017-08-25 (Ulrik Haugen): readme: update modules statistics and information output docs.
+2017-08-25 (Ulrik Haugen): add nemea-modulesinfo and some monitoring plugins.
+2017-08-25 (Ulrik Haugen): readme: fold long lines, whitespace.
+2017-08-25 (Ulrik Haugen): Makefile.am: whitespace.
+2017-08-25 (Ulrik Haugen): .gitignore: ignore build artefacts.

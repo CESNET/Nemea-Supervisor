@@ -1,0 +1,6 @@
+<module>
+<name>ipfixcol</name>
+<enabled>false</enabled>
+<path>/usr/bin/ipfixcol</path>
+<params>-c ${prefix}/etc/ipfixcol-startup.xml</params>
+</module>

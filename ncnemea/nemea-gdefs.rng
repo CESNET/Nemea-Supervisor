@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="utf-8"?>
+<grammar xmlns="http://relaxng.org/ns/structure/1.0" xmlns:nma="urn:ietf:params:xml:ns:netmod:dsdl-annotations:1" xmlns:nemea="urn:cesnet:tmc:nemea:1.0" datatypeLibrary="http://www.w3.org/2001/XMLSchema-datatypes"><define name="nemea__trapifc-direction"><choice><value>IN</value><value>OUT</value><value>SERVICE</value></choice></define><define name="nemea__trapifc-type"><choice><value>TCP</value><value>UNIXSOCKET</value><value>SERVICE</value></choice></define></grammar>

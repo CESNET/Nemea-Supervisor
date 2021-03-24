@@ -1,0 +1,65 @@
+<?xml version="1.0"?>
+<nemea-supervisor>
+
+  <!-- Defines one group of modules (modules profile) -->
+  <modules>
+    <!-- MANDATORY element -->
+    <!-- Unique name of the modules profile -->
+    <name>Example profile</name>
+    <!-- MANDATORY element, values {true,false} -->
+    <!-- Profile switch for all modules in this profile determining whether the modules should run or not -->
+    <enabled>true</enabled>
+    <!-- Switches explanation:
+    Profile switch  | Module switch   | Module will run
+       true         |    true         |    true
+       true         |    false        |    false
+       false        |    true         |    false
+       false        |    false        |    false
+    -->
+
+    <!-- Defines one module -->
+    <module>
+      <!-- MANDATORY element -->
+      <!-- Unique name of the module (future name of the running process) -->
+      <name>traffic_repeater_example</name>
+      <!-- MANDATORY element, values {true,false} -->
+      <!-- Module switch determining whether the module should run or not -->
+      <enabled>true</enabled>
+      <!-- MANDATORY element -->
+      <!-- Path of the binary file (or script) of this module -->
+      <path>/usr/bin/nemea/traffic_repeater</path>
+      <!-- OPTIONAL element -->
+      <!-- Parameters passed to executed binary (or script); accepts also apostrophes and quotes (they are directly passed to the binary) -->
+      <params>-v param_arg "param in quotes" 'param in apostrophes'</params>
+      <!-- OPTIONAL element, default value: 3, value interval: <0,30> where 30 is equal infinity -->
+      <!-- Determines maximum number of restarts per minute (how many times the module will be automatically restarted before setting disabled) -->
+      <module-restarts>0</module-restarts>
+      <!-- OPTIONAL element -->
+      <!-- Set of module's interfaces -->
+      <trapinterfaces>
+        <interface>
+          <!-- MANDATORY element, values {TCP,UNIXSOCKET,FILE,BLACKHOLE,TLS} -->
+          <!-- Interface uses TCP socket (TCP socket is used for machine to machine communication) -->
+          <type>TCP</type>
+          <!-- MANDATORY element, values {IN,OUT} -->
+          <!-- Input interface -->
+          <direction>IN</direction>
+          <!-- MANDATORY element -->
+          <!-- Input interface connects to localhost:7600 -->
+          <params>7600</params>
+        </interface>
+        <interface>
+          <!-- MANDATORY element, values {TCP,UNIXSOCKET,FILE,BLACKHOLE,TLS} -->
+          <!-- Interface uses unix socket (unix socket is used for localhost communication) -->
+          <type>TCP</type>
+          <!-- MANDATORY element, values {IN,OUT} -->
+          <!-- Output interface-->
+          <direction>OUT</direction>
+          <!-- MANDATORY element -->
+          <!-- Listens on "trafrep_example_output" unix socket -->
+          <params>trafrep_example_output</params>
+        </interface>
+      </trapinterfaces>
+    </module>
+  </modules>
+</nemea-supervisor>

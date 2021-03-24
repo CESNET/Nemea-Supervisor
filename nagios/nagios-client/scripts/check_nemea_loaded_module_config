@@ -1,0 +1,27 @@
+#! /bin/bash
+
+# Monitoring plugin to check that the supervisor could parse its
+# modules configuration.
+
+set -eu -o pipefail
+
+ex_ok=0
+ex_warning=1
+ex_critical=2
+ex_unknown=3
+
+bindir='/usr/local/bin'
+supervisor_cli="${bindir}/supervisor_cli"
+
+if ! [ -x "${supervisor_cli}" ]; then
+   echo "Unknown: Nemea supervisor administrative client (${supervisor_cli}) not installed."
+   exit $ex_unknown
+fi
+
+if [ -z "$("${supervisor_cli}" -x)" ]; then
+   echo "Critical: No Nemea modules loaded, please look for errors when triggering reload from ${supervisor_cli} in interactive mode."
+   exit $ex_critical
+fi
+
+echo "Ok: Nemea supervisor administrative client reports module statistics."
+exit $ex_ok
