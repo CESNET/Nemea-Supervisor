@@ -1,6 +1,6 @@
 ACLOCAL_AMFLAGS = -I m4
 
-SUBDIRS=munin configs nagios
+SUBDIRS=munin configs
 
 bin_PROGRAMS=supervisor supervisor_cli
 supervisor_SOURCES= supervisor.c supervisor.h supervisor_api.h supervisor_main.c internal.c internal.h
