@@ -457,19 +457,19 @@ char **prep_module_args(const uint32_t module_idx)
             if (running_modules[module_idx].config_ifces[x].int_ifc_direction == act_dir) {
                // Get interface type
                if (running_modules[module_idx].config_ifces[x].int_ifc_type == TCP_MODULE_IFC_TYPE) {
-                  strncpy(ifc_spec + ptr, "t:", 2);
+                  strncpy(ifc_spec + ptr, "t:", 3);
                   ptr+=2;
                } else if (running_modules[module_idx].config_ifces[x].int_ifc_type == UNIXSOCKET_MODULE_IFC_TYPE) {
-                  strncpy(ifc_spec + ptr, "u:", 2);
+                  strncpy(ifc_spec + ptr, "u:", 3);
                   ptr+=2;
                } else if (running_modules[module_idx].config_ifces[x].int_ifc_type == FILE_MODULE_IFC_TYPE) {
-                  strncpy(ifc_spec + ptr, "f:", 2);
+                  strncpy(ifc_spec + ptr, "f:", 3);
                   ptr+=2;
                } else if (running_modules[module_idx].config_ifces[x].int_ifc_type == BLACKHOLE_MODULE_IFC_TYPE) {
-                  strncpy(ifc_spec + ptr, "b:", 2);
+                  strncpy(ifc_spec + ptr, "b:", 3);
                   ptr+=2;
                } else if (running_modules[module_idx].config_ifces[x].int_ifc_type == TLS_MODULE_IFC_TYPE) {
-                  strncpy(ifc_spec + ptr, "T:", 2);
+                  strncpy(ifc_spec + ptr, "T:", 3);
                   ptr+=2;
                } else {
                   VERBOSE(MODULE_EVENT, "%s [WARNING] Wrong ifc_type in module %d (interface number %d).\n", get_formatted_time(), module_idx, x);
