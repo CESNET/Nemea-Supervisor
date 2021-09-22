@@ -106,6 +106,8 @@
  */
 #define SERVICE_WAIT_FOR_MODULES_TO_FINISH 500000
 
+#define TIME_BUFFER_SIZE 26
+
 /*******GLOBAL VARIABLES*******/
 
 /* Loaded modules variables */
@@ -214,6 +216,7 @@ void create_shutdown_info(char **backup_file_path)
 {
    FILE *info_file_fd = NULL;
    char *info_file_name = NULL;
+   char timebuf[TIME_BUFFER_SIZE];
 
    if (asprintf(&info_file_name, "%s_info", *backup_file_path) < 0) {
       return;
@@ -228,7 +231,7 @@ void create_shutdown_info(char **backup_file_path)
    fprintf(info_file_fd, "Supervisor shutdown info:\n==========================\n\n");
    fprintf(info_file_fd, "Supervisor package version: %s\n", sup_package_version);
    fprintf(info_file_fd, "Supervisor git version: %s\n", sup_git_version);
-   fprintf(info_file_fd, "Started: %s", ctime(&sup_init_time));
+   fprintf(info_file_fd, "Started: %s", ctime_r(&sup_init_time, timebuf));
    fprintf(info_file_fd, "Actual date and time: %s\n", get_formatted_time());
    fprintf(info_file_fd, "Number of modules in configuration: %d\n", loaded_modules_cnt);
    fprintf(info_file_fd, "Number of running modules: %d\n", service_check_modules_status());
@@ -260,11 +263,12 @@ char *get_formatted_time()
 {
    time_t rawtime;
    static char formatted_time_buffer[DEFAULT_SIZE_OF_BUFFER];
+   char timebuf[TIME_BUFFER_SIZE];
 
    memset(formatted_time_buffer,0,DEFAULT_SIZE_OF_BUFFER);
    time(&rawtime);
 
-   sprintf(formatted_time_buffer, "%s", ctime(&rawtime));
+   sprintf(formatted_time_buffer, "%s", ctime_r(&rawtime, timebuf));
    formatted_time_buffer[strlen(formatted_time_buffer) - 1] = 0;
 
    return formatted_time_buffer;
@@ -713,6 +717,7 @@ char *get_param_by_delimiter(const char *source, char **dest, const char delimit
 
 void print_statistics()
 {
+   char timebuf[TIME_BUFFER_SIZE];
    time_t t = 0;
    time(&t);
    char *stats_buffer = make_formated_statistics((uint8_t) 1);
@@ -720,7 +725,7 @@ void print_statistics()
    if (stats_buffer == NULL) {
       return;
    }
-   VERBOSE(STATISTICS, "------> %s", ctime(&t));
+   VERBOSE(STATISTICS, "------> %s", ctime_r(&t, timebuf));
    VERBOSE(STATISTICS, "%s", stats_buffer);
 
    NULLP_TEST_AND_FREE(stats_buffer);
@@ -1803,9 +1808,10 @@ void service_start_module(const int module_idx)
    init_module_variables(module_idx);
 
    time_t rawtime;
-   struct tm * timeinfo;
+   struct tm timeinfo;
+   char timebuf[TIME_BUFFER_SIZE];
    time ( &rawtime );
-   timeinfo = localtime ( &rawtime );
+   localtime_r ( &rawtime , &timeinfo);
 
    fflush(stdout);
    running_modules[module_idx].module_pid = fork();
@@ -1821,8 +1827,8 @@ void service_start_module(const int module_idx)
          close(fd_stderr);
       }
       setsid(); // important for sending SIGINT to supervisor.. modules can't receive the signal too !!!
-      fprintf(stdout,"---> %s", asctime (timeinfo));
-      fprintf(stderr,"---> %s", asctime (timeinfo));
+      fprintf(stdout,"---> %s", asctime_r (&timeinfo, timebuf));
+      fprintf(stderr,"---> %s", asctime_r (&timeinfo, timebuf));
       if (running_modules[module_idx].module_path == NULL) {
          VERBOSE(N_STDOUT,"%s [ERROR] Starting module: module path is missing!\n", get_formatted_time());
          running_modules[module_idx].module_enabled = FALSE;
@@ -3345,10 +3351,11 @@ void interactive_print_brief_status()
 
 void interactive_print_supervisor_info()
 {
+   char timebuf[TIME_BUFFER_SIZE];
    VERBOSE(N_STDOUT, FORMAT_BOLD "--------------- INFO ---------------\n");
    VERBOSE(N_STDOUT, "Supervisor package version:" FORMAT_RESET " %s\n", sup_package_version);
    VERBOSE(N_STDOUT, FORMAT_BOLD "Supervisor git version:" FORMAT_RESET " %s\n", sup_git_version);
-   VERBOSE(N_STDOUT, FORMAT_BOLD "Started:" FORMAT_RESET " %s", ctime(&sup_init_time));
+   VERBOSE(N_STDOUT, FORMAT_BOLD "Started:" FORMAT_RESET " %s", ctime_r(&sup_init_time, timebuf));
    VERBOSE(N_STDOUT, FORMAT_BOLD "Logs directory path:" FORMAT_RESET " %s\n", logs_path);
    VERBOSE(N_STDOUT, FORMAT_BOLD "Start-up configuration template:" FORMAT_RESET " %s\n", templ_config_file);
    VERBOSE(N_STDOUT, FORMAT_BOLD "Loaded configuration file (generated):" FORMAT_RESET " %s\n", gener_config_file);
