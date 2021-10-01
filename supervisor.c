@@ -477,6 +477,7 @@ char **prep_module_args(const uint32_t module_idx)
                   for (uint32_t i = 0; i < bin_args_pos; i++) {
                      free(bin_args[i]);
                   }
+                  free(bin_args);
                   return NULL;
                }
                // Get interface params
