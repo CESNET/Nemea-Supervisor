@@ -63,6 +63,8 @@
 
 #define DEFAULT_DAEMON_SERVER_SOCKET   DEFAULT_PATH_TO_SOCKET  ///<  Daemon server socket
 
+#define READ_BUFF_SIZE 99999
+
 typedef struct client_internals_s {
    FILE *supervisor_input_stream;
    FILE *supervisor_output_stream;
@@ -141,6 +143,7 @@ int main(int argc, char **argv)
    int modules_info_flag = FALSE;
    int reload_command_flag = FALSE;
    int flag_cnt = 0;
+   char read_buffer[READ_BUFF_SIZE];
 
    FILE *tmp_file = NULL;
    char *file_path = NULL;
@@ -278,7 +281,7 @@ int main(int argc, char **argv)
          }
          if (FD_ISSET(client_internals->supervisor_input_stream_fd, &read_fds)) {
             usleep(200000);
-            ioctl(client_internals->supervisor_input_stream_fd, FIONREAD, &bytes_to_read);
+            bytes_to_read = read(client_internals->supervisor_input_stream_fd, read_buffer, READ_BUFF_SIZE);
             if (bytes_to_read == 0 || bytes_to_read == -1) {
                if (modules_stats_flag != TRUE && modules_info_flag != TRUE) {
                   fprintf(stderr, FORMAT_WARNING "[WARNING] Supervisor has disconnected, I'm done!" FORMAT_RESET "\n");
@@ -288,7 +291,7 @@ int main(int argc, char **argv)
                exit(EXIT_SUCCESS);
             } else {
                for (x=0; x<bytes_to_read; x++) {
-                  printf("%c", (char) fgetc(client_internals->supervisor_input_stream));
+                  printf("%c", read_buffer[x]);
                }
                fflush(stdout);
             }
