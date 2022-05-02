@@ -1,3 +1,21 @@
+2022-05-01 (xsiska12): Supervisor-cli: Fixed supervisor-client output by changing recv function (ioctl -> read)
+2021-10-01 (Jiri Havranek): fixed issues reported by coverity
+2021-09-22 (Jiri Havranek): fixed compilation warnings
+2021-09-22 (Jiri Havranek): fixed issues reported by codeql
+2021-07-17 (Tomas Cejka): ghactions: add codecov, coverity, CodeQL
+2021-07-12 (Tomas Cejka): set up github actions workflow
+2021-06-11 (xsiska12): Removed Nagios monitoring.
+2021-05-04 (Tomas Cejka): travis: removed auto deploy
+2021-03-15 (xsiska12): nemea-supervisor: Increased timeout for sending and receiving service data.
+2021-03-03 (SiskaPavel): C/C++ standard unified to -std=gnu11 and -std=gnu++11
+2021-01-22 (Václav Bartoš): supervisor_cli: open log at the end of the file
+2020-12-03 (aPiecek): refactor: BUGFIX supervisor, argument cannot be negative (from ftell)
+2020-12-03 (aPiecek): refactor: supervisor, string not null terminated
+2020-12-03 (aPiecek): refactor: supervisor, resource leak
+2020-12-02 (aPiecek): refactor: supervisor, out-of-bounds read
+2020-12-02 (aPiecek): refactor: supervisor, incorrect deallocator used
+2020-12-02 (aPiecek): refactor: supervisor, argument cannot be negative (from ftell)
+
 2020-08-18 (Adam Piecek): nemea_status: remove python2 dependency
 2020-08-14 (Tomáš Čejka): munin: ipfixcol2 - improved regex, bugfix parsing IFC with >9 clients
 2020-06-10 (Tomáš Čejka): munin: bugfix - conversion from bytes to string

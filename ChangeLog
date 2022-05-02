@@ -1,3 +1,11 @@
+2022-05-02 nemea-supervisor-1.8.2
+	* Supervisor-cli:
+		Fixed printing of output messages.
+		Open log at the end of the file.
+	* ghactions:
+		Added codecov, coverity and CodeQL
+	* travis:
+		Removed auto deploy
 2020-08-18 nemea-supervisor-1.8.1
 	* munin:
 		regex improved, bugfix
