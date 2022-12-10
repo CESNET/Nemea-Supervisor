@@ -413,7 +413,7 @@ char **prep_module_args(const uint32_t module_idx)
    uint32_t bin_args_pos = 0;
 
    /* if the module has trap interfaces, one argument for "-i" and one for interfaces specifier */
-   if (running_modules[module_idx].config_ifces_cnt > 0) {
+   if (running_modules[module_idx].config_ifces_cnt > 0 && running_modules[module_idx].ignore_trap_arguments == 0) {
       bin_args_num += 2;
    }
 
@@ -441,7 +441,7 @@ char **prep_module_args(const uint32_t module_idx)
    }
 
    /* prepare trap interfaces specifier (e.g. "t:1234,u:sock,s:service_sock") */
-   if (running_modules[module_idx].config_ifces_cnt > 0) {
+   if (running_modules[module_idx].config_ifces_cnt > 0 && running_modules[module_idx].ignore_trap_arguments == 0) {
       for (y = 0; y < 2; y++) {
          // To get first input ifces and than output ifces
          switch (y) {
@@ -1028,6 +1028,9 @@ void generate_backup_config_file()
                      xmlNewChild(module, NULL, BAD_CAST "enabled", BAD_CAST "true");
                   } else {
                      xmlNewChild(module, NULL, BAD_CAST "enabled", BAD_CAST "false");
+                  }
+                  if (running_modules[x].ignore_trap_arguments) {
+                     xmlNewChild(module, NULL, BAD_CAST "trap-args-ignore", BAD_CAST "true");
                   }
                   if (running_modules[x].config_ifces_cnt > 0) {
                      trapinterfaces = xmlNewChild(module, NULL, BAD_CAST "trapinterfaces", NULL);
@@ -4373,6 +4376,7 @@ int reload_check_module_element(reload_config_vars_t **config_vars, str_lst_t **
             VERBOSE(N_STDOUT, "[ERROR] Too much \"params\" elements in \"module\" element!\n");
             goto error_label;
          }
+      } else if ((*config_vars)->module_atr_elem->type == XML_ELEMENT_NODE && (xmlStrcmp((*config_vars)->module_atr_elem->name,BAD_CAST "trap-args-ignore") == 0)) {
       } else if ((*config_vars)->module_atr_elem->type == XML_COMMENT_NODE || (*config_vars)->module_atr_elem->type == XML_TEXT_NODE) {
          // Nothing to do here
       } else {
@@ -4461,6 +4465,7 @@ int reload_find_and_check_module_basic_elements(reload_config_vars_t **config_va
          if (basic_elements[trapifc_elem_idx] > 1) {
             move_to_next_module = TRUE;
          }
+      } else if ((!xmlStrcmp((*config_vars)->module_atr_elem->name,BAD_CAST "trap-args-ignore"))) {
       }
 
       if (key != NULL) {
@@ -4795,6 +4800,7 @@ void check_running_modules_allocated_memory()
          running_modules[x].module_running = FALSE;
          running_modules[x].config_ifces_arr_size = IFCES_ARRAY_START_SIZE;
          running_modules[x].config_ifces_cnt = 0;
+         running_modules[x].ignore_trap_arguments = 0;
       }
    } else if (loaded_modules_cnt == running_modules_array_size) {
       origin_size = running_modules_array_size;
@@ -4807,6 +4813,7 @@ void check_running_modules_allocated_memory()
          running_modules[x].module_running = FALSE;
          running_modules[x].config_ifces_arr_size = IFCES_ARRAY_START_SIZE;
          running_modules[x].config_ifces_cnt = 0;
+         running_modules[x].ignore_trap_arguments = 0;
       }
    }
 }
@@ -5153,7 +5160,7 @@ int generate_config_file()
       if (sscanf(line + pos, "<!-- include %s -->", incl_path) == 1) {
          // append content of every file from dir
          if (include_item(gener_cont, &incl_path) == -1) {
-            VERBOSE(N_STDOUT, "[ERROR] in include_item function\n");
+            VERBOSE(N_STDOUT, "[ERROR] in include_item path: %s function\n", incl_path);
             return_code = -1;
             break;
          }
@@ -5409,6 +5416,9 @@ parse_default_config_file:
                         xmlFree(key);
                         key = NULL;
                      }
+                  } else if (!xmlStrcmp(config_vars->module_atr_elem->name, BAD_CAST "trap-args-ignore")) {
+                     // Process module's "trap-args-ignore" attribute
+                     running_modules[config_vars->current_module_idx].ignore_trap_arguments = 1;
                   } else if ((!xmlStrcmp(config_vars->module_atr_elem->name,BAD_CAST "params"))) {
                      // Process module's "parameters" attribute
                      reload_process_module_atribute(&config_vars, &running_modules[config_vars->current_module_idx].module_params);

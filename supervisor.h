@@ -177,6 +177,7 @@ typedef struct running_module_s {
    uint8_t module_root_perm_needed;
    int remove_module;   /*** RELOAD ***/
    int init_module;   /*** RELOAD ***/
+   int ignore_trap_arguments;
 
    int module_status; ///< Module status (TRUE ~ running, FALSE ~ stopped)   /*** SERVICE ***/
    int module_running; ///< TRUE after first start of module, else FALSE.   /*** RELOAD/ALLOCATION ***/
