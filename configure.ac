@@ -113,7 +113,6 @@ AM_CONDITIONAL([HAVE_SYSTEMD], [test "x$with_systemdsystemunitdir" != "xno"])
 
 AC_CONFIG_FILES([Makefile
 	nemea-supervisor.spec
-	nemea-supervisor
 	nemea-supervisor.service
 	munin/Makefile
 	munin/nemea_supervisor

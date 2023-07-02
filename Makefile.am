@@ -7,8 +7,8 @@ supervisor_SOURCES= supervisor.c supervisor.h supervisor_api.h supervisor_main.c
 supervisor_LDADD = -lpthread -ltrap
 supervisor_cli_SOURCES= supervisor_cli.c internal.h internal.c
 doc_DATA=README.md
-EXTRA_DIST=nemea-supervisor nemea-modulesinfo README.md
-bin_SCRIPTS=nemea-supervisor nemea-modulesinfo
+EXTRA_DIST=nemea-modulesinfo README.md
+bin_SCRIPTS=nemea-modulesinfo
 
 DISTCHECK_CONFIGURE_FLAGS="--with-systemdsystemunitdir=$$dc_install_base/$(systemdsystemunitdir)"
 systemdsystemunit_DATA=nemea-supervisor.service
@@ -30,9 +30,4 @@ else
 endif
 
 EXTRA_DIST += ncnemea/nemea-data.rng ncnemea/libtool ncnemea/nemea.c ncnemea/config.guess ncnemea/nemea.yang ncnemea/Makefile.in ncnemea/nemea-gdefs.rng ncnemea/config.sub ncnemea/paths_file ncnemea/aclocal.m4 ncnemea/ncnemea.h ncnemea/ltmain.sh ncnemea/nemea-schematron.xsl ncnemea/configure ncnemea/install-sh ncnemea/configure.in
-
-
-install-exec-hook:
-	mkdir -p $(DESTDIR)/$(initdir)
-	$(LN_S) -f $(bindir)/nemea-supervisor $(DESTDIR)/$(initdir)/nemea-supervisor
 
