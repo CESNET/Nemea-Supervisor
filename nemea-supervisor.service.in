@@ -13,26 +13,24 @@
 #       .include /lib/systemd/system/nemea-supervisor.service
 #       [Service]
 #       Environment=OPTIONS=-DMY_DEFINE
-
 [Unit]
 Description=Nemea Supervisor
 After=network.target local-fs.target remote-fs.target
 
 [Service]
 Type=forking
-PIDFile=@defaultsocketdir@/nemea-supervisor.pid
 Environment=LANG=C
+Environment=CONFIG_FILE="/etc/nemea/supervisor_config_template.xml"
+Environment=LOGDIR="/var/log/nemea-supervisor"
 User=nemead
 Group=nemead
 
-ExecStart=@bindir@/nemea-supervisor start
-ExecReload=@bindir@/nemea-supervisor reload
-ExecStop=@bindir@/nemea-supervisor stop
-KillMode=none
+ExecStart=/usr/bin/nemea/supervisor --daemon -T "$CONFIG_FILE" -L "$LOGDIR"
+ExecReload=/usr/bin/nemea/supervisor_cli -r
 PrivateTmp=false
 PermissionsStartOnly=true
-ExecStartPre=/usr/bin/mkdir -p @rundir@/nemea-supervisor
-ExecStartPre=/usr/bin/chown -R nemead:nemead @rundir@/nemea-supervisor
+ExecStartPre=/usr/bin/mkdir -p /var/run/nemea-supervisor
+ExecStartPre=/usr/bin/chown -R nemead:nemead /var/run/nemea-supervisor
 
 [Install]
 WantedBy=multi-user.target
