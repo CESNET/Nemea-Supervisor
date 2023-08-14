@@ -1,3 +1,6 @@
+2023-08-14 nemea-supervisor-1.8.3
+	* init: replaced by systemd
+
 2022-05-02 nemea-supervisor-1.8.2
 	* Supervisor-cli:
 		Fixed printing of output messages.
