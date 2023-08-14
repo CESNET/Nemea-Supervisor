@@ -1,3 +1,5 @@
+2023-07-03 (Tomas Cejka): init: remove old init.d script replaced with systemd
+
 2022-05-01 (xsiska12): Supervisor-cli: Fixed supervisor-client output by changing recv function (ioctl -> read)
 2021-10-01 (Jiri Havranek): fixed issues reported by coverity
 2021-09-22 (Jiri Havranek): fixed compilation warnings
